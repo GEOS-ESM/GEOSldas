@@ -1,0 +1,166 @@
+! 
+! DEFAULT namelist of catbias inputs for land EnKF 
+!
+! reichle, 19 Oct 2005
+! reichle+draper, 26 Mar 2013 - renamed to LDASsa_DEFAULT_inputs_catbias.nml
+!                             - revised structures for cat_bias_param
+!
+! --------------------------------------------------------------------
+				      				      	
+&cat_bias_inputs			
+	
+! ----------------------------------------------------------------------
+!
+! bias correction is selected by cat_progn field
+!
+! Nparam indicates how many bias parameters are estimated 
+! per cat_progn field:
+!
+! Nparam = 0 - no bias correction
+!
+! Nparam = 1 - constant bias corr (w/o diurnal cycle)
+!
+! Nparam = 3 - diurnal sine/cosine bias corr
+! Nparam = 5 - semi-diurnal sine/cosine bias corr
+!
+! Nparam = 2 - "time-of-day" bias corr with 2 separate bias estimates per day
+! Nparam = 4 - "time-of-day" bias corr with 4 separate bias estimates per day
+! Nparam = 8 - "time-of-day" bias corr with 8 separate bias estimates per day
+
+cat_bias_param%Nparam%tc1      = 0  ! 1  
+cat_bias_param%Nparam%tc2      = 0  ! 1 
+cat_bias_param%Nparam%tc4      = 0  ! 1  
+cat_bias_param%Nparam%qa1      = 0  
+cat_bias_param%Nparam%qa2      = 0  
+cat_bias_param%Nparam%qa4      = 0  
+cat_bias_param%Nparam%capac    = 0  
+cat_bias_param%Nparam%catdef   = 0  
+cat_bias_param%Nparam%rzexc    = 0 
+cat_bias_param%Nparam%srfexc   = 0  
+cat_bias_param%Nparam%ght(1)   = 0 
+cat_bias_param%Nparam%ght(2)   = 0
+cat_bias_param%Nparam%ght(3)   = 0
+cat_bias_param%Nparam%ght(4)   = 0
+cat_bias_param%Nparam%ght(5)   = 0
+cat_bias_param%Nparam%ght(6)   = 0
+cat_bias_param%Nparam%wesn(1)  = 0
+cat_bias_param%Nparam%wesn(2)  = 0
+cat_bias_param%Nparam%wesn(3)  = 0
+cat_bias_param%Nparam%htsn(1)  = 0
+cat_bias_param%Nparam%htsn(2)  = 0
+cat_bias_param%Nparam%htsn(3)  = 0
+cat_bias_param%Nparam%sndz(1)  = 0
+cat_bias_param%Nparam%sndz(2)  = 0
+cat_bias_param%Nparam%sndz(3)  = 0    
+
+! ---------------------------------------------------------------------------
+!
+! The bias estimate is updated from analysis increments whenever observations 
+! are available.  The bias time scale relative to the temporal spacing of 
+! the observations is described by "tconst_bias".
+!
+! tconst_bias = dimensionless bias time constant
+!
+! DEFINITION:  P_bias = tconst_bias * P_forecast   (P is forecast error cov)
+!
+!   tconst_bias is a.k.a. "gamma" in Dee's 2003 ECWMF proceedings paper
+!   
+! ASSUMPTION:              tconst << 1
+!
+! CRUDE APPROXIMATION:     tconst = dt_obs/tcorr
+!
+!   where dt_obs is the interval between the updates from obs
+!   and tcorr is the bias time scale
+!
+! IN MORE DETAIL:
+! 
+!   starting from Dee & Todling, MWR, 2000, equation (9) we get
+! 
+!   b_k = (1-lambda)*b_(k-1) - lambda*innov
+!
+!   => AR(1) time correlation exp(-dt/tcorr)=(1-lambda)
+!
+!   use lambda = tconst*var_f/(var_f+var_o) to get
+!
+!   tconst = (var_f+var_o)/var_f*(1-exp(-dt/tcorr))
+!
+!   note that (1-exp(-dt/tcorr)) = dt/tcorr  for dt/tcorr<<1
+
+cat_bias_param%tconst%tc1      = .2  ! .2  
+cat_bias_param%tconst%tc2      = .2  ! .2
+cat_bias_param%tconst%tc4      = .2  ! .2 
+cat_bias_param%tconst%qa1      = .2  
+cat_bias_param%tconst%qa2      = .2  
+cat_bias_param%tconst%qa4      = .2  
+cat_bias_param%tconst%capac    = .2  
+cat_bias_param%tconst%catdef   = .2  
+cat_bias_param%tconst%rzexc    = .2 
+cat_bias_param%tconst%srfexc   = .2  
+cat_bias_param%tconst%ght(1)   = .2 
+cat_bias_param%tconst%ght(2)   = .2
+cat_bias_param%tconst%ght(3)   = .2
+cat_bias_param%tconst%ght(4)   = .2
+cat_bias_param%tconst%ght(5)   = .2
+cat_bias_param%tconst%ght(6)   = .2
+cat_bias_param%tconst%wesn(1)  = .2
+cat_bias_param%tconst%wesn(2)  = .2
+cat_bias_param%tconst%wesn(3)  = .2
+cat_bias_param%tconst%htsn(1)  = .2
+cat_bias_param%tconst%htsn(2)  = .2
+cat_bias_param%tconst%htsn(3)  = .2
+cat_bias_param%tconst%sndz(1)  = .2
+cat_bias_param%tconst%sndz(2)  = .2
+cat_bias_param%tconst%sndz(3)  = .2    
+
+! -----------------------------------------------------------------------
+!
+! The underlying model for bias estimation is a constant bias
+! (or constant diurnal cycle parameters).  Should there be an
+! extended period without observations, the bias must be relaxed
+! to a reasonable estimate, so as not to get stuck at whatever
+! it was when it was last updated.
+! For now, the bias is relaxed to zero with a relaxation time specified
+! below.  (Effectively, this makes the underlying model for the bias
+! an exponentially decay.)
+!
+! "trelax_bias" = bias relaxation time [s]
+!
+! DEFINITION:  Bias(t+1) = exp(-dtstep/trelax_bias)*Bias(t)
+!
+!  where dtstep is the model time step
+!
+!  1 day  =   86400 s
+!  2 days =  172800 s
+!  7 days =  604800 s
+! 14 days = 1209600 s
+! 28 days = 2419200 s
+
+cat_bias_param%trelax%tc1      = 86400.
+cat_bias_param%trelax%tc2      = 86400.
+cat_bias_param%trelax%tc4      = 86400.
+cat_bias_param%trelax%qa1      = 86400.  
+cat_bias_param%trelax%qa2      = 86400. 
+cat_bias_param%trelax%qa4      = 86400.  
+cat_bias_param%trelax%capac    = 86400.  
+cat_bias_param%trelax%catdef   = 86400.  
+cat_bias_param%trelax%rzexc    = 86400. 
+cat_bias_param%trelax%srfexc   = 86400.  
+cat_bias_param%trelax%ght(1)   = 86400. 
+cat_bias_param%trelax%ght(2)   = 86400.
+cat_bias_param%trelax%ght(3)   = 86400.
+cat_bias_param%trelax%ght(4)   = 86400.
+cat_bias_param%trelax%ght(5)   = 86400.
+cat_bias_param%trelax%ght(6)   = 86400.
+cat_bias_param%trelax%wesn(1)  = 86400.
+cat_bias_param%trelax%wesn(2)  = 86400.
+cat_bias_param%trelax%wesn(3)  = 86400.
+cat_bias_param%trelax%htsn(1)  = 86400.
+cat_bias_param%trelax%htsn(2)  = 86400.
+cat_bias_param%trelax%htsn(3)  = 86400.
+cat_bias_param%trelax%sndz(1)  = 86400.
+cat_bias_param%trelax%sndz(2)  = 86400.
+cat_bias_param%trelax%sndz(3)  = 86400.   
+                                        
+/
+
+! =========================== EOF =======================================

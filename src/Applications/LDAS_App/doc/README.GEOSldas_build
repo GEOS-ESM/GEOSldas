@@ -1,0 +1,92 @@
+
+File name:	README.GEOSldas_build
+
+Description:	Checkout and build information for GEOSldas.
+
+Author:		reichle,  5 Oct 2017
+
+
+   Checkout, build, and run GEOSldas
+   =================================
+
+
+1) Checkout GEOSldas from CVS repository:
+
+	cvs co -r [TAGNAME] GEOSldas_m4
+
+   Note:  When creating new CVS tags, the major module version ("m4" as of Oct 2017) should
+          be part of the CVS TAGNAME.
+
+
+2) Go to "src" directory and set up compiler modules and Baselibs:
+
+	cd GEOSldas/src
+	source g5_modules
+
+
+3) Build:
+
+	gmake install [BOPT=g]  |& tee tmpfile.txt
+
+	Parallel build is supported ("make -j 8 pinstall").
+
+   Verify that the build worked ok
+
+	Config/gmh.pl tmpfile.txt
+
+        ls -ltr ../(some_architecture)/bin
+
+
+4) Set up a run:
+
+        cd ../(some_architecture)/bin
+
+	source g5_modules
+
+	./ldas_setup setup [-v] [--runmodel]  exp_path  "exe"_input_filename  "bat"_input_filename
+
+   where
+
+	exp_path             = path of desired experiment directory
+	"exe"_input_filename = filename (with path) of "experiment" inputs
+        "bat"_input_filename = filename (with path) of "batch" inputs
+
+   must be ordered as above (positional arguments).
+
+   The latter two files contain essential information about the experiment setup. 
+   Sample files can be generated as follows:
+        
+	ldas_setup sample --exeinp > YOUR_exeinp.txt
+	ldas_setup sample --batinp > YOUR_exeinp.txt
+
+   Edit these sample files (see comments within sample files).  See README files
+        and ppt tutorial (in ./src/Applications/LDAS_App/doc/) for more information.
+
+   The ldas_setup script creates a run directory and other directories at:
+
+   	[exp_path]/[exp_name]
+
+   Configuration input files will be created at:
+
+        [exp_path]/[exp_name]/run
+
+   For more options and documentation run any of the following:
+
+        ldsetup        -h
+        ldsetup sample -h
+        ldsetup setup  -h
+
+   Configure experiment output by editing [HISTORY.rc] file.
+
+5) Run job:
+
+	cd [exp_path]/[exp_name]/run/
+
+	sbatch lenkf.j
+
+   See ppt tutorial (in ./src/Applications/LDAS_App/doc/) for more information about 
+        how to run GEOSldas.
+
+
+
+============================ EOF ===================================================

@@ -1,0 +1,1682 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import glob
+import copy
+import linecache
+import shutil
+import argparse
+import fileinput
+import time
+import subprocess as sp
+from dateutil import rrule
+from datetime import datetime
+from datetime import timedelta
+from collections import OrderedDict
+from dateutil.relativedelta import relativedelta
+
+
+"""
+This script is intended to be run from ../Application/LDAS_App or ../Linux/bin
+"""
+
+
+class LDASsetup:
+
+    def __init__(self, cmdLineArgs):
+        """
+        """
+        # ------
+        # Required exe input fields
+        # These fields are needed to pre-compute exp dir structure
+        # ------
+        rqdExeInpKeys = ['EXP_ID', 'EXP_DOMAIN', 'NUM_ENSEMBLE', 
+            'BEG_DATE', 'END_DATE','RESTART_PATH',
+            'RESTART_DOMAIN','RESTART_ID','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
+        rqdExeInpKeys_rst = ['EXP_ID', 'EXP_DOMAIN', 'NUM_ENSEMBLE', 
+            'BEG_DATE', 'END_DATE','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
+
+        # These keywords are excluded from LDAS.rc
+        self.NoneLDASrcKeys=['EXP_ID', 'EXP_DOMAIN',
+            'BEG_DATE', 'END_DATE','RESTART','RESTART_PATH',
+            'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
+            'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
+            'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','MONTHLY_OUTPUT',
+            'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE']
+
+
+        # ------
+        # Required resource manager input fields
+        # ------
+        rqdRmInpKeys = ['rm_name', 'account', 'walltime', 'ntasks']
+        # ------
+        # Optional resource manager input fields
+        # ------
+        optSlurmInpKeys = ['job_name', 'constraint','qos']
+
+        # ------
+        # ./ldsetup.py sample ...
+        # ------
+        if 'exeinp' in cmdLineArgs:
+            # sample sub-command
+            # by construction, we can have
+            # either: {'exeinp': False, 'batinp': 'lasgh'}
+            # or:     {'exeinp': True, 'batinp': None}
+            if cmdLineArgs['exeinp']:
+                _printExeInputKeys(rqdExeInpKeys)
+            elif cmdLineArgs['batinp'] :
+                _printRmInputKeys(rqdRmInpKeys, optSlurmInpKeys)
+            else:
+                raise Exception('not recognized option')
+            sys.exit(0)
+
+        # ------
+        # ./ldsetup.py setup ...
+        # ------
+        # Instance variables
+        self.exeinpfile = cmdLineArgs['exeinpfile']
+        self.batinpfile = cmdLineArgs['batinpfile']
+        self.exphome = cmdLineArgs['exphome'].rstrip('/')
+        assert os.path.isdir(self.exphome) # exphome should exist
+        self.verbose = cmdLineArgs['verbose']
+        self.runmodel = cmdLineArgs['runmodel']
+        self.daysperjob = cmdLineArgs['daysperjob']
+        self.monthsperjob = cmdLineArgs['monthsperjob']
+        #self.ForceReuseDir = cmdLineArgs['ForceReuseDir']
+        self.rqdExeInp = OrderedDict()
+        self.rqdRmInp = OrderedDict()
+        self.optRmInp = OrderedDict()
+        self.rundir    = None
+        self.blddir   = None
+        self.blddirLn = None
+        self.outdir   = None
+        self.out_path   = None
+        self.inpdir   = None
+        self.exefyl = None
+        self.islocal = False
+        self.catch = ''
+        self.has_mwrtm = False
+        self.has_landassim_seed = False
+        self.has_geos_pert = False
+        self.has_ldassa_pert = False
+        self.nSegments = 0
+        # ------
+        # Read exe input file which is required to setup the dir
+        # ------
+        self.rqdExeInp = self._parseInputFile(cmdLineArgs['exeinpfile'])
+        # verifing the required input
+        if 'RESTART' not in self.rqdExeInp :
+            self.rqdExeInp['RESTART'] = 1
+
+        if int(self.rqdExeInp['RESTART']) ==0 :
+            rqdExeInpKeys = rqdExeInpKeys_rst
+            self.rqdExeInp['RESTART_ID']     = "none"
+            self.rqdExeInp['RESTART_DOMAIN'] = "none"
+            self.rqdExeInp['RESTART_PATH']   = "none"
+
+        for key in rqdExeInpKeys :
+            assert key in self.rqdExeInp,' "%s" is required in the input file %s' % (key,self.exeinpfile)
+
+        # print rqd exe inputs
+        if self.verbose:
+            print '\nInputs from execfile:\n'
+            _printdict(self.rqdExeInp)
+
+        # nens is an integer and =1 for model run
+        self.nens         =    int(self.rqdExeInp['NUM_ENSEMBLE']) # fail if Nens's val is not int
+        assert self.nens>0, 'NUM_ENSEMBLE [%d] <= 0' % self.nens
+        _mydir = self.exphome + '/' + self.rqdExeInp['EXP_ID']
+        assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
+        _mydir = None
+        self.ensdirs      = ['ens%04d'%iens for iens in xrange(self.nens)]
+        self.ensids       = ['%04d'%iens for iens in xrange(self.nens)]
+        if (self.nens == 1) :
+            self.ensdirs_avg = self.ensdirs
+            self.ensids=['']
+        else :
+            self.ensdirs_avg = self.ensdirs + ['ens_avg']
+
+        ## convert date-time strings to datetime object
+        ## start/end_time are converted to lists
+        ## ensure end>start
+
+        self.begDates=[]
+        self.endDates=[]
+        self.begDates.append(
+                datetime.strptime(
+                    self.rqdExeInp['BEG_DATE'],
+                    '%Y%m%d %H%M%S'
+                    )
+                )
+        self.endDates.append(
+                datetime.strptime(
+                    self.rqdExeInp['END_DATE'],
+                    '%Y%m%d %H%M%S'
+                    )
+                )
+        if int(self.rqdExeInp['RESTART']) == 0 :
+           # print "Starting date is forced to January 1st if there is no restart file"
+            year = self.begDates[0].year
+            self.begDates[0]=datetime(year =year,month=1,day =1,hour =0, minute= 0,second= 0)
+
+        assert self.endDates[0]>self.begDates[0], \
+            'END_DATE <= BEG_DATE'
+
+        self.job_sgmt = []
+        if 'JOB_SGMT' in self.rqdExeInp:
+            self.job_sgmt.append("JOB_SGMT: "+self.rqdExeInp['JOB_SGMT'])
+        else:
+            _datediff = relativedelta(self.endDates[0],self.begDates[0])
+            self.rqdExeInp['JOB_SGMT'] = "%04d%02d%02d %02d%02d%02d" %(_datediff.years,
+                                               _datediff.months,
+                                               _datediff.days,
+                                               _datediff.hours,
+                                               _datediff.minutes,
+                                               _datediff.seconds)
+            self.job_sgmt.append("JOB_SGMT: "+self.rqdExeInp['JOB_SGMT'])
+        _years  = int(self.rqdExeInp['JOB_SGMT'][0:4])
+        _months = int(self.rqdExeInp['JOB_SGMT'][4:6])
+        _days   = int(self.rqdExeInp['JOB_SGMT'][6:8])
+        assert self.rqdExeInp['JOB_SGMT'][8] == ' ' and self.rqdExeInp['JOB_SGMT'][9] != ' ', "JOB_SGMT format is not right"
+        _hours  = int(self.rqdExeInp['JOB_SGMT'][9:11])
+        _mins   = int(self.rqdExeInp['JOB_SGMT'][11:13])
+        _seconds= int(self.rqdExeInp['JOB_SGMT'][13:15])
+
+        if 'NUM_SGMT' not in self.rqdExeInp:
+           self.rqdExeInp['NUM_SGMT'] = 1
+
+        _difftime =timedelta(days = _years*365+_months*30+_days,hours = _hours,minutes=_mins,seconds=_seconds)
+        _difftime = int(self.rqdExeInp['NUM_SGMT'])*_difftime
+        print int(self.rqdExeInp['NUM_SGMT'])
+        _d = self.begDates[0]
+        while _d < self.endDates[0]:
+            print _difftime.days
+            _d = _d+ _difftime
+            self.nSegments +=1
+            print _d.year, _d.month, _d.day
+
+
+        # make sure path is path
+        if self.rqdExeInp['BCS_PATH'][-1] != '/':
+           self.rqdExeInp['BCS_PATH'] = self.rqdExeInp['BCS_PATH']+'/'
+        if self.rqdExeInp['MET_PATH'][-1] != '/':
+           self.rqdExeInp['MET_PATH'] = self.rqdExeInp['MET_PATH']+'/'
+        if self.rqdExeInp['RESTART_PATH'][-1] != '/':
+           self.rqdExeInp['RESTART_PATH'] = self.rqdExeInp['RESTART_PATH']+'/'
+
+        # make sure catchment and vegdyn restart files ( at least one for each) exist
+        if 'CATCH_DEF_FILE' not in self.rqdExeInp:
+            self.rqdExeInp['CATCH_DEF_FILE']=self.rqdExeInp['BCS_PATH']+'clsm/catchment.def'
+        assert os.path.isfile(self.rqdExeInp['CATCH_DEF_FILE']),"[%s] file does not exist " % self.rqdExeInp['CATCH_DEF_FILE']
+
+        self.rqdExeInp['RST_FROM_GLOBAL'] = 1
+        if int(self.rqdExeInp['RESTART']) == 1 :
+            _numg = int(linecache.getline(self.rqdExeInp['CATCH_DEF_FILE'], 1).strip())
+            _numd = _numg
+            ldas_domain = self.rqdExeInp['RESTART_PATH']+ \
+                      self.rqdExeInp['RESTART_ID'] + \
+                     '/output/'+self.rqdExeInp['RESTART_DOMAIN']+'/rc_out/'+self.rqdExeInp['RESTART_ID']+'.ldas_domain.txt'
+            if os.path.isfile(ldas_domain) :
+                _numd = int(linecache.getline(ldas_domain, 1).strip())
+               
+            if _numg != _numd : 
+                self.rqdExeInp['RST_FROM_GLOBAL'] = 0
+
+        if int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1 :
+            self.rqdExeInp['TILING_FILE'] =glob.glob(self.rqdExeInp['BCS_PATH']+'*.til')[0]
+            self.rqdExeInp['GRN_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'green_clim_*.data')[0]
+            self.rqdExeInp['LAI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'lai_clim_*.data')[0]
+            self.rqdExeInp['NDVI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'ndvi_clim_*.data')[0]
+            self.rqdExeInp['NIRDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'nirdf_*.dat')[0]
+            self.rqdExeInp['VISDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'visdf_*.dat')[0]
+        else :
+            inpdir=self.rqdExeInp['RESTART_PATH']+self.rqdExeInp['RESTART_ID']+'/input/'
+            self.rqdExeInp['TILING_FILE'] =os.path.realpath(glob.glob(inpdir+'*tile.data')[0])
+            self.rqdExeInp['GRN_FILE']=    os.path.realpath(glob.glob(inpdir+'green*data')[0])
+            self.rqdExeInp['LAI_FILE']=    os.path.realpath(glob.glob(inpdir+'lai*data')[0])
+            self.rqdExeInp['NDVI_FILE']=    os.path.realpath(glob.glob(inpdir+'ndvi*data')[0])
+            self.rqdExeInp['NIRDF_FILE']=  os.path.realpath(glob.glob(inpdir+'nirdf*data')[0])
+            self.rqdExeInp['VISDF_FILE']=  os.path.realpath(glob.glob(inpdir+'visdf*data')[0])
+            
+        if 'GRIDNAME' not in self.rqdExeInp :
+            tmptile =self.rqdExeInp['TILING_FILE']
+            self.rqdExeInp['GRIDNAME']  = linecache.getline(tmptile, 3).strip()
+        if 'RESOLUTION' not in self.rqdExeInp :
+            self.rqdExeInp['RESOLUTION']= os.path.split(os.path.split(self.rqdExeInp['BCS_PATH'])[0])[1]
+
+        if 'LSM_CHOICE' not in self.rqdExeInp:
+            self.rqdExeInp['LSM_CHOICE'] = 1
+
+        if  int(self.rqdExeInp['LSM_CHOICE']) == 1 :
+            self.catch = 'catch'
+        else :
+            self.catch = 'catchcn'
+
+        if 'MONTHLY_OUTPUT' not in self.rqdExeInp:
+            self.rqdExeInp['MONTHLY_OUTPUT'] = 0
+
+        #if int(self.rqdExeInp['MONTHLY_OUTPUT']) > 0:
+        #    assert self.begDates[0].day == 1 and self.begDates[0].hour == 0 and self.begDates[0].minute == 0 and self.begDates[0].second == 0, "monthly output should start from day 1 and 0Z"
+        #    assert self.endDates[0].day == 1 and self.endDates[0].hour == 0 and self.endDates[0].minute == 0 and self.endDates[0].second == 0, "monthly output should end at day 1 and 0Z"
+
+        if 'RUN_IRRIG' not in self.rqdExeInp:
+            self.rqdExeInp['RUN_IRRIG'] = 0  
+
+        if 'AEROSOL_DEPOSITION' not in self.rqdExeInp:
+            self.rqdExeInp['AEROSOL_DEPOSITION'] = 0
+        # default is global
+        _domain_dic=OrderedDict()
+        _domain_dic['MINLON']=-180.
+        _domain_dic['MAXLON']= 180.
+        _domain_dic['MINLAT']= -90.
+        _domain_dic['MAXLAT']=  90.
+        _domain_dic['BLACK_FILE']= "''"
+        _domain_dic['WHITE_FILE']= "''"
+         
+        for key,val in _domain_dic.iteritems() :
+            if key in self.rqdExeInp :
+                _domain_dic[key]= self.rqdExeInp[key]
+        fout =open('LDAS_domain_def.nml','w')
+        fout.write('&domain_inputs\n')
+        for key,val in _domain_dic.iteritems() :
+            keyn=(key+"  = ").ljust(16)
+            valn = str(val)
+            fout.write(keyn+ valn +'\n')
+        fout.write('/\n')
+
+        
+        # make sure bcs files exist    
+        if int(self.rqdExeInp['RESTART']) == 1 :
+            y4m2='Y%4d/M%02d' % (self.begDates[0].year, self.begDates[0].month)
+            y4m2d2_h2m2='%4d%02d%02d_%02d%02d' % (self.begDates[0].year, self.begDates[0].month,
+                  self.begDates[0].day,self.begDates[0].hour,self.begDates[0].minute)
+            tmpFile=self.rqdExeInp['RESTART_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
+            tmpRstDir=self.rqdExeInp['RESTART_PATH']+'/'.join([self.rqdExeInp['RESTART_ID'],'output',
+             self.rqdExeInp['RESTART_DOMAIN'],'rs',self.ensdirs[0],y4m2])
+            catchRstFile=tmpRstDir+'/'+tmpFile
+            ldassa_tmp=self.rqdExeInp['RESTART_ID']+'.ens0000.'+self.catch+'_ldas_rst.'+y4m2d2_h2m2+'z.bin'
+            LDASsa_catchRstFile=tmpRstDir+'/'+ldassa_tmp
+                 
+            assert os.path.isfile(catchRstFile) or os.path.isfile(LDASsa_catchRstFile), \
+            self.catch+'_internal_rst file [%s] or [%s] does not exist!' %(catchRstFile, LDASsa_catchRstFile)
+
+            tmpFile=self.rqdExeInp['RESTART_ID']+'.vegdyn_internal_rst'
+            tmpRstDir=self.rqdExeInp['RESTART_PATH']+'/'.join([self.rqdExeInp['RESTART_ID'],'output',
+             self.rqdExeInp['RESTART_DOMAIN'],'rs',self.ensdirs[0]])    
+            vegdynRstFile=tmpRstDir+'/'+tmpFile
+            if not os.path.isfile(vegdynRstFile):
+               assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'restart from LDASsa should be global'
+            
+            tmpFile=self.rqdExeInp['RESTART_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
+            tmpRstDir=self.rqdExeInp['RESTART_PATH']+'/'.join([self.rqdExeInp['RESTART_ID'],'output',
+             self.rqdExeInp['RESTART_DOMAIN'],'rs',self.ensdirs[0],y4m2])
+            landpertRstFile=tmpRstDir+'/'+tmpFile
+            if ( os.path.isfile(landpertRstFile)) :
+               self.has_geos_pert = True
+            else :
+               ldassa_tmp=self.rqdExeInp['RESTART_ID']+'.ens0000.pert_ldas_rst.'+y4m2d2_h2m2+'z.bin'
+               LDASsa_pertRstFile=tmpRstDir+'/'+ldassa_tmp
+               if (os.path.isfile(LDASsa_pertRstFile)) :
+                   self.has_ldassa_pert = True
+               
+        # DEAL WITH mwRTM input from exec
+        if 'MWRTM_FILE' in self.rqdExeInp :
+           _tmpfile = self.rqdExeInp['MWRTM_FILE'].replace("'",'').replace('"','')
+           if os.path.isfile(_tmpfile) :
+              assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'if MWRTM_FILE is specified,it should be global'
+           else : 
+              assert not _tmpfile.strip(),  ' MWRTM_FILE: %s should point to mwrtm param file'% _tmpfile
+              del self.rqdExeInp['MWRTM_FILE']
+ 
+        # DEAL WITH optional input from exec
+             
+        # ------
+        # Read rm input file
+        # Read (and pop from inpfile) the input required fields in to
+        # self.rqdRmInp. Fields left in inpDictFromFile are then
+        # read in to self.optRmInp
+        # ------
+        # re-using inpDictFromFile
+
+        inpDictFromFile = self._parseInputFile(cmdLineArgs['batinpfile'])
+
+        # REQUIRED inputs
+        for key in rqdRmInpKeys:
+            self.rqdRmInp[key] = inpDictFromFile.pop(key)
+
+        # checks on rqd rm inputs
+        ## for now, we only support SLURM
+        assert self.rqdRmInp['rm_name'].upper() == 'SLURM'
+        ## account and walltime should exist
+        assert self.rqdRmInp['account']
+        assert self.rqdRmInp['walltime']
+        ## ntasks is a +ve integer
+        _ntasks = int(self.rqdRmInp['ntasks'])
+        assert _ntasks>0
+        self.rqdRmInp['ntasks'] = _ntasks
+        _ntasks = None
+
+        # print rqd rm inputs
+        if self.verbose:
+            print '\n\nRequired inputs for resource manager:'
+            _printdict(self.rqdRmInp)
+
+        # OPTIONAL inputs
+        for key in inpDictFromFile:
+            assert key in optSlurmInpKeys, \
+                    'unknown resource manager key [%s]' % key
+            self.optRmInp[key] = inpDictFromFile[key]
+
+        # print opt rm inputs
+        if self.verbose:
+            print '\n\nOptional inputs for resource manager:'
+            _printdict(self.optRmInp)
+
+        # ------
+        # set top level directories 
+        #     rundir, inpdir, outdir, blddir
+        # executable
+        #     exefyl
+        # ------
+        cwd = os.getcwd()
+        last2 = '/'.join(cwd.split('/')[-2:])
+        if last2 == 'Applications/LDAS_App':
+            self.blddir = '/'.join(cwd.split('/')[:-3])
+        elif last2 == 'Linux/bin':
+            self.blddir = '/'.join(cwd.split('/')[:-2])
+        else:
+            raise Exception(
+                'ldsetup should be run either from ..../Linux/bin '
+                'or from ..../Applications/LDAS_App'
+                )
+        self.blddir = self.blddir.rstrip('/')
+        exefyl = '/Linux/bin/GEOSldas.x'
+        tmp_execfyl= self.blddir+exefyl 
+        assert os.path.isfile(tmp_execfyl),\
+            'Executable [%s] does not exist!' % tmp_execfyl
+
+        tmp_expid = self.rqdExeInp['EXP_ID']
+        tmp_expdir = os.path.abspath(self.exphome + '/' + self.rqdExeInp['EXP_ID'])
+        self.rundir = tmp_expdir + '/run'
+        self.inpdir = tmp_expdir + '/input'
+        self.outdir = tmp_expdir + '/output'
+        self.scratchdir = tmp_expdir + '/scratch'
+        self.blddirLn = tmp_expdir + '/build'
+        self.out_path = self.outdir+'/'+self.rqdExeInp['EXP_DOMAIN']
+        self.bcsdir = self.outdir+'/'+self.rqdExeInp['EXP_DOMAIN']+'/rc_out/'
+        self.rstdir = self.outdir+'/'+self.rqdExeInp['EXP_DOMAIN']+'/rs/'
+        self.exefyl = self.blddirLn+exefyl
+
+        tmp_expid = None
+        tmp_expdir = None
+
+        # ------
+        # If daysperjob>0, split duration of 
+        # start/end_times are now lists of len > 1
+        # ------
+        # wj notes: disable daysperjob
+        self.daysperjob = 0 
+        if self.daysperjob:
+            # shorthands
+            _dpj = self.daysperjob
+            _start = self.begDates[0]
+            _end = self.endDates[0]
+            assert _dpj>0, 'daysperjob = %d' % _dpj
+            # total number of days for the given job
+            nDays = (_end - _start).days
+            assert nDays>_dpj, \
+                'Days per job [%d] >= Duration [%d days]' %\
+                (_dpj, nDays)
+            # number of job segments
+            q = nDays/_dpj
+            r = nDays%_dpj
+            if r>0:
+                nSegments = q+1
+            else:
+                nSegments = q
+            # lists of start times, end times
+            _start_list = list()
+            _end_list = list()
+            for iseg in xrange(nSegments):
+                _start_list.append(_start+timedelta(days=iseg*_dpj))
+            for iseg in xrange(nSegments-1):
+                _end_list.append(_start_list[iseg+1])
+            _end_list.append(_end)
+
+            #update beg dates and end dates
+            self.begDates = _start_list
+            self.endDates = _end_list
+            self.job_sgmt = list()
+            for iseg in xrange(nSegments):
+                self.job_sgmt.append("JOB_SGMT: 000000%02d 000000"%(self.endDates[iseg]-self.begDates[iseg]).days)
+ 
+            # print, if requested
+            if self.verbose:
+                print '\nn          start                  end'
+                for iseg in xrange(nSegments):
+                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
+
+        # wj notes: disable monthsperjob
+        self.monthsperjob = 0
+        if self.monthsperjob:
+            # shorthands
+            _mpj = self.monthsperjob
+            assert _mpj>0, 'monthsperjob = %d' % _mpj
+            _start = self.begDates[0]
+            _end = self.endDates[0]
+            # for this option the start/end dates have to be
+            # 0z on the first of the month
+            assert (_start.day==1 and _start.hour==0 and 
+                    _start.minute==0 and _start.second==0
+                    ), 'invalid start_time: %s for --monthsperjob' % \
+                    _start.strftime('%Y-%m-%d-%H-%M-%S')
+            assert (_end.day==1 and _end.hour==0 and 
+                    _end.minute==0 and _end.second==0
+                    ), 'invalid end_time: %s for --monthsperjob' % \
+                    _end.strftime('%Y-%m-%d-%H-%M-%S')
+            _start_list = list()
+            _end_list = list()
+            for dt in rrule.rrule(rrule.MONTHLY, interval=_mpj, dtstart=_start, until=_end):
+                seg_start = dt
+                seg_end = dt+relativedelta(months=_mpj)
+                if seg_end>_end:
+                    seg_end = _end
+                if(seg_start>=seg_end) :
+                    break
+                _start_list.append(seg_start)
+                _end_list.append(seg_end)
+
+            #update beg dates and end dates
+
+            self.begDates = _start_list
+            self.endDates = _end_list
+            self.job_sgmt =list()
+            for iseg in xrange(len(_start_list)):
+                months = 0
+                dt = relativedelta(months=+1)
+                d = self.begDates[iseg]
+                while d <self.endDates[iseg]:
+                    d +=dt
+                    months+=1
+                self.job_sgmt.append("JOB_SGMT: 0000%02d00 000000"% months)
+
+            if self.verbose:
+                print '\nn          start                  end'
+                for iseg in xrange(len(_start_list)):
+                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
+
+
+    def _parseInputFile(self, inpfile):
+        """
+        Private method: parse input file and return a dict of options
+        Input: input file
+        Output: dict
+        """
+
+        inpdict = OrderedDict()
+        errstr = "line [%d] of [%s] is not in the form 'key: value'"
+
+        fin = open(inpfile, 'r')
+        linenum = 0
+        for line in fin:
+            linenum += 1
+            line = line.strip()
+            # blank line
+            if not line:
+                continue
+            # handle comments
+            position = line.find('#')
+            if position==0: # comment line
+                continue
+            if position>0:  # strip out comment
+                line = line[:position]
+            # we expect a line to be of the form
+            # key = value
+            assert ':' in line, errstr % (linenum, inpfile)
+
+            key, val = line.split(':',1)
+            key = key.strip()
+            val = val.strip()
+            if not key or not val:
+                raise Exception(errstr % (linenum, inpfile))
+            if key in inpdict:
+                raise Exception('Duplicate key [%s] in [%s]' % (key, inpfile))
+            inpdict[key] = val.strip()
+        fin.close()
+
+        return inpdict
+
+
+    def _mkdir_p(self,path):
+        """
+        Private method: implement 'mkdir -p' functionality
+        """
+
+        if os.path.isdir(path):
+            return
+        else:
+            os.makedirs(path)
+
+    def createDirStructure(self):
+        """
+        Create required dir structure
+        """
+
+        status = False
+
+        # shorthands
+        _nens = self.nens
+
+        # run/inp/wrk dirs
+        self._mkdir_p(self.exphome+'/'+self.rqdExeInp['EXP_ID'])
+        self._mkdir_p(self.rundir)
+        self._mkdir_p(self.inpdir)
+        self._mkdir_p(self.outdir)
+        self._mkdir_p(self.scratchdir)
+
+        #-start-shorthand-function-
+        def _getDirName(outtyp, ensid, yyyymm):
+            return '/'.join([
+                    self.outdir,
+                    self.rqdExeInp['EXP_DOMAIN'],
+                    outtyp, # ana/cat/rs/rc_out
+                    ensid,
+                    yyyymm
+                    ])
+        #-end-shorthand-function-
+
+        # met forcing dir
+        myMetDir = self.inpdir + '/met_forcing'
+        self._mkdir_p(myMetDir)
+
+        # ensxxxx directories
+        nSegments = len(self.begDates)
+        for iseg in xrange(nSegments):
+            _start = self.begDates[iseg]
+            _end = self.endDates[iseg]
+
+            # Yyyyy/Mmm between StartDateTime and EndDateTime
+            newDate = _start
+            y4m2_list = [('Y%4d/M%02d' % (newDate.year, newDate.month))]
+            while newDate<_end:
+                newDate += relativedelta(months=1)
+                y4m2_list.append('Y%4d/M%02d' % (newDate.year, newDate.month))
+
+            # ExpDomain/ana/, /cat/ directories
+            for ensid in self.ensdirs_avg:
+                for y4m2 in y4m2_list:
+                    self._mkdir_p(_getDirName('ana', ensid, y4m2))
+                    self._mkdir_p(_getDirName('cat', ensid, y4m2))
+
+            # ExpDomain/rs/ directories
+            for ensid in self.ensdirs:
+                for y4m2 in y4m2_list:
+                    self._mkdir_p(_getDirName('rs', ensid, y4m2))
+
+            # ExpDomain/rc_out/ - only for _start
+            self._mkdir_p(_getDirName('rc_out', '', y4m2_list[0]))
+
+        # restart dir
+        self._mkdir_p(self.inpdir + '/restart')
+
+        status = True
+        return status
+
+    # create link, BCs , restarts
+    def createLnRstBc(self) :
+        # link bld dir
+        status = False
+
+        _nens = self.nens
+
+        os.symlink(self.blddir, self.blddirLn)
+
+        # met forcing dir
+        if 'MET_PATH' in self.rqdExeInp:
+            metpath = self.rqdExeInp['MET_PATH'].rstrip('/')
+            myMetDir = self.inpdir + '/met_forcing'
+            myMetPath = myMetDir + '/' + metpath.split('/')[-1]
+            os.symlink(metpath, myMetPath)
+            # update 'met_path' to use relative path from outdir
+            self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)
+
+        # update tile file
+        tile= self.rqdExeInp['TILING_FILE']
+        short_tile= os.path.basename(self.rqdExeInp['TILING_FILE'])
+        newtile = self.bcsdir+'/'+short_tile
+        shutil.copy(tile, newtile)
+        tile=newtile
+        # if three extra lines exist, remove them and save it to inputdir
+
+        print '\nCorrect the tile file if it is an old EASE tile format... \n'
+        EASEtile=self.bcsdir+'/MAPL_'+short_tile
+        cmd = './preprocess_ldas.x correctease  '+ tile + ' '+ EASEtile  
+        print "cmd:   " + cmd
+        sp.call(cmd,shell=True)
+
+        if os.path.isfile(EASEtile) :
+            #update tile file name
+            short_tile ='MAPL_'+short_tile
+            tile=EASEtile  
+        # setup BC files
+        if os.path.isfile('f2g.txt'):
+            os.remove('f2g.txt')
+
+        domain_def = 'LDAS_domain_def.nml'
+        catchment_def = self.rqdExeInp['CATCH_DEF_FILE']
+        exp_id = self.rqdExeInp['EXP_ID']
+
+        _start = self.begDates[0]
+        _y4m2d2h2m2 ='%4d%02d%02d%02d%02d' % (_start.year, _start.month,_start.day,_start.hour,_start.minute)
+
+        dzsf = '50.0'
+        if 'SURFLAY' in self.rqdExeInp :
+           dzsf = self.rqdExeInp['SURFLAY']
+
+        cmd = './preprocess_ldas.x c_f2g ' + tile + ' ' + domain_def + ' '+ self.out_path + ' ' + catchment_def + ' ' + exp_id + ' ' + _y4m2d2h2m2 + ' '+ dzsf
+
+        print 'Creating f2g.txt....\n'
+        print "cmd:   " + cmd
+        sp.call(cmd,shell=True)
+        # check if it is local or global
+        with open('f2g.txt') as f2gfile :
+            head=[next(f2gfile) for x in xrange(2)]
+            if(head[0].strip() != head[1].strip()) :
+                self.islocal= True
+
+        # update tile domain
+        if self.islocal:
+            newlocalTile = tile+'.domain'
+            print "\nCreating local tile file :"+ newlocalTile
+            print "\nwith land type 1100 excluded....\n"
+            cmd = './preprocess_ldas.x c_localtile ' + tile + ' ' + newlocalTile 
+            print "cmd:   " + cmd
+            sp.call(cmd,shell=True)
+            short_tile=short_tile +'.domain'
+            tile = newlocalTile
+   
+        myTile=self.inpdir+'/tile.data'
+        os.symlink(tile,myTile)
+
+
+        bcs=[self.rqdExeInp['GRN_FILE'],
+             self.rqdExeInp['LAI_FILE'],
+             self.rqdExeInp['NDVI_FILE'],
+             self.rqdExeInp['NIRDF_FILE'],
+             self.rqdExeInp['VISDF_FILE'] ]
+        bcstmp=[]
+        for bcf in bcs :
+            shutil.copy(bcf, self.bcsdir+'/')
+            bcstmp=bcstmp+[self.bcsdir+'/'+os.path.basename(bcf)]
+        bcs=bcstmp
+
+        if self.islocal:
+           print "Creating the boundary files for the simulation domain...\n"
+           bcs_tmp=[]
+           for bcf in bcs :
+               cmd = './preprocess_ldas.x c_localbc ' + bcf + ' '+ bcf+'.domain'
+               print "cmd:   " + cmd
+               sp.call(cmd,shell=True)
+               bcs_tmp=bcs_tmp+[bcf+'.domain']
+           bcs=bcs_tmp
+
+
+        # link BC
+        print "linking bcs..." 
+        bcnames=['green','lai','ndvi','nirdf','visdf']
+        for ensid in self.ensids :
+            for bcln,bc in zip(bcnames,bcs) :
+                myBC=self.inpdir+'/'+bcln+ensid+'.data'
+                os.symlink(bc,myBC)
+
+        # create and link restart 
+        print "Creating and lining restart..."
+        _start = self.begDates[0]
+
+        y4m2='Y%4d/M%02d'%(_start.year, _start.month)
+        y4m2d2_h2m2 ='%4d%02d%02d_%02d%02d' % (_start.year, _start.month,_start.day,_start.hour,_start.minute)
+
+        myRstDir = self.inpdir + '/restart/'
+
+        rstpath = self.rqdExeInp['RESTART_PATH']+ \
+                  self.rqdExeInp['RESTART_ID'] + \
+                  '/output/'+self.rqdExeInp['RESTART_DOMAIN']+'/rs/'
+        rcoutpath = self.rqdExeInp['RESTART_PATH']+ \
+                  self.rqdExeInp['RESTART_ID'] + \
+                  '/output/'+self.rqdExeInp['RESTART_DOMAIN']+'/rc_out/'
+
+        # pass into process_rst
+        sponserid = self.rqdRmInp['account']
+        exp_id    = self.rqdExeInp['EXP_ID']
+        exp_dir   = self.exphome
+        bcdir     = self.rqdExeInp['BCS_PATH']
+        tilefile  = os.path.basename(self.rqdExeInp['TILING_FILE'])
+        lsmchoice = str(self.rqdExeInp['LSM_CHOICE'])
+        have_rst  = str(self.rqdExeInp['RESTART'])
+        YYYYMMDD  = '%4d%02d%02d' % (_start.year, _start.month,_start.day)
+        rstid     = self.rqdExeInp['RESTART_ID']
+        rstdomain = self.rqdExeInp['RESTART_DOMAIN']
+        rstpath0   = self.rqdExeInp['RESTART_PATH']
+     
+        # just copy the landassim pert seed if it exist
+        landassim_seeds = rstpath + rstid + '.landassim_obspertrseed_checkpoint.'+y4m2d2_h2m2 +'z.nc4'
+        if os.path.isfile(landassim_seeds) and self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' :
+            _seeds = self.rstdir + exp_id + '.landassim_obspertrseed_checkpoint.'+y4m2d2_h2m2 +'z.nc4' 
+            shutil.copy(landassim_seeds, _seeds)
+            os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed_rst')
+            self.has_landassim_seed = True
+ 
+        cmd= './process_rst.csh  ' + sponserid +' ' + exp_id + ' ' + exp_dir + \
+             '  ' + bcdir +' ' + tilefile +' ' + lsmchoice + '  ' + have_rst + ' ' +YYYYMMDD + \
+             '  ' + rstid +' ' + rstdomain + ' ' + rstpath0 + ' ' + str(self.nens) +'  ' + str(self.rqdExeInp['RUN_IRRIG'])
+        print "cmd:   " + cmd
+        os.system(cmd)
+
+        done_rst=self.exphome+'/'+exp_id+'/mk_restarts/done_rst_file'
+        print "Please hold on for a while until the restart file is created  ....."
+        _animation = "|/-\\"
+        _idx = 0
+        while not os.path.isfile(done_rst):
+            sys.stdout.write('\r'+_animation[_idx % len(_animation)])
+            sys.stdout.flush()
+            _idx += 1
+            time.sleep(1.)
+
+
+        #for ens in self.ensdirs :
+        catchRstFile0  = ''
+        vegdynRstFile0 = ''
+        for iens in xrange(self.nens) :
+            ens   = self.ensdirs[iens]
+            ensid = self.ensids[iens]
+            myCatchRst = myRstDir+'/'+self.catch +ensid +'_internal_rst'
+            myVegRst   = myRstDir+'/'+'vegdyn'+ensid +'_internal_rst'
+            myPertRst  = myRstDir+'/'+ 'landpert' +ensid +'_internal_rst'
+
+            catchRstFile  = ''
+            vegdynRstFile = ''
+            pertRstFile   = ''
+            print "restart: " + self.rqdExeInp['RESTART']
+            if int(self.rqdExeInp['RESTART']) == 0 :
+               vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
+               catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'_internal_rst.'+YYYYMMDD
+            else :
+               catchRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
+               vegdynRstFile= rstpath+ens +'/'+self.rqdExeInp['RESTART_ID']+ '.vegdyn_internal_rst'
+               if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
+                  vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
+               _catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+ensid+'_internal_rst.'+YYYYMMDD
+               if (self.nens == 1) :
+                  _catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'0000_internal_rst.'+YYYYMMDD
+               if os.path.isfile(_catchRstFile): # from LDASsa restart
+                  catchRstFile = _catchRstFile
+                  assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'restart from LDASsa should be global'
+
+            # catchment restart file
+            print 'catcRstFile1: ' +  catchRstFile
+            if os.path.isfile(catchRstFile) :
+
+                catchLocal = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
+                if self.islocal :
+                    print "Creating local catchment restart file... \n"
+                    cmd='./preprocess_ldas.x c_localcatchrst '+ catchRstFile +' ' + catchLocal 
+                    print "cmd:  "+cmd
+                    sp.call(cmd,shell=True)
+                else :
+                    shutil.copy(catchRstFile,catchLocal)
+
+                catchRstFile = catchLocal
+
+                if '0000' in ens :
+                    catchRstFile0 = catchRstFile
+            else :    
+                catchRstFile = catchRstFile0
+
+            # vegdyn restart file
+            if os.path.isfile(vegdynRstFile) :
+
+                vegdynLocal = self.rstdir+ens +'/'+self.rqdExeInp['EXP_ID']+'.vegdyn_internal_rst'
+                if self.islocal :
+                    print "Creating the local veg restart file... \n"
+                    cmd='./preprocess_ldas.x c_localvegrst '+ vegdynRstFile +' ' + vegdynLocal  
+                    print "cmd:   " + cmd
+                    sp.call(cmd,shell=True)
+                else :
+                    shutil.copy(vegdynRstFile,vegdynLocal)
+
+                vegdynRstFile = vegdynLocal
+
+                if '0000' in ens :
+                    vegdynRstFile0 = vegdynRstFile
+            else :    
+                vegdynRstFile = vegdynRstFile0
+
+            if (self.has_geos_pert) :
+                pertRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
+                pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
+                shutil.copy(pertRstFile,pertLocal)
+                pertRstFile = pertLocal
+
+            if (self.has_ldassa_pert) :
+                pertRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+ens+'.pert_ldas_rst.'+y4m2d2_h2m2+'z.bin'
+                pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
+                print "Convert LDASsa pert " + ensid + " rst to GEOSldas rst"
+                cmd = './preprocess_ldas.x c_convert_pert '+ pertRstFile + ' ' + pertLocal + ' ' + self.out_path + ' ' + self.rqdExeInp['EXP_ID'] 
+                sp.call(cmd,shell=True)
+                pertRstFile = pertLocal
+
+            print 'catcRstFile: ' +  catchRstFile
+
+            os.symlink(catchRstFile, myCatchRst)
+            os.symlink(vegdynRstFile,  myVegRst)
+            if ( self.has_geos_pert or self.has_ldassa_pert) :
+               os.symlink(pertRstFile,  myPertRst)
+
+        # catch_param restar file
+        catch_param_file = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_catparam.'+y4m2d2_h2m2+'z.bin'
+        assert os.path.isfile(catch_param_file), "need catch_param file %s" % catch_param_file
+
+        # mwRTM restart file
+
+        if 'MWRTM_FILE' in self.rqdExeInp :
+            mwRTMRstFile = self.rqdExeInp['MWRTM_FILE']
+        else :
+            mwRTMRstFile= rcoutpath +'/' + y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
+
+        if os.path.isfile(mwRTMRstFile) :
+            self.has_mwrtm = True
+            mwRTMLocal = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
+            if self.islocal :
+                print "Creating the local mwRTM restart file... \n"
+                cmd='./preprocess_ldas.x c_localmwrtmrst '+ mwRTMRstFile +' ' + mwRTMLocal 
+                print "cmd:   " + cmd
+                sp.call(cmd,shell=True)
+            else :
+                shutil.copy(mwRTMRstFile,mwRTMLocal)
+
+            mwRTMRstFile = mwRTMLocal
+            mymwRTMRst = myRstDir+'/mwrtm_param_rst'
+            os.symlink(mwRTMRstFile,  mymwRTMRst)
+
+        # update 'restart_path' to use relative path from outdir
+        print "Updating restart path..."
+        self.rqdExeInp['RESTART_PATH'] = myRstDir
+        if os.path.isfile('f2g.txt'):
+            os.remove('f2g.txt')
+                
+        status = True
+        return status
+
+    def createRCFiles(self):
+        """
+        (1) get resource files form DEFAULT rc files from build/Linux/etc
+        (2) update from customed rc files
+        (2) write rc files to the run directory
+        """
+
+        status = False
+
+        for mydir in [self.blddirLn, self.rundir]:
+            assert os.path.isdir(mydir), \
+                'dir [%s] does not exist!' % mydir
+
+        # first copy ldsetup input files to rundir
+        # if a file w/ the same name already exists at rundir
+        # append 1,2,3 etc, to the filename
+        ## exe inp file
+        exefilename = self.exeinpfile.rstrip('/').split('/')[-1]
+        newfilename = exefilename
+        _nens = self.nens
+        ctr = 0
+        while os.path.isfile(self.rundir+'/'+newfilename):
+            ctr += 1
+            newfilename = exefilename + '.%d' % ctr
+        shutil.copy(self.exeinpfile, self.rundir+'/'+newfilename)
+        ## bat inp file
+        batfilename = self.batinpfile.rstrip('/').split('/')[-1]
+        newfilename = batfilename
+        ctr = 0
+        while os.path.isfile(self.rundir+'/'+newfilename):
+            ctr += 1
+            newfilename = batfilename + '.%d' % ctr
+        shutil.copy(self.batinpfile, self.rundir+'/'+newfilename)
+
+         
+        etcdir = self.blddirLn + '/Linux/etc'
+
+        #defalt nml
+        default_nml = glob.glob(etcdir+'/LDASsa_DEFAULT*.nml')
+        for nmlfile in default_nml:
+            shortfile=self.rundir+'/'+nmlfile.split('/')[-1]
+            shutil.copy2(nmlfile, shortfile)
+         # special nml
+        special_nml=[]
+        if 'NML_INPUT_PATH' in self.rqdExeInp :
+            special_nml = glob.glob(self.rqdExeInp['NML_INPUT_PATH']+'/*SPECIAL*nml')
+        for nmlfile in special_nml:
+            if (_nens > 1) :
+                shortfile=nmlfile.split('/')[-1]
+                shutil.copy2(nmlfile, self.rundir+'/'+shortfile)
+
+        # get optimzed NX and IMS
+        if os.path.isfile('optimized_distribution'):
+            os.remove('optimized_distribution')
+    
+        print  "Optimizing... decomposition of processes.... \n"
+        cmd = './preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks'])
+        print "cmd:   " + cmd
+        sp.call(cmd,shell=True)
+        optinxny=self._parseInputFile('optimized_distribution')
+        if (int(optinxny['GEOSldas.NX']) == 1):
+            if int(optinxny['GEOSldas.NY']) != int(self.rqdRmInp['ntasks']):
+                self.rqdRmInp['ntasks']=optinxny['GEOSldas.NY']
+                print 'adjust ntasks %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks'])
+        
+        if os.path.isfile('IMS.rc') :
+            shutil.move('IMS.rc', self.rundir+'/')
+        if os.path.isfile('JMS.rc') :
+            shutil.move('JMS.rc', self.rundir+'/')
+        
+        os.remove('optimized_distribution')
+
+        # DEFAULT rc files
+        default_rc = glob.glob(etcdir+'/GEOSldas_*.rc')
+        assert len(default_rc)==4
+        print default_rc
+        for rcfile in default_rc:
+            shortfile=rcfile.rsplit('GEOSldas_',1)[1]
+            print shortfile + ' ' +  etcdir + ' ' + self.rundir
+            if shortfile =='HIST.rc':
+                tmprcfile=self.rundir+'/HISTORY.rc'
+                histrc_file=rcfile
+
+                _file_found = False
+                if 'HISTRC_FILE' in self.rqdExeInp :
+                    _tmpfile = self.rqdExeInp['HISTRC_FILE'].replace("'",'').replace('"','')
+                    if(os.path.isfile(_tmpfile)) :
+                        _file_found = True
+                    else :
+                        assert not _tmpfile.strip(), "HISTRC_FILE: %s is NOT a file. " %_tmpfile
+
+                if _file_found :
+                    histrc_file = self.rqdExeInp['HISTRC_FILE']
+                    shutil.copy2(histrc_file,tmprcfile)
+                else :
+                    shutil.copy2(histrc_file,tmprcfile)
+                    GRID='EASE ' + self.rqdExeInp['GRIDNAME'] + ' ' +tmprcfile
+                    if '-CF' in self.rqdExeInp['GRIDNAME'] :
+                        GRID ='CUBE ' + self.rqdExeInp['GRIDNAME'] + ' ' +tmprcfile
+                    cmd ='./process_hist.csh '+ str(self.rqdExeInp['LSM_CHOICE']) + ' ' + str(self.rqdExeInp['AEROSOL_DEPOSITION']) + \
+                          ' ' + GRID + ' ' + str(self.rqdExeInp['RUN_IRRIG'])
+                    os.system(cmd)
+                    #sp.call(cmd)       
+                for line in fileinput.input(tmprcfile,inplace=True):
+                    print line.rstrip().replace('GEOSldas_expid',self.rqdExeInp['EXP_ID'])
+            # just copy en emty ExtData.rc
+            if shortfile=='ExtData.rc' :
+                shutil.copy2(rcfile, self.rundir+'/'+shortfile)
+                
+            if shortfile == 'CAP.rc':    
+                tmprcfile = self.rundir+'/CAP.rc'
+                shutil.copy2(rcfile,tmprcfile)
+                iseg = len(self.job_sgmt)
+         
+                _num_sgmt = int(self.rqdExeInp['NUM_SGMT'])
+
+                for line in fileinput.input(tmprcfile,inplace=True):
+                    print line.rstrip().replace('JOB_SGMT:',self.job_sgmt[0])
+                for line in fileinput.input(tmprcfile,inplace=True):
+                    print line.rstrip().replace('NUM_SGMT:','NUM_SGMT: %d'% _num_sgmt)
+                for line in fileinput.input(tmprcfile,inplace=True):
+                    print line.rstrip().replace('BEG_DATE:',self.begDates[0].strftime('BEG_DATE: %Y%m%d %H%M%S'))
+                for line in fileinput.input(tmprcfile,inplace=True):
+                    print line.rstrip().replace('END_DATE:',self.endDates[iseg-1].strftime('END_DATE: %Y%m%d %H%M%S'))
+                    
+            if shortfile == 'LDAS.rc' :
+                default_ldasrcInp = self._parseInputFile(rcfile)
+                ldasrcInp = OrderedDict()
+                # default 
+                for key,val in default_ldasrcInp.iteritems() :
+                    ldasrcInp[key] = val
+
+                # overide by the exeinp
+                for key,val in self.rqdExeInp.iteritems():
+                    if key not in self.NoneLDASrcKeys:
+                        ldasrcInp[key]= val
+
+                # overide by optimized distribution
+                #for key,val in optinxny.iteritems():
+                #    ldasrcInp[key]= val
+
+     
+                if (self.runmodel) :
+                    assert ldasrcInp['LAND_ASSIM'].upper() == 'NO', "--runmodel is used,should set LAND_ASSIM to NO"
+                else :
+                    assert ldasrcInp['LAND_ASSIM'].upper() == 'YES', "--runmodel is not used,should set LAND_ASSIM to YES"
+
+                # create BC in rc file
+                if self.nens >1 :
+                    ldasrcInp['PERTURBATIONS'] ='1'
+                bcval=['../input/green','../input/lai','../input/ndvi','../input/nirdf','../input/visdf']
+                bckey=['GREEN','LAI','NDVI','NIRDF','VISDF']
+                for iens in xrange(self.nens) : 
+                    ensid = self.ensids[iens]
+                    for key, val in zip(bckey,bcval):
+                       keyn= key+ensid+'_FILE'
+                       valn= val+ensid+'.data'
+                       ldasrcInp[keyn]= valn
+
+                # create restart item in RC
+                catch_type='pnc4'
+                catchck_type='pnc4'
+                mwrtm_type='pnc4'
+                vegdyn_type='binary'
+                catch_ = self.catch.upper()
+                if catch_+'_INTERNAL_RESTART_TYPE' in ldasrcInp :
+                    catch_type= ldasrcInp[ catch_ +'_INTERNAL_RESTART_TYPE']
+                    # avoid duplicate
+                    del ldasrcInp[ catch_ +'_INTERNAL_RESTART_TYPE']
+                if catch_+'_INTERNAL_CHECKPOINT_TYPE' in ldasrcInp :
+                    catchck_type= ldasrcInp[ catch_ +'_INTERNAL_CHECKPOINT_TYPE']
+                    # avoid duplicate
+                    del ldasrcInp[ catch_ +'_INTERNAL_CHECKPOINT_TYPE']
+                if 'VEGDYN_INTERNAL_RESTART_TYPE' in ldasrcInp :
+                    vegdyn_type= ldasrcInp['VEGDYN_INTERNAL_RESTART_TYPE']
+                    # avoid duplicate
+                    del ldasrcInp['VEGDYN_INTERNAL_RESTART_TYPE']
+                if(catch_type != catchck_type) :
+                    print "WARNING!!: catch restart and checkpoint types differ"
+        
+                rstkey=[catch_,'VEGDYN']
+                rstval=[self.catch,'vegdyn']
+                rsttyp=[catch_type,vegdyn_type]
+                if(self.has_ldassa_pert or self.has_geos_pert) :
+                   rstkey=[catch_,'VEGDYN','LANDPERT']
+                   rstval=[self.catch,'vegdyn','landpert']
+                   rsttyp=[catch_type,vegdyn_type,'pnc4']
+
+
+                if self.has_mwrtm :
+                   keyn='LANDASSIM_INTERNAL_RESTART_FILE'
+                   valn='../input/restart/mwrtm_param_rst'
+                   ldasrcInp[keyn]= valn
+                   keyn='LANDASSIM_INTERNAL_RESTART_TYPE'
+                   valn='pnc4'
+                   ldasrcInp[keyn]= valn
+
+                if self.has_landassim_seed :
+                   keyn='LANDASSIM_OBSPERTRSEED_RESTART_FILE'
+                   valn='../input/restart/landassim_obspertrseed_rst'
+                   ldasrcInp[keyn]= valn
+
+                if ldasrcInp['LAND_ASSIM'].upper() == 'YES' : 
+                   keyn='LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE'
+                   valn='landassim_obspertrseed_checkpoint'
+                   ldasrcInp[keyn]= valn
+
+                for iens in xrange(self.nens) :
+                   ensid = self.ensids[iens]
+                   for key,val,typ in zip(rstkey,rstval,rsttyp) :
+                       keyn = key+ ensid+'_INTERNAL_RESTART_FILE'
+                       valn = '../input/restart/'+val+ensid+'_internal_rst'
+                       ldasrcInp[keyn]= valn
+
+                       keyn = key+ensid+'_INTERNAL_RESTART_TYPE'
+                       valn = typ
+                       ldasrcInp[keyn]= valn
+                        
+                # checkpoint file and its type
+                for ensid in self.ensids:
+                    keyn = catch_ +ensid+'_INTERNAL_CHECKPOINT_FILE'
+                    valn = self.catch+ensid+'_internal_checkpoint'
+                    ldasrcInp[keyn]= valn
+                    keyn = catch_ +ensid+'_INTERNAL_CHECKPOINT_TYPE'
+                    valn = catchck_type
+                    ldasrcInp[keyn]= valn
+
+                    if(self.has_ldassa_pert or self.has_geos_pert) :
+                       keyn = 'LANDPERT'+ensid+'_INTERNAL_CHECKPOINT_FILE'
+                       valn = 'landpert'+ensid+'_internal_checkpoint'
+                       ldasrcInp[keyn]= valn
+                       keyn = 'LANDPERT'+ensid+'_INTERNAL_CHECKPOINT_TYPE'
+                       valn = 'pnc4'
+                       ldasrcInp[keyn]= valn
+                    
+    
+                # write LDAS.rc
+                fout =open(self.rundir+'/'+shortfile,'w')
+                ldasrcInp['NUM_LDAS_ENSEMBLE']=ldasrcInp.pop('NUM_ENSEMBLE')
+                for key,val in optinxny.iteritems():
+                    keyn=(key+":").ljust(36)
+                    fout.write(keyn+str(val)+'\n')
+                for key,val in ldasrcInp.iteritems() :
+                    keyn=(key+":").ljust(36)
+                    fout.write(keyn+str(val)+'\n')
+                fout.write("OUT_PATH:".ljust(36)+self.out_path+'\n')
+                fout.write("EXP_ID:".ljust(36)+self.rqdExeInp['EXP_ID']+'\n')
+                fout.write("TILING_FILE:".ljust(36)+"../input/tile.data\n")
+
+                fout.close() 
+
+        fout=open(self.rundir+'/'+'cap_restart','w') 
+        #fout.write(self.rqdExeInp['BEG_DATE'])
+        fout.write(self.begDates[0].strftime('%Y%m%d %H%M%S'))
+        fout.close()
+        status=True
+        return status
+
+    def _getRMdirectives(self, start):
+
+        _rm_name = self.rqdRmInp['rm_name']
+        expid = self.rqdExeInp['EXP_ID']
+        #expdomain = self.rqdExeInp['EXP_DOMAIN']
+        if _rm_name=='SLURM':
+            directives = ''
+            # REQUIRED directives account/time/ntasks
+            directives += '#SBATCH --account=%s\n' % self.rqdRmInp['account']
+            directives += '#SBATCH --time=%s\n' % self.rqdRmInp['walltime']
+            directives += '#SBATCH --ntasks=%s\n' % self.rqdRmInp['ntasks']
+            # OPTIONAL directives
+            for key, val in self.optRmInp.iteritems():
+                directives += '#SBATCH --%s=%s\n' % (key, val)
+            # out/err files in rc_out
+            myDateTime = '%04d%02d%02d_%02d%02dz' % \
+                (start.year, start.month, start.day,start.hour,start.minute)
+            outfile = os.path.relpath(
+                '/'.join([
+                        self.outdir,
+                        self.rqdExeInp['EXP_DOMAIN'],
+                        'rc_out',
+                        'Y%04d' % start.year,
+                        'M%02d' % start.month,
+                        '.'.join([expid, 'ldas_log', myDateTime, 'txt']),
+                        ]),
+                self.rundir)
+            errfile = os.path.relpath(
+                '/'.join([
+                        self.outdir,
+                        self.rqdExeInp['EXP_DOMAIN'],
+                        'rc_out',
+                        'Y%04d' % start.year,
+                        'M%02d' % start.month,
+                        '.'.join([expid, 'ldas_err', myDateTime, 'txt']),
+                        ]),
+                self.rundir)
+            directives += '#SBATCH --output=%s\n' % outfile
+            directives += '#SBATCH --error=%s\n' % errfile
+        else:
+            raise Exception
+        
+        return directives
+
+
+    def _getPostCommand(self, iseg):
+        """
+        """
+        _nens= self.nens
+        ensdirs = self.ensdirs
+        ensdirs_avg = self.ensdirs_avg
+        cmd=''
+        # if failed to finish, return
+        cmd += "\nif (-e EGRESS.ldas) then\n  /bin/rm EGRESS.ldas\nelse\n  echo failed \n  exit\nendif\n"
+        # move the history to the output
+        for dt in rrule.rrule(rrule.MONTHLY, dtstart=self.begDates[iseg],until=self.endDates[iseg]):
+            # Yyyyy/Mmm between StartDateTime and EndDateTime
+            y4m2 ='Y%4d/M%02d' % (dt.year, dt.month)
+            filen='%4d%02d'%(dt.year,dt.month)
+            for ensid in ensdirs_avg:
+                mydir= '/'.join([
+                    self.outdir,
+                    self.rqdExeInp['EXP_DOMAIN'],
+                    'cat', # ana/cat/rs/rc_out
+                    ensid,
+                    y4m2
+                    ])
+                fn='*'+filen+'*'
+                if len(ensdirs) ==1 :
+                    ens=''
+                else :
+                    ens=ensid.split('s')[1]
+                    fn='*'+ens+fn
+                cmd += '\n/bin/mv '+fn +' ' + mydir
+                cmd += '\n/bin/cp *.ctl ' + mydir
+
+
+        # remove the old restart link and create a new link
+        enddate=self.endDates[iseg].strftime('%Y%m%d_%H%M')
+
+        #for ensid in ensdirs :
+        for iens in xrange(self.nens) :
+            ensdir = self.ensdirs[iens]
+            ensid  = self.ensids[iens]
+            rsdir =  '/'.join([
+                    self.outdir,
+                    self.rqdExeInp['EXP_DOMAIN'],
+                    'rs', # ana/cat/rs/rc_out
+                    ensdir,
+                    y4m2
+                    ])
+            # catch interal restart
+            rstname = self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+enddate
+            cmd += '\n/bin/mv '+self.catch + ensid+'_internal_checkpoint '+ rsdir+'/'+rstname
+            cmd += '\n/bin/rm -f ../input/restart/'+self.catch+ensid+'_internal_rst'
+            cmd += '\n/bin/ln -s '+ rsdir+'/'+rstname + ' ../input/restart/'+self.catch+ensid+'_internal_rst'
+
+        return cmd
+
+
+    def createRunScripts(self):
+        """
+        """
+
+        status = False
+
+        bindir = self.blddirLn + '/Linux/bin'
+ 
+        ntasks = int(self.rqdRmInp['ntasks'])
+        cmd = '\nmpiexec_mpt -np %d \\\n %s' % (ntasks, self.exefyl)
+        nSegments = len(self.begDates)
+        for iseg in xrange(nSegments):
+            # start/end times for this segment
+            _start_seg = self.begDates[iseg]
+            _end_seg = self.endDates[iseg]
+            jobname = 'lenkf.%d.j' % iseg
+            # open
+            jobfile = self.rundir + '/' + jobname
+            fout = open(jobfile, 'w')
+            fout.write('#!/bin/csh -fx\n\n');
+            # resource manager directives
+            directives = self._getRMdirectives(_start_seg)+'\n'
+            fout.write(directives)
+            # set environment
+            fout.write('limit stacksize unlimited\n')
+            fout.write('source %s/g5_modules\n' % os.path.relpath(bindir,self.rundir))
+            fout.write('setenv MKL_CBWR SSE4_2 # ensure zero-diff across archs\n')
+            fout.write('setenv MV2_ON_DEMAND_THRESHOLD 8192 # MVAPICH2\n')
+           
+ 
+	    enddate=self.endDates[iseg].strftime('END_DATE: %Y%m%d %H%M%S')
+	    startdate=self.begDates[iseg].strftime('%Y%m%d %H%M%S')
+            fout.write("\nif !(-e cap_restart) then\n   echo " + startdate+ " >cap_restart \nendif\n")
+            fout.write("\n# replace the end date and job_sgmt\n")
+            fout.write(r"sed -i '/END_DATE/c" +"\\"+ enddate + r"'"+ '  CAP.rc\n')
+            fout.write(r"sed -i '/JOB_SGMT/c" +"\\"+ self.job_sgmt[iseg] + r"'"+ '  CAP.rc\n')
+
+            expid="EXPID: "+ self.rqdExeInp['EXP_ID']
+            fout.write(r"sed -i '/EXPID/c" +"\\"+ expid + r"'"+ '  HISTORY.rc\n')
+            # write run command
+
+            fout.write(cmd+'\n')
+
+            # write post proccess for next job
+            post=self._getPostCommand(iseg)
+            fout.write(post+'\n')
+            fout.close()
+            os.chmod(jobfile, 0755)
+
+        expdir = '/'.join(self.rundir.rstrip('/').split('/')[:-1])
+        print '\nExperiment directory: %s' % expdir
+
+        status = True
+        return status
+
+    def createBatchRun(self):
+        """
+        """
+
+        status = False
+
+        rm_name = self.rqdRmInp['rm_name'].lower()
+        nSegments = self.nSegments
+        os.chdir(self.rundir)
+        fout =open(self.rundir+'/ldas_batchrun.j','w')
+        fout.write("#!/bin/bash -f\n")
+        jobid = None
+
+        fout.write("\nsed -i 's/if($capdate<$enddate) sbatch $HOMDIR\/lenkf.j/#if($capdate<$enddate) sbatch $HOMDIR\/lenkf.j/g' lenkf.j\n\n")
+        for iseg in xrange(nSegments):
+            if iseg ==0 :
+                fout.write("jobid%d=$(echo $(sbatch lenkf.j) | cut -d' ' -f 4)\n"%(iseg))
+                fout.write("echo $jobid%d\n"%iseg )
+            else :
+                fout.write("jobid%d=$(echo $(sbatch --dependency=afterany:$jobid%d lenkf.j) | cut -d' ' -f 4)\n"%(iseg,iseg-1))
+                fout.write("echo $jobid%d\n"%iseg )
+        fout.write("\nsed -i 's/#if($capdate<$enddate) sbatch $HOMDIR\/lenkf.j/if($capdate<$enddate) sbatch $HOMDIR\/lenkf.j/g' lenkf.j")
+        fout.close()
+
+        os.chmod(self.rundir+'/ldas_batchrun.j', 0755) 
+        status = True
+        return status
+
+
+    def createBatchRun_gcm(self):
+        """
+        """
+
+        status = False
+
+        rm_name = self.rqdRmInp['rm_name'].lower()
+        nSegments = len(self.begDates)
+        os.chdir(self.rundir)
+        lenkf=self.blddir+'/Linux/etc/lenkf.j.template'
+        shutil.copy(lenkf,'lenkf.j')
+
+        my_qos='allnccs'
+        if 'qos' in self.optRmInp :
+            my_qos = self.optRmInp['qos']
+
+        my_job=self.rqdExeInp['EXP_ID']
+        if 'job_name' in self.optRmInp :
+            my_job = self.optRmInp['job_name']
+
+        my_constraint='hasw'
+        if 'constraint' in self.optRmInp :
+            my_constraint = self.optRmInp['constraint']
+
+        start = self.begDates[0]
+        expid = self.rqdExeInp['EXP_ID']
+        myDateTime = '%04d%02d%02d_%02d%02dz' % \
+                (start.year, start.month, start.day,start.hour,start.minute)
+        my_logfile = os.path.relpath(
+                '/'.join([
+                        self.outdir,
+                        self.rqdExeInp['EXP_DOMAIN'],
+                        'rc_out',
+                        'Y%04d' % start.year,
+                        'M%02d' % start.month,
+                        '.'.join([expid, 'ldas_log', myDateTime, 'txt']),
+                        ]),
+                self.rundir)
+        my_errfile = os.path.relpath(
+                '/'.join([
+                        self.outdir,
+                        self.rqdExeInp['EXP_DOMAIN'],
+                        'rc_out',
+                        'Y%04d' % start.year,
+                        'M%02d' % start.month,
+                        '.'.join([expid, 'ldas_err', myDateTime, 'txt']),
+                        ]),
+                self.rundir)
+        with open(lenkf,'rt') as fin:
+            with open('lenkf.j','wt') as fout :
+                for line in fin :
+                    if 'MY_ACCOUNT' in line :
+                        fout.write(line.replace('MY_ACCOUNT',self.rqdRmInp['account']))
+                    elif 'MY_WALLTIME' in line :
+                        fout.write(line.replace('MY_WALLTIME',self.rqdRmInp['walltime']))
+                    elif 'MY_NTASKS' in line :
+                        fout.write(line.replace('MY_NTASKS',str(self.rqdRmInp['ntasks'])))
+                    elif 'MY_QOS' in line :
+                        if 'allnccs' not in my_qos:
+                           fout.write(line.replace('MY_QOS',my_qos))
+                    elif 'MY_JOB' in line :
+                        fout.write(line.replace('MY_JOB',my_job))
+                    elif 'MY_CONS' in line :
+                        fout.write(line.replace('MY_CONS',my_constraint))
+                    elif 'MY_EXPID' in line :
+                        fout.write(line.replace('MY_EXPID',self.rqdExeInp['EXP_ID']))
+                    elif 'MY_EXPDOMAIN' in line :
+                        fout.write(line.replace('MY_EXPDOMAIN',self.rqdExeInp['EXP_DOMAIN']))
+                    #elif 'MY_ESMADIR' in line :
+                    #    fout.write(line.replace('MY_ESMADIR',self.blddir))
+                    elif 'MY_ENSEMBLE' in line :
+                        fout.write(line.replace('MY_ENSEMBLE',str(self.rqdExeInp['NUM_ENSEMBLE'])))
+                    elif 'MY_LOGFILE' in line :
+                        fout.write(line.replace('MY_LOGFILE',my_logfile))
+                    elif 'MY_ERRFILE' in line :
+                        fout.write(line.replace('MY_ERRFILE',my_errfile))
+                    elif 'MY_MODEL' in line :
+                        fout.write(line.replace('MY_MODEL',self.catch))
+                    elif 'MY_MONTHLY' in line :
+                        fout.write(line.replace('MY_MONTHLY',str(self.rqdExeInp['MONTHLY_OUTPUT'])))                        
+                    else :
+                        fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
+                     
+        os.chmod('lenkf.j', 0755) 
+
+        expdir = '/'.join(self.rundir.rstrip('/').split('/')[:-1])
+        print '\nExperiment directory: %s' % expdir
+        print
+        status = True
+        return status
+
+def _printdict(d):
+    """
+    Private method: print a 'flat' dictionary
+    """
+
+    for key, val in d.iteritems():
+        print key.ljust(23), ':', val
+
+def _printExeInputKeys(rqdExeInpKeys):
+    """
+    Private method: print sample exe input
+    """
+
+    print '#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#'
+    print '#                                                          #'
+    print '#                 REQUIRED INPUTS                          #'
+    print '#                                                          #'
+    print '# These inputs are needed to set up output dir structure.  #'
+    print '#                                                          #'
+    print '#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#'
+    print 
+    print '############################################################'
+    print '#                                                          #'
+    print '#                 EXPERIMENT INFO                          #'
+    print '#                                                          #'
+    print '# Format for start/end times is yyyymmdd hhmmss.           #'
+    print '#                                                          #'
+    print '############################################################'
+    print
+    print 'EXP_ID                  :'
+    print 'EXP_DOMAIN              :'
+    print 'NUM_ENSEMBLE            :'
+    print 'BEG_DATE                :'
+    print 'END_DATE                :'
+    
+    print
+    print '############################################################'
+    print '#                                                          #'
+    print '#                 RESTART INFO                             #'
+    print '#                                                          #'
+    print '# RESTART: 0                                               #'
+    print '#   NO, do not have restart file(s).                       #'
+    print '#   RESTART_ID, RESTART_PATH, RESTART_DOMAIN are *not*     #'
+    print '#     required, use # sign to comment out these 3 keywords.#'
+    print '#                                                          #'
+    print '# RESTART: 1                                               #'
+    print '#   YES, have restart file(s) from GEOSldas *or* LDASsa.   #'
+    print '#   Must specify RESTART_ID, RESTART_PATH, RESTART_DOMAIN, #'
+    print '#     with restarts stored as follows:                     #'
+    print '#     RESTART_PATH/RESTART_ID/output/RESTART_DOMAIN/rs/    #'
+    print '#   GEOSldas-produced restarts must be on the same         #'
+    print '#     GRID and for the same or a larger domain.            #'    
+    print '#   LDASsa-produced restarts must be on the same           #'
+    print '#     GRID and for the GLOBAL domain (only!).              #'
+    print '#                                                          #'
+    print '############################################################'
+
+    print
+    print 'RESTART                  :'
+    print '#RESTART_ID              :'
+    print '#RESTART_PATH            :'
+    print '#RESTART_DOMAIN          :'
+
+    print
+    print '############################################################'
+    print '#                                                          #'
+    print '#                 METEOROLOGICAL FORCINGS                  #'
+    print '#                                                          #'
+    print '#  See README files in ./src/Applications/LDAS_App/doc     #'
+    print '#                                                          #'
+    print '############################################################'
+
+    print
+    print 'MET_TAG                 :'
+    print 'MET_PATH                :'
+    print 'FORCE_DTSTEP            :'
+
+    print
+    print '############################################################'
+    print '#                                                          #'
+    print '#                 LAND BOUNDARY CONDITIONS DIRECTORY       #'
+    print '#                                                          #'
+    print '#  See README files in ./src/Applications/LDAS_App/doc     #'
+    print '#                                                          #'
+    print '############################################################'
+    print
+    print 'BCS_PATH                :'
+    print
+
+    if os.path.isfile('./GEOSldas_LDAS.rc') : # run ldas_setup from App directory
+       _fn = './GEOSldas_LDAS.rc'
+    else :
+       _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from Linux/bin directory
+
+    _f = open(_fn)
+    for line in _f:
+       sys.stdout.write(line)
+       sys.stdout.flush()
+    _f.close()
+    print
+    print
+ 
+def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
+    """
+    Private method: print sample resource manager input
+    """
+    
+    print '#'
+    print '# REQUIRED inputs'
+    print '#'
+    print '# NOTE:'
+    print '# (1) rm_name (resource manager name) is SLURM (PBS is no longer used)'
+    print '# (2) walltime is in the format hh:mm:ss'
+    print '#'
+    for key in rqdRmInpKeys:
+        print key.ljust(23), ':'
+    print
+    print '#'
+    print '# OPTIONAL inputs'
+    print '#'
+    print '# NOTE:'
+    print '# (1) Default job_name is "exp_id"'
+    print '# (2) Default constraint is "hasw"'
+    print '# (3) Do not specify qos (quality-of-service) by default.  Specify "debug" for faster but limited service.'
+    print '#'
+    for key in optRmInpKeys:
+        print '#'+key.ljust(23), ':'
+    
+def parseCmdLine():
+    """
+    parse command line arguments and return a dict of options
+    """
+    #print 'in: parseCmdLine'
+    p = argparse.ArgumentParser(
+        description= \
+            "Script to setup a GEOSldas experiment. The script requires "\
+            "two (2) input files, one for the Fortran executable and the " \
+            "other for the resource manager (SLURM/PBS etc.). For sample " \
+            "input files try './ldas_setup sample -h'.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
+    p_sub = p.add_subparsers(help='sub-command help')
+
+    # subparser: sample command
+    p_sample = p_sub.add_parser(
+        'sample', 
+        help='write sample input files',
+        description='Print sample input files - either for the '\
+            'Fortran executable or the resource manager (SLURM, PBS etc.)',
+        )
+    group = p_sample.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        '--exeinp', 
+        help='print sample input file used to generate RC files for GEOSldas App.',
+        action='store_true',
+        )
+    group.add_argument(
+        '--batinp',
+        help='print sample input file for SLURM ',
+        action='store_true',
+        )
+    # subparser: setup command
+    p_setup = p_sub.add_parser(
+        'setup', 
+        help='setup LDAS experiment',
+        description="The 'setup' sub-command is used to setup a GEOSldas " \
+            "experiment. The positional argument 'exphome' is used to create " \
+            "work_path (exphome+/output) and run_path (exphome+/run)."
+        )
+    p_setup.add_argument(
+        '-v', 
+        '--verbose', 
+        help='verbose output', 
+        action='store_true',
+        )
+    p_setup.add_argument('exphome', help='experiment location')
+    p_setup.add_argument(
+        'exeinpfile', 
+        help='input file with arguments used to generate RC files for GEOSldas App',
+        )
+    p_setup.add_argument(
+        'batinpfile', 
+        help='input file with arguments for SLURM',
+        )
+    p_setup.add_argument(
+        '--runmodel',
+        help='model run (no assimilation)',
+        action='store_true',
+        )
+    #p_setup.add_argument(
+    #    '--ForceReuseDir',
+    #    help='force re-use existing exp dir',
+    #    action='store_true',
+    #    )
+    spltgrp = p_setup.add_mutually_exclusive_group()
+    spltgrp.add_argument(
+        '--daysperjob',
+        type=int,
+        metavar='N',
+        help='This option is no longer available.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
+        )
+    spltgrp.add_argument(
+        '--monthsperjob',
+        type=int,
+        metavar='N',
+        help='This option is no longer available.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
+        )
+
+    return p.parse_args()
+
+
+if __name__=='__main__':
+
+    #print "reading params...."
+    args = vars(parseCmdLine()) # vars converts to dict
+    ld = LDASsetup(args)
+    
+    print "creating dir structure"
+    status = ld.createDirStructure()
+    assert(status)
+
+    print "creating restart and bc"
+    status = ld.createLnRstBc()
+    assert(status)
+
+    print "creating RC Files"
+    status =ld.createRCFiles()
+    assert status
+
+    #print "creating Run script"
+    #status = ld.createRunScripts()
+    #assert(status)
+
+    print "creating gcm style batch Run scripts lenkf.j"
+    status = ld.createBatchRun_gcm()
+
+    print "creating batch Run scripts"
+    status = ld.createBatchRun()
+    assert (status)

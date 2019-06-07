@@ -1,0 +1,122 @@
+! 
+! namelist of EnKF inputs for adaptive filtering
+!
+! reichle, 14 Dec 2006
+! reichle, 24 Aug 2007 (added adapt_type=12)
+! reichle, 21 Nov 2014 - renamed force_pert_type fields for consistency w/ met_force_type
+!                          %tmp2m --> %tair  (but note lower-case!)
+!                          %dpt2m --> %qair  (but note lower-case!)
+!                          %wnd   --> %wind  (but note lower-case!)
+! --------------------------------------------------------------------
+				      				      	
+&adapt_inputs			
+
+! choose algorithm for adaptive filtering
+!
+! adapt_type =  0: no adaptive filtering
+! adapt_type =  1: (NOT USED)
+! adapt_type =  2: (NOT USED)
+! adapt_type =  3: (NO LONGER USED) tuning of P only via time moving average of nOmBxOmB
+! adapt_type =  4: (NO LONGER USED) in sync tuning of P and R via time moving average of
+!                   nOmBxOmB (same as Desroziers based on nAmBxOmB and nOmAxOmB because
+!                    with "perfect" EnKF update nOmBxOmB=nAmBxOmB=nOmAxOmB)
+! adapt_type =  5: (NO LONGER USED) separate tuning of P and R via time moving average of
+!                   AmBxOmB, HPHt, OmAxOmB, and R     
+!                   (a.k.a. "A0005" in RedArk_adapt, Desroziers et al, QJR Met Soc, 2005)
+! adapt_type =  6: (NO LONGER USED) separate tuning of P and R via time moving average of 
+!                  nOmBxOmB and nOmBtm1xOmBt (Crow and Bolten, GRL, 2007)
+! adapt_type =  7-9: (NO LONGER USED)
+! adapt_type = 10: separate tuning of P and R via time moving average of
+!                   AmBxOmB, HPHt, OmAxOmB, and R (Desroziers et al, QJR Met Soc, 2005)
+!                   (a.k.a. "A0010" in WRR_3 "RedArk_adapt"
+! adapt_type = 11: (NO LONGER USED) same as adapt_type=10 but with computation 
+!                    of E[AmB OmB] etc from ensemble
+! adapt_type = 12: same as adapt_type=10 but tuning of P only
+!
+! adding a new adapt_type:
+!  - in clsm_adapt_routines.F90 write appropriate io_adapt_X, update_adapt_X and
+!    check "select case(adapt_type)" statement in get_adapt_param()
+!  - in clsm_ensdrv_main.F90 add necessary variables to declarations and fill
+!    in new information in each "select case(adapt_type)"
+
+adapt_type = 0
+
+! Misc adapt params
+  
+adapt_misc_param%gamma_P = 0.02
+adapt_misc_param%gamma_R = 0.02
+
+adapt_misc_param%delta_P = 0.005
+adapt_misc_param%delta_R = 0.005
+
+adapt_misc_param%beta_P  = 1.06
+adapt_misc_param%beta_R  = 1.
+
+adapt_misc_param%min_alpha_P =   0.01
+adapt_misc_param%max_alpha_P = 100.
+
+adapt_misc_param%min_alpha_R =   0.01
+adapt_misc_param%max_alpha_R = 100.
+     
+! Determine if std of given forcing/prognostics perturbations is adaptive
+! and which kind of innovations statistics is used for adaptive filtering.
+!
+! In the code, the variable "Pert_adapt" (N_adapt-by-N_catd) estimates 
+! the statistics of normalized innovations for different kinds of variables 
+! such as sfmc, rzmc, tsurf, etc. The latter classification loosely 
+! follows get_obs_pred():
+!
+! 0 = *not* adaptive (default)
+! 1 = adapt according to innovations of sfmc
+! 2 = adapt according to innovations of rzmc
+! 3 = adapt according to innovations of tsurf
+! 4 = ...
+!
+! Mapping of innovations to adaptive feedback is done in two steps:
+!
+! 1.) Innovations of a given obs species i contribute to the j-th component
+!     Pert_adapt(j,:) as defined in obs_param(i)%adapt=j
+!
+! 2.) Perturbations of a given forcing/prognostic variable are adapted
+!     in response to Pert_adapt(j,:) as defined in the nml variables below.
+!
+! NOTE: 
+! Adaptive tuning of obs error covariance R is done for each obs species
+! and does not require special mapping.
+
+adapt_force_pert%pcp      = 0
+adapt_force_pert%sw       = 0
+adapt_force_pert%lw       = 0
+adapt_force_pert%tair     = 0
+adapt_force_pert%qair     = 0
+adapt_force_pert%wind     = 0
+
+adapt_progn_pert%tc1      = 0
+adapt_progn_pert%tc2      = 0
+adapt_progn_pert%tc4      = 0
+adapt_progn_pert%qa1      = 0
+adapt_progn_pert%qa2      = 0
+adapt_progn_pert%qa4      = 0
+adapt_progn_pert%capac    = 0
+adapt_progn_pert%catdef   = 0
+adapt_progn_pert%rzexc    = 0
+adapt_progn_pert%srfexc   = 0
+adapt_progn_pert%ght(1)   = 0
+adapt_progn_pert%ght(2)   = 0
+adapt_progn_pert%ght(3)   = 0
+adapt_progn_pert%ght(4)   = 0
+adapt_progn_pert%ght(5)   = 0
+adapt_progn_pert%ght(6)   = 0
+adapt_progn_pert%wesn(1)  = 0
+adapt_progn_pert%wesn(2)  = 0
+adapt_progn_pert%wesn(3)  = 0
+adapt_progn_pert%htsn(1)  = 0
+adapt_progn_pert%htsn(2)  = 0
+adapt_progn_pert%htsn(3)  = 0
+adapt_progn_pert%sndz(1)  = 0
+adapt_progn_pert%sndz(2)  = 0
+adapt_progn_pert%sndz(3)  = 0
+  
+/
+
+! =========================== EOF =======================================

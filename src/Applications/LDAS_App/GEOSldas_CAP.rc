@@ -1,0 +1,34 @@
+MAPLROOT_COMPNAME: GEOSldas
+        ROOT_NAME: GEOSldas
+          ROOT_CF: LDAS.rc
+          HIST_CF: HISTORY.rc
+
+# the date and segment will be set by run script lenk...j
+
+BEG_DATE:
+END_DATE:  
+JOB_SGMT: 
+NUM_SGMT:
+
+HEARTBEAT_DT:       450
+
+# Parameters for Cycled REPLAY Forecasts
+# --------------------------------------
+
+# default using shared memory
+# The root of a node reads and shares
+
+USE_SHMEM:  1
+
+BEG_REPDATE: YYYYMMDD
+END_REPDATE: YYYYMMDD
+FCST_SEGMENT: 00000000
+
+#PERPETUAL_YEAR:   YYYY
+#PERPETUAL_MONTH:    MM
+#PERPETUAL_DAY:      DD
+
+MAPL_ENABLE_TIMERS: NO
+MAPL_ENABLE_MEMUTILS: NO
+PRINTSPEC: 0  # (0: OFF, 1: IMPORT & EXPORT, 2: IMPORT, 3: EXPORT)
+PRINTRC: 1

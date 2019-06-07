@@ -1,0 +1,2073 @@
+! 
+! namelist of EnKF inputs for land EnKF update
+!
+! reichle, 28 Jan 2005
+! reichle, 13 Jun 2011 - updated for SMOS angles and downscaling ("FOV")
+! reichle,  8 Jun 2017 - added "%flistpath" and "%flistname"; updated comments
+!
+! --------------------------------------------------------------------
+
+&ens_upd_inputs			
+	
+		
+! ----------------------------------------------------------------------
+!
+! update type - for details see subroutine cat_enkf_update()
+!               (note: all 3d updates use compact support)
+!
+! local = "1d", regional = "3d"
+!
+! update_type =  0: NO assimilation, NO bias correction 
+! update_type =  1: 1d soil moisture analysis;                                             sfmc obs
+! update_type =  2: 3d soil moisture analysis;                                             sfmc obs
+! update_type =  3: 1d Tskin (assim incr NOT applied, use w/ bias corr) analysis;          Tskin obs
+! update_type =  4: 1d Tskin/ght1 (assim incr applied, use w/ or w/o bias corr) analysis;  Tskin obs
+! update_type =  5: 1d Tskin/ght1 (assim incr NOT applied, use w/ bias corr) analysis;     Tskin obs
+! update_type =  6: 1d soil moisture/Tskin/ght(1);                                         TB obs
+! update_type =  7: 3d Tskin/ght1 update;                                                  Tskin obs 
+! update_type =  8: 3d soil moisture/Tskin/ght(1);                                         TB obs
+! update_type =  9: 1d Tskin/ght1 update;                                                  FT obs
+! update_type = 10: 3d soil moisture excl catdef/Tskin/ght(1);                             TB obs
+
+update_type = 0
+
+dtstep_assim = 10800   !  time step of assimilation (EnKF) updates
+
+! if "centered_update==.true." conduct first assimilation (EnKF) update 
+! after dtstep_assim/2 seconds (eg., at 1:30z when restarted at 0z with 
+! dtstep_assim of 3 hours), otherwise first update occurs after 
+! dtstep_assim seconds
+
+centered_update = .false.
+
+out_obslog      = .true.
+out_ObsFcstAna  = .false.
+out_incr        = .false.
+out_smapL4SMaup = .false.
+
+! select format of increments output	
+!  0: standard LDASsa 
+!     (output in LDASsa domain and LDASsa tile order)
+!  1: suitable for land incremental analysis update (LIAU) in GEOS-5 GCM
+!     (output on global domain in GEOS-5 global tile order)
+
+out_incr_format = 0       
+
+! ---------------------------------------------------------------------
+!
+! Compact support parameters - for 3d updates
+!
+! All correlations vanish outside of an ellipse with semi-axes xcompact 
+!  and ycompact
+
+xcompact = 0.           ! [deg] longitude
+ycompact = 0.           ! [deg] latitude
+
+! ---------------------------------------------------------------------
+!		
+! Definition of measurement species and parameters
+!
+! NOTE: When additional types of measurements are included here, 
+!       at least the following parameters and subroutines must be adapted:
+!
+!       - N_obs_species_nml in clsm_ensupd_glob_param.f90
+!       [- read_ens_upd_inputs()]
+!       [- collect_obs()]
+!       - read_obs()
+!       - get_obs_pred()
+!	- cat_enkf_update()
+!
+!
+! Definition of obs_param_nml fields (see also enkf_types.F90):
+!
+! %descr          = description
+! %species        = identifier for type of measurement
+! %orbit          = type of (half-)orbit
+!                     0 = n/a  [eg., in situ obs]
+!                     1 = ascending
+!                     2 = descending
+!                     3 = ascending and descending
+!                     4 = geostationary
+! %pol            = polarization
+!                     0 = n/a  [eg., multi-pol. retrieval]
+!                     1 = horizontal
+!                     2 = vertical 
+!                     3 = ...
+! %N_ang          = # angles in species
+! %ang            = vector of angles
+! %freq           = frequency [Hz]
+! %FOV            = field-of-view *radius*, see NOTES below
+!                   (if FOV==0. equate obs footprint w/ tile)
+! %FOV_units      = field-of-view units ('km' or 'deg'), see NOTES below
+! %assim          = Should this obs type be assimilated (state update)? (logical)
+! %scale          = Should this obs be scaled? (logical)
+! %getinnov       = Should innov be computed for this obs type (logical)
+!                   (innovations are always computed if assim==.true.)
+! %RTM_ID         = ID of radiative transfer model to use for Tb forward modeling
+!                   (subroutine get_obs_pred()) 
+!                     0 = none
+!                     1 = tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1)
+!                     2 = same as 1 but without Pellarin atmospheric corrections
+!                     3 = ...
+! %bias_Npar      = number of obs bias states tracked per day (integer)
+! %bias_trel      = e-folding time scale of obs bias memory [s]
+! %bias_tcut      = cutoff time for confident obs bias estimate [s]
+! %nodata         = no-data-value
+! %varname        = equivalent model variable name (for "Obs_pred")
+! %units          = units  (eg., 'K' or 'm3/m3')
+! %path           = path to measurement files
+! %name           = name identifier for file containing measurements
+! %scalepath      = path to file(s) with scaling parameters
+! %scalename      = filename for scaling parameters
+! %flistpath      = path to file with list of obs file names
+! %flistname      = name of file with list of obs file names
+! %errstd         = default obs error std
+! %std_normal_max = maximum allowed perturbation (relative to N(0,1))
+! %zeromean       = enforce zero mean across ensemble
+! %coarsen_pert   = generate obs perturbations on coarser grid (see pert_param_type%coarsen)
+! %xcorr          = correlation length (deg) in longitude direction
+! %ycorr          = correlation length (deg) in latitude direction
+!    
+! For observation perturbations, always use:
+!
+!   tcorr = 0.  (never temporally correlated)
+!   typ   = 0   (always additive)
+!   ccorr = 0.  (never cross-correlated)
+!
+! (these are specified in get_obs_pert_inputs() and not here)
+!
+!
+! NOTES: 
+!
+! Field-of-view (FOV) can be specified in units of [km] or [deg] lat/lon. 
+! Note the special case of FOV=0. below.
+! If FOV is specified in units of [km], the FOV in units of [deg] lat/lon that 
+!  is used to compute observation predictions will depend on latitude.
+! If FOV is specified in units of [deg] lat/lon, its value remains constant and 
+!  is independent of latitude.
+! The choice of units also determines the shape function that is used to 
+!  compute the observation predictions.
+! Units of [km] are meant for observations that are based on relatively 
+!  coarse-scale measurements (such as microwave data). The resolution of such obs
+!  in units of [km] is approximately constant across the globe and independent
+!  of latitude.  Observation predictions are computed by averaging tile-based
+!  model forecasts out to a distance of fac_search_FOV_km*FOV using a Gaussian kernel, 
+!  where fac_search_FOV_km=2.0 as of 28 March 2015.
+!  Specifically, the normalized square distance is defined as
+! 
+!      ndist2 = dx^2/FOV_x^2 + dy^2/FOV_y^2
+!
+!  where FOV_x and dx are the meridional FOV and the meridional distance between the obs
+!  and the tile (in units of deg lat/lon), with FOV_x proportional to 1/cos(lat).  
+!  FOV_y and dy are the corresponding zonal values.  
+!  The weights are then proportional to 
+!
+!      exp( -0.5*ndist2 )
+!
+!  The averaging is therefore over an ellipse in lat/lon space, with weights 
+!  decreasing away from the center of the observation.
+!  A 2.0*FOV averaging footprint encapsulates about 91% of the power.  A 1.0*FOV 
+!  averaging footprint would encapsulate about 47% of the power.  These numbers
+!  are meant to be approximately consistent with FOV numbers for microwave radiometers
+!  (see 3 Dec 2014 email from Ed Kim reproduced below).
+!  Note that weights are further adjusted based on tile area.
+! Units of [deg] lat/lon are meant for observations that are based on
+!  relatively high-resolution measurements (such as infrared data).  Such 
+!  observations are often available on a lat/lon grid that is much coarser than
+!  the footprint of the underlying observations.  The assimilated data product
+!  therefore has a resolution that varies with latitude.  Observation predictions are 
+!  computed by averaging over a constant kernel out to a distance of FOV.  
+!  The averaging is therefore over a circle in lat/lon space, with weights that do not
+!  depend on the distance from the center of the observation.
+!  (Note that weights are further adjusted based on tile area.)
+! If FOV=0., observation predictions are computed by assigning the model forecast
+!  associated with the tile to which the observation is formally assigned.
+!  This is useful if the resolution of the assimilated observations is higher
+!  than that of the model tile space.  This might be the case for snow-cover-fraction 
+!  observations. FOV=0 can also be useful for tile-based synthetic observations.
+!
+!
+! ------------------------------------------------------------------------
+!
+! Date: Wed, 3 Dec 2014 11:21:30 -0600
+! From: <edward.j.kim@nasa.gov>
+! To: <rolf.h.reichle@nasa.gov>, <gabrielle.j.delannoy@nasa.gov>
+! Subject: FW: [SMAP] antenna pattern question
+! 
+! Hi Rolf & Gabrielle,
+! 
+! First, a little terminology: the weighted integral is what Level 1 folks call 
+! "beam efficiency".  So, apparently, Steven is assuming the "-3dB beam efficiency" 
+! is ~50%.   The calculated [SMAP] beam efficiency within the -3dB contour is 
+! 53.40% (v-pol), 53.83% (h-pol).
+! If you draw the -3dB contour on the Earth's surface, for h-pol, 53.83% of the energy 
+! comes from inside the contour, and 100-53.83 = 46.17% comes from outside the contour.
+! The accuracy of the 1/10 and 1/100 digits is questionable, anyway.
+! So, if you used 53% for v-pol and 54% for h-pol, you should be fine.
+! I guess this means Steven was not far off, if he is using "50%."
+! This -3dB beam efficiency means we have significant energy coming from outside 
+! the 3dB footprint, which is the footprint we use to come up with the "40 km" footprint 
+! size number.
+! And, this is why many folks who use microwave instruments prefer to use a contour that 
+! encloses a higher % of the beam energy as a better measure of the footprint size.
+! One such measure is the "main beam efficiency (MBE)."  This beamwidth is usually taken 
+! to be 2.5 times the 3dB beamwidth.   The corresponding footprint size is then 
+! 2.5x 40km = 100km.
+! The last calculation put the MBE at 89.23 for V-pol and 89.33 for H-pol.
+! So, for h-pol, 89.33% of the energy comes from inside a 100km footprint, 
+! and 100-89.33 = 10.67% from outside. 
+! - Ed
+!
+! ------------------------------------------------------------------------
+!
+! IMPORTANT: The number of measurement species defined below must *match* 
+!            global parameter "N_obs_species_nml" 
+!
+!            Multi-angular observations (eg., SMOS) are defined as a single
+!            species here (in the nml file) and are later split into
+!            multiple species, each having a unique incidence angle
+!            (see subroutine read_ens_upd_inputs())
+!
+!
+! ------------------------------------------------------------------------
+
+!  1 = AMSR_E_L2_Soil_Moisture_A  (A = ascending = "day")
+
+obs_param_nml( 1)%descr          = 'ae_l2_sm_a'
+obs_param_nml( 1)%orbit          = 1
+obs_param_nml( 1)%pol            = 0
+obs_param_nml( 1)%N_ang          = 1
+obs_param_nml( 1)%ang(1)         = 55.
+obs_param_nml( 1)%freq           = 10.65e9
+obs_param_nml( 1)%FOV            = 20.
+obs_param_nml( 1)%FOV_units      = 'km'
+obs_param_nml( 1)%assim          = .false.
+obs_param_nml( 1)%scale          = .false.
+obs_param_nml( 1)%getinnov       = .false.
+obs_param_nml( 1)%RTM_ID         = 0
+obs_param_nml( 1)%bias_Npar      = 0
+obs_param_nml( 1)%bias_trel      = 864000
+obs_param_nml( 1)%bias_tcut      = 432000
+obs_param_nml( 1)%nodata         = -9999.
+obs_param_nml( 1)%varname        = 'sfmc'
+obs_param_nml( 1)%units          = 'm3/m3'
+obs_param_nml( 1)%path           = '/land/l_data/AMSR/data/AMSR_E_L2_Land_V001/'
+obs_param_nml( 1)%name           = 'AMSR_E_L2_Land_' 
+obs_param_nml( 1)%scalepath      = ''
+obs_param_nml( 1)%scalename      = ''
+obs_param_nml( 1)%flistpath      = ''
+obs_param_nml( 1)%flistname      = ''
+obs_param_nml( 1)%errstd         = .02
+obs_param_nml( 1)%std_normal_max = 2.5
+obs_param_nml( 1)%zeromean       = .true.
+obs_param_nml( 1)%coarsen_pert   = .false.
+obs_param_nml( 1)%xcorr          = 0.25
+obs_param_nml( 1)%ycorr          = 0.25
+obs_param_nml( 1)%adapt          = 0
+
+! -------------------
+!
+!  2 = AMSR_E_L2_Soil_Moisture_D  (D = descending = "night")
+
+obs_param_nml( 2)%descr          = 'ae_l2_sm_d'
+obs_param_nml( 2)%orbit          = 2
+obs_param_nml( 2)%pol            = 0
+obs_param_nml( 2)%N_ang          = 1
+obs_param_nml( 2)%ang(1)         = 55.
+obs_param_nml( 2)%freq           = 10.65e9
+obs_param_nml( 2)%FOV            = 20.
+obs_param_nml( 2)%FOV_units      = 'km'
+obs_param_nml( 2)%assim          = .false.
+obs_param_nml( 2)%scale          = .false.
+obs_param_nml( 2)%getinnov       = .false.
+obs_param_nml( 2)%RTM_ID         = 0
+obs_param_nml( 2)%bias_Npar      = 0
+obs_param_nml( 2)%bias_trel      = 864000
+obs_param_nml( 2)%bias_tcut      = 432000
+obs_param_nml( 2)%nodata         = -9999.
+obs_param_nml( 2)%varname        = 'sfmc'
+obs_param_nml( 2)%units          = 'm3/m3'
+obs_param_nml( 2)%path           = '/land/l_data/AMSR/data/AMSR_E_L2_Land_V001/'
+obs_param_nml( 2)%name           = 'AMSR_E_L2_Land_' 
+obs_param_nml( 2)%scalepath      = ''
+obs_param_nml( 2)%scalename      = ''
+obs_param_nml( 2)%flistpath      = ''
+obs_param_nml( 2)%flistname      = ''
+obs_param_nml( 2)%errstd         = .02
+obs_param_nml( 2)%std_normal_max = 2.5
+obs_param_nml( 2)%zeromean       = .true.
+obs_param_nml( 2)%coarsen_pert   = .false.
+obs_param_nml( 2)%xcorr          = 0.25
+obs_param_nml( 2)%ycorr          = 0.25
+obs_param_nml( 2)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  3 = ISCCP_Tskin_GSWP2_grid_V1
+
+obs_param_nml( 3)%descr          = 'isccp_tskin_gswp2_v1'
+obs_param_nml( 3)%orbit          = 4
+obs_param_nml( 3)%pol            = 0
+obs_param_nml( 3)%N_ang          = 0
+obs_param_nml( 3)%freq           = 0.
+obs_param_nml( 3)%FOV            = 0.6
+obs_param_nml( 3)%FOV_units      = 'deg'
+obs_param_nml( 3)%assim          = .false.
+obs_param_nml( 3)%scale          = .false.
+obs_param_nml( 3)%getinnov       = .false.
+obs_param_nml( 3)%RTM_ID         = 0
+obs_param_nml( 3)%bias_Npar      = 0
+obs_param_nml( 3)%bias_trel      = 864000
+obs_param_nml( 3)%bias_tcut      = 432000
+obs_param_nml( 3)%nodata         = -9999.
+obs_param_nml( 3)%varname        = 'tsurf'
+obs_param_nml( 3)%units          = 'K'
+obs_param_nml( 3)%path           = '/land/l_data/ISCCP/GSWP2_1by1_V1/'
+obs_param_nml( 3)%name           = 'isccpdx_tskin.'
+obs_param_nml( 3)%scalepath      = ''
+obs_param_nml( 3)%scalename      = ''
+obs_param_nml( 3)%flistpath      = ''
+obs_param_nml( 3)%flistname      = ''
+obs_param_nml( 3)%errstd         = 3.
+obs_param_nml( 3)%std_normal_max = 2.5
+obs_param_nml( 3)%zeromean       = .true.
+obs_param_nml( 3)%coarsen_pert   = .false.
+obs_param_nml( 3)%xcorr          = 0.6
+obs_param_nml( 3)%ycorr          = 0.6
+obs_param_nml( 3)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  4 = RedArkOSSE_sm
+
+obs_param_nml( 4)%descr          = 'RedArkOSSE_sm'
+obs_param_nml( 4)%orbit          = 0
+obs_param_nml( 4)%pol            = 0
+obs_param_nml( 4)%N_ang          = 0
+obs_param_nml( 4)%freq           = 0.
+obs_param_nml( 4)%FOV            = 0.
+obs_param_nml( 4)%FOV_units      = 'deg'
+obs_param_nml( 4)%assim          = .false.
+obs_param_nml( 4)%scale          = .false.
+obs_param_nml( 4)%getinnov       = .false.
+obs_param_nml( 4)%RTM_ID         = 0
+obs_param_nml( 4)%bias_Npar      = 0
+obs_param_nml( 4)%bias_trel      = 864000
+obs_param_nml( 4)%bias_tcut      = 432000
+obs_param_nml( 4)%nodata         = -999.
+obs_param_nml( 4)%varname        = 'sfmc'
+obs_param_nml( 4)%units          = 'm3/m3'
+obs_param_nml( 4)%path           = '/land/l_data/RedArk/Retrievals_36km/retrievals_20060508/'
+obs_param_nml( 4)%name           = 'SM_retrieval.'
+obs_param_nml( 4)%scalepath      = '.'
+obs_param_nml( 4)%scalename      = '.'
+obs_param_nml( 4)%flistpath      = ''
+obs_param_nml( 4)%flistname      = ''
+obs_param_nml( 4)%errstd         = .04
+obs_param_nml( 4)%std_normal_max = 2.5
+obs_param_nml( 4)%zeromean       = .true.
+obs_param_nml( 4)%coarsen_pert   = .false.
+obs_param_nml( 4)%xcorr          = 0.
+obs_param_nml( 4)%ycorr          = 0.
+obs_param_nml( 4)%adapt          = 0
+
+! -------------------
+!
+!  5 = RedArkOSSE_truth_50mm
+
+obs_param_nml( 5)%descr          = 'RedArkOSSE_truth_50mm'
+obs_param_nml( 5)%orbit          = 0
+obs_param_nml( 5)%pol            = 0
+obs_param_nml( 5)%N_ang          = 0
+obs_param_nml( 5)%freq           = 0.
+obs_param_nml( 5)%FOV            = 0.
+obs_param_nml( 5)%FOV_units      = 'deg'
+obs_param_nml( 5)%assim          = .false.
+obs_param_nml( 5)%scale          = .false.
+obs_param_nml( 5)%getinnov       = .false.
+obs_param_nml( 5)%RTM_ID         = 0
+obs_param_nml( 5)%bias_Npar      = 0
+obs_param_nml( 5)%bias_trel      = 864000
+obs_param_nml( 5)%bias_tcut      = 432000
+obs_param_nml( 5)%nodata         = -999.
+obs_param_nml( 5)%varname        = 'sfmc'
+obs_param_nml( 5)%units          = 'm3/m3'
+obs_param_nml( 5)%path           = '/land/l_data/RedArk/Truth/50mm_Soil_Moisture_Truth/'
+obs_param_nml( 5)%name           = 'red_ark_50mm.sm.'
+obs_param_nml( 5)%scalepath      = '.'
+obs_param_nml( 5)%scalename      = '.'
+obs_param_nml( 5)%flistpath      = ''
+obs_param_nml( 5)%flistname      = ''
+obs_param_nml( 5)%errstd         = .0
+obs_param_nml( 5)%std_normal_max = 2.5
+obs_param_nml( 5)%zeromean       = .true.
+obs_param_nml( 5)%coarsen_pert   = .false.
+obs_param_nml( 5)%xcorr          = 0.
+obs_param_nml( 5)%ycorr          = 0.
+obs_param_nml( 5)%adapt          = 0
+
+! -------------------
+!
+!  6 = RedArkOSSE_truth_400mm
+
+obs_param_nml( 6)%descr          = 'RedArkOSSE_truth_400mm'
+obs_param_nml( 6)%orbit          = 0
+obs_param_nml( 6)%pol            = 0
+obs_param_nml( 6)%N_ang          = 0
+obs_param_nml( 6)%freq           = 0.
+obs_param_nml( 6)%FOV            = 0.
+obs_param_nml( 6)%FOV_units      = 'deg'
+obs_param_nml( 6)%assim          = .false.
+obs_param_nml( 6)%scale          = .false.
+obs_param_nml( 6)%getinnov       = .false.
+obs_param_nml( 6)%RTM_ID         = 0
+obs_param_nml( 6)%bias_Npar      = 0
+obs_param_nml( 6)%bias_trel      = 864000
+obs_param_nml( 6)%bias_tcut      = 432000
+obs_param_nml( 6)%nodata         = -999.
+obs_param_nml( 6)%varname        = 'rzmc'
+obs_param_nml( 6)%units          = 'm3/m3'
+obs_param_nml( 6)%path           = '/land/l_data/RedArk/Truth/400mm_Soil_Moisture_Truth/'
+obs_param_nml( 6)%name           = 'red_ark_400mm.sm.'
+obs_param_nml( 6)%scalepath      = '.'
+obs_param_nml( 6)%scalename      = '.'
+obs_param_nml( 6)%flistpath      = ''
+obs_param_nml( 6)%flistname      = ''
+obs_param_nml( 6)%errstd         = .0
+obs_param_nml( 6)%std_normal_max = 2.5
+obs_param_nml( 6)%zeromean       = .true.
+obs_param_nml( 6)%coarsen_pert   = .false.
+obs_param_nml( 6)%xcorr          = 0.
+obs_param_nml( 6)%ycorr          = 0.
+obs_param_nml( 6)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  7 = RedArkOSSE_CLSMsynthSM
+
+obs_param_nml( 7)%descr          = 'RedArkOSSE_CLSMsynthSM'
+obs_param_nml( 7)%orbit          = 0
+obs_param_nml( 7)%pol            = 0
+obs_param_nml( 7)%N_ang          = 0
+obs_param_nml( 7)%freq           = 0.
+obs_param_nml( 7)%FOV            = 0.
+obs_param_nml( 7)%FOV_units      = 'deg'
+obs_param_nml( 7)%assim          = .false.
+obs_param_nml( 7)%scale          = .false.	
+obs_param_nml( 7)%getinnov       = .false.
+obs_param_nml( 7)%RTM_ID         = 0
+obs_param_nml( 7)%bias_Npar      = 0
+obs_param_nml( 7)%bias_trel      = 864000
+obs_param_nml( 7)%bias_tcut      = 432000
+obs_param_nml( 7)%nodata         = -9999.
+obs_param_nml( 7)%varname        = 'sfmc'
+obs_param_nml( 7)%units          = 'm3/m3'
+obs_param_nml( 7)%path           = '/land/l_data/RedArk_OSSE/data/Retrievals_CLSM_synth/M0001_P0001_R0001_URI/std_synth_obs_0.020/'
+obs_param_nml( 7)%name           = 'CLSM_synth_sm.'
+obs_param_nml( 7)%scalepath      = '.'
+obs_param_nml( 7)%scalename      = '.'
+obs_param_nml( 7)%flistpath      = ''
+obs_param_nml( 7)%flistname      = ''
+obs_param_nml( 7)%errstd         = .04
+obs_param_nml( 7)%std_normal_max = 2.5
+obs_param_nml( 7)%zeromean       = .true.
+obs_param_nml( 7)%coarsen_pert   = .false.
+obs_param_nml( 7)%xcorr          = 0.
+obs_param_nml( 7)%ycorr          = 0.
+obs_param_nml( 7)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  8 = VivianaOK_CLSMsynthSM
+
+obs_param_nml( 8)%descr          = 'VivianaOK_CLSMsynthSM'
+obs_param_nml( 8)%orbit          = 0
+obs_param_nml( 8)%pol            = 0
+obs_param_nml( 8)%N_ang          = 0
+obs_param_nml( 8)%freq           = 0.
+obs_param_nml( 8)%FOV            = 0.
+obs_param_nml( 8)%FOV_units      = 'deg'
+obs_param_nml( 8)%assim          = .false.
+obs_param_nml( 8)%scale          = .false.	
+obs_param_nml( 8)%getinnov       = .false.
+obs_param_nml( 8)%RTM_ID         = 0
+obs_param_nml( 8)%bias_Npar      = 0
+obs_param_nml( 8)%bias_trel      = 864000
+obs_param_nml( 8)%bias_tcut      = 432000
+obs_param_nml( 8)%nodata         = -9999.
+obs_param_nml( 8)%varname        = 'sfmc'
+obs_param_nml( 8)%units          = 'm3/m3'
+obs_param_nml( 8)%path           = '/discover/nobackup/vmaggion/Synth_sfmc/radar_sim/std_synth_sfmc_0.040/'
+obs_param_nml( 8)%name           = 'synth_sfmc_VivianaOK_'
+obs_param_nml( 8)%scalepath      = '.'
+obs_param_nml( 8)%scalename      = '.'
+obs_param_nml( 8)%flistpath      = ''
+obs_param_nml( 8)%flistname      = ''
+obs_param_nml( 8)%errstd         = .04
+obs_param_nml( 8)%std_normal_max = 2.5
+obs_param_nml( 8)%zeromean       = .true.
+obs_param_nml( 8)%coarsen_pert   = .false.
+obs_param_nml( 8)%xcorr          = 0.
+obs_param_nml( 8)%ycorr          = 0.
+obs_param_nml( 8)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  9 = AMSR_E_sm_LPRM_A_C  (A = ascending = "day", C-band)
+
+obs_param_nml( 9)%descr          = 'ae_sm_LPRM_a_C'
+obs_param_nml( 9)%orbit          = 1
+obs_param_nml( 9)%pol            = 0
+obs_param_nml( 9)%N_ang          = 1
+obs_param_nml( 9)%ang(1)         = 55.
+obs_param_nml( 9)%freq           = 6.925e9
+obs_param_nml( 9)%FOV            = 20.
+obs_param_nml( 9)%FOV_units      = 'km'
+obs_param_nml( 9)%assim          = .false.
+obs_param_nml( 9)%scale          = .false.
+obs_param_nml( 9)%getinnov       = .false.
+obs_param_nml( 9)%RTM_ID         = 0
+obs_param_nml( 9)%bias_Npar      = 0
+obs_param_nml( 9)%bias_trel      = 864000
+obs_param_nml( 9)%bias_tcut      = 432000
+obs_param_nml( 9)%nodata         = -9999.
+obs_param_nml( 9)%varname        = 'sfmc'
+obs_param_nml( 9)%units          = 'm3/m3'
+obs_param_nml( 9)%path           = '/land/l_data/AMSR/data/AMSR_E_sm_LPRM/L2_EASE/bin/'
+obs_param_nml( 9)%name           = 'AMSRsmUVA.EASE.v03.'
+obs_param_nml( 9)%scalepath      = ''
+obs_param_nml( 9)%scalename      = ''
+obs_param_nml( 9)%flistpath      = ''
+obs_param_nml( 9)%flistname      = ''
+obs_param_nml( 9)%errstd         = .04
+obs_param_nml( 9)%std_normal_max = 2.5
+obs_param_nml( 9)%zeromean       = .true.
+obs_param_nml( 9)%coarsen_pert   = .false.
+obs_param_nml( 9)%xcorr          = 0.25
+obs_param_nml( 9)%ycorr          = 0.25
+obs_param_nml( 9)%adapt          = 0
+
+! -------------------
+!
+!  10 = AMSR_E_sm_LPRM_D_C  (D = descending = "night", C-band)
+
+obs_param_nml(10)%descr          = 'ae_sm_LPRM_d_C'
+obs_param_nml(10)%orbit          = 2
+obs_param_nml(10)%pol            = 0
+obs_param_nml(10)%N_ang          = 1
+obs_param_nml(10)%ang(1)         = 55.
+obs_param_nml(10)%freq           = 6.925e9
+obs_param_nml(10)%FOV            = 20.
+obs_param_nml(10)%FOV_units      = 'km'
+obs_param_nml(10)%assim          = .false.
+obs_param_nml(10)%scale          = .false.
+obs_param_nml(10)%getinnov       = .false.
+obs_param_nml(10)%RTM_ID         = 0
+obs_param_nml(10)%bias_Npar      = 0
+obs_param_nml(10)%bias_trel      = 864000
+obs_param_nml(10)%bias_tcut      = 432000
+obs_param_nml(10)%nodata         = -9999.
+obs_param_nml(10)%varname        = 'sfmc'
+obs_param_nml(10)%units          = 'm3/m3'
+obs_param_nml(10)%path           = '/land/l_data/AMSR/data/AMSR_E_sm_LPRM/L2_EASE/bin/'
+obs_param_nml(10)%name           = 'AMSRsmUVA.EASE.v03.'
+obs_param_nml(10)%scalepath      = ''
+obs_param_nml(10)%scalename      = ''
+obs_param_nml(10)%flistpath      = ''
+obs_param_nml(10)%flistname      = ''
+obs_param_nml(10)%errstd         = .04
+obs_param_nml(10)%std_normal_max = 2.5
+obs_param_nml(10)%zeromean       = .true.
+obs_param_nml(10)%coarsen_pert   = .false.
+obs_param_nml(10)%xcorr          = 0.25
+obs_param_nml(10)%ycorr          = 0.25
+obs_param_nml(10)%adapt          = 0
+
+! -------------------
+!
+!  11 = AMSR_E_sm_LPRM_A_X  (A = ascending = "day", X-band)
+
+obs_param_nml(11)%descr          = 'ae_sm_LPRM_a_X'
+obs_param_nml(11)%orbit          = 1
+obs_param_nml(11)%pol            = 0
+obs_param_nml(11)%N_ang          = 1
+obs_param_nml(11)%ang(1)         = 55.
+obs_param_nml(11)%freq           = 10.65e9
+obs_param_nml(11)%FOV            = 20.
+obs_param_nml(11)%FOV_units      = 'km'
+obs_param_nml(11)%assim          = .false.
+obs_param_nml(11)%scale          = .false.
+obs_param_nml(11)%getinnov       = .false.
+obs_param_nml(11)%RTM_ID         = 0
+obs_param_nml(11)%bias_Npar      = 0
+obs_param_nml(11)%bias_trel      = 864000
+obs_param_nml(11)%bias_tcut      = 432000
+obs_param_nml(11)%nodata         = -9999.
+obs_param_nml(11)%varname        = 'sfmc'
+obs_param_nml(11)%units          = 'm3/m3'
+obs_param_nml(11)%path           = '/land/l_data/AMSR/data/AMSR_E_sm_LPRM/L2_EASE/bin/'
+obs_param_nml(11)%name           = 'AMSRsmUVA.EASE.v03.'
+obs_param_nml(11)%scalepath      = ''
+obs_param_nml(11)%scalename      = ''
+obs_param_nml(11)%flistpath      = ''
+obs_param_nml(11)%flistname      = ''
+obs_param_nml(11)%errstd         = .04
+obs_param_nml(11)%std_normal_max = 2.5
+obs_param_nml(11)%zeromean       = .true.
+obs_param_nml(11)%coarsen_pert   = .false.
+obs_param_nml(11)%xcorr          = 0.25
+obs_param_nml(11)%ycorr          = 0.25
+obs_param_nml(11)%adapt          = 0
+
+! -------------------
+!
+!  12 = AMSR_E_sm_LPRM_D_X  (D = descending = "night", X-band)
+
+obs_param_nml(12)%descr          = 'ae_sm_LPRM_d_X'
+obs_param_nml(12)%orbit          = 2
+obs_param_nml(12)%pol            = 0
+obs_param_nml(12)%N_ang          = 1
+obs_param_nml(12)%ang(1)         = 55.
+obs_param_nml(12)%freq           = 10.65e9
+obs_param_nml(12)%FOV            = 20.
+obs_param_nml(12)%FOV_units      = 'km'
+obs_param_nml(12)%assim          = .false.
+obs_param_nml(12)%scale          = .false.
+obs_param_nml(12)%getinnov       = .false.
+obs_param_nml(12)%RTM_ID         = 0
+obs_param_nml(12)%bias_Npar      = 0
+obs_param_nml(12)%bias_trel      = 864000
+obs_param_nml(12)%bias_tcut      = 432000
+obs_param_nml(12)%nodata         = -9999.
+obs_param_nml(12)%varname        = 'sfmc'
+obs_param_nml(12)%units          = 'm3/m3'
+obs_param_nml(12)%path           = '/land/l_data/AMSR/data/AMSR_E_sm_LPRM/L2_EASE/bin/'
+obs_param_nml(12)%name           = 'AMSRsmUVA.EASE.v03.'
+obs_param_nml(12)%scalepath      = ''
+obs_param_nml(12)%scalename      = ''
+obs_param_nml(12)%flistpath      = ''
+obs_param_nml(12)%flistname      = ''
+obs_param_nml(12)%errstd         = .04
+obs_param_nml(12)%std_normal_max = 2.5
+obs_param_nml(12)%zeromean       = .true.
+obs_param_nml(12)%coarsen_pert   = .false.
+obs_param_nml(12)%xcorr          = 0.25
+obs_param_nml(12)%ycorr          = 0.25
+obs_param_nml(12)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  13 = ASCAT_SM_A (ASCAT soil moisture ascending)
+!
+! ASCAT: VV-pol, incidence angle 25-65 deg
+! for now keep N_ang=0, pol=0
+! - reichle, 30 Jun 2015
+
+obs_param_nml(13)%descr          = 'ASCAT_SM_A'
+obs_param_nml(13)%orbit          = 1
+obs_param_nml(13)%pol            = 0
+obs_param_nml(13)%N_ang          = 0
+obs_param_nml(13)%freq           = 5.255e9
+obs_param_nml(13)%FOV            = 20.
+obs_param_nml(13)%FOV_units      = 'km'
+obs_param_nml(13)%assim          = .false.
+obs_param_nml(13)%scale          = .false.
+obs_param_nml(13)%getinnov       = .false.
+obs_param_nml(13)%RTM_ID         = 0
+obs_param_nml(13)%bias_Npar      = 0
+obs_param_nml(13)%bias_trel      = 864000
+obs_param_nml(13)%bias_tcut      = 432000
+obs_param_nml(13)%nodata         = -9999.
+obs_param_nml(13)%varname        = 'sfmc'
+obs_param_nml(13)%units          = 'm3/m3'
+obs_param_nml(13)%path           = '/discover/nobackup/rreichle/l_data/ASCAT/TUW_W5.4/EASE/CONUS/bin/'
+obs_param_nml(13)%name           = 'SDS_'
+obs_param_nml(13)%scalepath      = ''
+obs_param_nml(13)%scalename      = ''
+obs_param_nml(13)%flistpath      = ''
+obs_param_nml(13)%flistname      = ''
+obs_param_nml(13)%errstd         = .04
+obs_param_nml(13)%std_normal_max = 2.5
+obs_param_nml(13)%zeromean       = .true.
+obs_param_nml(13)%coarsen_pert   = .false.
+obs_param_nml(13)%xcorr          = 0.25
+obs_param_nml(13)%ycorr          = 0.25
+obs_param_nml(13)%adapt          = 0
+
+! -------------------
+!
+!  14 = ASCAT_SM_D (ASCAT soil moisture descending)
+!
+! TO DO: What is pol of backscatter used in retrieval? 
+! TO DO: How deal w/ inc angle? 
+!        http://oiswww.eumetsat.org/WEBOPS/eps-pg/ASCAT/ASCAT-PG-4ProdOverview.htm
+
+obs_param_nml(14)%descr          = 'ASCAT_SM_D'
+obs_param_nml(14)%orbit          = 2
+obs_param_nml(14)%pol            = 0
+obs_param_nml(14)%N_ang          = 0
+obs_param_nml(14)%freq           = 5.255e9
+obs_param_nml(14)%FOV            = 20.
+obs_param_nml(14)%FOV_units      = 'km'
+obs_param_nml(14)%assim          = .false.
+obs_param_nml(14)%scale          = .false.
+obs_param_nml(14)%getinnov       = .false.
+obs_param_nml(14)%RTM_ID         = 0
+obs_param_nml(14)%bias_Npar      = 0
+obs_param_nml(14)%bias_trel      = 864000
+obs_param_nml(14)%bias_tcut      = 432000
+obs_param_nml(14)%nodata         = -9999.
+obs_param_nml(14)%varname        = 'sfmc'
+obs_param_nml(14)%units          = 'm3/m3'
+obs_param_nml(14)%path           = '/discover/nobackup/rreichle/l_data/ASCAT/TUW_W5.4/EASE/CONUS/bin/'
+obs_param_nml(14)%name           = 'SDS_'
+obs_param_nml(14)%scalepath      = ''
+obs_param_nml(14)%scalename      = ''
+obs_param_nml(14)%flistpath      = ''
+obs_param_nml(14)%flistname      = ''
+obs_param_nml(14)%errstd         = .04
+obs_param_nml(14)%std_normal_max = 2.5
+obs_param_nml(14)%zeromean       = .true.
+obs_param_nml(14)%coarsen_pert   = .false.
+obs_param_nml(14)%xcorr          = 0.25
+obs_param_nml(14)%ycorr          = 0.25
+obs_param_nml(14)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  15 = SMOS_SM_A (SMOS soil moisture ascending)
+
+obs_param_nml(15)%descr          = 'SMOS_SM_A'
+obs_param_nml(15)%orbit          = 1
+obs_param_nml(15)%pol            = 0
+obs_param_nml(15)%N_ang          = 0
+obs_param_nml(15)%freq           = 1.41e9
+obs_param_nml(15)%FOV            = 20.
+obs_param_nml(15)%FOV_units      = 'km'
+obs_param_nml(15)%assim          = .false.
+obs_param_nml(15)%scale          = .false.
+obs_param_nml(15)%getinnov       = .false.
+obs_param_nml(15)%RTM_ID         = 0
+obs_param_nml(15)%bias_Npar      = 0
+obs_param_nml(15)%bias_trel      = 864000
+obs_param_nml(15)%bias_tcut      = 432000
+obs_param_nml(15)%nodata         = -9999.
+obs_param_nml(15)%varname        = 'sfmc'
+obs_param_nml(15)%units          = 'm3/m3'
+obs_param_nml(15)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SMUDP2/'
+obs_param_nml(15)%name           = ''
+obs_param_nml(15)%scalepath      = ''
+obs_param_nml(15)%scalename      = ''
+obs_param_nml(15)%flistpath      = ''
+obs_param_nml(15)%flistname      = ''
+obs_param_nml(15)%errstd         = .04
+obs_param_nml(15)%std_normal_max = 2.5
+obs_param_nml(15)%zeromean       = .true.
+obs_param_nml(15)%coarsen_pert   = .false.
+obs_param_nml(15)%xcorr          = 0.25
+obs_param_nml(15)%ycorr          = 0.25
+obs_param_nml(15)%adapt          = 0
+
+! -------------------
+!  
+!  16 = SMOS_SM_D (SMOS soil moisture descending)
+
+obs_param_nml(16)%descr          = 'SMOS_SM_D'
+obs_param_nml(16)%orbit          = 2
+obs_param_nml(16)%pol            = 0
+obs_param_nml(16)%N_ang          = 0
+obs_param_nml(16)%freq           = 1.41e9
+obs_param_nml(16)%FOV            = 20.
+obs_param_nml(16)%FOV_units      = 'km'
+obs_param_nml(16)%assim          = .false.
+obs_param_nml(16)%scale          = .false.
+obs_param_nml(16)%getinnov       = .false.
+obs_param_nml(16)%RTM_ID         = 0
+obs_param_nml(16)%bias_Npar      = 0
+obs_param_nml(16)%bias_trel      = 864000
+obs_param_nml(16)%bias_tcut      = 432000
+obs_param_nml(16)%nodata         = -9999.
+obs_param_nml(16)%varname        = 'sfmc'
+obs_param_nml(16)%units          = 'm3/m3'
+obs_param_nml(16)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SMUDP2/'
+obs_param_nml(16)%name           = ''
+obs_param_nml(16)%scalepath      = ''
+obs_param_nml(16)%scalename      = ''
+obs_param_nml(16)%flistpath      = ''
+obs_param_nml(16)%flistname      = ''
+obs_param_nml(16)%errstd         = .04
+obs_param_nml(16)%std_normal_max = 2.5
+obs_param_nml(16)%zeromean       = .true.
+obs_param_nml(16)%coarsen_pert   = .false.
+obs_param_nml(16)%xcorr          = 0.25
+obs_param_nml(16)%ycorr          = 0.25
+obs_param_nml(16)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+! SMOS multi-angular brightness temperature 
+! 
+! "A"   = ascending  (6am *SMOS* overpass)
+! "D"   = descending (6pm *SMOS* overpass)
+!
+! "Tbh" = h-pol Tb
+! "Tbv" = v-pol Tb 
+!
+!
+! "Regular" vs. "fitted" SMOS brightness temperatures:
+!
+!   "Regular" Tb data ('SMOS_reg_Tb*'):
+!      Derived from SMOS SCLF1C data by Gabrielle De Lannoy.  Observations within
+!      one-degree angular bins for a given time and location are averaged.  
+!      Various quality controls steps are applied.  
+!      A typical assimilation setup uses 7 angles.
+!      For details see De Lannoy et al (2013) doi:10.1175/JHM-D-12-092.1.
+!
+!   "Fitted" Tb data ('SMOS_fit_Tb*'):
+!      Derived from "regular" SMOS Tb data by Gabrielle De Lannoy.  Observations
+!      for a given time and location derived by fitting across available incidence
+!      angles.  The resulting fitted observation at 40 deg incidence angle corresponds
+!      roughly to what the SMAP radiometer observes (a.k.a. "SMOS40").
+!      A typical assimilation setup uses only one angle.
+!
+!
+! Frequency:
+!
+!   Date: Wed, 8 Jun 2011 02:34:40 -0500
+!   From: <delphine.leroux@cesbio.cnes.fr>
+!   To: <gabrielle.j.delannoy@nasa.gov>
+!   
+!   In the ATBD it is written that the central frequency is 1.413 GHz. I 
+!   have asked around but it seems more complicated than expected because 
+!   the 64 antennas are working around 1.410 GHz (+-0.008 GHz) and there is 
+!   no exact value for the frequency (mostly because the frequency of each 
+!   antenna depends on the temperature...). Here we work with 1.413 GHz. 
+!  
+
+! -------------------
+!
+!  17 = SMOS_reg_Tbh_A
+
+obs_param_nml(17)%descr          = 'SMOS_reg_Tbh_A'
+obs_param_nml(17)%orbit          = 1
+obs_param_nml(17)%pol            = 1
+obs_param_nml(17)%N_ang          = 7
+obs_param_nml(17)%ang(1)         = 30.
+obs_param_nml(17)%ang(2)         = 35.
+obs_param_nml(17)%ang(3)         = 40.
+obs_param_nml(17)%ang(4)         = 45.
+obs_param_nml(17)%ang(5)         = 50.
+obs_param_nml(17)%ang(6)         = 55.
+obs_param_nml(17)%ang(7)         = 60.
+obs_param_nml(17)%freq           = 1.41e9
+obs_param_nml(17)%FOV            = 20.
+obs_param_nml(17)%FOV_units      = 'km'
+obs_param_nml(17)%assim          = .false.
+obs_param_nml(17)%scale          = .false.
+obs_param_nml(17)%getinnov       = .false.
+obs_param_nml(17)%RTM_ID         = 2
+obs_param_nml(17)%bias_Npar      = 0
+obs_param_nml(17)%bias_trel      = 864000
+obs_param_nml(17)%bias_tcut      = 432000
+obs_param_nml(17)%nodata         = -9999.
+obs_param_nml(17)%varname        = 'Tb'
+obs_param_nml(17)%units          = 'K'
+obs_param_nml(17)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SCLF1C_reg_nosky_noatm_v620_ESA_v102/'
+obs_param_nml(17)%name           = ''
+obs_param_nml(17)%scalepath      = ''
+obs_param_nml(17)%scalename      = ''
+obs_param_nml(17)%flistpath      = ''
+obs_param_nml(17)%flistname      = ''
+obs_param_nml(17)%errstd         = 4.
+obs_param_nml(17)%std_normal_max = 2.5
+obs_param_nml(17)%zeromean       = .true.
+obs_param_nml(17)%coarsen_pert   = .false.
+obs_param_nml(17)%xcorr          = 0.25
+obs_param_nml(17)%ycorr          = 0.25
+obs_param_nml(17)%adapt          = 0
+
+! -------------------
+!
+!  18 = SMOS_reg_Tbh_D  
+
+obs_param_nml(18)%descr          = 'SMOS_reg_Tbh_D'
+obs_param_nml(18)%orbit          = 2
+obs_param_nml(18)%pol            = 1
+obs_param_nml(18)%N_ang          = 7
+obs_param_nml(18)%ang(1)         = 30.
+obs_param_nml(18)%ang(2)         = 35.
+obs_param_nml(18)%ang(3)         = 40.
+obs_param_nml(18)%ang(4)         = 45.
+obs_param_nml(18)%ang(5)         = 50.
+obs_param_nml(18)%ang(6)         = 55.
+obs_param_nml(18)%ang(7)         = 60.
+obs_param_nml(18)%freq           = 1.41e9
+obs_param_nml(18)%FOV            = 20.
+obs_param_nml(18)%FOV_units      = 'km'
+obs_param_nml(18)%assim          = .false.
+obs_param_nml(18)%scale          = .false.
+obs_param_nml(18)%getinnov       = .false.
+obs_param_nml(18)%RTM_ID         = 2
+obs_param_nml(18)%bias_Npar      = 0
+obs_param_nml(18)%bias_trel      = 864000
+obs_param_nml(18)%bias_tcut      = 432000
+obs_param_nml(18)%nodata         = -9999.
+obs_param_nml(18)%varname        = 'Tb'
+obs_param_nml(18)%units          = 'K'
+obs_param_nml(18)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SCLF1C_reg_nosky_noatm_v620_ESA_v102/'
+obs_param_nml(18)%name           = ''
+obs_param_nml(18)%scalepath      = ''
+obs_param_nml(18)%scalename      = ''
+obs_param_nml(18)%flistpath      = ''
+obs_param_nml(18)%flistname      = ''
+obs_param_nml(18)%errstd         = 4.
+obs_param_nml(18)%std_normal_max = 2.5
+obs_param_nml(18)%zeromean       = .true.
+obs_param_nml(18)%coarsen_pert   = .false.
+obs_param_nml(18)%xcorr          = 0.25
+obs_param_nml(18)%ycorr          = 0.25
+obs_param_nml(18)%adapt          = 0
+
+! -------------------
+!
+!  19 = SMOS_reg_Tbv_A  
+
+obs_param_nml(19)%descr          = 'SMOS_reg_Tbv_A'
+obs_param_nml(19)%orbit          = 1
+obs_param_nml(19)%pol            = 2
+obs_param_nml(19)%N_ang          = 7
+obs_param_nml(19)%ang(1)         = 30.
+obs_param_nml(19)%ang(2)         = 35.
+obs_param_nml(19)%ang(3)         = 40.
+obs_param_nml(19)%ang(4)         = 45.
+obs_param_nml(19)%ang(5)         = 50.
+obs_param_nml(19)%ang(6)         = 55.
+obs_param_nml(19)%ang(7)         = 60.
+obs_param_nml(19)%freq           = 1.41e9
+obs_param_nml(19)%FOV            = 20.
+obs_param_nml(19)%FOV_units      = 'km'
+obs_param_nml(19)%assim          = .false.
+obs_param_nml(19)%scale          = .false.
+obs_param_nml(19)%getinnov       = .false.
+obs_param_nml(19)%RTM_ID         = 2
+obs_param_nml(19)%bias_Npar      = 0
+obs_param_nml(19)%bias_trel      = 864000
+obs_param_nml(19)%bias_tcut      = 432000
+obs_param_nml(19)%nodata         = -9999.
+obs_param_nml(19)%varname        = 'Tb'
+obs_param_nml(19)%units          = 'K'
+obs_param_nml(19)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SCLF1C_reg_nosky_noatm_v620_ESA_v102/'
+obs_param_nml(19)%name           = ''
+obs_param_nml(19)%scalepath      = ''
+obs_param_nml(19)%scalename      = ''
+obs_param_nml(19)%flistpath      = ''
+obs_param_nml(19)%flistname      = ''
+obs_param_nml(19)%errstd         = 4.
+obs_param_nml(19)%std_normal_max = 2.5
+obs_param_nml(19)%zeromean       = .true.
+obs_param_nml(19)%coarsen_pert   = .false.
+obs_param_nml(19)%xcorr          = 0.25
+obs_param_nml(19)%ycorr          = 0.25
+obs_param_nml(19)%adapt          = 0
+
+! -------------------
+!
+!  20 = SMOS_reg_Tbv_D  
+
+obs_param_nml(20)%descr          = 'SMOS_reg_Tbv_D'
+obs_param_nml(20)%orbit          = 2
+obs_param_nml(20)%pol            = 2
+obs_param_nml(20)%N_ang          = 7
+obs_param_nml(20)%ang(1)         = 30.
+obs_param_nml(20)%ang(2)         = 35.
+obs_param_nml(20)%ang(3)         = 40.
+obs_param_nml(20)%ang(4)         = 45.
+obs_param_nml(20)%ang(5)         = 50.
+obs_param_nml(20)%ang(6)         = 55.
+obs_param_nml(20)%ang(7)         = 60.
+obs_param_nml(20)%freq           = 1.41e9
+obs_param_nml(20)%FOV            = 20.
+obs_param_nml(20)%FOV_units      = 'km'
+obs_param_nml(20)%assim          = .false.
+obs_param_nml(20)%scale          = .false.
+obs_param_nml(20)%getinnov       = .false.
+obs_param_nml(20)%RTM_ID         = 2
+obs_param_nml(20)%bias_Npar      = 0
+obs_param_nml(20)%bias_trel      = 864000
+obs_param_nml(20)%bias_tcut      = 432000
+obs_param_nml(20)%nodata         = -9999.
+obs_param_nml(20)%varname        = 'Tb'
+obs_param_nml(20)%units          = 'K'
+obs_param_nml(20)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SCLF1C_reg_nosky_noatm_v620_ESA_v102/'
+obs_param_nml(20)%name           = ''
+obs_param_nml(20)%scalepath      = ''
+obs_param_nml(20)%scalename      = ''
+obs_param_nml(20)%flistpath      = ''
+obs_param_nml(20)%flistname      = ''
+obs_param_nml(20)%errstd         = 4.
+obs_param_nml(20)%std_normal_max = 2.5
+obs_param_nml(20)%zeromean       = .true.
+obs_param_nml(20)%coarsen_pert   = .false.
+obs_param_nml(20)%xcorr          = 0.25
+obs_param_nml(20)%ycorr          = 0.25
+obs_param_nml(20)%adapt          = 0
+
+! --------------------------------------------------
+!
+!  21 = SMOS_fit_Tbh_A
+
+obs_param_nml(21)%descr          = 'SMOS_fit_Tbh_A'
+obs_param_nml(21)%orbit          = 1
+obs_param_nml(21)%pol            = 1
+obs_param_nml(21)%N_ang          = 1
+obs_param_nml(21)%ang(1)         = 40.
+obs_param_nml(21)%freq           = 1.41e9
+obs_param_nml(21)%FOV            = 20.
+obs_param_nml(21)%FOV_units      = 'km'
+obs_param_nml(21)%assim          = .false.
+obs_param_nml(21)%scale          = .false.
+obs_param_nml(21)%getinnov       = .false.
+obs_param_nml(21)%RTM_ID         = 2
+obs_param_nml(21)%bias_Npar      = 0
+obs_param_nml(21)%bias_trel      = 864000
+obs_param_nml(21)%bias_tcut      = 432000
+obs_param_nml(21)%nodata         = -9999.
+obs_param_nml(21)%varname        = 'Tb'
+obs_param_nml(21)%units          = 'K'
+obs_param_nml(21)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SCLF1C_fit_nosky_noatm_v620_ESA_v102/SMOS_fit_poly2/'
+obs_param_nml(21)%name           = ''
+obs_param_nml(21)%scalepath      = ''
+obs_param_nml(21)%scalename      = ''
+obs_param_nml(21)%flistpath      = ''
+obs_param_nml(21)%flistname      = ''
+obs_param_nml(21)%errstd         = 1.5
+obs_param_nml(21)%std_normal_max = 2.5
+obs_param_nml(21)%zeromean       = .true.
+obs_param_nml(21)%coarsen_pert   = .false.
+obs_param_nml(21)%xcorr          = 0.25
+obs_param_nml(21)%ycorr          = 0.25
+obs_param_nml(21)%adapt          = 0
+
+! -------------------
+!
+!  22 = SMOS_fit_Tbh_D  
+
+obs_param_nml(22)%descr          = 'SMOS_fit_Tbh_D'
+obs_param_nml(22)%orbit          = 2
+obs_param_nml(22)%pol            = 1
+obs_param_nml(22)%N_ang          = 1
+obs_param_nml(22)%ang(1)         = 40.
+obs_param_nml(22)%freq           = 1.41e9
+obs_param_nml(22)%FOV            = 20.
+obs_param_nml(22)%FOV_units      = 'km'
+obs_param_nml(22)%assim          = .false.
+obs_param_nml(22)%scale          = .false.
+obs_param_nml(22)%getinnov       = .false.
+obs_param_nml(22)%RTM_ID         = 2
+obs_param_nml(22)%bias_Npar      = 0
+obs_param_nml(22)%bias_trel      = 864000
+obs_param_nml(22)%bias_tcut      = 432000
+obs_param_nml(22)%nodata         = -9999.
+obs_param_nml(22)%varname        = 'Tb'
+obs_param_nml(22)%units          = 'K'
+obs_param_nml(22)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SCLF1C_fit_nosky_noatm_v620_ESA_v102/SMOS_fit_poly2/'
+obs_param_nml(22)%name           = ''
+obs_param_nml(22)%scalepath      = ''
+obs_param_nml(22)%scalename      = ''
+obs_param_nml(22)%flistpath      = ''
+obs_param_nml(22)%flistname      = ''
+obs_param_nml(22)%errstd         = 1.5
+obs_param_nml(22)%std_normal_max = 2.5
+obs_param_nml(22)%zeromean       = .true.
+obs_param_nml(22)%coarsen_pert   = .false.
+obs_param_nml(22)%xcorr          = 0.25
+obs_param_nml(22)%ycorr          = 0.25
+obs_param_nml(22)%adapt          = 0
+
+! -------------------
+!
+!  23 = SMOS_fit_Tbv_A  
+
+obs_param_nml(23)%descr          = 'SMOS_fit_Tbv_A'
+obs_param_nml(23)%orbit          = 1
+obs_param_nml(23)%pol            = 2
+obs_param_nml(23)%N_ang          = 1
+obs_param_nml(23)%ang(1)         = 40.
+obs_param_nml(23)%freq           = 1.41e9
+obs_param_nml(23)%FOV            = 20.
+obs_param_nml(23)%FOV_units      = 'km'
+obs_param_nml(23)%assim          = .false.
+obs_param_nml(23)%scale          = .false.
+obs_param_nml(23)%getinnov       = .false.
+obs_param_nml(23)%RTM_ID         = 2
+obs_param_nml(23)%bias_Npar      = 0
+obs_param_nml(23)%bias_trel      = 864000
+obs_param_nml(23)%bias_tcut      = 432000
+obs_param_nml(23)%nodata         = -9999.
+obs_param_nml(23)%varname        = 'Tb'
+obs_param_nml(23)%units          = 'K'
+obs_param_nml(23)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SCLF1C_fit_nosky_noatm_v620_ESA_v102/SMOS_fit_poly2/'
+obs_param_nml(23)%name           = ''
+obs_param_nml(23)%scalepath      = ''
+obs_param_nml(23)%scalename      = ''
+obs_param_nml(23)%flistpath      = ''
+obs_param_nml(23)%flistname      = ''
+obs_param_nml(23)%errstd         = 1.5
+obs_param_nml(23)%std_normal_max = 2.5
+obs_param_nml(23)%zeromean       = .true.
+obs_param_nml(23)%coarsen_pert   = .false.
+obs_param_nml(23)%xcorr          = 0.25
+obs_param_nml(23)%ycorr          = 0.25
+obs_param_nml(23)%adapt          = 0
+
+! -------------------
+!
+!  24 = SMOS_fit_Tbv_D  
+
+obs_param_nml(24)%descr          = 'SMOS_fit_Tbv_D'
+obs_param_nml(24)%orbit          = 2
+obs_param_nml(24)%pol            = 2
+obs_param_nml(24)%N_ang          = 1
+obs_param_nml(24)%ang(1)         = 40.
+obs_param_nml(24)%freq           = 1.41e9
+obs_param_nml(24)%FOV            = 20.
+obs_param_nml(24)%FOV_units      = 'km'
+obs_param_nml(24)%assim          = .false.
+obs_param_nml(24)%scale          = .false.
+obs_param_nml(24)%getinnov       = .false.
+obs_param_nml(24)%RTM_ID         = 2
+obs_param_nml(24)%bias_Npar      = 0
+obs_param_nml(24)%bias_trel      = 864000
+obs_param_nml(24)%bias_tcut      = 432000
+obs_param_nml(24)%nodata         = -9999.
+obs_param_nml(24)%varname        = 'Tb'
+obs_param_nml(24)%units          = 'K'
+obs_param_nml(24)%path           = '/discover/nobackup/projects/gmao/ssd/land/l_data/SMOS/EASEv2/ESA_REPR/SMOS_M36_SCLF1C_fit_nosky_noatm_v620_ESA_v102/SMOS_fit_poly2/'
+obs_param_nml(24)%name           = ''
+obs_param_nml(24)%scalepath      = ''
+obs_param_nml(24)%scalename      = ''
+obs_param_nml(24)%flistpath      = ''
+obs_param_nml(24)%flistname      = ''
+obs_param_nml(24)%errstd         = 1.5
+obs_param_nml(24)%std_normal_max = 2.5
+obs_param_nml(24)%zeromean       = .true.
+obs_param_nml(24)%coarsen_pert   = .false.
+obs_param_nml(24)%xcorr          = 0.25
+obs_param_nml(24)%ycorr          = 0.25
+obs_param_nml(24)%adapt          = 0
+
+
+! --------------------------------------------------------------------
+!
+!  21 = MODIS SCF
+!
+! TO DO: which platform? 
+! TO DO: figure out orbit (day!)
+ 
+obs_param_nml(25)%descr          = 'MODIS_SCF'
+obs_param_nml(25)%orbit          = 0
+obs_param_nml(25)%pol            = 0
+obs_param_nml(25)%N_ang          = 0
+obs_param_nml(25)%freq           = 0.
+obs_param_nml(25)%FOV            = 0.
+obs_param_nml(25)%FOV_units      = 'deg'
+obs_param_nml(25)%assim          = .false.
+obs_param_nml(25)%scale          = .false.	
+obs_param_nml(25)%getinnov       = .false.
+obs_param_nml(25)%RTM_ID         = 0
+obs_param_nml(25)%bias_Npar      = 0
+obs_param_nml(25)%bias_trel      = 864000
+obs_param_nml(25)%bias_tcut      = 432000
+obs_param_nml(25)%nodata         = -9999.	
+obs_param_nml(25)%varname        = 'asnow'
+obs_param_nml(25)%units          = 'm2/m2'
+obs_param_nml(25)%path           = ''	
+obs_param_nml(25)%name           = ''
+obs_param_nml(25)%scalepath      = ''
+obs_param_nml(25)%scalename      = ''
+obs_param_nml(25)%flistpath      = ''
+obs_param_nml(25)%flistname      = ''
+obs_param_nml(25)%errstd         = .0
+obs_param_nml(25)%std_normal_max = 2.5
+obs_param_nml(25)%zeromean       = .true.
+obs_param_nml(25)%coarsen_pert   = .false.
+obs_param_nml(25)%xcorr          = 0.
+obs_param_nml(25)%ycorr          = 0.
+obs_param_nml(25)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  26 = LaRC Tskin GEOS-WEST
+!
+
+obs_param_nml(26)%descr          = 'LaRC_tskin-GOESW'
+obs_param_nml(26)%orbit          = 4
+obs_param_nml(26)%pol            = 0
+obs_param_nml(26)%N_ang          = 0
+obs_param_nml(26)%freq           = 0.
+obs_param_nml(26)%FOV            = 0.17
+obs_param_nml(26)%FOV_units      = 'deg'
+obs_param_nml(26)%assim          = .false.
+obs_param_nml(26)%scale          = .false.
+obs_param_nml(26)%getinnov       = .false.
+obs_param_nml(26)%RTM_ID         = 0
+obs_param_nml(26)%bias_Npar      = 0
+obs_param_nml(26)%bias_trel      = 864000
+obs_param_nml(26)%bias_tcut      = 432000
+obs_param_nml(26)%nodata         = -9999.
+obs_param_nml(26)%varname        = 'tsurf'
+obs_param_nml(26)%units          = 'K'
+obs_param_nml(26)%path           = '/discover/nobackup/csdraper/LaRC_float/GOES-WEST/'
+obs_param_nml(26)%name           = 'larc-v3.inst3_g15_Nch.'
+obs_param_nml(26)%scalepath      = ''
+obs_param_nml(26)%scalename      = ''
+obs_param_nml(26)%flistpath      = ''
+obs_param_nml(26)%flistname      = ''
+obs_param_nml(26)%errstd         = 2.
+obs_param_nml(26)%std_normal_max = 2.5
+obs_param_nml(26)%zeromean       = .true.
+obs_param_nml(26)%coarsen_pert   = .false.
+obs_param_nml(26)%xcorr          = 0.17
+obs_param_nml(26)%ycorr          = 0.17
+obs_param_nml(26)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  27 = LaRC Tskin GEOS-EAST
+!
+
+obs_param_nml(27)%descr          = 'LaRC_tskin-GOESE'
+obs_param_nml(27)%orbit          = 4
+obs_param_nml(27)%pol            = 0
+obs_param_nml(27)%N_ang          = 0
+obs_param_nml(27)%freq           = 0.
+obs_param_nml(27)%FOV            = 0.17
+obs_param_nml(27)%FOV_units      = 'deg'
+obs_param_nml(27)%assim          = .false.
+obs_param_nml(27)%scale          = .false.
+obs_param_nml(27)%getinnov       = .false.
+obs_param_nml(27)%RTM_ID         = 0
+obs_param_nml(27)%bias_Npar      = 0
+obs_param_nml(27)%bias_trel      = 864000
+obs_param_nml(27)%bias_tcut      = 432000
+obs_param_nml(27)%nodata         = -9999.
+obs_param_nml(27)%varname        = 'tsurf'
+obs_param_nml(27)%units          = 'K'
+obs_param_nml(27)%path           = '/discover/nobackup/csdraper/LaRC_float/v4/GOES-EAST/'
+obs_param_nml(27)%name           = 'larc-v3.inst3_g13_Nch.'
+obs_param_nml(27)%scalepath      = ''
+obs_param_nml(27)%scalename      = ''
+obs_param_nml(27)%flistpath      = ''
+obs_param_nml(27)%flistname      = ''
+obs_param_nml(27)%errstd         = 2.
+obs_param_nml(27)%std_normal_max = 2.5
+obs_param_nml(27)%zeromean       = .true.
+obs_param_nml(27)%coarsen_pert   = .false.
+obs_param_nml(27)%xcorr          = 0.17
+obs_param_nml(27)%ycorr          = 0.17
+obs_param_nml(27)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  28 = LaRC Tskin GEOS-MET09
+!
+
+obs_param_nml(28)%descr          = 'LaRC_tskin-MET09'
+obs_param_nml(28)%orbit          = 4
+obs_param_nml(28)%pol            = 0
+obs_param_nml(28)%N_ang          = 0
+obs_param_nml(28)%freq           = 0.
+obs_param_nml(28)%FOV            = 0.17
+obs_param_nml(28)%FOV_units      = 'deg'
+obs_param_nml(28)%assim          = .false.
+obs_param_nml(28)%scale          = .false.
+obs_param_nml(28)%getinnov       = .false.
+obs_param_nml(28)%RTM_ID         = 0
+obs_param_nml(28)%bias_Npar      = 0
+obs_param_nml(28)%bias_trel      = 864000
+obs_param_nml(28)%bias_tcut      = 432000
+obs_param_nml(28)%nodata         = -9999.
+obs_param_nml(28)%varname        = 'tsurf'
+obs_param_nml(28)%units          = 'K'
+obs_param_nml(28)%path           = '/discover/nobackup/csdraper/LaRC_float/MET09/'
+obs_param_nml(28)%name           = 'larc-v3.inst3_mt9_Nch.'
+obs_param_nml(28)%scalepath      = ''
+obs_param_nml(28)%scalename      = ''
+obs_param_nml(28)%flistpath      = ''
+obs_param_nml(28)%flistname      = ''
+obs_param_nml(28)%errstd         = 2.
+obs_param_nml(28)%std_normal_max = 2.5
+obs_param_nml(28)%zeromean       = .true.
+obs_param_nml(28)%coarsen_pert   = .false.
+obs_param_nml(28)%xcorr          = 0.17
+obs_param_nml(28)%ycorr          = 0.17
+obs_param_nml(28)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  25 = LaRC Tskin GEOS-FY2E
+!
+
+obs_param_nml(29)%descr          = 'LaRC_tskin-FY2E-'
+obs_param_nml(29)%orbit          = 4
+obs_param_nml(29)%pol            = 0
+obs_param_nml(29)%N_ang          = 0
+obs_param_nml(29)%freq           = 0.
+obs_param_nml(29)%FOV            = 0.17
+obs_param_nml(29)%FOV_units      = 'deg'
+obs_param_nml(29)%assim          = .false.
+obs_param_nml(29)%scale          = .false.
+obs_param_nml(29)%getinnov       = .false.
+obs_param_nml(29)%RTM_ID         = 0
+obs_param_nml(29)%bias_Npar      = 0
+obs_param_nml(29)%bias_trel      = 864000
+obs_param_nml(29)%bias_tcut      = 432000
+obs_param_nml(29)%nodata         = -9999.
+obs_param_nml(29)%varname        = 'tsurf'
+obs_param_nml(29)%units          = 'K'
+obs_param_nml(29)%path           = '/discover/nobackup/csdraper/LaRC_float/FY2E/'
+obs_param_nml(29)%name           = 'larc-v3.inst3_fye_Nch.'
+obs_param_nml(29)%scalepath      = ''
+obs_param_nml(29)%scalename      = ''
+obs_param_nml(29)%flistpath      = ''
+obs_param_nml(29)%flistname      = ''
+obs_param_nml(29)%errstd         = 2.
+obs_param_nml(29)%std_normal_max = 2.5
+obs_param_nml(29)%zeromean       = .true.
+obs_param_nml(29)%coarsen_pert   = .false.
+obs_param_nml(29)%xcorr          = 0.17
+obs_param_nml(29)%ycorr          = 0.17
+obs_param_nml(29)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  30 = LaRC Tskin GEOS-MTSAT-2
+!
+
+obs_param_nml(30)%descr          = 'LaRC_tskin-MTST2'
+obs_param_nml(30)%orbit          = 4
+obs_param_nml(30)%pol            = 0
+obs_param_nml(30)%N_ang          = 0
+obs_param_nml(30)%freq           = 0.
+obs_param_nml(30)%FOV            = 0.17
+obs_param_nml(30)%FOV_units      = 'deg'
+obs_param_nml(30)%assim          = .false.
+obs_param_nml(30)%scale          = .false.
+obs_param_nml(30)%getinnov       = .false.
+obs_param_nml(30)%RTM_ID         = 0
+obs_param_nml(30)%bias_Npar      = 0
+obs_param_nml(30)%bias_trel      = 864000
+obs_param_nml(30)%bias_tcut      = 432000
+obs_param_nml(30)%nodata         = -9999.
+obs_param_nml(30)%varname        = 'tsurf'
+obs_param_nml(30)%units          = 'K'
+obs_param_nml(30)%path           = '/discover/nobackup/csdraper/LaRC_float/MTSAT-2/'
+obs_param_nml(30)%name           = 'larc-v3.inst3_mt2_Nch.'
+obs_param_nml(30)%scalepath      = ''
+obs_param_nml(30)%scalename      = ''
+obs_param_nml(30)%flistpath      = ''
+obs_param_nml(30)%flistname      = ''
+obs_param_nml(30)%errstd         = 2.
+obs_param_nml(30)%std_normal_max = 2.5
+obs_param_nml(30)%zeromean       = .true.
+obs_param_nml(30)%coarsen_pert   = .false.
+obs_param_nml(30)%xcorr          = 0.17
+obs_param_nml(30)%ycorr          = 0.17
+obs_param_nml(30)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+! SMAP L1C_TB brightness temperature (36 km EASE grid)
+! 
+! "A"   = ascending  (6pm *SMAP* overpass)
+! "D"   = descending (6am *SMAP* overpass)
+!
+! "Tbh" = h-pol Tb
+! "Tbv" = v-pol Tb 
+!
+! -------------------
+!
+!  31 = SMAP_L1C_Tbh_A
+
+obs_param_nml(31)%descr          = 'SMAP_L1C_Tbh_A'
+obs_param_nml(31)%orbit          = 1
+obs_param_nml(31)%pol            = 1
+obs_param_nml(31)%N_ang          = 1
+obs_param_nml(31)%ang(1)         = 40.
+obs_param_nml(31)%freq           = 1.41e9
+obs_param_nml(31)%FOV            = 20.
+obs_param_nml(31)%FOV_units      = 'km'
+obs_param_nml(31)%assim          = .false.
+obs_param_nml(31)%scale          = .false.
+obs_param_nml(31)%getinnov       = .false.
+obs_param_nml(31)%RTM_ID         = 2
+obs_param_nml(31)%bias_Npar      = 0
+obs_param_nml(31)%bias_trel      = 864000
+obs_param_nml(31)%bias_tcut      = 432000
+obs_param_nml(31)%nodata         = -9999.
+obs_param_nml(31)%varname        = 'Tb'
+obs_param_nml(31)%units          = 'K'
+obs_param_nml(31)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB/'
+obs_param_nml(31)%name           = ''
+obs_param_nml(31)%scalepath      = ''
+obs_param_nml(31)%scalename      = ''
+obs_param_nml(31)%flistpath      = ''
+obs_param_nml(31)%flistname      = ''
+obs_param_nml(31)%errstd         = 4.
+obs_param_nml(31)%std_normal_max = 2.5
+obs_param_nml(31)%zeromean       = .true.
+obs_param_nml(31)%coarsen_pert   = .false.
+obs_param_nml(31)%xcorr          = 0.25
+obs_param_nml(31)%ycorr          = 0.25
+obs_param_nml(31)%adapt          = 0
+
+! -------------------
+!
+!  32 = SMAP_L1C_Tbh_D  
+
+obs_param_nml(32)%descr          = 'SMAP_L1C_Tbh_D'
+obs_param_nml(32)%orbit          = 2
+obs_param_nml(32)%pol            = 1
+obs_param_nml(32)%N_ang          = 1
+obs_param_nml(32)%ang(1)         = 40.
+obs_param_nml(32)%freq           = 1.41e9
+obs_param_nml(32)%FOV            = 20.
+obs_param_nml(32)%FOV_units      = 'km'
+obs_param_nml(32)%assim          = .false.
+obs_param_nml(32)%scale          = .false.
+obs_param_nml(32)%getinnov       = .false.
+obs_param_nml(32)%RTM_ID         = 2
+obs_param_nml(32)%bias_Npar      = 0
+obs_param_nml(32)%bias_trel      = 864000
+obs_param_nml(32)%bias_tcut      = 432000
+obs_param_nml(32)%nodata         = -9999.
+obs_param_nml(32)%varname        = 'Tb'
+obs_param_nml(32)%units          = 'K'
+obs_param_nml(32)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB/'
+obs_param_nml(32)%name           = ''
+obs_param_nml(32)%scalepath      = ''
+obs_param_nml(32)%scalename      = ''
+obs_param_nml(32)%flistpath      = ''
+obs_param_nml(32)%flistname      = ''
+obs_param_nml(32)%errstd         = 4.
+obs_param_nml(32)%std_normal_max = 2.5
+obs_param_nml(32)%zeromean       = .true.
+obs_param_nml(32)%coarsen_pert   = .false.
+obs_param_nml(32)%xcorr          = 0.25
+obs_param_nml(32)%ycorr          = 0.25
+obs_param_nml(32)%adapt          = 0
+
+! -------------------
+!
+!  33 = SMAP_L1C_Tbv_A  
+
+obs_param_nml(33)%descr          = 'SMAP_L1C_Tbv_A'
+obs_param_nml(33)%orbit          = 1
+obs_param_nml(33)%pol            = 2
+obs_param_nml(33)%N_ang          = 1
+obs_param_nml(33)%ang(1)         = 40.
+obs_param_nml(33)%freq           = 1.41e9
+obs_param_nml(33)%FOV            = 20.
+obs_param_nml(33)%FOV_units      = 'km'
+obs_param_nml(33)%assim          = .false.
+obs_param_nml(33)%scale          = .false.
+obs_param_nml(33)%getinnov       = .false.
+obs_param_nml(33)%RTM_ID         = 2
+obs_param_nml(33)%bias_Npar      = 0
+obs_param_nml(33)%bias_trel      = 864000
+obs_param_nml(33)%bias_tcut      = 432000
+obs_param_nml(33)%nodata         = -9999.
+obs_param_nml(33)%varname        = 'Tb'
+obs_param_nml(33)%units          = 'K'
+obs_param_nml(33)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB/'
+obs_param_nml(33)%name           = ''
+obs_param_nml(33)%scalepath      = ''
+obs_param_nml(33)%scalename      = ''
+obs_param_nml(33)%flistpath      = ''
+obs_param_nml(33)%flistname      = ''
+obs_param_nml(33)%errstd         = 4.
+obs_param_nml(33)%std_normal_max = 2.5
+obs_param_nml(33)%zeromean       = .true.
+obs_param_nml(33)%coarsen_pert   = .false.
+obs_param_nml(33)%xcorr          = 0.25
+obs_param_nml(33)%ycorr          = 0.25
+obs_param_nml(33)%adapt          = 0
+
+! -------------------
+!
+!  34 = SMAP_L1C_Tbv_D  
+
+obs_param_nml(34)%descr          = 'SMAP_L1C_Tbv_D'
+obs_param_nml(34)%orbit          = 2
+obs_param_nml(34)%pol            = 2
+obs_param_nml(34)%N_ang          = 1
+obs_param_nml(34)%ang(1)         = 40.
+obs_param_nml(34)%freq           = 1.41e9
+obs_param_nml(34)%FOV            = 20.
+obs_param_nml(34)%FOV_units      = 'km'
+obs_param_nml(34)%assim          = .false.
+obs_param_nml(34)%scale          = .false.
+obs_param_nml(34)%getinnov       = .false.
+obs_param_nml(34)%RTM_ID         = 2
+obs_param_nml(34)%bias_Npar      = 0
+obs_param_nml(34)%bias_trel      = 864000
+obs_param_nml(34)%bias_tcut      = 432000
+obs_param_nml(34)%nodata         = -9999.
+obs_param_nml(34)%varname        = 'Tb'
+obs_param_nml(34)%units          = 'K'
+obs_param_nml(34)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB/'
+obs_param_nml(34)%name           = ''
+obs_param_nml(34)%scalepath      = ''
+obs_param_nml(34)%scalename      = ''
+obs_param_nml(34)%flistpath      = ''
+obs_param_nml(34)%flistname      = ''
+obs_param_nml(34)%errstd         = 4.
+obs_param_nml(34)%std_normal_max = 2.5
+obs_param_nml(34)%zeromean       = .true.
+obs_param_nml(34)%coarsen_pert   = .false.
+obs_param_nml(34)%xcorr          = 0.25
+obs_param_nml(34)%ycorr          = 0.25
+obs_param_nml(34)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+! SMAP L2_SM_AP *downscaled* brightness temperature (9 km EASE grid)
+! 
+! "A"   = descending (6pm overpass)
+! "D"   = descending (6am overpass)
+!
+! "Tbh" = h-pol Tb
+! "Tbv" = v-pol Tb 
+!
+
+! -------------------
+!
+!  35 = SMAP_L2AP_Tbh_A  
+
+obs_param_nml(35)%descr          = 'SMAP_L2AP_Tbh_A'
+obs_param_nml(35)%orbit          = 1
+obs_param_nml(35)%pol            = 1
+obs_param_nml(35)%N_ang          = 1
+obs_param_nml(35)%ang(1)         = 40.
+obs_param_nml(35)%freq           = 1.41e9
+obs_param_nml(35)%FOV            = 5.
+obs_param_nml(35)%FOV_units      = 'km'
+obs_param_nml(35)%assim          = .false.
+obs_param_nml(35)%scale          = .false.
+obs_param_nml(35)%getinnov       = .false.
+obs_param_nml(35)%RTM_ID         = 2
+obs_param_nml(35)%bias_Npar      = 0
+obs_param_nml(35)%bias_trel      = 864000
+obs_param_nml(35)%bias_tcut      = 432000
+obs_param_nml(35)%nodata         = -9999.
+obs_param_nml(35)%varname        = 'Tb'
+obs_param_nml(35)%units          = 'K'
+obs_param_nml(35)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L2_SM_AP/'
+obs_param_nml(35)%name           = ''
+obs_param_nml(35)%scalepath      = ''
+obs_param_nml(35)%scalename      = ''
+obs_param_nml(35)%flistpath      = ''
+obs_param_nml(35)%flistname      = ''
+obs_param_nml(35)%errstd         = 5.
+obs_param_nml(35)%std_normal_max = 2.5
+obs_param_nml(35)%zeromean       = .true.
+obs_param_nml(35)%coarsen_pert   = .false.
+obs_param_nml(35)%xcorr          = 0.0625
+obs_param_nml(35)%ycorr          = 0.0625
+obs_param_nml(35)%adapt          = 0
+
+! -------------------
+!
+!  36 = SMAP_L2AP_Tbh_D  
+
+obs_param_nml(36)%descr          = 'SMAP_L2AP_Tbh_D'
+obs_param_nml(36)%orbit          = 2
+obs_param_nml(36)%pol            = 1
+obs_param_nml(36)%N_ang          = 1
+obs_param_nml(36)%ang(1)         = 40.
+obs_param_nml(36)%freq           = 1.41e9
+obs_param_nml(36)%FOV            = 5.
+obs_param_nml(36)%FOV_units      = 'km'
+obs_param_nml(36)%assim          = .false.
+obs_param_nml(36)%scale          = .false.
+obs_param_nml(36)%getinnov       = .false.
+obs_param_nml(36)%RTM_ID         = 2
+obs_param_nml(36)%bias_Npar      = 0
+obs_param_nml(36)%bias_trel      = 864000
+obs_param_nml(36)%bias_tcut      = 432000
+obs_param_nml(36)%nodata         = -9999.
+obs_param_nml(36)%varname        = 'Tb'
+obs_param_nml(36)%units          = 'K'
+obs_param_nml(36)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L2_SM_AP/'
+obs_param_nml(36)%name           = ''
+obs_param_nml(36)%scalepath      = ''
+obs_param_nml(36)%scalename      = ''
+obs_param_nml(36)%flistpath      = ''
+obs_param_nml(36)%flistname      = ''
+obs_param_nml(36)%errstd         = 5.
+obs_param_nml(36)%std_normal_max = 2.5
+obs_param_nml(36)%zeromean       = .true.
+obs_param_nml(36)%coarsen_pert   = .false.
+obs_param_nml(36)%xcorr          = 0.0625
+obs_param_nml(36)%ycorr          = 0.0625
+obs_param_nml(36)%adapt          = 0
+
+! -------------------
+!
+!  37 = SMAP_L2AP_Tbv_A  
+
+obs_param_nml(37)%descr          = 'SMAP_L2AP_Tbv_A'
+obs_param_nml(37)%orbit          = 1
+obs_param_nml(37)%pol            = 2
+obs_param_nml(37)%N_ang          = 1
+obs_param_nml(37)%ang(1)         = 40.
+obs_param_nml(37)%freq           = 1.41e9
+obs_param_nml(37)%FOV            = 5.
+obs_param_nml(37)%FOV_units      = 'km'
+obs_param_nml(37)%assim          = .false.
+obs_param_nml(37)%scale          = .false.
+obs_param_nml(37)%getinnov       = .false.
+obs_param_nml(37)%RTM_ID         = 2
+obs_param_nml(37)%bias_Npar      = 0
+obs_param_nml(37)%bias_trel      = 864000
+obs_param_nml(37)%bias_tcut      = 432000
+obs_param_nml(37)%nodata         = -9999.
+obs_param_nml(37)%varname        = 'Tb'
+obs_param_nml(37)%units          = 'K'
+obs_param_nml(37)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L2_SM_AP/'
+obs_param_nml(37)%name           = ''
+obs_param_nml(37)%scalepath      = ''
+obs_param_nml(37)%scalename      = ''
+obs_param_nml(37)%flistpath      = ''
+obs_param_nml(37)%flistname      = ''
+obs_param_nml(37)%errstd         = 5.
+obs_param_nml(37)%std_normal_max = 2.5
+obs_param_nml(37)%zeromean       = .true.
+obs_param_nml(37)%coarsen_pert   = .false.
+obs_param_nml(37)%xcorr          = 0.0625
+obs_param_nml(37)%ycorr          = 0.0625
+obs_param_nml(37)%adapt          = 0
+
+! -------------------
+!
+!  38 = SMAP_L2AP_Tbv_D  
+
+obs_param_nml(38)%descr          = 'SMAP_L2AP_Tbv_D'
+obs_param_nml(38)%orbit          = 2
+obs_param_nml(38)%pol            = 2
+obs_param_nml(38)%N_ang          = 1
+obs_param_nml(38)%ang(1)         = 40.
+obs_param_nml(38)%freq           = 1.41e9
+obs_param_nml(38)%FOV            = 5.
+obs_param_nml(38)%FOV_units      = 'km'
+obs_param_nml(38)%assim          = .false.
+obs_param_nml(38)%scale          = .false.
+obs_param_nml(38)%getinnov       = .false.
+obs_param_nml(38)%RTM_ID         = 2
+obs_param_nml(38)%bias_Npar      = 0
+obs_param_nml(38)%bias_trel      = 864000
+obs_param_nml(38)%bias_tcut      = 432000
+obs_param_nml(38)%nodata         = -9999.
+obs_param_nml(38)%varname        = 'Tb'
+obs_param_nml(38)%units          = 'K'
+obs_param_nml(38)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L2_SM_AP/'
+obs_param_nml(38)%name           = ''
+obs_param_nml(38)%scalepath      = ''
+obs_param_nml(38)%scalename      = ''
+obs_param_nml(38)%flistpath      = ''
+obs_param_nml(38)%flistname      = ''
+obs_param_nml(38)%errstd         = 5.
+obs_param_nml(38)%std_normal_max = 2.5
+obs_param_nml(38)%zeromean       = .true.
+obs_param_nml(38)%coarsen_pert   = .false.
+obs_param_nml(38)%xcorr          = 0.0625
+obs_param_nml(38)%ycorr          = 0.0625
+obs_param_nml(38)%adapt          = 0
+
+! -------------------
+!
+!  39 = SMAP_L2AP_FT_A  
+
+obs_param_nml(39)%descr          = 'SMAP_L2AP_FT_A'
+obs_param_nml(39)%orbit          = 1
+obs_param_nml(39)%pol            = 0
+obs_param_nml(39)%N_ang          = 1
+obs_param_nml(39)%ang(1)         = 40.
+obs_param_nml(39)%freq           = 1.26e9
+obs_param_nml(39)%FOV            = 5.
+obs_param_nml(39)%FOV_units      = 'km'
+obs_param_nml(39)%assim          = .false.
+obs_param_nml(39)%scale          = .false.
+obs_param_nml(39)%getinnov       = .false.
+obs_param_nml(39)%RTM_ID         = 0
+obs_param_nml(39)%bias_Npar      = 0
+obs_param_nml(39)%bias_trel      = 864000
+obs_param_nml(39)%bias_tcut      = 432000
+obs_param_nml(39)%nodata         = -9999.
+obs_param_nml(39)%varname        = 'FT'
+obs_param_nml(39)%units          = '-'
+obs_param_nml(39)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L2_SM_AP/'
+obs_param_nml(39)%name           = ''
+obs_param_nml(39)%scalepath      = ''
+obs_param_nml(39)%scalename      = ''
+obs_param_nml(39)%flistpath      = ''
+obs_param_nml(39)%flistname      = ''
+obs_param_nml(39)%errstd         = .0
+obs_param_nml(39)%std_normal_max = 2.5
+obs_param_nml(39)%zeromean       = .true.
+obs_param_nml(39)%coarsen_pert   = .false.
+obs_param_nml(39)%xcorr          = 0.0625
+obs_param_nml(39)%ycorr          = 0.0625
+obs_param_nml(39)%adapt          = 0
+
+! -------------------
+!
+!  40 = SMAP_L2AP_FT_D  
+
+obs_param_nml(40)%descr          = 'SMAP_L2AP_FT_D'
+obs_param_nml(40)%orbit          = 2
+obs_param_nml(40)%pol            = 0
+obs_param_nml(40)%N_ang          = 1
+obs_param_nml(40)%ang(1)         = 40.
+obs_param_nml(40)%freq           = 1.26e9
+obs_param_nml(40)%FOV            = 5.
+obs_param_nml(40)%FOV_units      = 'km'
+obs_param_nml(40)%assim          = .false.
+obs_param_nml(40)%scale          = .false.
+obs_param_nml(40)%getinnov       = .false.
+obs_param_nml(40)%RTM_ID         = 0
+obs_param_nml(40)%bias_Npar      = 0
+obs_param_nml(40)%bias_trel      = 864000
+obs_param_nml(40)%bias_tcut      = 432000
+obs_param_nml(40)%nodata         = -9999.
+obs_param_nml(40)%varname        = 'FT'
+obs_param_nml(40)%units          = '-'
+obs_param_nml(40)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L2_SM_AP/'
+obs_param_nml(40)%name           = ''
+obs_param_nml(40)%scalepath      = ''
+obs_param_nml(40)%scalename      = ''
+obs_param_nml(40)%flistpath      = ''
+obs_param_nml(40)%flistname      = ''
+obs_param_nml(40)%errstd         = .0
+obs_param_nml(40)%std_normal_max = 2.5
+obs_param_nml(40)%zeromean       = .true.
+obs_param_nml(40)%coarsen_pert   = .false.
+obs_param_nml(40)%xcorr          = 0.0625
+obs_param_nml(40)%ycorr          = 0.0625
+obs_param_nml(40)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+! SMAP L1C_TB_E *enhanced* brightness temperature (9 km EASE grid)
+! 
+! "A"   = ascending  (6pm *SMAP* overpass)
+! "D"   = descending (6am *SMAP* overpass)
+!
+! "Tbh" = h-pol Tb
+! "Tbv" = v-pol Tb 
+!
+! IMPORTANT NOTE ON RESOLUTION AND THINNING: 
+!
+! L1C_TB_E observations have ~27-km resolution, which is "enhanced" compared to 
+!  the ~36-km resolution of the standard L1C TB data.  Accordingly, 
+!  - FOV is set to 15 km (vs. 20 km for standard L1C Tbs), and
+!  - xcorr and ycorr are set to 0.1875 deg (vs. 0.25 deg for standard L1C Tbs).
+!
+! There are two sets of four species defined for L1C_TB_E observations:
+!  - species 41-44, %descr = 'SMAP_L1C_Tb?_E09_?': *not* thinned (all obs on 9-km EASEv2 grid are kept)
+!  - species 45-48, %descr = 'SMAP_L1C_Tb?_E27_?': thinned to ~27-km spacing 
+! Thinning is implemented in subroutine read_obs_SMAP_halforbit_Tb().
+!  
+! -------------------
+!
+!  41 = SMAP_L1C_Tbh_E09_A
+
+obs_param_nml(41)%descr          = 'SMAP_L1C_Tbh_E09_A'
+obs_param_nml(41)%orbit          = 1
+obs_param_nml(41)%pol            = 1
+obs_param_nml(41)%N_ang          = 1
+obs_param_nml(41)%ang(1)         = 40.
+obs_param_nml(41)%freq           = 1.41e9
+obs_param_nml(41)%FOV            = 15.
+obs_param_nml(41)%FOV_units      = 'km'
+obs_param_nml(41)%assim          = .false.
+obs_param_nml(41)%scale          = .false.
+obs_param_nml(41)%getinnov       = .false.
+obs_param_nml(41)%RTM_ID         = 2
+obs_param_nml(41)%bias_Npar      = 0
+obs_param_nml(41)%bias_trel      = 864000
+obs_param_nml(41)%bias_tcut      = 432000
+obs_param_nml(41)%nodata         = -9999.
+obs_param_nml(41)%varname        = 'Tb'
+obs_param_nml(41)%units          = 'K'
+obs_param_nml(41)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB_E/'
+obs_param_nml(41)%name           = ''
+obs_param_nml(41)%scalepath      = ''
+obs_param_nml(41)%scalename      = ''
+obs_param_nml(41)%flistpath      = ''
+obs_param_nml(41)%flistname      = ''
+obs_param_nml(41)%errstd         = 4.
+obs_param_nml(41)%std_normal_max = 2.5
+obs_param_nml(41)%zeromean       = .true.
+obs_param_nml(41)%coarsen_pert   = .false.
+obs_param_nml(41)%xcorr          = 0.1875
+obs_param_nml(41)%ycorr          = 0.1875
+obs_param_nml(41)%adapt          = 0
+
+! -------------------
+!
+!  42 = SMAP_L1C_Tbh_E09_D  
+
+obs_param_nml(42)%descr          = 'SMAP_L1C_Tbh_E09_D'
+obs_param_nml(42)%orbit          = 2
+obs_param_nml(42)%pol            = 1
+obs_param_nml(42)%N_ang          = 1
+obs_param_nml(42)%ang(1)         = 40.
+obs_param_nml(42)%freq           = 1.41e9
+obs_param_nml(42)%FOV            = 15.
+obs_param_nml(42)%FOV_units      = 'km'
+obs_param_nml(42)%assim          = .false.
+obs_param_nml(42)%scale          = .false.
+obs_param_nml(42)%getinnov       = .false.
+obs_param_nml(42)%RTM_ID         = 2
+obs_param_nml(42)%bias_Npar      = 0
+obs_param_nml(42)%bias_trel      = 864000
+obs_param_nml(42)%bias_tcut      = 432000
+obs_param_nml(42)%nodata         = -9999.
+obs_param_nml(42)%varname        = 'Tb'
+obs_param_nml(42)%units          = 'K'
+obs_param_nml(42)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB_E/'
+obs_param_nml(42)%name           = ''
+obs_param_nml(42)%scalepath      = ''
+obs_param_nml(42)%scalename      = ''
+obs_param_nml(42)%flistpath      = ''
+obs_param_nml(42)%flistname      = ''
+obs_param_nml(42)%errstd         = 4.
+obs_param_nml(42)%std_normal_max = 2.5
+obs_param_nml(42)%zeromean       = .true.
+obs_param_nml(42)%coarsen_pert   = .false.
+obs_param_nml(42)%xcorr          = 0.1875
+obs_param_nml(42)%ycorr          = 0.1875
+obs_param_nml(42)%adapt          = 0
+
+! -------------------
+!
+!  43 = SMAP_L1C_Tbv_E09_A  
+
+obs_param_nml(43)%descr          = 'SMAP_L1C_Tbv_E09_A'
+obs_param_nml(43)%orbit          = 1
+obs_param_nml(43)%pol            = 2
+obs_param_nml(43)%N_ang          = 1
+obs_param_nml(43)%ang(1)         = 40.
+obs_param_nml(43)%freq           = 1.41e9
+obs_param_nml(43)%FOV            = 15.
+obs_param_nml(43)%FOV_units      = 'km'
+obs_param_nml(43)%assim          = .false.
+obs_param_nml(43)%scale          = .false.
+obs_param_nml(43)%getinnov       = .false.
+obs_param_nml(43)%RTM_ID         = 2
+obs_param_nml(43)%bias_Npar      = 0
+obs_param_nml(43)%bias_trel      = 864000
+obs_param_nml(43)%bias_tcut      = 432000
+obs_param_nml(43)%nodata         = -9999.
+obs_param_nml(43)%varname        = 'Tb'
+obs_param_nml(43)%units          = 'K'
+obs_param_nml(43)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB_E/'
+obs_param_nml(43)%name           = ''
+obs_param_nml(43)%scalepath      = ''
+obs_param_nml(43)%scalename      = ''
+obs_param_nml(43)%flistpath      = ''
+obs_param_nml(43)%flistname      = ''
+obs_param_nml(43)%errstd         = 4.
+obs_param_nml(43)%std_normal_max = 2.5
+obs_param_nml(43)%zeromean       = .true.
+obs_param_nml(43)%coarsen_pert   = .false.
+obs_param_nml(43)%xcorr          = 0.1875
+obs_param_nml(43)%ycorr          = 0.1875
+obs_param_nml(43)%adapt          = 0
+
+! -------------------
+!
+!  44 = SMAP_L1C_Tbv_E09_D  
+
+obs_param_nml(44)%descr          = 'SMAP_L1C_Tbv_E09_D'
+obs_param_nml(44)%orbit          = 2
+obs_param_nml(44)%pol            = 2
+obs_param_nml(44)%N_ang          = 1
+obs_param_nml(44)%ang(1)         = 40.
+obs_param_nml(44)%freq           = 1.41e9
+obs_param_nml(44)%FOV            = 15.
+obs_param_nml(44)%FOV_units      = 'km'
+obs_param_nml(44)%assim          = .false.
+obs_param_nml(44)%scale          = .false.
+obs_param_nml(44)%getinnov       = .false.
+obs_param_nml(44)%RTM_ID         = 2
+obs_param_nml(44)%bias_Npar      = 0
+obs_param_nml(44)%bias_trel      = 864000
+obs_param_nml(44)%bias_tcut      = 432000
+obs_param_nml(44)%nodata         = -9999.
+obs_param_nml(44)%varname        = 'Tb'
+obs_param_nml(44)%units          = 'K'
+obs_param_nml(44)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB_E/'
+obs_param_nml(44)%name           = ''
+obs_param_nml(44)%scalepath      = ''
+obs_param_nml(44)%scalename      = ''
+obs_param_nml(44)%flistpath      = ''
+obs_param_nml(44)%flistname      = ''
+obs_param_nml(44)%errstd         = 4.
+obs_param_nml(44)%std_normal_max = 2.5
+obs_param_nml(44)%zeromean       = .true.
+obs_param_nml(44)%coarsen_pert   = .false.
+obs_param_nml(44)%xcorr          = 0.1875
+obs_param_nml(44)%ycorr          = 0.1875
+obs_param_nml(44)%adapt          = 0
+
+! -------------------
+!
+!  45 = SMAP_L1C_Tbh_E27_A
+
+obs_param_nml(45)%descr          = 'SMAP_L1C_Tbh_E27_A'
+obs_param_nml(45)%orbit          = 1
+obs_param_nml(45)%pol            = 1
+obs_param_nml(45)%N_ang          = 1
+obs_param_nml(45)%ang(1)         = 40.
+obs_param_nml(45)%freq           = 1.41e9
+obs_param_nml(45)%FOV            = 15.
+obs_param_nml(45)%FOV_units      = 'km'
+obs_param_nml(45)%assim          = .false.
+obs_param_nml(45)%scale          = .false.
+obs_param_nml(45)%getinnov       = .false.
+obs_param_nml(45)%RTM_ID         = 2
+obs_param_nml(45)%bias_Npar      = 0
+obs_param_nml(45)%bias_trel      = 864000
+obs_param_nml(45)%bias_tcut      = 432000
+obs_param_nml(45)%nodata         = -9999.
+obs_param_nml(45)%varname        = 'Tb'
+obs_param_nml(45)%units          = 'K'
+obs_param_nml(45)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB_E/'
+obs_param_nml(45)%name           = ''
+obs_param_nml(45)%scalepath      = ''
+obs_param_nml(45)%scalename      = ''
+obs_param_nml(45)%flistpath      = ''
+obs_param_nml(45)%flistname      = ''
+obs_param_nml(45)%errstd         = 4.
+obs_param_nml(45)%std_normal_max = 2.5
+obs_param_nml(45)%zeromean       = .true.
+obs_param_nml(45)%coarsen_pert   = .false.
+obs_param_nml(45)%xcorr          = 0.1875
+obs_param_nml(45)%ycorr          = 0.1875
+obs_param_nml(45)%adapt          = 0
+
+! -------------------
+!
+!  46 = SMAP_L1C_Tbh_E27_D  
+
+obs_param_nml(46)%descr          = 'SMAP_L1C_Tbh_E27_D'
+obs_param_nml(46)%orbit          = 2
+obs_param_nml(46)%pol            = 1
+obs_param_nml(46)%N_ang          = 1
+obs_param_nml(46)%ang(1)         = 40.
+obs_param_nml(46)%freq           = 1.41e9
+obs_param_nml(46)%FOV            = 15.
+obs_param_nml(46)%FOV_units      = 'km'
+obs_param_nml(46)%assim          = .false.
+obs_param_nml(46)%scale          = .false.
+obs_param_nml(46)%getinnov       = .false.
+obs_param_nml(46)%RTM_ID         = 2
+obs_param_nml(46)%bias_Npar      = 0
+obs_param_nml(46)%bias_trel      = 864000
+obs_param_nml(46)%bias_tcut      = 432000
+obs_param_nml(46)%nodata         = -9999.
+obs_param_nml(46)%varname        = 'Tb'
+obs_param_nml(46)%units          = 'K'
+obs_param_nml(46)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB_E/'
+obs_param_nml(46)%name           = ''
+obs_param_nml(46)%scalepath      = ''
+obs_param_nml(46)%scalename      = ''
+obs_param_nml(46)%flistpath      = ''
+obs_param_nml(46)%flistname      = ''
+obs_param_nml(46)%errstd         = 4.
+obs_param_nml(46)%std_normal_max = 2.5
+obs_param_nml(46)%zeromean       = .true.
+obs_param_nml(46)%coarsen_pert   = .false.
+obs_param_nml(46)%xcorr          = 0.1875
+obs_param_nml(46)%ycorr          = 0.1875
+obs_param_nml(46)%adapt          = 0
+
+! -------------------
+!
+!  47 = SMAP_L1C_Tbv_E27_A  
+
+obs_param_nml(47)%descr          = 'SMAP_L1C_Tbv_E27_A'
+obs_param_nml(47)%orbit          = 1
+obs_param_nml(47)%pol            = 2
+obs_param_nml(47)%N_ang          = 1
+obs_param_nml(47)%ang(1)         = 40.
+obs_param_nml(47)%freq           = 1.41e9
+obs_param_nml(47)%FOV            = 15.
+obs_param_nml(47)%FOV_units      = 'km'
+obs_param_nml(47)%assim          = .false.
+obs_param_nml(47)%scale          = .false.
+obs_param_nml(47)%getinnov       = .false.
+obs_param_nml(47)%RTM_ID         = 2
+obs_param_nml(47)%bias_Npar      = 0
+obs_param_nml(47)%bias_trel      = 864000
+obs_param_nml(47)%bias_tcut      = 432000
+obs_param_nml(47)%nodata         = -9999.
+obs_param_nml(47)%varname        = 'Tb'
+obs_param_nml(47)%units          = 'K'
+obs_param_nml(47)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB_E/'
+obs_param_nml(47)%name           = ''
+obs_param_nml(47)%scalepath      = ''
+obs_param_nml(47)%scalename      = ''
+obs_param_nml(47)%flistpath      = ''
+obs_param_nml(47)%flistname      = ''
+obs_param_nml(47)%errstd         = 4.
+obs_param_nml(47)%std_normal_max = 2.5
+obs_param_nml(47)%zeromean       = .true.
+obs_param_nml(47)%coarsen_pert   = .false.
+obs_param_nml(47)%xcorr          = 0.1875
+obs_param_nml(47)%ycorr          = 0.1875
+obs_param_nml(47)%adapt          = 0
+
+! -------------------
+!
+!  48 = SMAP_L1C_Tbv_E27_D  
+
+obs_param_nml(48)%descr          = 'SMAP_L1C_Tbv_E27_D'
+obs_param_nml(48)%orbit          = 2
+obs_param_nml(48)%pol            = 2
+obs_param_nml(48)%N_ang          = 1
+obs_param_nml(48)%ang(1)         = 40.
+obs_param_nml(48)%freq           = 1.41e9
+obs_param_nml(48)%FOV            = 15.
+obs_param_nml(48)%FOV_units      = 'km'
+obs_param_nml(48)%assim          = .false.
+obs_param_nml(48)%scale          = .false.
+obs_param_nml(48)%getinnov       = .false.
+obs_param_nml(48)%RTM_ID         = 2
+obs_param_nml(48)%bias_Npar      = 0
+obs_param_nml(48)%bias_trel      = 864000
+obs_param_nml(48)%bias_tcut      = 432000
+obs_param_nml(48)%nodata         = -9999.
+obs_param_nml(48)%varname        = 'Tb'
+obs_param_nml(48)%units          = 'K'
+obs_param_nml(48)%path           = '/discover/nobackup/projects/gmao/smap/SMAP_L4/SMAP/L1C_TB_E/'
+obs_param_nml(48)%name           = ''
+obs_param_nml(48)%scalepath      = ''
+obs_param_nml(48)%scalename      = ''
+obs_param_nml(48)%flistpath      = ''
+obs_param_nml(48)%flistname      = ''
+obs_param_nml(48)%errstd         = 4.
+obs_param_nml(48)%std_normal_max = 2.5
+obs_param_nml(48)%zeromean       = .true.
+obs_param_nml(48)%coarsen_pert   = .false.
+obs_param_nml(48)%xcorr          = 0.1875
+obs_param_nml(48)%ycorr          = 0.1875
+obs_param_nml(48)%adapt          = 0
+
+! --------------------------------------------------------------------
+
+/
+
+! =========================== EOF =======================================
