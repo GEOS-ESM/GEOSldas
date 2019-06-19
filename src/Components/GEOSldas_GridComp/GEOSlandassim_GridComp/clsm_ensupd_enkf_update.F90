@@ -69,6 +69,7 @@ module clsm_ensupd_enkf_update
        obs_bias_type
   
   use LDAS_TilecoordRoutines,           ONLY:     &
+       get_number_of_tiles_in_cell_ij,            &
        get_tile_num_in_cell_ij,                   &
        grid2tile,                                 &
        grid2tile_real8
@@ -413,12 +414,12 @@ contains
           allocate(N_tile_in_cell_ij_f(tile_grid_f%N_lon,tile_grid_f%N_lat))
 
           ! first call: count how many tiles are in each tile_grid_f cell
-          call get_tile_num_in_cell_ij( N_catf, tile_coord_f, tile_grid_f,    &
+          call get_number_of_tiles_in_cell_ij( N_catf, tile_coord_f, tile_grid_f,    &
                N_tile_in_cell_ij_f )
           ! second call: find out which tiles are in each tile_grid_f cell
 
           call get_tile_num_in_cell_ij( N_catf, tile_coord_f, tile_grid_f,    &
-               N_tile_in_cell_ij_f, tile_num_in_cell_ij_f )
+               maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
        end if
 
        ! *********************************************************************

@@ -8,7 +8,6 @@
 !/GMAO_pyobs
 !/GMAO_stoch
 !/GMAO_transf
-!/LANL_Shared
 !/arpack
 !/pnagpack
 !/GNUmakefile

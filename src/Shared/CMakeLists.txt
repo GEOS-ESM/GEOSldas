@@ -1,2 +1,2 @@
-add_subirectory (@MAPL)
-add_subirectory (@GMAO_Shared)
+add_subdirectory (@MAPL)
+add_subdirectory (@GMAO_Shared)

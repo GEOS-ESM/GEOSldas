@@ -80,6 +80,7 @@ module clsm_ensupd_upd_routines
 
   use LDAS_TilecoordRoutines,              ONLY:     &
        get_tile_num_in_ellipse,                   &
+       get_number_of_tiles_in_cell_ij,            &
        get_tile_num_in_cell_ij,                   &
        get_tile_grid,                             &
        get_ij_ind_from_latlon
@@ -1606,7 +1607,7 @@ contains
        
        ! first call: count how many tiles are in each tile_grid_lH cell
 
-       call get_tile_num_in_cell_ij( N_catlH, tile_coord_lH, tile_grid_lH,    &
+       call get_number_of_tiles_in_cell_ij( N_catlH, tile_coord_lH, tile_grid_lH,    &
             N_tile_in_cell_ij_lH )
        
        ! second call: find out which tiles are in each tile_grid_lH cell
@@ -1614,7 +1615,7 @@ contains
        !               to local halo ("lH") domain]
        
        call get_tile_num_in_cell_ij( N_catlH, tile_coord_lH, tile_grid_lH,    &
-            N_tile_in_cell_ij_lH, tile_num_in_cell_ij_lH )
+            maxval(N_tile_in_cell_ij_lH), tile_num_in_cell_ij_lH )
 
     end if
     
