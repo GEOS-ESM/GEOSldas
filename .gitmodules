@@ -1,3 +1,0 @@
-[submodule "manage_externals"]
-	path = manage_externals
-	url = git@github.com:GEOS-ESM/manage_externals.git
