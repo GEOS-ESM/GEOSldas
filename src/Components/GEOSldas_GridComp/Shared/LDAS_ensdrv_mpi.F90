@@ -197,6 +197,7 @@ contains
     !  type :: tile_coord_type
     !     
     !     integer :: tile_id    ! unique tile ID
+    !     integer :: f_num      ! unique tile ID in full domain
     !     integer :: typ        ! (0=ocean, 100=land, 19=inland water, 20=ice)
     !     integer :: pfaf       ! Pfafstetter number (for land tiles, NOT unique)
     !     real    :: com_lon    ! center-of-mass longitude
@@ -223,7 +224,7 @@ contains
     itype(3)  = MPI_INTEGER
     itype(4)  = MPI_REAL
     
-    iblock(1) = 3
+    iblock(1) = 4
     iblock(2) = 6
     iblock(3) = 2
     iblock(4) = 4

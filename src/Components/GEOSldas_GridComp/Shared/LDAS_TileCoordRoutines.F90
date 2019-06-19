@@ -47,6 +47,7 @@ module LDAS_TileCoordRoutines
   public :: read_til_file
   public :: get_tile_grid
   public :: get_land_tile_info
+  public :: get_number_of_tiles_in_cell_ij
   public :: get_tile_num_in_cell_ij
   public :: get_tile_num_in_ellipse
   public :: get_tile_num_from_latlon
@@ -1093,14 +1094,58 @@ contains
   end subroutine get_tile_grid
 
   ! **********************************************************************
-
-  subroutine get_tile_num_in_cell_ij( N_tile, tile_coord, tile_grid, &
-       N_tile_in_cell_ij, tile_num_in_cell_ij )
+  subroutine get_number_of_tiles_in_cell_ij( N_tile, tile_coord, tile_grid, &
+       N_tile_in_cell_ij)
     
     ! find out how many tiles are in a given tile definition grid cell
-    !
-    ! When called without optional arguments only counts number of tiles.
-    ! When called with optional arguments allocates and fills pointer.
+    ! reichle, 22 Jul 2005
+    ! split for the old get_tile_num_in_cell_ij
+    ! ----------------------------------------------------------
+    
+    implicit none
+    
+    integer, intent(in) :: N_tile
+    
+    type(tile_coord_type), dimension(:), pointer :: tile_coord ! input
+    
+    type(grid_def_type), intent(in) :: tile_grid
+        
+    integer, dimension(tile_grid%N_lon,tile_grid%N_lat), intent(inout) :: &
+         N_tile_in_cell_ij
+    
+    ! locals 
+    
+    integer :: i, j, k, n, off_i, off_j
+    
+
+    ! adjust for 0-based indexing (eg., EASE grids)
+    
+    off_i = tile_grid%i_offg + (tile_grid%ind_base - 1)
+    off_j = tile_grid%j_offg + (tile_grid%ind_base - 1)
+    
+    ! (re-)initialize
+    
+    N_tile_in_cell_ij = 0
+    
+    do n=1,N_tile
+       
+       i = tile_coord(n)%i_indg - off_i
+       j = tile_coord(n)%j_indg - off_j
+       
+       N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
+       
+    enddo
+
+    if (logit) write (logunit,*) &
+        'Maximum number of tiles in tile def grid cell = ', maxval(N_tile_in_cell_ij)
+    if (logit) write (logunit,*)
+
+  end subroutine get_number_of_tiles_in_cell_ij
+
+  subroutine get_tile_num_in_cell_ij( N_tile, tile_coord, tile_grid, &
+       max_N_tile_in_cells, tile_num_in_cell_ij )
+    
+    ! find out tile_num in given cells
     !
     ! The indices tile_coord%i_indg and tile_coord%j_indg refer to the *global*
     ! tile definition grid (as obtained from the tile_coord_file).
@@ -1121,12 +1166,14 @@ contains
     
     type(grid_def_type), intent(in) :: tile_grid
         
-    integer, dimension(tile_grid%N_lon,tile_grid%N_lat), intent(inout) :: &
-         N_tile_in_cell_ij
+    integer, intent(in) ::  max_N_tile_in_cells
     
     ! the pointer is an output arguments that is allocated here
     
-    integer, dimension(:,:,:), pointer, optional :: tile_num_in_cell_ij
+    integer, dimension(:,:,:), pointer :: tile_num_in_cell_ij
+
+    integer, dimension(tile_grid%N_lon,tile_grid%N_lat) :: &
+         N_tile_in_cell_ij
 
     ! locals 
     
@@ -1138,15 +1185,12 @@ contains
     !
     ! allocate and initialize pointers if present
     
-    if (present(tile_num_in_cell_ij)) then
        
-       allocate(tile_num_in_cell_ij(tile_grid%N_lon,tile_grid%N_lat,    &
-            maxval(N_tile_in_cell_ij)))
+    allocate(tile_num_in_cell_ij(tile_grid%N_lon,tile_grid%N_lat,    &
+          max_N_tile_in_cells))
        
-       tile_num_in_cell_ij = nodata
+    tile_num_in_cell_ij = nodata
        
-    end if
-
     ! adjust for 0-based indexing (eg., EASE grids)
     
     off_i = tile_grid%i_offg + (tile_grid%ind_base - 1)
@@ -1163,25 +1207,12 @@ contains
        
        N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
        
-       if (present(tile_num_in_cell_ij)) then
+       k = N_tile_in_cell_ij(i,j)
           
-          k = N_tile_in_cell_ij(i,j)
+       tile_num_in_cell_ij(i,j,k) = n 
           
-          tile_num_in_cell_ij(i,j,k) = n 
-          
-       end if
-       
     end do
     
-    if (.not. present(tile_num_in_cell_ij)) then
-
-       
-       if (logit) write (logunit,*) &
-            'Maximum number of tiles in tile def grid cell = ', maxval(N_tile_in_cell_ij)
-       if (logit) write (logunit,*)
-       
-    end if
-
   end subroutine get_tile_num_in_cell_ij
 
   ! *******************************************************************

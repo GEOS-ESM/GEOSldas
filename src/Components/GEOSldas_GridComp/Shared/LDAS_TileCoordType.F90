@@ -65,6 +65,7 @@ module LDAS_TileCoordType
      ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      
      integer :: tile_id    ! unique tile ID
+     integer :: f_num      ! full domain ID
      integer :: typ        ! (0=ocean, 100=land, 19=inland water, 20=ice)
      integer :: pfaf       ! Pfafstetter number (for land tiles, NOT unique)
      real    :: com_lon    ! center-of-mass longitude
@@ -449,6 +450,7 @@ contains
        read (unitnum, iostat=istat) (tile_coord(n)%area,      n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        read (unitnum, iostat=istat) (tile_coord(n)%elev,      n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
 
+       tile_coord%f_num = -1 ! not assigned values yet
     case default
        
        err_msg = 'unknown action ' // action
