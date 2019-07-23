@@ -1,9 +1,28 @@
-add_executable (preprocess_ldas.x preprocess_ldas.F90)
-target_link_libraries (preprocess_ldas.x GEOSldas_GridComp)
+#ecbuild_add_executable (
+   #TARGET GEOSldas.x 
+   #SOURCES GEOSldas.F90
+   #LIBS GEOSldas_GridComp MAPL_Base)
 
-add_executable (tile_bin2nc4.x tile_bin2nc4.F90)
-target_link_libraries (tile_bin2nc4.x GEOSldas_GridComp)
+set(executables 
+   preprocess_ldas 
+   tile_bin2nc4 
+   mwrtm_bin2nc4)
 
-add_executable (mwrtm_bin2nc4.x mwrtm_bin2nc4.F90)
-target_link_libraries (mwrtm_bin2nc4.x GEOSldas_GridComp)
+foreach (prog ${executables})
+   ecbuild_add_executable (
+      TARGET ${prog}.x 
+      SOURCES ${prog}.F90
+      LIBS GEOSldas_GridComp)
+endforeach ()
 
+install(
+   PROGRAMS ldas_setup process_hist.csh process_rst.csh
+   DESTINATION bin
+   )
+
+file(GLOB rc_files LDASsa_*rc)
+file(GLOB nml_files LDASsa_DEFAULT*nml)
+install(
+   FILES ${rc_files} ${nml_files} lenkf.j.template
+   DESTINATION etc
+   )
