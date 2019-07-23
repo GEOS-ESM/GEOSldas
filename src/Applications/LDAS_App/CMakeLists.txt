@@ -1,7 +1,7 @@
-#ecbuild_add_executable (
-   #TARGET GEOSldas.x 
-   #SOURCES GEOSldas.F90
-   #LIBS GEOSldas_GridComp MAPL_Base)
+ecbuild_add_executable (
+   TARGET GEOSldas.x 
+   SOURCES GEOSldas.F90
+   LIBS GEOSldas_GridComp MAPL_Base)
 
 set(executables 
    preprocess_ldas 
