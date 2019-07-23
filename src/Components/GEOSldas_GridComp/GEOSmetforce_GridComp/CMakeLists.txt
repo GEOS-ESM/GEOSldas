@@ -6,5 +6,5 @@ set (SRCS
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  DEPENDENCIES GEOSsurface_GridComp GEOSland_GridComp GEOS_LdasShared MAPL_Base
+  DEPENDENCIES GEOS_SurfaceShared GEOSland_GridComp GEOS_LdasShared MAPL_Base GMAO_gfio_r4
   INCLUDES ${INC_ESMF})

@@ -4,15 +4,30 @@
 
 program LDAS_Main
 
-  use MAPL_Mod
-  use GEOS_LDASGridCompMod, only:  ROOT_SetServices => SetServices
   
-  implicit none
-  
-  integer :: status
-  character(len=9) :: Iam="LDAS_Main"
-  
-  call MAPL_CAP(ROOT_SetServices, FinalFile='EGRESS.ldas', rc=status)
-  VERIFY_(status)
+   ! !USES:
+   use MAPL_Mod
+   use GEOS_LDASGridCompMod, only:  ROOT_SetServices => SetServices
+
+   implicit none
+
+   character(len=*), parameter :: Iam = "LDAS_Main"
+   type (MAPL_Cap) :: cap
+   type (MAPL_FlapCapOptions) :: cap_options
+   integer :: status
+
+!EOP
+!----------------------------------------------------------------------
+!BOC
+   
+   cap_options = MAPL_FlapCapOptions(description = 'GEOS LDAS', &
+                                     authors     = 'GMAO')
+   cap_options%egress_file = 'EGRESS.ldas'
+
+   cap = MAPL_Cap('LDAS', ROOT_SetServices, cap_options = cap_options)
+   call cap%run(_RC)
+
+   !call MAPL_CAP(ROOT_SetServices, FinalFile='EGRESS.ldas', rc=status)
+   !VERIFY_(status)
   
 end program LDAS_Main

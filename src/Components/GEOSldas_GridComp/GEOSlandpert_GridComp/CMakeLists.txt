@@ -8,5 +8,7 @@ set (SRCS
 
 esma_add_library (${this}
   SRCS ${SRCS}
-  DEPENDENCIES GEOS_LdasShared GEOSland_GridComp MAPL_Base
+  DEPENDENCIES GEOS_LdasShared GEOSland_GridComp MAPL_Base ${MKL_LIBRARIES}
   INCLUDES ${INC_ESMF})
+
+target_compile_definitions(${this} PRIVATE MKL_AVAILABLE)
