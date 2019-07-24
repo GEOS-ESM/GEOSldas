@@ -14,6 +14,7 @@ module GEOS_LandAssimGridCompMod
 
   use ESMF
   use MAPL_Mod
+  use ESMF_CFIOMOD, only:  ESMF_CFIOstrTemplate
   !USE GEOS_MOD
 
   use LDAS_TileCoordType, only: tile_coord_type
@@ -702,7 +703,10 @@ subroutine Initialize(gc, import, export, clock, rc)
     type(grid_def_type) :: tile_grid_g
     type(grid_def_type) :: tile_grid_f
     character(len=300) :: seed_fname
-
+    character(len=300) :: fname_tpl
+    character(len=14) :: datestamp
+    character(len=4)  :: id_string
+    integer :: nymd, nhms
 !! from LDASsa
 
     ! Begin...
@@ -721,7 +725,7 @@ subroutine Initialize(gc, import, export, clock, rc)
     
     call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="./", RC=STATUS)
+    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
@@ -780,16 +784,26 @@ subroutine Initialize(gc, import, export, clock, rc)
     allocate(Pert_rseed(NRANDSEED, NUM_ENSEMBLE), source = 0)
     allocate(Pert_rseed_r8(NRANDSEED, NUM_ENSEMBLE), source = 0.0d0)
 
-    call MAPL_GetResource ( MAPL, seed_fname, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../input/restart/landassim_obspertrseed_rst", RC=STATUS)
     if (master_proc) then
-       call read_pert_rseed(seed_fname,Pert_rseed_r8)
-       Pert_rseed = nint(Pert_rseed_r8)
-       if (all(Pert_rseed == 0)) then
-          do ens = 0, NUM_ENSEMBLE-1
-              call get_init_pert_rseed(ens, pert_rseed(1,ens+1))
-              call init_randseed(pert_rseed(:,ens+1))
-          enddo
-       endif
+
+       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../intput/restart/landassim_obspertrseed%s_rst", RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_DateStampGet( clock, datestamp, rc=status)
+       VERIFY_(STATUS)
+       read(datestamp(1:8),*)   nymd
+       read(datestamp(10:13),*) nhms 
+       do ens = 0, NUM_ENSEMBLE-1
+         write(id_string,'(I4.4)') ens + FIRST_ENS_ID
+         seed_fname = ""
+         call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
+         call read_pert_rseed(seed_fname,Pert_rseed_r8(:,ens+1))
+  
+         Pert_rseed(:,ens+1) = nint(Pert_rseed_r8(:,ens+1))
+         if (all(Pert_rseed(:,ens+1) == 0)) then
+            call get_init_pert_rseed(ens, pert_rseed(1,ens+1))
+            call init_randseed(pert_rseed(:,ens+1))
+         endif
+       enddo
     endif
     call MPI_Bcast(pert_rseed, NRANDSEED*NUM_ENSEMBLE, MPI_INTEGER, 0, mpicomm, mpierr)
 
@@ -826,11 +840,14 @@ subroutine Initialize(gc, import, export, clock, rc)
 
     do i=1,N_catf
       f2rf(rf2f(i))= i
+      tile_coord_rf(i)%f_num = i
     enddo
 
     do i=1, land_nt_local
        l2rf(i) = low_ind(myid+1) + i - 1
     end do
+
+    tcwrap%ptr%tile_coord%f_num = l2rf
 
   ! invert mapping from local to full grid (get f2l from l2f)
 
@@ -1191,6 +1208,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(cat_bias_param_type)  :: cat_bias_param
     integer                    :: N_catbias
     character(len=300) :: seed_fname
+    character(len=300) :: fname_tpl
+    character(len=4) :: id_string
+    integer:: ens, nymd, nhms
+    
 #ifdef DBG_LANDASSIM_INPUTS
         ! vars for debugging purposes
         type(ESMF_Grid)                 :: TILEGRID
@@ -1218,7 +1239,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(status)
 
     call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
-    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="./", RC=STATUS)
+    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
 
    ! Get component's internal variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
@@ -1322,12 +1343,21 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     ! The time is one model time step behind Current time, so record the checkpoint here 
     if (MAPL_RecordAlarmIsRinging(MAPL)) then
        if (master_proc) then
-          call MAPL_GetResource ( MAPL, seed_fname, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed_checkpoint", RC=STATUS)
-          call MAPL_DateStampGet(clock, datestamp, rc=status)
-          VERIFY_(STATUS)
           Pert_rseed_r8 = Pert_rseed
-          seed_fname = trim(exp_id)//'.'//trim(seed_fname)//'.'//datestamp//'.nc4' 
-          call write_pert_rseed(seed_fname, Pert_rseed_r8)
+          call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="ens%s.landassim_obspertrseed_checkpoint.%y4%m2%d2_%h2%n2", RC=STATUS)
+          VERIFY_(STATUS)
+          call MAPL_DateStampGet( clock, datestamp, rc=status)
+          VERIFY_(STATUS)
+          read(datestamp(1:8),*)   nymd
+          read(datestamp(10:13),*) nhms
+
+          do ens = 0, NUM_ENSEMBLE-1
+             write(id_string,'(I4.4)') ens + FIRST_ENS_ID
+             seed_fname = ""
+             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
+             VERIFY_(STATUS)
+             call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
+          enddo
         endif 
     endif
 
@@ -1775,9 +1805,7 @@ end subroutine UPDATE_ASSIM
 subroutine read_pert_rseed(seed_fname,pert_rseed_r8)
      use netcdf
      character(len=*),intent(in) :: seed_fname
-     real(kind=ESMF_KIND_R8),intent(inout) :: pert_rseed_r8(:,:)
-     real(kind=ESMF_KIND_R8), allocatable :: tmp_r8(:,:)
-     integer, allocatable :: ens_id(:)
+     real(kind=ESMF_KIND_R8),intent(inout) :: pert_rseed_r8(:)
 
      integer :: ncid, s_varid, en_dim, n_ens, id_varid, i, pos
      logical :: file_exist
@@ -1790,31 +1818,8 @@ subroutine read_pert_rseed(seed_fname,pert_rseed_r8)
 
      call check( nf90_open(seed_fname, NF90_NOWRITE, ncid) )
   ! Get the varid of the data variable, based on its name.
-     call check( nf90_inq_dimid(ncid, 'N_ENSEMBLE', en_dim))
-     call check( nf90_inquire_dimension(ncid, en_dim, len=n_ens))
-
-     allocate(tmp_r8(NRANDSEED, n_ens))
-     allocate(ens_id(n_ens))
-
      call check( nf90_inq_varid(ncid, "pert_rseed", s_varid) )
-     call check( nf90_get_var(ncid, s_varid, tmp_r8) )
-     call check( nf90_inq_varid(ncid, "ensemble_id", id_varid) )
-     call check( nf90_get_var(ncid, id_varid, ens_id) )
-
-     do i = 1, n_ens
-        if( ens_id(i) == FIRST_ENS_ID) then
-           pos = i
-           exit
-        endif
-     enddo
-
-     if ( NUM_ENSEMBLE > (n_ens-pos+1)) then ! not enough #members in the file
-       pert_rseed_r8 = 0
-       call check( nf90_close(ncid))
-       return
-     endif
-
-     pert_rseed_r8 = tmp_r8(:,pos:pos+NUM_ENSEMBLE-1)
+     call check( nf90_get_var(ncid, s_varid, pert_rseed_r8) )
 
   ! Close the file, freeing all resources.
      call check( nf90_close(ncid) )
@@ -1833,52 +1838,37 @@ end subroutine read_pert_rseed
 subroutine write_pert_rseed(chk_fname, pert_rseed_r8)
      use netcdf
      character(len=*),intent(in) :: chk_fname
-     real(kind=ESMF_KIND_R8),intent(in) :: pert_rseed_r8(:,:)
+     real(kind=ESMF_KIND_R8),intent(in) :: pert_rseed_r8(:)
      character(len=*), parameter  :: SHORT_NAME = "SHORT_NAME"
      character(len=*), parameter  :: LONG_NAME  = "LONG_NAME"
      character(len=*), parameter  :: UNITS      = "UNITS"
      character(len=*), parameter  :: s_SHORT = "obspert_rseed"
      character(len=*), parameter  :: s_long  = "Observation_Perturbations_rseed"
      character(len=*), parameter  :: units_ = "1"
-     integer :: nseeds, n_ens, i
-     integer :: ncid, s_varid, id_varid
-     integer :: seed_dimid, en_dimid
-     integer, allocatable :: ens_id(:)
+     integer :: nseeds
+     integer :: ncid, s_varid
+     integer :: seed_dimid
 
-     nseeds   = size(pert_rseed_r8,1)
-     n_ens    = size(pert_rseed_r8,2)
-     allocate(ens_id(n_ens))
-     do i = 1, n_ens
-        ens_id(i) = i + FIRST_ENS_ID - 1
-     enddo
+     nseeds   = size(pert_rseed_r8)
 
  ! Create the file. 
-     call check( nf90_create(trim(chk_fname), nf90_clobber, ncid) )
+     call check( nf90_create(trim(chk_fname), nf90_clobber + NF90_NETCDF4, ncid) )
 ! Define the dimensions.
      call check( nf90_def_dim(ncid, "NRANDSEED",   nseeds, seed_dimid) )
-     call check( nf90_def_dim(ncid, "N_ENSEMBLE",  n_ens,  en_dimid) )
-     call check( nf90_def_var(ncid, 'pert_rseed',   NF90_DOUBLE, [seed_dimid,en_dimid], s_varid) )
-     call check( nf90_def_var(ncid, 'ensemble_id',  NF90_INT,[en_dimid], id_varid) )
+     call check( nf90_def_var(ncid, 'pert_rseed',   NF90_DOUBLE, [seed_dimid], s_varid) )
 
   ! Assign attribute
      call check( nf90_put_att(ncid, s_varid, UNITS, units_) )
      call check( nf90_put_att(ncid, s_varid, SHORT_NAME, s_short) )
      call check( nf90_put_att(ncid, s_varid, LONG_NAME, s_long) )
 
-     call check( nf90_put_att(ncid, id_varid, UNITS, "1") )
-     call check( nf90_put_att(ncid, id_varid, SHORT_NAME, "ensemble_id") )
-     call check( nf90_put_att(ncid, id_varid, LONG_NAME, "ensemble_id") )
-
   ! End define mode.
      call check( nf90_enddef(ncid) )
 
   ! write varaible
      call check( nf90_put_var(ncid, s_varid, pert_rseed_r8) )
-     call check( nf90_put_var(ncid, id_varid, ens_id) )
-
   ! Close the file.
      call check( nf90_close(ncid) )
-     deallocate(ens_id)
 
      contains
         subroutine check(status)
@@ -1890,8 +1880,6 @@ subroutine write_pert_rseed(chk_fname, pert_rseed_r8)
            end if
        end subroutine check
 end subroutine write_pert_rseed
-
-  
 
 !BOP
 ! !IROTUINE: Finalize -- finalize method for LDAS GC
@@ -1914,8 +1902,12 @@ subroutine Finalize(gc, import, export, clock, rc)
     character(len=ESMF_MAXSTR) :: comp_name
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     character(len=300) :: seed_fname
+    character(len=300) :: fname_tpl
+    character(len=300) :: out_path
     character(len=ESMF_MAXSTR) :: exp_id
-    character(len=14)    :: datestamp
+    character(len=4) :: id_string
+    character(len=14):: datestamp
+    integer :: ens, nymd, nhms
     ! Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
     VERIFY_(status)
@@ -1923,18 +1915,29 @@ subroutine Finalize(gc, import, export, clock, rc)
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
     VERIFY_(STATUS)
-
-    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="./", RC=STATUS)
-
-    call MAPL_DateStampGet(clock, datestamp, rc=status)
+    call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
     VERIFY_(STATUS)
 
     if (master_proc) then
        call finalize_obslog()
-       call MAPL_GetResource ( MAPL, seed_fname, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed_checkpoint", RC=STATUS)
-       seed_fname = trim(exp_id)//'.'//trim(seed_fname)//'.'//datestamp//'.nc4'
        Pert_rseed_r8 = Pert_rseed
-       call write_pert_rseed(seed_fname, Pert_rseed_r8)
+       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="ens%s.landassim_obspertrseed_checkpoint.%y4%m2%d2_%h2%n2", RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_DateStampGet( clock, datestamp, rc=status)
+       VERIFY_(STATUS)
+
+       read(datestamp(1:8),*)   nymd
+       read(datestamp(10:13),*) nhms
+
+       do ens = 0, NUM_ENSEMBLE-1
+          write(id_string,'(I4.4)') ens + FIRST_ENS_ID
+          seed_fname = ""
+          call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
+          VERIFY_(STATUS)
+          call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
+       enddo
     endif
 
     ! Call Finalize for every child

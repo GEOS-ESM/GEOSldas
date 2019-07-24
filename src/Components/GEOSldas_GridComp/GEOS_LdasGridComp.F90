@@ -659,6 +659,9 @@ contains
        VERIFY_(status)
     endif
 
+    call MAPL_GenericInitialize(gc, import, export, clock, rc=status)
+    VERIFY_(status)
+
    ! solar alarm is created in solar gridcomp. Since GEOSldas doesnot have that gridcomp, it is created here
    ! -create-nonsticky-alarm-
     call MAPL_Get(MAPL, HEARTBEAT = DT, RC=STATUS)
@@ -673,14 +676,11 @@ contains
          name='SOLAR_Alarm',                                                     &
          ringTime=CurrentTime,                                                  &
          ringInterval=SOLAR_DT,                                               &
-         ringTimeStepCount=1,                                                   &
          sticky=.false.,                                                        &
          rc=status                                                              &
          )
     VERIFY_(status)
 
-    call MAPL_GenericInitialize(gc, import, export, clock, rc=status)
-    VERIFY_(status)
 
     if ( IamRoot) call echo_clsm_ensdrv_glob_param()
     if ( IamRoot) call lsmroutines_echo_constants(logunit)

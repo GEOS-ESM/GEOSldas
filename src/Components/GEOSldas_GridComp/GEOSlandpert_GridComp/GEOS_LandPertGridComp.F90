@@ -2747,7 +2747,7 @@ contains
      nseeds  = size(pert_rseed_r8)
 
  ! Create the file. 
-     call check( nf90_create(trim(chk_fname), nf90_clobber, ncid) )
+     call check( nf90_create(trim(chk_fname), nf90_clobber + NF90_NETCDF4, ncid) )
 
 ! Define the dimensions.
      call check( nf90_def_dim(ncid, "latitude",   n_lat, lat_dimid) )
