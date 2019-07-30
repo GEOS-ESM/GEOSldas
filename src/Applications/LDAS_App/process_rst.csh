@@ -57,7 +57,7 @@ case [0] :
     ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData1/OutTileFile
     ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData2/OutTileFile
     ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData2/clsm
-    ln -s $ESMADIR/Linux/bin $EXPDIR/$EXPID/mk_restarts/
+    ln -s $ESMADIR/install/bin $EXPDIR/$EXPID/mk_restarts/
 
     cd $EXPDIR/$EXPID/mk_restarts/
 
@@ -73,7 +73,7 @@ case [0] :
 #SBATCH --output=mkLDAS.o
 #SBATCH --error=mkLDAS.e
  
-source $ESMADIR/Linux/bin/g5_modules
+source $ESMADIR/install/bin/g5_modules
 setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0
 #setenv MKL_CBWR SSE4_2 # ensure zero-diff across archs
 #setenv MV2_ON_DEMAND_THRESHOLD 8192 # MVAPICH2
@@ -142,11 +142,11 @@ case [1]:
         mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData2/
         ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData2/OutTileFile
         ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData2/clsm
-        ln -s $ESMADIR/Linux/bin $EXPDIR/$EXPID/mk_restarts/
+        ln -s $ESMADIR/install/bin $EXPDIR/$EXPID/mk_restarts/
 
         cd $EXPDIR/$EXPID/mk_restarts/
         echo '#\!/bin/csh -f ' > this.file
-        echo 'source $ESMADIR/Linux/bin/g5_modules' >> this.file
+        echo 'source $ESMADIR/install/bin/g5_modules' >> this.file
         echo 'setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0' >> this.file
         echo 'setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/' >> this.file
 
