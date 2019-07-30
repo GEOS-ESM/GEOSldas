@@ -18,7 +18,7 @@ from dateutil.relativedelta import relativedelta
 
 
 """
-This script is intended to be run from ../Application/LDAS_App or ../install/bin
+This script is intended to be run from ../install/bin
 """
 
 
@@ -388,7 +388,6 @@ class LDASsetup:
         else:
             raise Exception(
                 'ldsetup should be run either from ..../install/bin '
-                'or from ..../Applications/LDAS_App'
                 )
         self.blddir = self.blddir.rstrip('/')
         exefyl = '/install/bin/GEOSldas.x'
