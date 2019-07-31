@@ -20,7 +20,7 @@ install(
    DESTINATION bin
    )
 
-file(GLOB rc_files LDASsa_*rc)
+file(GLOB rc_files GEOSldas_*rc)
 file(GLOB nml_files LDASsa_DEFAULT*nml)
 install(
    FILES ${rc_files} ${nml_files} lenkf.j.template
