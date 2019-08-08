@@ -86,9 +86,9 @@ contains
     integer :: status
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
-    character(len=ESMF_MAXSTR) :: id_string,childname
+    character(len=ESMF_MAXSTR) :: id_string,childname, fmt_str
     character(len=ESMF_MAXSTR) :: LAND_ASSIM
-
+    integer                    :: ens_id_width
     ! Local variables
     type(T_TILECOORD_STATE), pointer :: tcinternal
     type(TILECOORD_WRAP) :: tcwrap
@@ -140,6 +140,8 @@ contains
     VERIFY_(status)
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
 
     call MAPL_GetResource ( MAPL, LAND_ASSIM, Label="LAND_ASSIM:", DEFAULT="NO", RC=STATUS)
     VERIFY_(STATUS)
@@ -152,10 +154,14 @@ contains
 
     ! one dataatm provides all the data
     ens_id(1)=0 ! id start form 0
-    write(id_string,'(I4.4)') ens_id(1)
-    !id_string='_ENSID_'//trim(id_string)
+    if(NUM_ENSEMBLE ==1 ) then
+       id_string=''
+    else
+       fmt_str=''
+       write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
+       write(id_string, fmt_str) ens_id(1)
+    endif
     id_string=trim(id_string)
-    if(NUM_ENSEMBLE ==1 ) id_string=''
     childname='DATAATM'//trim(id_string)
     DATAATM(1) = MAPL_AddChild(gc, name=childname, ss=MetforceSetServices, rc=status)
     VERIFY_(status)
@@ -163,10 +169,13 @@ contains
     do i=1,NUM_ENSEMBLE
 
        ens_id(i)=i-1 ! id start form 0
-       write(id_string,'(I4.4)') ens_id(i)
-       !id_string='_ENSID_'//trim(id_string)
+       if(NUM_ENSEMBLE ==1 ) then
+          id_string=''
+       else
+          write(id_string, fmt_str) ens_id(i)
+       endif
+
        id_string=trim(id_string)
-       if(NUM_ENSEMBLE ==1 ) id_string=''
 
       ! note: different dataatm provide different data
       ! childname='DATAATM'//trim(id_string)

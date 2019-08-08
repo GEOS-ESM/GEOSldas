@@ -615,7 +615,7 @@ contains
     tile_coord => tcwrap%ptr%tile_coord
 
     ! Number of land tiles (on local PE)
-    land_nt_local = size(tile_coord)
+    land_nt_local = size(tile_coord,1)
 
     call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", &
          DEFAULT=0, RC=STATUS)

@@ -11,8 +11,17 @@ setenv    GRIDNAME $4
 setenv    HISTRC $5
 setenv    RUN_IRRIG $6
 setenv    ASSIM  $7
+setenv    PERTURB $8
 
 echo $GRIDNAME
+
+if($ASSIM == 1) then
+   sed -i 's|\#ASSIM|''|g' $HISTRC
+   sed -i '/^\#EASE/d' $HISTRC
+   sed -i '/^\#CUBE/d' $HISTRC
+else
+   sed -i '/^\#ASSIM/d' $HISTRC
+endif
 
 if($GRID == CUBE) then
    sed -i '/^\#EASE/d' $HISTRC
@@ -21,6 +30,7 @@ if($GRID == CUBE) then
 else
    sed -i '/^\#CUBE/d' $HISTRC
    sed -i 's|\#EASE|''|g' $HISTRC
+   sed -i 's|GRIDNAME|'"$GRIDNAME"'|g' $HISTRC
 endif
 
 if($LSM_CHOICE == 1) then
@@ -33,13 +43,10 @@ if($LSM_CHOICE == 2) then
    sed -i 's/>>>HIST_CATCHCN<<</''/g' $HISTRC
 endif
 
-if($ASSIM == 1) then
-   sed -i 's|\#ASSIM|''|g' $HISTRC
+if($PERTURB == 1 ) then
    set GridComp = ENSAVG
    sed -i 's|VEGDYN|'VEGDYN0000'|g' $HISTRC
    sed -i 's|DATAATM|'DATAATM0000'|g' $HISTRC
-else
-   sed -i '/^\#ASSIM/d' $HISTRC
 endif
 
 sed -i 's|GridComp|'$GridComp'|g' $HISTRC
