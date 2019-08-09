@@ -791,7 +791,8 @@ subroutine Initialize(gc, import, export, clock, rc)
        call MAPL_DateStampGet( clock, datestamp, rc=status)
        VERIFY_(STATUS)
        read(datestamp(1:8),*)   nymd
-       read(datestamp(10:13),*) nhms 
+       read(datestamp(10:13),*) nhms
+       nhms = nhms*100
        do ens = 0, NUM_ENSEMBLE-1
          write(id_string,'(I4.4)') ens + FIRST_ENS_ID
          seed_fname = ""
@@ -1344,13 +1345,14 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if (MAPL_RecordAlarmIsRinging(MAPL)) then
        if (master_proc) then
           Pert_rseed_r8 = Pert_rseed
-          call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="ens%s.landassim_obspertrseed_checkpoint.%y4%m2%d2_%h2%n2", RC=STATUS)
+          call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
           VERIFY_(STATUS)
+          fname_tpl = trim(fname_tpl) //".%y4%m2%d2_%h2%n2z.nc4"
           call MAPL_DateStampGet( clock, datestamp, rc=status)
           VERIFY_(STATUS)
           read(datestamp(1:8),*)   nymd
           read(datestamp(10:13),*) nhms
-
+          nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
              write(id_string,'(I4.4)') ens + FIRST_ENS_ID
              seed_fname = ""
@@ -1923,14 +1925,14 @@ subroutine Finalize(gc, import, export, clock, rc)
     if (master_proc) then
        call finalize_obslog()
        Pert_rseed_r8 = Pert_rseed
-       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="ens%s.landassim_obspertrseed_checkpoint.%y4%m2%d2_%h2%n2", RC=STATUS)
+       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_DateStampGet( clock, datestamp, rc=status)
        VERIFY_(STATUS)
 
        read(datestamp(1:8),*)   nymd
        read(datestamp(10:13),*) nhms
-
+       nhms = nhms*100
        do ens = 0, NUM_ENSEMBLE-1
           write(id_string,'(I4.4)') ens + FIRST_ENS_ID
           seed_fname = ""
