@@ -18,7 +18,7 @@ from dateutil.relativedelta import relativedelta
 
 
 """
-This script is intended to be run from ../install/bin
+This script is intended to be run from the installed directory with GEOSldas.x and ldas_setp
 """
 
 
@@ -379,18 +379,10 @@ class LDASsetup:
         # executable
         #     exefyl
         # ------
+
         cwd = os.getcwd()
-        last2 = '/'.join(cwd.split('/')[-2:])
-        if last2 == 'Applications/LDAS_App':
-            self.blddir = '/'.join(cwd.split('/')[:-3])
-        elif last2 == 'install/bin':
-            self.blddir = '/'.join(cwd.split('/')[:-2])
-        else:
-            raise Exception(
-                'ldsetup should be run either from ..../install/bin '
-                )
-        self.blddir = self.blddir.rstrip('/')
-        exefyl = '/install/bin/GEOSldas.x'
+        self.blddir = cwd.rsplit('/',1)[0]
+        exefyl = '/bin/GEOSldas.x'
         tmp_execfyl= self.blddir+exefyl
         assert os.path.isfile(tmp_execfyl),\
             'Executable [%s] does not exist!' % tmp_execfyl
@@ -909,7 +901,7 @@ class LDASsetup:
 
     def createRCFiles(self):
         """
-        (1) get resource files form DEFAULT rc files from install/etc
+        (1) get resource files form DEFAULT rc files from /etc
         (2) update from customed rc files
         (2) write rc files to the run directory
         """
@@ -942,7 +934,7 @@ class LDASsetup:
         shutil.copy(self.batinpfile, self.rundir+'/'+newfilename)
 
 
-        etcdir = self.blddirLn + '/install/etc'
+        etcdir = self.blddirLn + '/etc'
 
         #defalt nml
         default_nml = glob.glob(etcdir+'/LDASsa_DEFAULT*.nml')
@@ -1271,7 +1263,7 @@ class LDASsetup:
 
         status = False
 
-        bindir = self.blddirLn + '/install/bin'
+        bindir = self.blddirLn + '/bin'
 
         ntasks = int(self.rqdRmInp['ntasks'])
         cmd = '\nmpiexec_mpt -np %d \\\n %s' % (ntasks, self.exefyl)
@@ -1358,7 +1350,7 @@ class LDASsetup:
         rm_name = self.rqdRmInp['rm_name'].lower()
         nSegments = len(self.begDates)
         os.chdir(self.rundir)
-        lenkf=self.blddir+'/install/etc/lenkf.j.template'
+        lenkf=self.blddir+'/etc/lenkf.j.template'
         shutil.copy(lenkf,'lenkf.j')
 
         my_qos='allnccs'
@@ -1529,10 +1521,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print 'BCS_PATH                :'
     print
 
-    if os.path.isfile('./GEOSldas_LDAS.rc') : # run ldas_setup from App directory
-       _fn = './GEOSldas_LDAS.rc'
-    else :
-       _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from install/bin directory
+    _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from /bin directory
 
     _f = open(_fn)
     for line in _f:
