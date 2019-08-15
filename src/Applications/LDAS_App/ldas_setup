@@ -18,7 +18,8 @@ from dateutil.relativedelta import relativedelta
 
 
 """
-This script is intended to be run from the installed directory with GEOSldas.x and ldas_setp
+This script is intended to be run from any installed directory with GEOSldas.x and ldas_setup
+(The default setup is ../install/bin)
 """
 
 
