@@ -16,12 +16,7 @@ setenv  RUN_IRRIG    $13
 setenv  RESTART_short ${RESTART_PATH}/${RESTART_ID}/output/${RESTART_DOMAIN}/
 
 set PWD=`pwd`
-
-set THISDIR = `echo $PWD | rev | cut -d'/' -f1 | rev`
-if ( $THISDIR == LDAS_App ) setenv ESMADIR `echo $PWD | rev | cut -d'/' -f4- | rev`
-if ( $THISDIR == bin ) setenv ESMADIR `echo $PWD | rev | cut -d'/' -f3- | rev`
-#setenv ESMADIR2 /gpfsm/dnb02/smahanam/LDAS/GEOSldas/IU_V24C05_GEOSldas_GOSWIMplus/GEOSagcm/
-
+setenv INSTDIR `echo $PWD | rev | cut -d'/' -f2- | rev`
 
 if($LSM_CHOICE == 1) then 
    set MODEL=catch
@@ -57,7 +52,7 @@ case [0] :
     ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData1/OutTileFile
     ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData2/OutTileFile
     ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData2/clsm
-    ln -s $ESMADIR/install/bin $EXPDIR/$EXPID/mk_restarts/
+    ln -s $INSTDIR/bin $EXPDIR/$EXPID/mk_restarts/
 
     cd $EXPDIR/$EXPID/mk_restarts/
 
@@ -73,7 +68,7 @@ case [0] :
 #SBATCH --output=mkLDAS.o
 #SBATCH --error=mkLDAS.e
  
-source $ESMADIR/install/bin/g5_modules
+source $INSTDIR/bin/g5_modules
 setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0
 #setenv MKL_CBWR SSE4_2 # ensure zero-diff across archs
 #setenv MV2_ON_DEMAND_THRESHOLD 8192 # MVAPICH2
@@ -142,11 +137,11 @@ case [1]:
         mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData2/
         ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData2/OutTileFile
         ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData2/clsm
-        ln -s $ESMADIR/install/bin $EXPDIR/$EXPID/mk_restarts/
+        ln -s $INSTDIR/bin $EXPDIR/$EXPID/mk_restarts/
 
         cd $EXPDIR/$EXPID/mk_restarts/
         echo '#\!/bin/csh -f ' > this.file
-        echo 'source $ESMADIR/install/bin/g5_modules' >> this.file
+        echo 'source $INSTDIR/bin/g5_modules' >> this.file
         echo 'setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0' >> this.file
         echo 'setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/' >> this.file
 
