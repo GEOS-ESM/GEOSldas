@@ -16,7 +16,12 @@ setenv  RUN_IRRIG    $13
 setenv  RESTART_short ${RESTART_PATH}/${RESTART_ID}/output/${RESTART_DOMAIN}/
 
 set PWD=`pwd`
-setenv INSTDIR `echo $PWD | rev | cut -d'/' -f2- | rev`
+
+set THISDIR = `echo $PWD | rev | cut -d'/' -f1 | rev`
+if ( $THISDIR == LDAS_App ) setenv ESMADIR `echo $PWD | rev | cut -d'/' -f4- | rev`
+if ( $THISDIR == bin ) setenv ESMADIR `echo $PWD | rev | cut -d'/' -f3- | rev`
+#setenv ESMADIR2 /gpfsm/dnb02/smahanam/LDAS/GEOSldas/IU_V24C05_GEOSldas_GOSWIMplus/GEOSagcm/
+
 
 if($LSM_CHOICE == 1) then 
    set MODEL=catch
@@ -52,7 +57,7 @@ case [0] :
     ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData1/OutTileFile
     ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData2/OutTileFile
     ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData2/clsm
-    ln -s $INSTDIR/bin $EXPDIR/$EXPID/mk_restarts/
+    ln -s $ESMADIR/install/bin $EXPDIR/$EXPID/mk_restarts/
 
     cd $EXPDIR/$EXPID/mk_restarts/
 
@@ -68,7 +73,7 @@ case [0] :
 #SBATCH --output=mkLDAS.o
 #SBATCH --error=mkLDAS.e
  
-source $INSTDIR/bin/g5_modules
+source $ESMADIR/install/bin/g5_modules
 setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0
 #setenv MKL_CBWR SSE4_2 # ensure zero-diff across archs
 #setenv MV2_ON_DEMAND_THRESHOLD 8192 # MVAPICH2
@@ -76,8 +81,7 @@ setenv LAIFILE `find ${BCSDIR}/lai_clim*`
 setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
 limit stacksize unlimited
  
-#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
-$ESMADIR/install/bin/esma_mpirun -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
 sleep 3
 
 if($LSM_CHOICE == 1) then
@@ -86,8 +90,7 @@ else
    /bin/cp OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst
 endif
 
-#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
-$ESMADIR/install/bin/esma_mpirun -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
 
 _EOI_
 
@@ -135,32 +138,30 @@ case [1]:
 
     ## restart is from old LDAS which produce big endian binary
     if($ENDI == MSB) then
-        echo 'restart is from old LDAS'
+        echo ' '
         mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData2/
         ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData2/OutTileFile
         ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData2/clsm
-        ln -s $INSTDIR/bin $EXPDIR/$EXPID/mk_restarts/
+        ln -s $ESMADIR/install/bin $EXPDIR/$EXPID/mk_restarts/
 
         cd $EXPDIR/$EXPID/mk_restarts/
-        rm -f this.file
         echo '#\!/bin/csh -f ' > this.file
-        echo 'source $INSTDIR/bin/g5_modules' >> this.file
+        echo 'source $ESMADIR/install/bin/g5_modules' >> this.file
         echo 'setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0' >> this.file
         echo 'setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/' >> this.file
 
         set j = 0
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           echo $ESMADIR/install/bin/esma_mpirun -np 1 bin/mk_LDASsaRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s 50 -r Y -t ${TILFILE}  >> this.file
+           echo  bin/mk_LDASsaRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s 50 -r Y -t ${TILFILE}  >> this.file
            echo  ncks -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} >> this.file 
            @ j++
         end
-        
-        echo 'echo DONE > done_rst_file' >> this.file
+
         chmod +x this.file
-        sbatch this.file
-       # ./this.file
-       # echo DONE > done_rst_file
+        ./this.file
+        rm -f this.file
+        echo DONE > done_rst_file
         cd $PWD
         sleep 1
      else
