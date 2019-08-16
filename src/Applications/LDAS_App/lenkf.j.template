@@ -281,7 +281,8 @@ if( $DEBUGGER == 2) then
     exit
 endif
 
-$GEOSBIN/esma_mpirun -np $numprocs $GEOSBIN/GEOSldas.x
+#$GEOSBIN/esma_mpirun -np $numprocs $GEOSBIN/GEOSldas.x
+mpirun -map-by core --mca btl ^vader -np $numprocs $GEOSBIN/GEOSldas.x
 
 if( -e EGRESS.ldas ) then
    set rc = 0
