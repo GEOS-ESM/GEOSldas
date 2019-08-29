@@ -151,9 +151,9 @@ CONTAINS
 
     if((.not. forced) .and. (tbl%counter < tbl%max_file_N)) return
 
-    low  = LBOUND(tbl%vec,dim=1)
-    high = UBOUND(tbl%vec,dim=1) 
     IF (allocated(tbl%vec)) THEN
+       low  = LBOUND(tbl%vec,dim=1)
+       high = UBOUND(tbl%vec,dim=1) 
        DO i=low,high
           CALL tbl%vec(i)%free(closefile)
        END DO
