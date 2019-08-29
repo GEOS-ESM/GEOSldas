@@ -3,6 +3,9 @@
 # Order is important; the last matching pattern takes the most
 # precedence.
 
+# LDAS Gatekeepers own all files
+* @GEOS-ESM/ldas-gatekeepers
+
 # The GEOS CMake Team is the CODEOWNER for the CMakeLists.txt files in this repository
 CMakeLists.txt @GEOS-ESM/cmake-team
 
