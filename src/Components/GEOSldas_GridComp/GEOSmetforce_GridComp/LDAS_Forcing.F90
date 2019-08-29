@@ -5137,7 +5137,8 @@ contains
                      tile_coord(i)%tile_id
                 force_vec(i)=force_vec(i_next)
              else
-
+                if(master_logit) write (logunit,*) 'forcing has no-data-value in tile ID = ', &
+                     tile_coord(i)%tile_id
                 write (tmpstring10,*) tile_coord(i)%tile_id
                 write (tmpstring40,*) tile_coord(i_next)%tile_id
                 err_msg = 'forcing has no-data-value in tile ID = ' // &
