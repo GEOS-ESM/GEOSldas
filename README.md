@@ -136,9 +136,9 @@ Configuration input files will be created at:
 
 For more options and documentation run any of the following:
 ```
-ldsetup        -h
-ldsetup sample -h
-ldsetup setup  -h
+ldas_setup        -h
+ldas_setup sample -h
+ldas_setup setup  -h
 ```
 
 Configure experiment output by editing the ```HISTORY.rc``` file.
