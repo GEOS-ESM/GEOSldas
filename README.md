@@ -99,3 +99,57 @@ and CMake will install there.
 make -j6 install
 ```
 
+---
+
+## Setup up a run
+```
+cd ../(some_architecture)/bin
+source g5_modules
+./ldas_setup setup [-v] [--runmodel]  exp_path  "exe"_input_filename  "bat"_input_filename
+```  
+where
+
+>exp_path             = path of desired experiment directory
+
+>"exe"_input_filename = filename (with path) of "experiment" inputs
+
+>"bat"_input_filename = filename (with path) of "batch" inputs
+
+must be ordered as above (positional arguments).
+
+The latter two files contain essential information about the experiment setup. 
+Sample files can be generated as follows:
+```        
+ldas_setup sample --exeinp > YOUR_exeinp.txt
+ldas_setup sample --batinp > YOUR_exeinp.txt
+```
+
+Edit these sample files (see comments within sample files).  See README files
+and ppt tutorial (in ./src/Applications/LDAS_App/doc/) for more information.
+
+The ldas_setup script creates a run directory and other directories at:
+```[exp_path]/[exp_name]```
+
+Configuration input files will be created at:
+
+```[exp_path]/[exp_name]/run```
+
+For more options and documentation run any of the following:
+```
+ldas_setup        -h
+ldas_setup sample -h
+ldas_setup setup  -h
+```
+
+Configure experiment output by editing the ```HISTORY.rc``` file.
+
+---
+
+## Run a job:
+
+	cd [exp_path]/[exp_name]/run/
+
+	sbatch lenkf.j
+
+See ppt tutorial (in ./src/Applications/LDAS_App/doc/) for more information about how to run GEOSldas.
+
