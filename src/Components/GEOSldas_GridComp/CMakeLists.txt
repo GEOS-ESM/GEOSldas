@@ -1,6 +1,6 @@
 esma_set_this ()
 
-add_subdirectory (@GEOSgcm_GridComp)
+esma_add_subdirectories (@GEOSgcm_GridComp @FVdycoreCubed_GridComp)
 
 set (alldirs
   GEOSmetforce_GridComp
