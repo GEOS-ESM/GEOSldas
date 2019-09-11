@@ -4,9 +4,6 @@
 !/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSsaltwater_GridComp
 !/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOS_SurfaceGridComp.F90
 
-/GEOSagcm_GridComp/GEOSsuperdyn_GridComp/FVdycoreCubed_GridComp
-/GEOSagcm_GridComp/GEOSsuperdyn_GridComp/CMakeLists.txt
-
 /GEOSagcm_GridComp/CMakeLists.txt
 /CMakeLists.txt
 
