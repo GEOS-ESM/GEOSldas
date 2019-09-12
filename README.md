@@ -57,11 +57,7 @@ parallel_build.csh -develop
 ```
 Note you have to first checkout the develop branch, and then also use Develop.cfg (This may be simplified in the future)
 
-#### Debug Version of GEOS
-
-To obtain a debug version, you can run `parallel_build.csh -debug` which will build with debugging flags. This will build in `build-Debug/` and install into `install-Debug/`.
-
-#### Debug Version of GEOS
+#### Debug Version of LDAS
 
 To obtain a debug version, you can run `parallel_build.csh -debug` which will build with debugging flags. This will build in `build-Debug/` and install into `install-Debug/`.
 
