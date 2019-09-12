@@ -16,6 +16,19 @@ endif
 set srcdir = `pwd`
 setenv ESMADIR $srcdir
 
+# Save the original argv because I'm not a good
+# tcsh script maker
+set origargv = "$argv"
+
+setenv external ""
+while ($#argv)
+   if ("$1" == "-develop") then
+      setenv external "-e Develop.cfg"
+   endif
+
+   shift
+end
+
 if (! -d ${ESMADIR}/@env) then
    if ($?PBS_JOBID || $?SLURM_JOBID) then
       echo " checkout_externals must be run!"
@@ -24,9 +37,12 @@ if (! -d ${ESMADIR}/@env) then
       exit 1
    else
       echo " Running checkout_externals"
-      checkout_externals
+      checkout_externals $external
    endif
 endif
+
+# Now reset argv
+set argv = "$origargv"
 
 if ( -d ${ESMADIR}/@env ) then
    ${ESMADIR}/@env/build.csh -esmadir $ESMADIR $argv
