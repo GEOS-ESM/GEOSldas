@@ -47,7 +47,17 @@ git clone git@github.com:GEOS-ESM/GEOSldas.git
 
 If all you wish is to build the model, you can run `parallel_build.csh` from a head node. Doing so will checkout all the external repositories of the model and build it. When done, the resulting model build will be found in `build/` and the installation will be found in `install/` with setup scripts like `gcm_setup` and `fvsetup` in `install/bin`.
 
-#### Debug Version of GEOS
+#### Develop Version of LDAS
+
+The user will notice two files in the main directory: `Externals.cfg` and `Develop.cfg`. The difference between these two is that `Externals.cfg` always refers to stable tested released subrepositories. The `Develop.cfg` points to the `develop` branches of the subrespositories, or more recent tags not ready for prime time. This is equivalent in the CVS days of the difference between a stable tag and the development `-UNSTABLE` tag. In order to build the `Develop.cfg` version of the model with `parallel_build.csh` do:
+
+```
+git checkout develop
+parallel_build.csh -develop
+```
+Note you have to first checkout the develop branch, and then also use Develop.cfg (This may be simplified in the future)
+
+#### Debug Version of LDAS
 
 To obtain a debug version, you can run `parallel_build.csh -debug` which will build with debugging flags. This will build in `build-Debug/` and install into `install-Debug/`.
 
