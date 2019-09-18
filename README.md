@@ -45,7 +45,11 @@ git clone git@github.com:GEOS-ESM/GEOSldas.git
 
 ### Single Step Building of the Model
 
-If all you wish is to build the model, you can run `parallel_build.csh` from a head node. Doing so will checkout all the external repositories of the model and build it. When done, the resulting model build will be found in `build/` and the installation will be found in `install/` with setup scripts like `gcm_setup` and `fvsetup` in `install/bin`.
+If all you wish is to build the model, you can run
+
+`parallel_build.csh` 
+
+from a head node. Doing so will checkout all the external repositories of the model and build it. When done, the resulting model build will be found in `build/` and the installation will be found in `install/` with setup scripts like `ldas_setup` in `install/bin`.
 
 #### Develop Version of LDAS
 
