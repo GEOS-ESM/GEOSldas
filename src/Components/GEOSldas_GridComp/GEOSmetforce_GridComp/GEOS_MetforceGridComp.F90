@@ -584,6 +584,7 @@ contains
     logical :: MERRA_file_specs,GEOS_Forcing
 
     integer :: AEROSOL_DEPOSITION
+    type(MAPL_LocStream) :: locstream
 
     ! Begin...
 
@@ -609,13 +610,20 @@ contains
     VERIFY_(status)
     internal => wrap%ptr
 
-    ! Get component's internal tile_coord variable
+     ! Get component's internal tile_coord variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
     tile_coord => tcwrap%ptr%tile_coord
 
     ! Number of land tiles (on local PE)
-    land_nt_local = size(tile_coord)
+    call MAPL_Get(MAPL, LocStream=locstream)
+    VERIFY_(status)
+    call MAPL_LocStreamGet(                                                     &
+         locstream,                                                             &
+         NT_LOCAL=land_nt_local,                                                &
+         rc=status                                                              &
+         )
+    VERIFY_(status)
 
     call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", &
          DEFAULT=0, RC=STATUS)

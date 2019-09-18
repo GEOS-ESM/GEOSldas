@@ -281,7 +281,8 @@ if( $DEBUGGER == 2) then
     exit
 endif
 
-$GEOSBIN/esma_mpirun -np $numprocs $GEOSBIN/GEOSldas.x
+#$GEOSBIN/esma_mpirun -np $numprocs $GEOSBIN/GEOSldas.x
+mpirun -map-by core --mca btl ^vader -np $numprocs $GEOSBIN/GEOSldas.x
 
 if( -e EGRESS.ldas ) then
    set rc = 0
@@ -290,26 +291,6 @@ else
 endif
 echo GEOSldas Run Status: $rc
  
-################################### 
-# restart obspert_rseed for landassim 
-##################################
-set seed_chk = `ls  *landassim_obspertrseed_checkpoint*`
-set NFILES = `echo $#seed_chk`
-if($NFILES > 0) then
-   foreach seed ($seed_chk)
-      /bin/mv $seed $EXPDIR/output/$EXPDOMAIN/rs/
-   end
-   set nym = `cat cap_restart | cut -c1-8`
-   set nhm = `cat cap_restart | cut -c10-13`
-   set datestamp = ${nym}_${nhm}z
-   set seed_rst = $EXPDIR/output/$EXPDOMAIN/rs/${EXPID}.landassim_obspertrseed_checkpoint.${datestamp}.nc4
-   echo seed_rst:  $seed_rst
-   if (-e $seed_rst) then
-     echo 'rmove old link'
-     /bin/rm -f ../input/restart/landassim_obspertrseed_rst
-     /bin/ln -s $seed_rst ../input/restart/landassim_obspertrseed_rst
-   endif
-endif
 
 #######################################################################
 #               Move HISTORY Files to cat/ens Directory
@@ -533,16 +514,24 @@ while ($inens < $NENS)
 
     set rstf = 'landpert'
     if (-f ${rstf}${ENSID}_internal_checkpoint ) then
-       ncks -C -x -v lat,lon -L 2 ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+       ncks -O -C -x -v lat,lon -L 2 ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
        /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
        /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
        /bin/ln -s  $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin} $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
+    endif
+
+    set rstf = 'landassim_obspertrseed'
+    if (-f ${rstf}${ENSID}_checkpoint ) then
+       /bin/mv ${rstf}${ENSID}_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+       /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_rst
+       /bin/ln -s  $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin} $EXPDIR/input/restart/${rstf}${ENSID}_rst
     endif
 # move intermediate check point files to  output/$EXPDOMAIN/rs/$ENSDIR/Yyyyy/Mmm/ directories
 # -------------------------------------------------------------------------------------------
 
     set rstfiles1 = `ls ${MODEL}${ENSID}_internal_checkpoint*`
     set rstfiles2 = `ls landpert${ENSID}_internal_checkpoint*`
+    set rstfiles3 = `ls landassim_obspertrseed${ENSID}_checkpoint*`
 
     set NFILES = `echo $#rstfiles1`
     if($NFILES > 0) then
@@ -552,7 +541,7 @@ while ($inens < $NENS)
           set TM = `echo $ThisTime | cut -c5-6` 
           set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
           if (! -e $THISDIR            ) mkdir -p $THISDIR
-          /bin/mv $rfile $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
+          /bin/mv $rfile ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
        end
     endif
     
@@ -564,8 +553,20 @@ while ($inens < $NENS)
           set TM = `echo $ThisTime | cut -c5-6` 
           set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
           if (! -e $THISDIR            ) mkdir -p $THISDIR
-          ncks -C -x -v lat,lon -L 2 $rfile $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
+          ncks -O -C -x -v lat,lon -L 2 $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4
           /bin/rm -f $rfile
+       end
+    endif
+
+    set NFILES = `echo $#rstfiles3`
+    if($NFILES > 0) then
+       foreach rfile ( $rstfiles3 ) 
+          set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
+          set TY = `echo $ThisTime | cut -c1-4`
+          set TM = `echo $ThisTime | cut -c5-6` 
+          set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
+          if (! -e $THISDIR            ) mkdir -p $THISDIR
+          /bin/mv $rfile ${THISDIR}${EXPID}.landassim_obspertrseed_rst.${ThisTime}.nc4
        end
     endif
 
