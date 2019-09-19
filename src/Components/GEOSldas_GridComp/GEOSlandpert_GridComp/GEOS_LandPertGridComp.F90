@@ -2007,7 +2007,7 @@ contains
                    mfPert(itile)%PARdrct = tmpRealArrDim1(1)
                    tmpRealArrDim1(1) = mfPert(itile)%PARdffs
                    call apply_pert(PertParam, [FORCEPERT(itile,ipert)], tmpRealArrDim1)
-                   mfPert(itile)%PARdrct = tmpRealArrDim1(1)
+                   mfPert(itile)%PARdffs = tmpRealArrDim1(1)         ! bug fix, rreichle+qliu, May 2019
                 end if
              end do
              call repair_forcing(land_nt_local, mfPert, fieldname='SWnet')
