@@ -8,11 +8,10 @@ module GEOS_LdasGridCompMod
 
   use ESMF
   use MAPL_Mod
-  use CubedSphereGridFactoryMod
-  use MAPL_GridManagerMod, only: grid_manager
-  use MAPL_RegridderManagerMod
-  use MAPL_AbstractRegridderMod
-  use MAPL_RegridderSpecMod
+  !use MAPL_GridManagerMod, only: grid_manager
+  !use MAPL_RegridderManagerMod
+  !use MAPL_AbstractRegridderMod
+  !use MAPL_RegridderSpecMod
 
   use GEOS_MetforceGridCompMod, only: MetforceSetServices => SetServices
   use GEOS_LandGridCompMod, only: LandSetServices => SetServices
@@ -305,9 +304,9 @@ contains
   ! !INTERFACE:
 
   subroutine Initialize(gc, import, export, clock, rc)
-    use LatLonToCubeRegridderMod
-    use CubeToLatLonRegridderMod
-    use CubeToCubeRegridderMod
+    !use MAPL_LatLonToCubeRegridderMod
+    !use MAPL_CubeToLatLonRegridderMod
+    !use MAPL_CubeToCubeRegridderMod
     ! !ARGUMENTS:
 
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
@@ -381,10 +380,10 @@ contains
     type(grid_def_type) :: tile_grid_l
     type(date_time_type):: start_time
     type(ESMF_Time)     :: CurrentTime
-    type(CubedSphereGridFactory) :: cubed_sphere_factory
-    type (CubeToLatLonRegridder) :: cube_to_latlon_prototype
-    type (LatLonToCubeRegridder) :: latlon_to_cube_prototype
-    type (CubeToCubeRegridder) :: cube_to_cube_prototype
+    !type(CubedSphereGridFactory) :: cubed_sphere_factory
+    !type (CubeToLatLonRegridder) :: cube_to_latlon_prototype
+    !type (LatLonToCubeRegridder) :: latlon_to_cube_prototype
+    !type (CubeToCubeRegridder) :: cube_to_cube_prototype
     real :: DT, DT_Solar
     type(ESMF_Alarm) :: SolarAlarm
     type(ESMF_TimeInterval) :: Solar_DT
@@ -433,16 +432,16 @@ contains
     call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
     VERIFY_(STATUS)
 
-    if (trim(grid_type) == "Cubed-Sphere") then
-       call grid_manager%add_prototype("Cubed-Sphere", cubed_sphere_factory)
-       associate (method => REGRID_METHOD_BILINEAR, mgr => regridder_manager)
-          call mgr%add_prototype('Cubed-Sphere', 'LatLon', method, cube_to_latlon_prototype)
-          call mgr%add_prototype('LatLon', 'Cubed-Sphere', method, latlon_to_cube_prototype)
-          call mgr%add_prototype('Cubed-Sphere', 'Cubed-Sphere', method, cube_to_cube_prototype)
-       end associate
+   ! if (trim(grid_type) == "Cubed-Sphere") then
+   !    call grid_manager%add_prototype("Cubed-Sphere", cubed_sphere_factory)
+   !    associate (method => REGRID_METHOD_BILINEAR, mgr => regridder_manager)
+   !       call mgr%add_prototype('Cubed-Sphere', 'LatLon', method, cube_to_latlon_prototype)
+   !       call mgr%add_prototype('LatLon', 'Cubed-Sphere', method, latlon_to_cube_prototype)
+   !       call mgr%add_prototype('Cubed-Sphere', 'Cubed-Sphere', method, cube_to_cube_prototype)
+   !    end associate
+   ! endif
 
-    endif
-    ! Create atmospheric (single level atm grid covers all of surface) grid
+   ! Create atmospheric (single level atm grid covers all of surface) grid
     call MAPL_GridCreate(gc, rc=status)
     VERIFY_(status)
 
