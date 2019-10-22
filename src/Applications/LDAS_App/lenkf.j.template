@@ -16,18 +16,23 @@
 #######################################################################
 #    System Settings and Architecture Specific Environment Variables
 #######################################################################
-
+umask 022
 limit stacksize unlimited
+setenv ARCH `uname`
+
 setenv EXPID      MY_EXPID
 setenv EXPDOMAIN  MY_EXPDOMAIN
 setenv EXPDIR     MY_EXPDIR
 setenv ESMADIR    $EXPDIR/build/
 setenv GEOSBIN    $ESMADIR/bin/
 source $GEOSBIN/g5_modules
-setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0
+#setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0
 #setenv MKL_CBWR SSE4_2 # ensure zero-diff across archs
 #setenv MV2_ON_DEMAND_THRESHOLD 8192 # MVAPICH2
+
+setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
 setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
+setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 
 #######################################################################
 #             Experiment Specific Environment Variables
@@ -281,8 +286,8 @@ if( $DEBUGGER == 2) then
     exit
 endif
 
-#$GEOSBIN/esma_mpirun -np $numprocs $GEOSBIN/GEOSldas.x
-mpirun -map-by core --mca btl ^vader -np $numprocs $GEOSBIN/GEOSldas.x
+$RUN_CMD $numprocs $GEOSBIN/GEOSldas.x
+#mpirun -map-by core --mca btl ^vader -np $numprocs $GEOSBIN/GEOSldas.x
 
 if( -e EGRESS.ldas ) then
    set rc = 0
