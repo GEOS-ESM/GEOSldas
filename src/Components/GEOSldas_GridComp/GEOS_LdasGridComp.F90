@@ -595,15 +595,31 @@ contains
     call MPI_BCAST(tile_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
     call MPI_BCAST(tile_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
 
-    do i = 1,land_nt_local
-      do j =1,N_catf
-         if(local_id(i)==tile_coord_f(j)%tile_id) then
-            tcinternal%tile_coord(i) = tile_coord_f(j)
-            tcinternal%l2f(i)=j
-            exit
-         endif
+    block
+      integer, allocatable :: f2tile_id(:), tile_id2f(:)
+      integer :: max_id
+      allocate(f2tile_id(N_catf))
+      f2tile_id = tile_coord_f%tile_id
+
+      max_id = maxval(f2tile_id)
+      allocate(tile_id2f(max_id),source = 0)
+      do i = 1, N_catf
+         tile_id2f(f2tile_id(i)) = i
       enddo
-    enddo 
+      tcinternal%l2f = tile_id2f(local_id)
+      tcinternal%tile_coord = tile_coord_f(tcinternal%l2f)
+      deallocate(f2tile_id, tile_id2f)
+    end block
+
+    !do i = 1,land_nt_local
+    !  do j =1,N_catf
+    !     if(local_id(i)==tile_coord_f(j)%tile_id) then
+    !        tcinternal%tile_coord(i) = tile_coord_f(j)
+    !        tcinternal%l2f(i)=j
+    !        exit
+    !     endif
+    !  enddo
+    !enddo 
 
     do i = 0, numprocs-1
       if( i == myid) then
