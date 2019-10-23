@@ -611,16 +611,6 @@ contains
       deallocate(f2tile_id, tile_id2f)
     end block
 
-    !do i = 1,land_nt_local
-    !  do j =1,N_catf
-    !     if(local_id(i)==tile_coord_f(j)%tile_id) then
-    !        tcinternal%tile_coord(i) = tile_coord_f(j)
-    !        tcinternal%l2f(i)=j
-    !        exit
-    !     endif
-    !  enddo
-    !enddo 
-
     do i = 0, numprocs-1
       if( i == myid) then
          open(10,file= trim(decomf), action='write',position='append')
