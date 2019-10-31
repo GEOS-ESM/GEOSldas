@@ -18,7 +18,7 @@ module LDAS_PertRoutinesMod
   use ESMF
   use MAPL_Mod
 
-  use catch_iau,                        ONLY:     &
+  use catch_incr,                        ONLY:     &
        check_catch_progn
 
   use LDAS_ensdrv_Globals,                  ONLY:     &
