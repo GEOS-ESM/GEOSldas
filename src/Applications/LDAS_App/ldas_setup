@@ -42,7 +42,7 @@ class LDASsetup:
         self.NoneLDASrcKeys=['EXP_ID', 'EXP_DOMAIN',
             'BEG_DATE', 'END_DATE','RESTART','RESTART_PATH',
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
-            'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
+            'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE','VISMEANFILE','VISSTDFILE','NIRMEANFILE','NIRSTDFILE','MODELFPARMEANFILE','MODELFPARSTDFILE','MODISFPARMEANFILE','MODISFPARSTDFILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','MONTHLY_OUTPUT',
             'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE']
 
@@ -231,6 +231,15 @@ class LDASsetup:
             self.rqdExeInp['NDVI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'ndvi_clim_*.data')[0]
             self.rqdExeInp['NIRDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'nirdf_*.dat')[0]
             self.rqdExeInp['VISDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'visdf_*.dat')[0]
+            if os.path.isfile(glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISmean_clim_*.data')[0]):
+                self.rqdExeInp['VISMEANFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISmean_*.data' )[0]
+                self.rqdExeInp['VISSTDFILE'  ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISstd_*.data'  )[0]
+                self.rqdExeInp['NIRMEANFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISNIRmean_*.data' )[0]
+                self.rqdExeInp['NIRSTDFILE'  ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISNIRstd_*.data'  )[0]
+                self.rqdExeInp['MODELFPARMEANFILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'MODELFPARmean_*.data')[0]
+                self.rqdExeInp['MODELFPARSTDFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODELFPARstd_*.data' )[0]
+                self.rqdExeInp['MODISFPARMEANFILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISFPARmean_*.data')[0]
+                self.rqdExeInp['MODISFPARSTDFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISFPARstd_*.data' )[0]
         else :
             inpdir=self.rqdExeInp['RESTART_PATH']+self.rqdExeInp['RESTART_ID']+'/input/'
             self.rqdExeInp['TILING_FILE'] =os.path.realpath(glob.glob(inpdir+'*tile.data')[0])
@@ -239,7 +248,16 @@ class LDASsetup:
             self.rqdExeInp['NDVI_FILE']=    os.path.realpath(glob.glob(inpdir+'ndvi*data')[0])
             self.rqdExeInp['NIRDF_FILE']=  os.path.realpath(glob.glob(inpdir+'nirdf*data')[0])
             self.rqdExeInp['VISDF_FILE']=  os.path.realpath(glob.glob(inpdir+'visdf*data')[0])
-            
+            if os.path.isfile(os.path.realpath(glob.glob(inpdir+'MODISVISmean_clim_*.dat')[0])):
+                self.rqdExeInp['VISMEANFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISVISmean_*.data' )[0])
+                self.rqdExeInp['VISSTDFILE'  ]= os.path.realpath(glob.glob(inpdir+'MODISVISstd_*.data'  )[0])
+                self.rqdExeInp['NIRMEANFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISNIRmean_*.data' )[0])
+                self.rqdExeInp['NIRSTDFILE'  ]= os.path.realpath(glob.glob(inpdir+'MODISNIRstd_*.data'  )[0])
+                self.rqdExeInp['MODELFPARMEANFILE']= os.path.realpath(glob.glob(inpdir+'MODELFPARmean_*.data')[0])
+                self.rqdExeInp['MODELFPARSTDFILE' ]= os.path.realpath(glob.glob(inpdir+'MODELFPARstd_*.data' )[0])
+                self.rqdExeInp['MODISFPARMEANFILE']= os.path.realpath(glob.glob(inpdir+'MODISFPARmean_*.data')[0])
+                self.rqdExeInp['MODISFPARSTDFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISFPARstd_*.data' )[0])
+                
         if 'GRIDNAME' not in self.rqdExeInp :
             tmptile =self.rqdExeInp['TILING_FILE']
             self.rqdExeInp['GRIDNAME']  = linecache.getline(tmptile, 3).strip()
@@ -702,6 +720,15 @@ class LDASsetup:
              self.rqdExeInp['NDVI_FILE'],
              self.rqdExeInp['NIRDF_FILE'],
              self.rqdExeInp['VISDF_FILE'] ]
+        if self.rqdExeInp.has_key('VISMEANFILE'):
+            bcs.append(self.rqdExeInp['VISMEANFILE'])
+            bcs.append(self.rqdExeInp['VISSTDFILE'])
+            bcs.append(self.rqdExeInp['NIRMEANFILE'])
+            bcs.append(self.rqdExeInp['NIRSTDFILE'])
+            bcs.append(self.rqdExeInp['MODELFPARMEANFILE'])
+            bcs.append(self.rqdExeInp['MODELFPARSTDFILE'])
+            bcs.append(self.rqdExeInp['MODISFPARMEANFILE'])
+            bcs.append(self.rqdExeInp['MODISFPARSTDFILE'])            
         bcstmp=[]
         for bcf in bcs :
             shutil.copy(bcf, self.bcsdir+'/')
@@ -722,6 +749,16 @@ class LDASsetup:
         # link BC
         print "linking bcs..." 
         bcnames=['green','lai','ndvi','nirdf','visdf']
+        if self.rqdExeInp.has_key('VISMEANFILE'):
+            bcnames.append('MODISVISmean')
+            bcnames.append('MODISVISstd')
+            bcnames.append('MODISNIRmean')
+            bcnames.append('MODISNIRstd')
+            bcnames.append('MODELFPARmean')
+            bcnames.append('MODELFPARstd')
+            bcnames.append('MODISFPARmean')
+            bcnames.append('MODISFPARstd')
+            
         for ensid in self.ensids :
             for bcln,bc in zip(bcnames,bcs) :
                 myBC=self.inpdir+'/'+bcln+ensid+'.data'
@@ -1065,6 +1102,25 @@ class LDASsetup:
                    tmpl_='%s' 
                 bcval=['../input/green','../input/lai','../input/ndvi','../input/nirdf','../input/visdf']
                 bckey=['GREEN','LAI','NDVI','NIRDF','VISDF']
+                if 'VISMEANFILE' in self.rqdExeInp :
+                    bckey.append('VISMEAN')
+                    bckey.append('VISSTD')
+                    bckey.append('NIRMEAN')
+                    bckey.append('NIRSTD')
+                    bckey.append('MODELFPARMEAN')
+                    bckey.append('MODELFPARSTD')
+                    bckey.append('MODISFPARMEAN')
+                    bckey.append('MODISFPARSTD')
+                    
+                    bcval.append('../input/MODISVISmean')
+                    bcval.append('../input/MODISVISstd')
+                    bcval.append('../input/MODISNIRmean')
+                    bcval.append('../input/MODISNIRstd')
+                    bcval.append('../input/MODELFPARmean')
+                    bcval.append('../input/MODELFPARstd')
+                    bcval.append('../input/MODISFPARmean')
+                    bcval.append('../input/MODISFPARstd')                    
+                    
                 for key, val in zip(bckey,bcval):
                    keyn= key+'_FILE'
                    valn= val+tmpl_+'.data'
@@ -1529,6 +1585,16 @@ def _printExeInputKeys(rqdExeInpKeys):
     print
 
     _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from /bin directory
+
+    _f = open(_fn)
+    for line in _f:
+       sys.stdout.write(line)
+       sys.stdout.flush()
+    _f.close()
+    print
+    print
+
+    _fn = '../etc/GEOS_LandGridComp.rc'   # run ldas_setup from /bin directory
 
     _f = open(_fn)
     for line in _f:
