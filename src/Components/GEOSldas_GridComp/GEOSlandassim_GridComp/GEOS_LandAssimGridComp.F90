@@ -47,6 +47,7 @@ module GEOS_LandAssimGridCompMod
 
   use lsm_routines, only: DZGT
   use GEOS_EnsGridCompMod,      only: cat_progn=>catch_progn
+  use GEOS_EnsGridCompMod,      only: cat_param=>catch_param
   use mwRTM_types, only: mwRTM_param_type
   use catch_bias_types, only: obs_bias_type
   use catch_bias_types, only: cat_bias_param_type
@@ -100,7 +101,7 @@ integer :: N_catf
 !reordered tile_coord_rf and mapping l2rf
 integer,dimension(:),pointer :: l2rf, rf2l,rf2g
 type(tile_coord_type), dimension(:), pointer :: tile_coord_rf => null()
-type(cat_param_type), allocatable :: cat_param(:)
+!type(cat_param_type), allocatable :: cat_param(:)
 integer, allocatable :: Pert_rseed(:,:)
 real(kind=ESMF_KIND_R8), allocatable :: pert_rseed_r8(:,:)
 
@@ -809,7 +810,7 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MPI_Bcast(pert_rseed, NRANDSEED*NUM_ENSEMBLE, MPI_INTEGER, 0, mpicomm, mpierr)
 
 
-    allocate(cat_param(land_nt_local))
+    !allocate(cat_param(land_nt_local))
 
     !fname = get_io_filename(trim(out_path), trim(exp_id), 'ldas_catparam', date_time=start_time,&
     !               dir_name='rc_out', file_ext='.bin')

@@ -595,15 +595,21 @@ contains
     call MPI_BCAST(tile_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
     call MPI_BCAST(tile_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
 
-    do i = 1,land_nt_local
-      do j =1,N_catf
-         if(local_id(i)==tile_coord_f(j)%tile_id) then
-            tcinternal%tile_coord(i) = tile_coord_f(j)
-            tcinternal%l2f(i)=j
-            exit
-         endif
+    block
+      integer, allocatable :: f2tile_id(:), tile_id2f(:)
+      integer :: max_id
+      allocate(f2tile_id(N_catf))
+      f2tile_id = tile_coord_f%tile_id
+
+      max_id = maxval(f2tile_id)
+      allocate(tile_id2f(max_id),source = 0)
+      do i = 1, N_catf
+         tile_id2f(f2tile_id(i)) = i
       enddo
-    enddo 
+      tcinternal%l2f = tile_id2f(local_id)
+      tcinternal%tile_coord = tile_coord_f(tcinternal%l2f)
+      deallocate(f2tile_id, tile_id2f)
+    end block
 
     do i = 0, numprocs-1
       if( i == myid) then
@@ -837,6 +843,9 @@ contains
 
        ! Use land's output as the input to calculate the ensemble average
        if (LSM_CHOICE == 1) then
+          ! collect cat_param 
+          call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=3, userRC=status)
+          VERIFY_(status)
           call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
           VERIFY_(status)
        endif
@@ -855,9 +864,10 @@ contains
     if (assim) then 
        igc = LANDASSIM
        call MAPL_TimerOn(MAPL, gcnames(igc))
-       !get cat_param
-       call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=1, userRC=status)
-       VERIFY_(status)
+       ! get cat_param
+       ! it is moved to ensavg
+      ! call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=1, userRC=status)
+      ! VERIFY_(status)
        !import state is the export from ens_GridComp
        call ESMF_GridCompRun(gcs(igc), importState=gex(ENSAVG), exportState=gex(igc), clock=clock, phase=2, userRC=status)
        VERIFY_(status)

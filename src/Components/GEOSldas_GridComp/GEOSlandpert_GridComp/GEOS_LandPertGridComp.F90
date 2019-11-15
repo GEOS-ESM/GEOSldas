@@ -42,7 +42,10 @@ module GEOS_LandPertGridCompMod
   use LDAS_TileCoordRoutines, only: get_ij_ind_from_latlon
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
-
+  use catch_types, only: cat_param_type
+  use catch_iau, only: check_catch_progn
+  use GEOS_EnsGridCompMod,      only: cat_param=>catch_param
+ 
   implicit none
 
   private
@@ -2483,6 +2486,14 @@ contains
           end select
        end do
 
+       call check_cat_progns(land_nt_local, cat_param, tcPert(:,1), tcPert(:,2), tcPert(:,4),               &
+!          qa1,qa2,qa4, capac                       &
+          catdefPert,                                  &
+          rzexcPert, srfexcPert,                                  &
+         ghtcnt1Pert,ghtcnt2Pert,ghtcnt3Pert,ghtcnt4Pert,ghtcnt5Pert,ghtcnt6Pert, &
+         wesnn1Pert,wesnn2Pert,wesnn3Pert, &
+         htsnnn1Pert,htsnnn2Pert,htsnnn3Pert, &
+         sndzn1Pert, sndzn2Pert,sndzn3Pert)
     end if
 
     call MAPL_TimerOff(MAPL, '-ApplyPert')
@@ -2797,4 +2808,85 @@ contains
        end subroutine check  
   end subroutine
 
+  subroutine check_cat_progns(N_cat, cat_param, tc1, tc2, tc4,               &
+!          qa1,qa2,qa4, capac                       &
+          catdef,                                  &
+          rzexc, srfexc,                                  &
+         ghtcnt1,ghtcnt2,ghtcnt3,ghtcnt4,ghtcnt5,ghtcnt6, &
+         wesnn1,wesnn2,wesnn3, &
+         htsnnn1,htsnnn2,htsnnn3, &
+         sndzn1, sndzn2,sndzn3)
+       implicit none
+       integer, intent(in) :: N_cat
+       type(cat_param_type), dimension(N_cat), intent(in)    :: cat_param
+       real,    dimension(       N_cat), intent(inout) :: TC1, TC2, TC4
+       !real,    dimension(       N_cat), intent(inout) :: TC1, TC2, TC4, Qa1, Qa2, Qa4
+       real,    dimension(       N_cat), intent(inout) :: CATDEF, RZEXC, SRFEXC
+       real,    dimension(N_cat), intent(inout) :: GHTCNT1,GHTCNT2,GHTCNT3,GHTCNT4,GHTCNT5,GHTCNT6
+       real,    dimension(N_cat), intent(inout) :: WESNN1, HTSNNN1, SNDZN1
+       real,    dimension(N_cat), intent(inout) :: WESNN2, HTSNNN2, SNDZN2
+       real,    dimension(N_cat), intent(inout) :: WESNN3, HTSNNN3, SNDZN3
+
+       real,    dimension(6,N_cat) :: GHTCNT
+       real,    dimension(3,N_cat) :: WESNN, HTSNNN, SNDZN
+       real,    dimension( N_cat)  :: Qa1, Qa2, Qa4, capac
+
+       GHTCNT(1,:)=GHTCNT1(:)
+       GHTCNT(2,:)=GHTCNT2(:)
+       GHTCNT(3,:)=GHTCNT3(:)
+       GHTCNT(4,:)=GHTCNT4(:)
+       GHTCNT(5,:)=GHTCNT5(:)
+       GHTCNT(6,:)=GHTCNT6(:)
+
+       WESNN(1,:) = WESNN1(:)
+       WESNN(2,:) = WESNN2(:)
+       WESNN(3,:) = WESNN3(:)
+
+       sndzn(1,:) = sndzn1(:)
+       sndzn(2,:) = sndzn2(:)
+       sndzn(3,:) = sndzn3(:)
+
+       htsnnn(1,:) = htsnnn1(:)
+       htsnnn(2,:) = htsnnn2(:)
+       htsnnn(3,:) = htsnnn3(:)
+
+      ! just for the interface. QA event didn't change
+      Qa1 = 0.0
+      Qa2 = 0.0
+      Qa4 = 0.0
+      capac = 0.0
+
+       call check_catch_progn( N_cat, cat_param%vegcls, cat_param%dzsf,         &
+         cat_param%vgwmax,  cat_param%cdcr1, cat_param%cdcr2,                &
+         cat_param%psis, cat_param%bee, cat_param%poros, cat_param%wpwet,    &
+         cat_param%ars1, cat_param%ars2, cat_param%ars3,                     &
+         cat_param%ara1, cat_param%ara2, cat_param%ara3, cat_param%ara4,     &
+         cat_param%arw1, cat_param%arw2, cat_param%arw3, cat_param%arw4,     &
+         tc1, tc2, tc4,                        &
+         qa1, qa2, qa4,                        &
+         capac,catdef,                         &
+         rzexc, srfexc,                        &
+         ghtcnt, wesnn, htsnnn, sndzn )
+
+       GHTCNT1(:) = GHTCNT(1,:)
+       GHTCNT2(:) = GHTCNT(2,:)
+       GHTCNT3(:) = GHTCNT(3,:)
+       GHTCNT4(:) = GHTCNT(4,:)
+       GHTCNT5(:) = GHTCNT(5,:)
+       GHTCNT6(:) = GHTCNT(6,:)
+       
+       WESNN1(:) = WESNN(1,:)
+       WESNN2(:) = WESNN(2,:)
+       WESNN3(:) = WESNN(3,:)
+       
+       sndzn1(:) = sndzn(1,:)
+       sndzn2(:) = sndzn(2,:)
+       sndzn3(:) = sndzn(3,:)
+
+       htsnnn1(:) = htsnnn(1,:)
+       htsnnn2(:) = htsnnn(2,:)
+       htsnnn3(:) = htsnnn(3,:)
+
+ end subroutine check_cat_progns
+    
 end module GEOS_LandPertGridCompMod
