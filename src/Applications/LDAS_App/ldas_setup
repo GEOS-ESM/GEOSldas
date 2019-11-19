@@ -769,10 +769,10 @@ class LDASsetup:
                os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ensid +'_rst')
                self.has_landassim_seed = True
  
-        cmd= './process_rst.csh  ' + sponserid +' ' + exp_id + ' ' + exp_dir + \
-             '  ' + bcdir +' ' + tilefile +' ' + lsmchoice + '  ' + have_rst + ' ' +YYYYMMDD + \
-             '  ' + rstid +' ' + rstdomain + ' ' + rstpath0 + ' ' + str(self.nens) +'  ' + str(self.rqdExeInp['RUN_IRRIG']) + \
-             '  ' + wemin_in + ' ' + wemin_out
+        cmd= '  '.join(['./process_rst.csh', sponserid, exp_id, exp_dir,
+                        bcdir, tilefile, lsmchoice, have_rst, YYYYMMDD,
+                        rstid, rstdomain, rstpath0, str(self.nens), str(self.rqdExeInp['RUN_IRRIG']),
+                        wemin_in, wemin_out])
         print "cmd:   " + cmd
         os.system(cmd)
 
