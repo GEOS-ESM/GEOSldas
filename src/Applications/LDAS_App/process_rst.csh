@@ -92,8 +92,8 @@ mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID
 
 _EOI_
 
-    if($LSM_CHOICE == 1) sed -i '$ a\bin/Scale_Catch OutData1/catch_internal_rst OutData2/catch_internal_rst catch_internal_rst 50 $WEMIN_IN $WEMIN_OUT \'  mkLDASsa.j
-    if($LSM_CHOICE == 2) sed -i '$ a\bin/Scale_CatchCN OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst catchcn_internal_rst 50 $WEMIN_IN $WEMIN_OUT \'  mkLDASsa.j
+    if($LSM_CHOICE == 1) sed -i "$ a\bin/Scale_Catch OutData1/catch_internal_rst OutData2/catch_internal_rst catch_internal_rst 50 $WEMIN_IN $WEMIN_OUT \"  mkLDASsa.j
+    if($LSM_CHOICE == 2) sed -i "$ a\bin/Scale_CatchCN OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst catchcn_internal_rst 50 $WEMIN_IN $WEMIN_OUT \"  mkLDASsa.j
 
     sed -i '$ a\ \'  mkLDASsa.j
     sed -i '$ a\## Done creating catch*_internal_rst file \'  mkLDASsa.j
