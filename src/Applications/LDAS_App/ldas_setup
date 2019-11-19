@@ -755,8 +755,8 @@ class LDASsetup:
         rstid     = self.rqdExeInp['RESTART_ID']
         rstdomain = self.rqdExeInp['RESTART_DOMAIN']
         rstpath0  = self.rqdExeInp['RESTART_PATH']
-        wemin_in  = 13  #  WEmin input/output for scale_catch(cn),
-        wemin_out = 13  #  assuming we don't want to use old gcm value (26 mm)
+        wemin_in  = '13'  #  WEmin input/output for scale_catch(cn),
+        wemin_out = '13'  #  assuming we don't want to use old gcm value (26 mm)
         
         # just copy the landassim pert seed if it exist
         for iens in xrange(self.nens) :
