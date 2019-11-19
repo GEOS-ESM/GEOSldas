@@ -13,6 +13,9 @@ setenv  RESTART_DOMAIN $10
 setenv  RESTART_PATH $11
 setenv  NUMENS       $12
 setenv  RUN_IRRIG    $13
+setenv  WEMIN_IN     $14
+setenv  WEMIN_OUT    $15
+
 setenv  RESTART_short ${RESTART_PATH}/${RESTART_ID}/output/${RESTART_DOMAIN}/
 
 set PWD=`pwd`
@@ -89,9 +92,8 @@ mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID
 
 _EOI_
 
-    if($LSM_CHOICE == 1) sed -i '$ a\bin/Scale_Catch OutData1/catch_internal_rst OutData2/catch_internal_rst catch_internal_rst 50 \'  mkLDASsa.j
-    if($LSM_CHOICE == 2) sed -i '$ a\bin/Scale_CatchCN OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst catchcn_internal_rst 50 \'  mkLDASsa.j
-    #if($LSM_CHOICE == 2) sed -i '$ a\bin/Scale_Catch OutData1/catchcn_internal_clm45 OutData2/catchcn_internal_clm45 catchcn_internal_clm45 50 \'  mkLDASsa.j
+    if($LSM_CHOICE == 1) sed -i '$ a\bin/Scale_Catch OutData1/catch_internal_rst OutData2/catch_internal_rst catch_internal_rst 50 WEMIN_IN WEMIN_OUT \'  mkLDASsa.j
+    if($LSM_CHOICE == 2) sed -i '$ a\bin/Scale_CatchCN OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst catchcn_internal_rst 50 WEMIN_IN WEMIN_OUT \'  mkLDASsa.j
 
     sed -i '$ a\ \'  mkLDASsa.j
     sed -i '$ a\## Done creating catch*_internal_rst file \'  mkLDASsa.j

@@ -754,8 +754,10 @@ class LDASsetup:
         YYYYMMDD  = '%4d%02d%02d' % (_start.year, _start.month,_start.day)
         rstid     = self.rqdExeInp['RESTART_ID']
         rstdomain = self.rqdExeInp['RESTART_DOMAIN']
-        rstpath0   = self.rqdExeInp['RESTART_PATH']
-     
+        rstpath0  = self.rqdExeInp['RESTART_PATH']
+        wemin_in  = 13  #  WEmin input/output for scale_catch(cn),
+        wemin_out = 13  #  assuming we don't want to use old gcm value (26 mm)
+        
         # just copy the landassim pert seed if it exist
         for iens in xrange(self.nens) :
            _ensdir = self.ensdirs[iens]
@@ -769,7 +771,8 @@ class LDASsetup:
  
         cmd= './process_rst.csh  ' + sponserid +' ' + exp_id + ' ' + exp_dir + \
              '  ' + bcdir +' ' + tilefile +' ' + lsmchoice + '  ' + have_rst + ' ' +YYYYMMDD + \
-             '  ' + rstid +' ' + rstdomain + ' ' + rstpath0 + ' ' + str(self.nens) +'  ' + str(self.rqdExeInp['RUN_IRRIG'])
+             '  ' + rstid +' ' + rstdomain + ' ' + rstpath0 + ' ' + str(self.nens) +'  ' + str(self.rqdExeInp['RUN_IRRIG']) + \
+             '  ' + wemin_in + ' ' + wemin_out
         print "cmd:   " + cmd
         os.system(cmd)
 
