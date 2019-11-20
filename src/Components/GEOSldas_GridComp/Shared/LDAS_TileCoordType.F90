@@ -393,6 +393,8 @@ contains
 
     character(len=*), parameter :: Iam = 'io_tile_coord_type'
     character(len=400) :: err_msg
+    integer, allocatable :: tmp_int(:)
+    real , allocatable :: tmp_real(:)
  
     ! -------------------------------------------------------------
     
@@ -433,24 +435,45 @@ contains
        end if
 
        err_msg = 'ERROR reading tile_coord_file. (2)'
+       allocate(tmp_int(N_tile))
+       allocate(tmp_real(N_tile))
 
-       read (unitnum, iostat=istat) (tile_coord(n)%tile_id,   n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%typ,       n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%pfaf,      n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%com_lon,   n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%com_lat,   n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%min_lon,   n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%max_lon,   n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%min_lat,   n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%max_lat,   n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%i_indg,    n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%j_indg,    n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%frac_cell, n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%frac_pfaf, n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%area,      n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       read (unitnum, iostat=istat) (tile_coord(n)%elev,      n=1,N_tile); if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       read (unitnum, iostat=istat) tmp_int; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%tile_id = tmp_int(:)
+       read (unitnum, iostat=istat) tmp_int; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%typ = tmp_int(:)
+       read (unitnum, iostat=istat) tmp_int; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%pfaf = tmp_int(:)
 
-       tile_coord%f_num = -1 ! not assigned values yet
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%com_lon = tmp_real(:)
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%com_lat= tmp_real(:)
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%min_lon= tmp_real(:)
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%max_lon= tmp_real(:)
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%min_lat= tmp_real(:)
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%max_lat= tmp_real(:)
+
+       read (unitnum, iostat=istat) tmp_int; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%i_indg = tmp_int(:)
+       read (unitnum, iostat=istat) tmp_int; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%j_indg = tmp_int(:)
+
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%frac_cell = tmp_real(:)
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%frac_pfaf = tmp_real(:)
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%area= tmp_real(:)
+       read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       tile_coord(:)%elev= tmp_real(:)
+
+       tile_coord%f_num = -9999 ! not assigned values yet
+       deallocate(tmp_int, tmp_real)
     case default
        
        err_msg = 'unknown action ' // action

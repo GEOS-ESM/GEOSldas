@@ -1192,7 +1192,7 @@ contains
     call esmf2ldas(StopTime, stop_time, rc=status)
     VERIFY_(status)
 
-    if( internal%ens_id ==0 ) then
+    if( internal%ens_id ==0 .and. IAmRoot) then
        ! write out the input file
        call read_ens_prop_inputs(write_nml = .true. , work_path = trim(out_path), &
             exp_id = trim(exp_id), date_time = start_time)
