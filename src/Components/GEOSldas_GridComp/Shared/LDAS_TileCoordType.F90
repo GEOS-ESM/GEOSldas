@@ -472,7 +472,7 @@ contains
        read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        tile_coord(:)%elev= tmp_real(:)
 
-       tile_coord%f_num = -1 ! not assigned values yet
+       tile_coord%f_num = -9999 ! not assigned values yet
        deallocate(tmp_int, tmp_real)
     case default
        
