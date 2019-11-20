@@ -671,6 +671,14 @@ class LDASsetup:
         if 'SURFLAY' in self.rqdExeInp :
            dzsf = self.rqdExeInp['SURFLAY']
 
+        wemin_in  = '13'  #  WEmin input/output for scale_catch(cn),
+        wemin_out = '13'  #             
+        if 'WEMIN_IN' in self.rqdExeInp :
+           wemin_in = self.rqdExeInp['WEMIN_IN']
+        if 'WEMIN_OUT' in self.rqdExeInp :
+           wemin_out = self.rqdExeInp['WEMIN_OUT']
+
+           
         cmd = './preprocess_ldas.x c_f2g ' + tile + ' ' + domain_def + ' '+ self.out_path + ' ' + catchment_def + ' ' + exp_id + ' ' + _y4m2d2h2m2 + ' '+ dzsf
 
         print 'Creating f2g.txt....\n'
@@ -755,9 +763,7 @@ class LDASsetup:
         rstid     = self.rqdExeInp['RESTART_ID']
         rstdomain = self.rqdExeInp['RESTART_DOMAIN']
         rstpath0  = self.rqdExeInp['RESTART_PATH']
-        wemin_in  = '13'  #  WEmin input/output for scale_catch(cn),
-        wemin_out = '13'  #  assuming we don't want to use old gcm value (26 mm)
-        
+
         # just copy the landassim pert seed if it exist
         for iens in xrange(self.nens) :
            _ensdir = self.ensdirs[iens]
