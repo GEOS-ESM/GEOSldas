@@ -843,6 +843,9 @@ contains
 
        ! Use land's output as the input to calculate the ensemble average
        if (LSM_CHOICE == 1) then
+          ! collect cat_param 
+          call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=3, userRC=status)
+          VERIFY_(status)
           call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
           VERIFY_(status)
        endif
@@ -861,9 +864,10 @@ contains
     if (assim) then 
        igc = LANDASSIM
        call MAPL_TimerOn(MAPL, gcnames(igc))
-       !get cat_param
-       call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=1, userRC=status)
-       VERIFY_(status)
+       ! get cat_param
+       ! it is moved to ensavg
+      ! call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=1, userRC=status)
+      ! VERIFY_(status)
        !import state is the export from ens_GridComp
        call ESMF_GridCompRun(gcs(igc), importState=gex(ENSAVG), exportState=gex(igc), clock=clock, phase=2, userRC=status)
        VERIFY_(status)
