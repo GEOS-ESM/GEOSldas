@@ -671,6 +671,7 @@ class LDASsetup:
         if 'SURFLAY' in self.rqdExeInp :
            dzsf = self.rqdExeInp['SURFLAY']
 
+# These are dummy values for cold restart:
         wemin_in  = '13'  #  WEmin input/output for scale_catch(cn),
         wemin_out = '13'  #             
         if 'WEMIN_IN' in self.rqdExeInp :
