@@ -671,7 +671,7 @@ class LDASsetup:
         if 'SURFLAY' in self.rqdExeInp :
            dzsf = self.rqdExeInp['SURFLAY']
 
-# These are dummy values for cold restart:
+        # These are dummy values for cold restart:
         wemin_in  = '13'  #  WEmin input/output for scale_catch(cn),
         wemin_out = '13'  #             
         if 'WEMIN_IN' in self.rqdExeInp :
@@ -779,7 +779,7 @@ class LDASsetup:
         cmd= '  '.join(['./process_rst.csh', sponserid, exp_id, exp_dir,
                         bcdir, tilefile, lsmchoice, have_rst, YYYYMMDD,
                         rstid, rstdomain, rstpath0, str(self.nens), str(self.rqdExeInp['RUN_IRRIG']),
-                        wemin_in, wemin_out])
+                        dzsf, wemin_in, wemin_out])
         print "cmd:   " + cmd
         os.system(cmd)
 

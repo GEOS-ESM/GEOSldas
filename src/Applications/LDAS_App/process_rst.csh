@@ -13,8 +13,9 @@ setenv  RESTART_DOMAIN $10
 setenv  RESTART_PATH $11
 setenv  NUMENS       $12
 setenv  RUN_IRRIG    $13
-setenv  WEMIN_IN     $14
-setenv  WEMIN_OUT    $15
+setenv  SURFLAY      $14
+setenv  WEMIN_IN     $15
+setenv  WEMIN_OUT    $16
 
 setenv  RESTART_short ${RESTART_PATH}/${RESTART_ID}/output/${RESTART_DOMAIN}/
 
@@ -79,7 +80,7 @@ setenv LAIFILE `find ${BCSDIR}/lai_clim*`
 setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
 limit stacksize unlimited
  
-mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y
 sleep 3
 
 if($LSM_CHOICE == 1) then
@@ -88,12 +89,12 @@ else
    /bin/cp OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst
 endif
 
-mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y
 
 _EOI_
 
-    if($LSM_CHOICE == 1) sed -i "$ a\bin/Scale_Catch OutData1/catch_internal_rst OutData2/catch_internal_rst catch_internal_rst 50 $WEMIN_IN $WEMIN_OUT \"  mkLDASsa.j
-    if($LSM_CHOICE == 2) sed -i "$ a\bin/Scale_CatchCN OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst catchcn_internal_rst 50 $WEMIN_IN $WEMIN_OUT \"  mkLDASsa.j
+    if($LSM_CHOICE == 1) sed -i "$ a\bin/Scale_Catch OutData1/catch_internal_rst OutData2/catch_internal_rst catch_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT \"  mkLDASsa.j
+    if($LSM_CHOICE == 2) sed -i "$ a\bin/Scale_CatchCN OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst catchcn_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT \"  mkLDASsa.j
 
     sed -i '$ a\ \'  mkLDASsa.j
     sed -i '$ a\## Done creating catch*_internal_rst file \'  mkLDASsa.j
