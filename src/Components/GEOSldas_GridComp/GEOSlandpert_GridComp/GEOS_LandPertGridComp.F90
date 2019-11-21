@@ -43,7 +43,7 @@ module GEOS_LandPertGridCompMod
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
   use catch_types, only: cat_param_type
-  use catch_iau, only: check_catch_progn
+  use catch_incr, only: check_catch_progn
   use GEOS_EnsGridCompMod,      only: cat_param=>catch_param
  
   implicit none
