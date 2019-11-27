@@ -36,10 +36,6 @@ VEGDYN_INTERNAL_RESTART_TYPE   : binary
 CATCH_INTERNAL_RESTART_TYPE    : pnc4
 CATCH_INTERNAL_CHECKPOINT_TYPE : pnc4
 
-# ---- SURFLAY
-#
-SURFLAY                        : 50.0
-
 #--------------------------------------------------------#
 # Optional parameters. Users can overwrite the defaults  #
 # through the user-generated exeinp file.                #
