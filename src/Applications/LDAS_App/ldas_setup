@@ -231,15 +231,15 @@ class LDASsetup:
             self.rqdExeInp['NDVI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'ndvi_clim_*.data')[0]
             self.rqdExeInp['NIRDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'nirdf_*.dat')[0]
             self.rqdExeInp['VISDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'visdf_*.dat')[0]
-            if os.path.isfile(glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISmean_clim_*.data')[0]):
-                self.rqdExeInp['VISMEANFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISmean_*.data' )[0]
-                self.rqdExeInp['VISSTDFILE'  ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISstd_*.data'  )[0]
-                self.rqdExeInp['NIRMEANFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISNIRmean_*.data' )[0]
-                self.rqdExeInp['NIRSTDFILE'  ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISNIRstd_*.data'  )[0]
-                self.rqdExeInp['MODELFPARMEANFILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'MODELFPARmean_*.data')[0]
-                self.rqdExeInp['MODELFPARSTDFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODELFPARstd_*.data' )[0]
-                self.rqdExeInp['MODISFPARMEANFILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISFPARmean_*.data')[0]
-                self.rqdExeInp['MODISFPARSTDFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISFPARstd_*.data' )[0]
+            if os.path.isfile(glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISmean_*.dat')[0]):
+                self.rqdExeInp['VISMEANFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISmean_*.dat' )[0]
+                self.rqdExeInp['VISSTDFILE'  ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISstd_*.dat'  )[0]
+                self.rqdExeInp['NIRMEANFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISNIRmean_*.dat' )[0]
+                self.rqdExeInp['NIRSTDFILE'  ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISNIRstd_*.dat'  )[0]
+                self.rqdExeInp['MODELFPARMEANFILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'MODELFPARmean_*.dat')[0]
+                self.rqdExeInp['MODELFPARSTDFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODELFPARstd_*.dat' )[0]
+                self.rqdExeInp['MODISFPARMEANFILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISFPARmean_*.dat')[0]
+                self.rqdExeInp['MODISFPARSTDFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISFPARstd_*.dat' )[0]
         else :
             inpdir=self.rqdExeInp['RESTART_PATH']+self.rqdExeInp['RESTART_ID']+'/input/'
             self.rqdExeInp['TILING_FILE'] =os.path.realpath(glob.glob(inpdir+'*tile.data')[0])
@@ -248,15 +248,15 @@ class LDASsetup:
             self.rqdExeInp['NDVI_FILE']=    os.path.realpath(glob.glob(inpdir+'ndvi*data')[0])
             self.rqdExeInp['NIRDF_FILE']=  os.path.realpath(glob.glob(inpdir+'nirdf*data')[0])
             self.rqdExeInp['VISDF_FILE']=  os.path.realpath(glob.glob(inpdir+'visdf*data')[0])
-            if os.path.isfile(os.path.realpath(glob.glob(inpdir+'MODISVISmean_clim_*.dat')[0])):
-                self.rqdExeInp['VISMEANFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISVISmean_*.data' )[0])
-                self.rqdExeInp['VISSTDFILE'  ]= os.path.realpath(glob.glob(inpdir+'MODISVISstd_*.data'  )[0])
-                self.rqdExeInp['NIRMEANFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISNIRmean_*.data' )[0])
-                self.rqdExeInp['NIRSTDFILE'  ]= os.path.realpath(glob.glob(inpdir+'MODISNIRstd_*.data'  )[0])
-                self.rqdExeInp['MODELFPARMEANFILE']= os.path.realpath(glob.glob(inpdir+'MODELFPARmean_*.data')[0])
-                self.rqdExeInp['MODELFPARSTDFILE' ]= os.path.realpath(glob.glob(inpdir+'MODELFPARstd_*.data' )[0])
-                self.rqdExeInp['MODISFPARMEANFILE']= os.path.realpath(glob.glob(inpdir+'MODISFPARmean_*.data')[0])
-                self.rqdExeInp['MODISFPARSTDFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISFPARstd_*.data' )[0])
+            if os.path.isfile(os.path.realpath(glob.glob(inpdir+'MODISVISmean_*.dat')[0])):
+                self.rqdExeInp['VISMEANFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISVISmean_*.dat' )[0])
+                self.rqdExeInp['VISSTDFILE'  ]= os.path.realpath(glob.glob(inpdir+'MODISVISstd_*.dat'  )[0])
+                self.rqdExeInp['NIRMEANFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISNIRmean_*.dat' )[0])
+                self.rqdExeInp['NIRSTDFILE'  ]= os.path.realpath(glob.glob(inpdir+'MODISNIRstd_*.dat'  )[0])
+                self.rqdExeInp['MODELFPARMEANFILE']= os.path.realpath(glob.glob(inpdir+'MODELFPARmean_*.dat')[0])
+                self.rqdExeInp['MODELFPARSTDFILE' ]= os.path.realpath(glob.glob(inpdir+'MODELFPARstd_*.dat' )[0])
+                self.rqdExeInp['MODISFPARMEANFILE']= os.path.realpath(glob.glob(inpdir+'MODISFPARmean_*.dat')[0])
+                self.rqdExeInp['MODISFPARSTDFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISFPARstd_*.dat' )[0])
                 
         if 'GRIDNAME' not in self.rqdExeInp :
             tmptile =self.rqdExeInp['TILING_FILE']
