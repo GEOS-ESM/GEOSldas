@@ -76,12 +76,6 @@ LSM_CHOICE                     : 1
 # BLACK_FILE                     : '' 
 # WHITE_FILE                     : '' 
 
-# ---- Surface layer turbulence scheme:
-#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
-#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
-#
-CHOOSEMOSFC                    : 0
-
 # ---- Perturbations (If num_ensemble > 1, PERTURBATIONS will automatically be set to 1): 
 #    0 : No perturbactions.
 #    1 : With perturbations.
@@ -152,3 +146,14 @@ LAND_ASSIM                     : NO
 # Land Physics Parameters Resource File
 # -------------------------------------
 LANDRC: LDAS.rc
+
+# ---- Surface layer turbulence scheme:
+#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
+#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
+#
+CHOOSEMOSFC                    : 0
+
+# Fraction of AGCM grid cell that precipitation falls on
+# ------------------------------------------------------
+# options : 1.0 (default for zero-diff); 0.025 is recommended to deal with AGCM's drizzle
+# PRECIPFRAC: 0.025
