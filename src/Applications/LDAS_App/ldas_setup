@@ -231,7 +231,9 @@ class LDASsetup:
             self.rqdExeInp['NDVI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'ndvi_clim_*.data')[0]
             self.rqdExeInp['NIRDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'nirdf_*.dat')[0]
             self.rqdExeInp['VISDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'visdf_*.dat')[0]
-            if os.path.isfile(glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISmean_*.dat')[0]):
+
+            self.present_statfiles = glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISmean_*.dat')
+            if len(self.present_statfiles) > 0:
                 self.rqdExeInp['VISMEANFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISmean_*.dat' )[0]
                 self.rqdExeInp['VISSTDFILE'  ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISVISstd_*.dat'  )[0]
                 self.rqdExeInp['NIRMEANFILE' ]= glob.glob(self.rqdExeInp['BCS_PATH']+'MODISNIRmean_*.dat' )[0]
@@ -248,7 +250,9 @@ class LDASsetup:
             self.rqdExeInp['NDVI_FILE']=    os.path.realpath(glob.glob(inpdir+'ndvi*data')[0])
             self.rqdExeInp['NIRDF_FILE']=  os.path.realpath(glob.glob(inpdir+'nirdf*data')[0])
             self.rqdExeInp['VISDF_FILE']=  os.path.realpath(glob.glob(inpdir+'visdf*data')[0])
-            if os.path.isfile(os.path.realpath(glob.glob(inpdir+'MODISVISmean_*.dat')[0])):
+
+            self.present_statfiles = glob.glob(inpdir+'MODISVISmean_*.dat')
+            if len(self.present_statfiles) > 0:
                 self.rqdExeInp['VISMEANFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISVISmean_*.dat' )[0])
                 self.rqdExeInp['VISSTDFILE'  ]= os.path.realpath(glob.glob(inpdir+'MODISVISstd_*.dat'  )[0])
                 self.rqdExeInp['NIRMEANFILE' ]= os.path.realpath(glob.glob(inpdir+'MODISNIRmean_*.dat' )[0])
