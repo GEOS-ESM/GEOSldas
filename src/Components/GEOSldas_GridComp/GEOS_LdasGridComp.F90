@@ -23,9 +23,9 @@ module GEOS_LdasGridCompMod
   use LDAS_EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
   use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type
-  use LDAS_TileCoordRoutines, only: get_tile_grid
+  use LDAS_TileCoordRoutines, only: get_tile_grid, get_ij_ind_from_latlon
   use LDAS_ConvertMod, only: esmf2ldas
-
+  use LDAS_PertRoutinesMod, only: get_pert_grid
   use LDAS_ensdrv_functions,ONLY:  get_io_filename 
   use LDAS_DateTimeMod,ONLY: date_time_type
   use LDAS_ensdrv_mpi, only: MPI_tile_coord_type, MPI_grid_def_type
@@ -586,6 +586,33 @@ contains
        write(10,*) N_catf
        close(10)
        call io_grid_def_type('w', logunit, tile_grid_f, 'tile_grid_f')
+
+       block 
+          type(grid_def_type) :: latlon_tmp_g
+          integer :: perturbations
+
+          call MAPL_GetResource(MAPL, perturbations, 'PERTURBATIONS:', default=0, rc=status)
+          if(trim(grid_type) == "Cubed-Sphere" .and. PERTURBATIONS == 1) then
+
+            ASSERT_(index(tile_grid_g%gridtype, 'c3') /=0)
+            !1) save original index
+            tile_coord_f%cs_i_indg = tile_coord_f%i_indg 
+            tile_coord_f%cs_j_indg = tile_coord_f%j_indg 
+            !2) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
+            call get_pert_grid(tile_grid_g, latlon_tmp_g)
+            tile_grid_g = latlon_tmp_g
+            !2) change the index
+            !    need to chang min_lon, max_lon, min_lat , max_lat? 
+            do i = 1, N_catf
+               call get_ij_ind_from_latlon(latlon_tmp_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
+                    tile_coord_f(i)%i_indg,tile_coord_f(i)%j_indg)
+            enddo
+            !3) re-generate tile_grid_f in Lat-Lon
+            call get_tile_grid(N_catf, tile_coord_f, tile_grid_g, tile_grid_f)
+          
+          endif
+       end block 
+
     endif
     
     call MPI_BCAST(N_catf,1,MPI_INTEGER,0,mpicomm,mpierr)
@@ -864,21 +891,14 @@ contains
     if (assim) then 
        igc = LANDASSIM
        call MAPL_TimerOn(MAPL, gcnames(igc))
-       ! get cat_param
-       ! it is moved to ensavg
-      ! call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=1, userRC=status)
-      ! VERIFY_(status)
-       !import state is the export from ens_GridComp
-       call ESMF_GridCompRun(gcs(igc), importState=gex(ENSAVG), exportState=gex(igc), clock=clock, phase=2, userRC=status)
+       !import state is the export from ens_GridComp, assimilation run
+       call ESMF_GridCompRun(gcs(igc), importState=gex(ENSAVG), exportState=gex(igc), clock=clock, phase=1, userRC=status)
        VERIFY_(status)
 
        do i = 1, NUM_ENSEMBLE
-          ! update catch_progn and pert_rseed
-          call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(LAND(i)), clock=clock, phase=3, userRC=status)
+          ! update catch_progn 
+          call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(LAND(i)), clock=clock, phase=2, userRC=status)
           VERIFY_(status)
-          ! update pert_rseed
-          !call ESMF_GridCompRun(gcs(LANDPERT(i)), importState=gim(LANDPERT(i)), exportState=gex(LANDPERT(i)), clock=clock, phase=5, userRC=status)
-          !VERIFY_(status)
           
        enddo
        call MAPL_TimerOff(MAPL, gcnames(igc))

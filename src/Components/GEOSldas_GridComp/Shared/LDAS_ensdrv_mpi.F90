@@ -208,6 +208,8 @@ contains
     !     real    :: max_lat    ! maximum latitude (bounding box for tile)
     !     integer :: i_indg     ! i index (w.r.t. *global* grid that cuts tiles) 
     !     integer :: j_indg     ! j index (w.r.t. *global* grid that cuts tiles)
+    !     integer :: cs_i_indg  ! i index (w.r.t. *global* grid that cuts tiles) 
+    !     integer :: cs_j_indg  ! j index (w.r.t. *global* grid that cuts tiles)
     !     real    :: frac_cell  ! area fraction of grid cell covered by tile
     !     real    :: frac_pfaf  ! fraction of Pfafstetter catchment for land tiles 
     !     real    :: area       ! area [km^2]
@@ -226,7 +228,7 @@ contains
     
     iblock(1) = 4
     iblock(2) = 6
-    iblock(3) = 2
+    iblock(3) = 4 ! add cs_i_indg and cs_j_indg
     iblock(4) = 4
     
     idisp(1)  = 0

@@ -1,4 +1,5 @@
 #include "MAPL_Generic.h"  
+
 module LDAS_ForceMod
 
   ! collection of *forcing* subroutines for enkf_driver
@@ -2987,7 +2988,7 @@ contains
           
        end do  ! j=1,2
 
-       call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord%com_lon,tile_coord%com_lat,met_hinterp)
+       call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,met_hinterp)
 
        !fid = ptrNode%fid 
 
@@ -3099,7 +3100,7 @@ contains
                met_path_tmp, met_tag_tmp,                                        &
                GEOSgcm_defs(GEOSgcm_var,:), met_file_ext)
 
-          call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord%com_lon,tile_coord%com_lat,met_hinterp)
+          call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,met_hinterp)
 
           !fid = ptrNode%fid
 
@@ -3390,6 +3391,7 @@ contains
     ! real,allocatable :: tmp_grid(:,:)
      integer begDate, begTime, seconds, minutes, incSecs
      integer iistart(3), iicount(3), timeIndex
+     integer istart(4), icount(4) ! cs grid
      integer nv_id,imin, jmin, imax, jmax,ierr
      integer DiffDate
 
@@ -3402,7 +3404,7 @@ contains
      !integer :: rank,myid, io_rank, total_prcs
      !integer :: length
      character(*),parameter :: Iam="LDAS_getvar" 
-
+     logical :: isCubed
     ! call ESMF_VmGetCurrent(vm, rc=ierr)
     ! VERIFY_(ierr)
     ! call ESMF_VmGet(vm, mpicommunicator=comm, rc=ierr)
@@ -3410,10 +3412,21 @@ contains
     ! call MPI_COMM_SIZE(comm,total_prcs,ierr)
     ! call MPI_COMM_RANK(comm,myid,ierr)
      rc = 0
-     iistart = 1
-     iicount(1) = local_info%N_lon
-     iicount(2) = local_info%N_lat
-     iicount(3) = 1
+     isCubed = .false.
+     if(local_info%N_lat == 6*local_info%N_lon) then
+        isCubed = .true.
+        istart = 1
+        icount(1) = local_info%N_lon
+        icount(2) = local_info%N_lon
+        icount(3) = 6
+        icount(4) = 1
+     else
+        iistart = 1
+        iicount(1) = local_info%N_lon
+        iicount(2) = local_info%N_lat
+        iicount(3) = 1
+     endif
+
      if (.not. notime ) then
         call GetBegDateTime ( fid, begDate, begTime, incSecs, rc )
         if (rc .NE. 0) then
@@ -3445,14 +3458,23 @@ contains
         else
            timeIndex = seconds/incSecs + 1
         endif
-        iistart(3) =timeIndex
+        iistart(3)=timeIndex
+        istart(4) =timeIndex
      endif
      ! node root read and share
      call MAPL_SyncSharedMemory(rc=status)
+
      if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
         rc= NF90_INQ_VARID( fid, vname, nv_id)
-        rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount) 
+        ASSERT_( rc == nf90_noerr)
+        if (isCubed) then
+          rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=istart,count=icount) 
+        else
+          rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount) 
+        endif
+        ASSERT_( rc == nf90_noerr)
      endif
+
      call MAPL_SyncSharedMemory(rc=status)
 
   end subroutine LDAS_GetVar
@@ -4443,32 +4465,32 @@ contains
 
 !**********************************************************
 
-  subroutine GEOS_openfile(FileOpenedHash,fname_full,fid,lons,lats,m_hinterp)
+  subroutine GEOS_openfile(FileOpenedHash, fname_full, fid, tile_coord, m_hinterp, rc)
       use netcdf
       implicit none
       include 'mpif.h'
       type(Hash_Table),intent(inout) :: FileOpenedHash
       character(*),intent(in)        :: fname_full
       integer,intent(out) :: fid
-      real,intent(in) ::lats(:),lons(:)
+      type(tile_coord_type), dimension(:), intent(in) :: tile_coord
       integer,intent(in) :: m_hinterp
+      integer, optional, intent(out) :: rc
  
-      integer :: N_lat,N_lon,N_cat
+      integer :: N_lat,N_lon,N_cat, N_f
       integer,allocatable :: i1(:),i2(:),j1(:),j2(:)
       real,allocatable :: x1(:),x2(:),y1(:),y2(:)
       integer :: ierr,k
-      integer :: latid, lonid
+      integer :: latid, lonid, nfid, xdimid
       real :: dlon,dlat,ll_lon,ll_lat,this_lon,this_lat,tmp_lon,tmp_lat
       integer :: icur,jcur,inew,jnew
       real :: xcur,ycur,xnew,ynew
       character(len=100) :: err_msg
       character(*),parameter :: Iam="GEOS_openfile"
+      logical :: isCubed
       ! add mpi
       type(ESMF_VM) :: vm
       integer :: comm,total_prcs,myrank
-      integer :: rc,status
-      !integer :: imin,imax,jmin,jmax
-      !integer,allocatable :: imins(:),imaxs(:),jmins(:),jmaxs(:)
+      integer :: status
 
       call FileOpenedHash%init()
 
@@ -4476,159 +4498,167 @@ contains
       VERIFY_(status)
       call ESMF_VmGet(vm, mpicommunicator=comm, rc=status)
       VERIFY_(status)
-      !call MPI_COMM_SIZE(comm,total_prcs,ierr)
-      !call MPI_COMM_RANK(comm,myrank,ierr)
-  
-      !if(myrank == total_prcs -1) then
-      !  allocate(imins(0:total_prcs-1))
-      !  allocate(jmins(0:total_prcs-1))
-      !  allocate(imaxs(0:total_prcs-1))
-      !  allocate(jmaxs(0:total_prcs-1))
-      !else
-      !  allocate(imins(0))
-      !  allocate(jmins(0))
-      !  allocate(imaxs(0))
-      !  allocate(jmaxs(0))
-      !endif
 
       call FileOpenedHash%get(fname_full,fid)
-      if( fid < 0) then
+
+      if( fid == -9999 ) then ! not open yet
          ierr=nf90_open(fname_full,IOR(NF90_NOWRITE, NF90_MPIIO), fid, &
-              comm = comm,info = MPI_INFO_NULL)
+           comm = comm,info = MPI_INFO_NULL)
+
          if(master_logit) then
-            write(logunit,*) "opening file: "//trim(fname_full)
+           write(logunit,*) "opening file: "//trim(fname_full)
          endif
-         if(ierr /= nf90_noerr) then
-            print *, trim(nf90_strerror(ierr))
-            write(logunit,*) "failed opening file: "//trim(fname_full)
-            stop 2
-         end if
+         ASSERT_( ierr == nf90_noerr)
+         call FileOpenedHash%put(fname_full,fid)
+      endif
+     ! check if it is cs grid
+      ierr =  nf90_inq_dimid(fid,"nf",nfid)
+
+      if (ierr == nf90_noerr) then ! it is cs grid if face dimension is found
+
+         ierr  =  nf90_inq_dimid(fid,"Xdim",xdimid)
+         ASSERT_( ierr == nf90_noerr)
+         ierr  =  nf90_Inquire_Dimension(fid,nfid,  len=N_f)
+         ASSERT_( ierr == nf90_noerr)
+         ASSERT_( n_f == 6)
+         ierr  =  nf90_Inquire_Dimension(fid,xdimid,len=N_lon)
+         ASSERT_( ierr == nf90_noerr)
+         N_lat = N_f*N_lon
+         ASSERT_( m_hinterp == 0)
+         isCubed = .true.       
+      else
          ierr =  nf90_inq_dimid(fid,"lat",latid)
          ierr =  nf90_inq_dimid(fid,"lon",lonid)
          ierr =  nf90_Inquire_Dimension(fid,latid,len=N_lat)
          ierr =  nf90_Inquire_Dimension(fid,lonid,len=N_lon)
-         N_cat = size(lats)
-
-         ! if the forcing resolution changes, change the local info
-         if( local_info%N_lat /= N_lat .or. local_info%N_lon /= N_lon) then 
-  
-            dlon = 360./real(N_lon)
-            dlat = 180./real(N_lat-1)
-            ll_lon = -180. - dlon/2.
-            ll_lat =  -90. - dlat/2.
-
-            allocate(i1(N_cat),j1(N_cat))
-            allocate(i2(N_cat),j2(N_cat),x1(N_cat),x2(N_cat),y1(N_cat),y2(N_cat))
-
-            select case (m_hinterp)
-         
-            case (0)  ! nearest-neighbor
-
-             ! compute indices for nearest neighbor interpolation from GEOSgcm grid
-             ! to tile space
-
-                do k=1,N_cat
-
-                ! ll_lon and ll_lat refer to lower left corner of grid cell
-                ! (as opposed to the grid point in the center of the grid cell)
-
-                   this_lon = lons(k)
-                   this_lat = lats(k)
-
-                   i1(k) = ceiling((this_lon - ll_lon)/dlon)
-                   j1(k) = ceiling((this_lat - ll_lat)/dlat)
-
-                ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
-                !  we now have i1=(grid%N_lon+1)
-                ! This needs to be fixed as follows:
-
-                   if (i1(k)> N_lon)  i1(k)=1
-
-                end do
-
-            case (1)  ! bilinear interpolation
-
-             ! compute indices of nearest neighbors needed for bilinear
-             ! interpolation from GEOSgcm grid to tile space
-
-
-               do k=1,N_cat
-
-                ! ll_lon and ll_lat refer to lower left corner of grid cell
-                ! (as opposed to the grid point in the center of the grid cell)
-
-                ! pchakrab: For bilinear interpolation, for each tile, we need:
-                !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
-                !  i1, i2, j1, j2 (defining the indices of four neighbors)
-
-                ! find nearest neighbor forcing grid cell ("1")
-
-                ! com of kth tile
-                   this_lon = lons(k)
-                   this_lat = lats(k)
-                   icur =  ceiling((this_lon - ll_lon)/dlon)
-                   jcur =  ceiling((this_lat - ll_lat)/dlat)
-
-                ! wrap-around
-                   if (icur>N_lon) icur = 1
-                   if (jcur>N_lat) then
-                      err_msg = "encountered tile near the poles"
-                      call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                   end if
-                   xcur = real(icur-1)*dlon - 180.0
-                   ycur = real(jcur-1)*dlat -  90.0
-                   i1(k) = icur
-                   j1(k) = jcur
-                   x1(k) = xcur    ! lon of grid cell center
-                   y1(k) = ycur    ! lat of grid cell center
-
-                ! find forcing grid cell ("2") diagonally across from icur, jcur
-
-                   tmp_lon = this_lon + 0.5*dlon
-                   tmp_lat = this_lat + 0.5*dlat
-                   inew =  ceiling((tmp_lon  - ll_lon)/dlon)
-                   jnew =  ceiling((tmp_lat  - ll_lat)/dlat)
-                   if (inew==icur) inew = inew - 1
-                   if (jnew==jcur) jnew = jnew - 1
-                   xnew = real(inew-1)*dlon - 180.0
-                   ynew = real(jnew-1)*dlat -  90.0
-                   ! wrap-around
-                   if (inew==0) inew = N_lon
-                   if (inew>N_lon) inew = 1
-                   if ((jnew==0) .or. (jnew>N_lat)) then
-                      err_msg = "encountered tile near the poles"
-                      call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                   end if
-
-                   i2(k) = inew
-                   j2(k) = jnew
-                   x2(k) = xnew    ! lon of grid cell center
-                   y2(k) = ynew    ! lat of grid cell center
-                end do
-
-            case default
-
-               err_msg = "unknown horizontal interpolation method"
-               call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-            end select
-            local_info%N_lat = N_lat
-            local_info%N_lon = N_lon
-            local_info%N_cat = N_cat
-            call move_alloc(i1,local_info%i1)
-            call move_alloc(i2,local_info%i2)
-            call move_alloc(j1,local_info%j1)
-            call move_alloc(j2,local_info%j2)
-            call move_alloc(x1,local_info%x1)
-            call move_alloc(x2,local_info%x2)
-            call move_alloc(y1,local_info%y1)
-            call move_alloc(y2,local_info%y2)
-          endif ! new N_lon, N_lat
-
-          call FileOpenedHash%put(fname_full,fid)
-
+         isCubed = .false.       
+         dlon = 360./real(N_lon)
+         dlat = 180./real(N_lat-1)
+         ll_lon = -180. - dlon/2.
+         ll_lat =  -90. - dlat/2.
       endif
 
+      N_cat = size(tile_coord,1)
+
+      ! if demensions are the same, no need to recalculate the local_info
+      if( local_info%N_lat == N_lat .and. local_info%N_lon == N_lon ) then
+         RETURN_(ESMF_SUCCESS)
+      endif
+
+      allocate(i1(N_cat),j1(N_cat))
+      allocate(i2(N_cat),j2(N_cat),x1(N_cat),x2(N_cat),y1(N_cat),y2(N_cat))
+
+      select case (m_hinterp)
+   
+      case (0)  ! nearest-neighbor
+
+       ! compute indices for nearest neighbor interpolation from GEOSgcm grid
+       ! to tile space
+          if( isCubed ) then ! cs grid
+             ! i_indg and j_indg are changed to LatLon grid
+             do k=1,N_cat
+                i1(k) = tile_coord(k)%cs_i_indg
+                j1(k) = tile_coord(k)%cs_j_indg
+             enddo
+          else
+             do k=1,N_cat
+
+          ! ll_lon and ll_lat refer to lower left corner of grid cell
+          ! (as opposed to the grid point in the center of the grid cell)
+
+                this_lon = tile_coord(k)%com_lon
+                this_lat = tile_coord(k)%com_lat
+
+                i1(k) = ceiling((this_lon - ll_lon)/dlon)
+                j1(k) = ceiling((this_lat - ll_lat)/dlat)
+
+          ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
+          !  we now have i1=(grid%N_lon+1)
+          ! This needs to be fixed as follows:
+
+                if (i1(k)> N_lon)  i1(k)=1
+
+             end do
+          endif ! cs grid
+      case (1)  ! bilinear interpolation
+
+       ! compute indices of nearest neighbors needed for bilinear
+       ! interpolation from GEOSgcm grid to tile space
+
+
+         do k=1,N_cat
+
+          ! ll_lon and ll_lat refer to lower left corner of grid cell
+          ! (as opposed to the grid point in the center of the grid cell)
+
+          ! pchakrab: For bilinear interpolation, for each tile, we need:
+          !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
+          !  i1, i2, j1, j2 (defining the indices of four neighbors)
+
+          ! find nearest neighbor forcing grid cell ("1")
+
+          ! com of kth tile
+             this_lon = tile_coord(k)%com_lon
+             this_lat = tile_coord(k)%com_lat
+             icur =  ceiling((this_lon - ll_lon)/dlon)
+             jcur =  ceiling((this_lat - ll_lat)/dlat)
+
+          ! wrap-around
+             if (icur>N_lon) icur = 1
+             if (jcur>N_lat) then
+                err_msg = "encountered tile near the poles"
+                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+             end if
+             xcur = real(icur-1)*dlon - 180.0
+             ycur = real(jcur-1)*dlat -  90.0
+             i1(k) = icur
+             j1(k) = jcur
+             x1(k) = xcur    ! lon of grid cell center
+             y1(k) = ycur    ! lat of grid cell center
+
+          ! find forcing grid cell ("2") diagonally across from icur, jcur
+
+             tmp_lon = this_lon + 0.5*dlon
+             tmp_lat = this_lat + 0.5*dlat
+             inew =  ceiling((tmp_lon  - ll_lon)/dlon)
+             jnew =  ceiling((tmp_lat  - ll_lat)/dlat)
+             if (inew==icur) inew = inew - 1
+             if (jnew==jcur) jnew = jnew - 1
+             xnew = real(inew-1)*dlon - 180.0
+             ynew = real(jnew-1)*dlat -  90.0
+             ! wrap-around
+             if (inew==0) inew = N_lon
+             if (inew>N_lon) inew = 1
+             if ((jnew==0) .or. (jnew>N_lat)) then
+                err_msg = "encountered tile near the poles"
+                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+             end if
+
+             i2(k) = inew
+             j2(k) = jnew
+             x2(k) = xnew    ! lon of grid cell center
+             y2(k) = ynew    ! lat of grid cell center
+          end do
+
+      case default
+
+         err_msg = "unknown horizontal interpolation method"
+         call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+
+      end select
+      local_info%N_lat = N_lat
+      local_info%N_lon = N_lon
+      local_info%N_cat = N_cat
+      call move_alloc(i1,local_info%i1)
+      call move_alloc(i2,local_info%i2)
+      call move_alloc(j1,local_info%j1)
+      call move_alloc(j2,local_info%j2)
+      call move_alloc(x1,local_info%x1)
+      call move_alloc(x2,local_info%x2)
+      call move_alloc(y1,local_info%y1)
+      call move_alloc(y2,local_info%y2)
+      
+      RETURN_(ESMF_SUCCESS)
   end subroutine GEOS_openfile 
 
   subroutine GEOS_closefile(fid)

@@ -76,10 +76,15 @@ module LDAS_TileCoordType
      real    :: max_lat    ! maximum latitude (bounding box for tile)
      integer :: i_indg     ! i index (w.r.t. *global* grid that cuts tiles) 
      integer :: j_indg     ! j index (w.r.t. *global* grid that cuts tiles)
+     !if it is Cubed-Sphere grid, the index will be saved here for forcing
+     !i_indg and j_indg will be changed to index that related to latlon grid
+     integer :: cs_i_indg     ! i index (w.r.t. *global* grid that cuts tiles) 
+     integer :: cs_j_indg     ! j index (w.r.t. *global* grid that cuts tiles)
      real    :: frac_cell  ! area fraction of grid cell covered by tile
      real    :: frac_pfaf  ! fraction of Pfafstetter catchment for land tiles 
      real    :: area       ! area [km^2]
      real    :: elev       ! elevation above sea level [m]
+
      
   end type tile_coord_type
 
