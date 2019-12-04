@@ -7,17 +7,19 @@ module GEOS_EnsGridCompMod
   !! This grid comp behaves like a coupler. The set service, initialization are compliant with MAPL grid comp concept. 
   use ESMF
   use MAPL_Mod
-
+  use lsm_routines, only: DZGT
   use LDAS_ensdrv_Globals, only: nodata_generic
   use catch_types, ONLY: cat_progn_type
-
+  use catch_types, only: cat_param_type
+  use, intrinsic :: ieee_arithmetic
+  
   implicit none
 
   private
 
   public :: SetServices
   public :: catch_progn
-
+  public :: catch_param
   ! !DESCRIPTION: This GridComp collect ensemble member and then averages the vaiables form catchment
 
   !EOP
@@ -28,6 +30,7 @@ module GEOS_EnsGridCompMod
   real, parameter      :: daylen = 86400.
 
   type(cat_progn_type),dimension(:,:), allocatable :: catch_progn
+  type(cat_param_type),dimension(:), allocatable :: catch_param
 
 
 contains
@@ -82,6 +85,15 @@ contains
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
          Collect_land_ens,                                                      &
+         rc=status                                                              &
+         )
+    VERIFY_(status)
+
+    !phase 3 : get cat_param
+    call MAPL_GridCompSetEntryPoint(                                            &
+         gc,                                                                    &
+         ESMF_METHOD_RUN,                                                       &
+         GET_CATCH_PARAM ,                                                        &
          rc=status                                                              &
          )
     VERIFY_(status)
@@ -1718,6 +1730,7 @@ contains
     VERIFY_(status)
 
     allocate(catch_progn(land_nt_local, NUM_ENSEMBLE))
+    allocate(catch_param(land_nt_local))
 
     call MAPL_GenericInitialize(gc, import, export, clock, rc=status)
     VERIFY_(status)
@@ -3319,9 +3332,194 @@ contains
 
   end subroutine Collect_land_ens
 
-  ! !IROTUINE: Finalize -- Finalize method for LDAS GridComp
 
-  ! !INTERFACE:
+  subroutine GET_CATCH_PARAM( GC, IMPORT, EXPORT, CLOCK, RC )
+
+! !ARGUMENTS:
+
+    type(ESMF_GridComp),intent(inout) :: GC     !Gridded component
+    type(ESMF_State),   intent(inout) :: IMPORT !Import state
+    type(ESMF_State),   intent(inout) :: EXPORT !Export state
+    type(ESMF_Clock),   intent(inout) :: CLOCK  !The clock
+    integer,optional,   intent(out  ) :: RC     !Error code:
+
+!EOP
+! ErrLog Variables
+
+    character(len=ESMF_MAXSTR) :: IAm
+    integer :: STATUS
+    character(len=ESMF_MAXSTR) :: COMP_NAME
+!
+
+! Locals
+    type(MAPL_MetaComp), pointer :: MAPL=>null()
+    logical :: firsttime = .true.
+
+    real, pointer :: poros(:) =>null()
+    real, pointer :: cond(:) =>null()
+    real, pointer :: psis(:) =>null()
+    real, pointer :: bee(:) =>null()
+    real, pointer :: wpwet(:) =>null()
+    real, pointer :: gnu(:) =>null()
+    real, pointer :: vgwmax(:) =>null()
+    real, pointer :: bf1(:) =>null()
+    real, pointer :: bf2(:) =>null()
+    real, pointer :: bf3(:) =>null()
+    real, pointer :: cdcr1(:) =>null()
+    real, pointer :: cdcr2(:) =>null()
+    real, pointer :: ars1(:) =>null()
+    real, pointer :: ars2(:) =>null()
+    real, pointer :: ars3(:) =>null()
+    real, pointer :: ara1(:) =>null()
+    real, pointer :: ara2(:) =>null()
+    real, pointer :: ara3(:) =>null()
+    real, pointer :: ara4(:) =>null()
+    real, pointer :: arw1(:) =>null()
+    real, pointer :: arw2(:) =>null()
+    real, pointer :: arw3(:) =>null()
+    real, pointer :: arw4(:) =>null()
+    real, pointer :: tsa1(:) =>null()
+    real, pointer :: tsa2(:) =>null()
+    real, pointer :: tsb1(:) =>null()
+    real, pointer :: tsb2(:) =>null()
+    real, pointer :: atau(:) =>null()
+    real, pointer :: btau(:) =>null()
+    real, pointer :: ity(:) =>null()
+    real, pointer :: z2ch(:) =>null()
+
+    real :: SURFLAY, x
+    integer :: i
+
+    if (firsttime) then
+       firsttime = .false.
+       call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
+       VERIFY_(STATUS)
+
+       call MAPL_GetPointer(import, poros, 'POROS', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, cond, 'COND', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, psis, 'PSIS', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, bee, 'BEE', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, wpwet, 'WPWET', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, gnu, 'GNU', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, vgwmax, 'VGWMAX', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, bf1, 'BF1', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, bf2, 'BF2', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, bf3, 'BF3', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, cdcr1, 'CDCR1', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, cdcr2, 'CDCR2', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, ars1, 'ARS1', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, ars2, 'ARS2', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, ars3, 'ARS3', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, ara1, 'ARA1', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, ara2, 'ARA2', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, ara3, 'ARA3', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, ara4, 'ARA4', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, arw1, 'ARW1', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, arw2, 'ARW2', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, arw3, 'ARW3', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, arw4, 'ARW4', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, tsa1, 'TSA1', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, tsa2, 'TSA2', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, tsb1, 'TSB1', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, tsb2, 'TSB2', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, atau, 'ATAU', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, btau, 'BTAU', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, ity, 'ITY', rc=status)
+       VERIFY_(status)
+       call MAPL_GetPointer(import, z2ch, 'Z2CH', rc=status)
+       VERIFY_(status)
+
+       catch_param(:)%dzgt(1) = dzgt(1)
+       catch_param(:)%dzgt(2) = dzgt(2)
+       catch_param(:)%dzgt(3) = dzgt(3)
+       catch_param(:)%dzgt(4) = dzgt(4)
+       catch_param(:)%dzgt(5) = dzgt(5)
+       catch_param(:)%dzgt(6) = dzgt(6)
+       catch_param(:)%poros = poros
+       catch_param(:)%cond  = cond
+       catch_param(:)%psis  = psis
+       catch_param(:)%bee   = bee
+       catch_param(:)%wpwet = wpwet
+       catch_param(:)%gnu   = gnu
+       catch_param(:)%vgwmax= vgwmax
+       catch_param(:)%bf1   = bf1
+       catch_param(:)%bf2   = bf2
+       catch_param(:)%bf3   = bf3
+       catch_param(:)%cdcr1 = cdcr1
+       catch_param(:)%cdcr2 = cdcr2
+       catch_param(:)%ars1 = ars1
+       catch_param(:)%ars2 = ars2
+       catch_param(:)%ars3 = ars3
+       catch_param(:)%ara1 = ara1
+       catch_param(:)%ara2 = ara2
+       catch_param(:)%ara3 = ara3
+       catch_param(:)%ara4 = ara4
+       catch_param(:)%arw1 = arw1
+       catch_param(:)%arw2 = arw2
+       catch_param(:)%arw3 = arw3
+       catch_param(:)%arw4 = arw4
+       catch_param(:)%tsa1 = tsa1
+       catch_param(:)%tsa2 = tsa2
+       catch_param(:)%tsb1 = tsb1
+       catch_param(:)%tsb2 = tsb2
+       catch_param(:)%atau = atau
+       catch_param(:)%btau = btau
+       catch_param(:)%vegcls  = nint(ity)
+       catch_param(:)%veghght = z2ch
+
+       call MAPL_GetResource(MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, rc=status)
+
+       catch_param(:)%dzsf = SURFLAY
+       catch_param(:)%dzpr = (cdcr2/(1.-wpwet)) / poros
+       catch_param(:)%dzrz = vgwmax/poros
+
+       !assign NaN to other fields
+       x = ieee_value(x,ieee_quiet_nan)
+       catch_param(:)%soilcls30  = transfer(x,i)
+       catch_param(:)%soilcls100 = transfer(x,i)
+       catch_param(:)%gravel30   = x
+       catch_param(:)%orgC30     = x
+       catch_param(:)%orgC       = x
+       catch_param(:)%sand30     = x
+       catch_param(:)%clay30     = x
+       catch_param(:)%sand       = x
+       catch_param(:)%clay       = x
+       catch_param(:)%wpwet30    = x
+       catch_param(:)%poros30    = x
+       catch_param(:)%dpth       = x
+    endif
+    RETURN_(ESMF_SUCCESS)
+end subroutine GET_CATCH_PARAM
+
 
   subroutine Finalize(gc, import, export, clock, rc)
 
