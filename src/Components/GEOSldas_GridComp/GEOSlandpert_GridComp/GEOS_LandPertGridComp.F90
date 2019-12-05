@@ -2486,15 +2486,14 @@ contains
           end select
        end do
 
-! JP: temp comment out to test 0-diff       
-!        call check_cat_progns(land_nt_local, cat_param, tcPert(:,1), tcPert(:,2), tcPert(:,4),               &
-! !          qa1,qa2,qa4, capac                       &
-!           catdefPert,                                  &
-!           rzexcPert, srfexcPert,                                  &
-!          ghtcnt1Pert,ghtcnt2Pert,ghtcnt3Pert,ghtcnt4Pert,ghtcnt5Pert,ghtcnt6Pert, &
-!          wesnn1Pert,wesnn2Pert,wesnn3Pert, &
-!          htsnnn1Pert,htsnnn2Pert,htsnnn3Pert, &
-!          sndzn1Pert, sndzn2Pert,sndzn3Pert)
+       call check_cat_progns(land_nt_local, cat_param, tcPert(:,1), tcPert(:,2), tcPert(:,4),               &
+!          qa1,qa2,qa4, capac                       &
+          catdefPert,                                  &
+          rzexcPert, srfexcPert,                                  &
+         ghtcnt1Pert,ghtcnt2Pert,ghtcnt3Pert,ghtcnt4Pert,ghtcnt5Pert,ghtcnt6Pert, &
+         wesnn1Pert,wesnn2Pert,wesnn3Pert, &
+         htsnnn1Pert,htsnnn2Pert,htsnnn3Pert, &
+         sndzn1Pert, sndzn2Pert,sndzn3Pert)
     end if
 
     call MAPL_TimerOff(MAPL, '-ApplyPert')
