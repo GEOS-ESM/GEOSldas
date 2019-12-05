@@ -6,6 +6,7 @@ module LDAS_ForceMod
   ! (originally these routines were in clsm_ensdrv_drv_routines.F90)
 
   ! reichle, 13 Aug 2008
+  use, intrinsic :: iso_c_binding
   use ESMF
   use MAPL_Mod
   use MAPL_ShmemMod
@@ -73,7 +74,7 @@ module LDAS_ForceMod
   character(10), private :: tmpstring10
   character(40), private :: tmpstring40
 
-  real,pointer :: ptrShForce(:,:)=>null()
+  real, contiguous, pointer :: ptrShForce(:,:)=>null()
 
   type local_grid
      integer :: N_lon = 0
@@ -3392,6 +3393,8 @@ contains
      integer begDate, begTime, seconds, minutes, incSecs
      integer iistart(3), iicount(3), timeIndex
      integer istart(4), icount(4) ! cs grid
+     real, pointer :: tmpShared(:,:,:,:) ! cs grid
+     type(c_ptr) ::   c_address
      integer nv_id,imin, jmin, imax, jmax,ierr
      integer DiffDate
 
@@ -3468,7 +3471,9 @@ contains
         rc= NF90_INQ_VARID( fid, vname, nv_id)
         ASSERT_( rc == nf90_noerr)
         if (isCubed) then
-          rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=istart,count=icount) 
+          c_address = c_loc(ptrShForce(1,1))
+          call c_f_pointer(c_address,tmpShared,shape=icount)
+          rc= NF90_GET_VAR( fid, nv_id, tmpShared, start=istart,count=icount) 
         else
           rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount) 
         endif
