@@ -47,6 +47,7 @@ module GEOS_LandAssimGridCompMod
 
   use lsm_routines, only: DZGT
   use GEOS_EnsGridCompMod,      only: cat_progn=>catch_progn
+  use GEOS_EnsGridCompMod,      only: cat_param=>catch_param
   use mwRTM_types, only: mwRTM_param_type
   use catch_bias_types, only: obs_bias_type
   use catch_bias_types, only: cat_bias_param_type
@@ -100,7 +101,6 @@ integer :: N_catf
 !reordered tile_coord_rf and mapping l2rf
 integer,dimension(:),pointer :: l2rf, rf2l,rf2g
 type(tile_coord_type), dimension(:), pointer :: tile_coord_rf => null()
-type(cat_param_type), allocatable :: cat_param(:)
 integer, allocatable :: Pert_rseed(:,:)
 real(kind=ESMF_KIND_R8), allocatable :: pert_rseed_r8(:,:)
 
@@ -153,16 +153,7 @@ subroutine SetServices ( GC, RC )
          )
     VERIFY_(status)
 
-    !phase 1: get cat_param
-    call MAPL_GridCompSetEntryPoint(                                            &
-         gc,                                                                    &
-         ESMF_METHOD_RUN,                                                       &
-         GET_CAT_PARAM ,                                                        &
-         rc=status                                                              &
-         )
-    VERIFY_(status)
-
-    !phase 2: assimilation run
+    !phase 1: assimilation run
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
@@ -171,7 +162,7 @@ subroutine SetServices ( GC, RC )
          )
     VERIFY_(status)
 
-    !phase 3: feed back to change catch_progn  
+    !phase 2: feed back to change catch_progn  
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
@@ -684,7 +675,7 @@ subroutine Initialize(gc, import, export, clock, rc)
     type(MAPL_LocStream) :: locstream
 
     character(len=300) :: out_path,fname
-    character(len=ESMF_MAXSTR) :: exp_id
+    character(len=ESMF_MAXSTR) :: exp_id, GridName
     integer :: model_dtstep
     type(date_time_type) :: start_time
 
@@ -809,13 +800,6 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MPI_Bcast(pert_rseed, NRANDSEED*NUM_ENSEMBLE, MPI_INTEGER, 0, mpicomm, mpierr)
 
 
-    allocate(cat_param(land_nt_local))
-
-    !fname = get_io_filename(trim(out_path), trim(exp_id), 'ldas_catparam', date_time=start_time,&
-    !               dir_name='rc_out', file_ext='.bin')
-
-    !call GEOS_read_catparam(GC,trim(fname),cat_param)
-
     allocate(N_catl_vec(numprocs))
     allocate(low_ind(numprocs))
     allocate(l2rf(land_nt_local))
@@ -860,7 +844,7 @@ subroutine Initialize(gc, import, export, clock, rc)
       rf2l( l2rf(i) ) = i
     end do
     
-    if (master_proc)                            &
+    if (master_proc) then
       call read_ens_upd_inputs(                 &
        trim(out_path),                          &
        trim(exp_id),                            &
@@ -883,6 +867,10 @@ subroutine Initialize(gc, import, export, clock, rc)
        out_smapL4SMaup,                         &
        N_obsbias_max                            &
        )
+      call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
+      VERIFY_(STATUS)
+      if (index(GridName,"-CF") /=0) out_smapL4SMaup = .false. ! no out_smap for now if it is cs frid
+    endif
 
     call MPI_BCAST(need_mwRTM_param,      1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(update_type,           1, MPI_INTEGER,        0,MPICOMM,mpierr)
@@ -913,195 +901,6 @@ subroutine Initialize(gc, import, export, clock, rc)
     RETURN_(ESMF_SUCCESS)
 
 end subroutine Initialize
-!BOP
-
-subroutine GET_CAT_PARAM( GC, IMPORT, EXPORT, CLOCK, RC )
-
-! !ARGUMENTS:
-
-    type(ESMF_GridComp),intent(inout) :: GC     !Gridded component
-    type(ESMF_State),   intent(inout) :: IMPORT !Import state
-    type(ESMF_State),   intent(inout) :: EXPORT !Export state
-    type(ESMF_Clock),   intent(inout) :: CLOCK  !The clock
-    integer,optional,   intent(out  ) :: RC     !Error code:
-
-!EOP
-! ErrLog Variables
-
-    character(len=ESMF_MAXSTR) :: IAm
-    integer :: STATUS
-    character(len=ESMF_MAXSTR) :: COMP_NAME
-!
-
-! Locals
-    type(MAPL_MetaComp), pointer :: MAPL=>null()
-    logical :: firsttime = .true.
-
-    real, pointer :: poros(:) =>null()
-    real, pointer :: cond(:) =>null()
-    real, pointer :: psis(:) =>null()
-    real, pointer :: bee(:) =>null()
-    real, pointer :: wpwet(:) =>null()
-    real, pointer :: gnu(:) =>null()
-    real, pointer :: vgwmax(:) =>null()
-    real, pointer :: bf1(:) =>null()
-    real, pointer :: bf2(:) =>null()
-    real, pointer :: bf3(:) =>null()
-    real, pointer :: cdcr1(:) =>null()
-    real, pointer :: cdcr2(:) =>null()
-    real, pointer :: ars1(:) =>null()
-    real, pointer :: ars2(:) =>null()
-    real, pointer :: ars3(:) =>null()
-    real, pointer :: ara1(:) =>null()
-    real, pointer :: ara2(:) =>null()
-    real, pointer :: ara3(:) =>null()
-    real, pointer :: ara4(:) =>null()
-    real, pointer :: arw1(:) =>null()
-    real, pointer :: arw2(:) =>null()
-    real, pointer :: arw3(:) =>null()
-    real, pointer :: arw4(:) =>null()
-    real, pointer :: tsa1(:) =>null()
-    real, pointer :: tsa2(:) =>null()
-    real, pointer :: tsb1(:) =>null()
-    real, pointer :: tsb2(:) =>null()
-    real, pointer :: atau(:) =>null()
-    real, pointer :: btau(:) =>null()
-    real, pointer :: ity(:) =>null()
-    real, pointer :: z2ch(:) =>null()
-
-    real :: SURFLAY, x
-    integer :: i
-
-    if (firsttime) then
-       firsttime = .false.
-       call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-       VERIFY_(STATUS)
-
-       call MAPL_GetPointer(import, poros, 'POROS', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, cond, 'COND', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, psis, 'PSIS', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, bee, 'BEE', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, wpwet, 'WPWET', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, gnu, 'GNU', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, vgwmax, 'VGWMAX', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, bf1, 'BF1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, bf2, 'BF2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, bf3, 'BF3', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, cdcr1, 'CDCR1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, cdcr2, 'CDCR2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ars1, 'ARS1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ars2, 'ARS2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ars3, 'ARS3', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ara1, 'ARA1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ara2, 'ARA2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ara3, 'ARA3', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ara4, 'ARA4', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, arw1, 'ARW1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, arw2, 'ARW2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, arw3, 'ARW3', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, arw4, 'ARW4', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, tsa1, 'TSA1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, tsa2, 'TSA2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, tsb1, 'TSB1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, tsb2, 'TSB2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, atau, 'ATAU', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, btau, 'BTAU', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ity, 'ITY', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, z2ch, 'Z2CH', rc=status)
-       VERIFY_(status)
-
-       cat_param(:)%dzgt(1) = dzgt(1)
-       cat_param(:)%dzgt(2) = dzgt(2)
-       cat_param(:)%dzgt(3) = dzgt(3)
-       cat_param(:)%dzgt(4) = dzgt(4)
-       cat_param(:)%dzgt(5) = dzgt(5)
-       cat_param(:)%dzgt(6) = dzgt(6)
-       cat_param(:)%poros = poros
-       cat_param(:)%cond  = cond
-       cat_param(:)%psis  = psis
-       cat_param(:)%bee   = bee
-       cat_param(:)%wpwet = wpwet
-       cat_param(:)%gnu   = gnu
-       cat_param(:)%vgwmax= vgwmax
-       cat_param(:)%bf1   = bf1
-       cat_param(:)%bf2   = bf2
-       cat_param(:)%bf3   = bf3
-       cat_param(:)%cdcr1 = cdcr1
-       cat_param(:)%cdcr2 = cdcr2
-       cat_param(:)%ars1 = ars1
-       cat_param(:)%ars2 = ars2
-       cat_param(:)%ars3 = ars3
-       cat_param(:)%ara1 = ara1
-       cat_param(:)%ara2 = ara2
-       cat_param(:)%ara3 = ara3
-       cat_param(:)%ara4 = ara4
-       cat_param(:)%arw1 = arw1
-       cat_param(:)%arw2 = arw2
-       cat_param(:)%arw3 = arw3
-       cat_param(:)%arw4 = arw4
-       cat_param(:)%tsa1 = tsa1
-       cat_param(:)%tsa2 = tsa2
-       cat_param(:)%tsb1 = tsb1
-       cat_param(:)%tsb2 = tsb2
-       cat_param(:)%atau = atau
-       cat_param(:)%btau = btau
-       cat_param(:)%vegcls  = nint(ity)
-       cat_param(:)%veghght = z2ch
-
-       call MAPL_GetResource(MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, rc=status)
-    
-       cat_param(:)%dzsf = SURFLAY
-       cat_param(:)%dzpr = (cdcr2/(1.-wpwet)) / poros
-       cat_param(:)%dzrz = vgwmax/poros
-
-       !assign NaN to other fields
-       x = ieee_value(x,ieee_quiet_nan)
-       cat_param(:)%soilcls30  = transfer(x,i)
-       cat_param(:)%soilcls100 = transfer(x,i)
-       cat_param(:)%gravel30   = x
-       cat_param(:)%orgC30     = x
-       cat_param(:)%orgC       = x
-       cat_param(:)%sand30     = x
-       cat_param(:)%clay30     = x
-       cat_param(:)%sand       = x
-       cat_param(:)%clay       = x
-       cat_param(:)%wpwet30    = x
-       cat_param(:)%poros30    = x
-       cat_param(:)%dpth       = x
-    endif
-    RETURN_(ESMF_SUCCESS)
-end subroutine GET_CAT_PARAM
-
 
 ! !IROUTINE: RUN 
 ! !INTERFACE:

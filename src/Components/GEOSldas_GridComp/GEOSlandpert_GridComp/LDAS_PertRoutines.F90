@@ -18,9 +18,6 @@ module LDAS_PertRoutinesMod
   use ESMF
   use MAPL_Mod
 
-  use catch_iau,                        ONLY:     &
-       check_catch_progn
-
   use LDAS_ensdrv_Globals,                  ONLY:     &
        logunit,                                   &
        master_logit,                                   &
@@ -719,8 +716,8 @@ contains
        !for cubed-sphere grid, global lat_lon grid
        N_x=tile_grid%n_lon
 
-       n_lon=3*N_x
-       n_lat=2*N_x
+       n_lon=4*N_x
+       n_lat=3*N_x
        write(lattmp,'(I6.6)') n_lat
        write(lontmp,'(I6.6)') n_lon
        latlon_gridname = "DE"//lontmp//"x"//"PE"//lattmp

@@ -202,7 +202,7 @@ contains
     call MAPL_AddExportSpec(                                                    &
          gc,                                                                    &
          SHORT_NAME = "Rainf",                                                  &
-         LONG_NAME  = "liquid_water_large_scale_precipitation",                 &
+         LONG_NAME  = "total_liquid_water_precipitation",                       &
          UNITS      = "kg m-2 s-1",                                             &
          DIMS       = MAPL_DimsTileOnly,                                        &
          VLOCATION  = MAPL_VlocationNone,                                       &
@@ -948,6 +948,7 @@ contains
             currTime=internal%mf%TimePrv,                                       &
             INTV=internal%mf%ntrvl,                                             &
             ZTHB=internal%mf%zenav,                                             &
+            STEPSIZE=150.0,                                                     &
             rc=status                                                           &
             )
        VERIFY_(STATUS) 
@@ -980,6 +981,7 @@ contains
          INTV=ModelTimeStep,                                                    &
          ZTHB=zth,                                                              &
          currTime=ModelTimeCur,                                                 &
+         STEPSIZE=150.0,                                                        &
          rc=status                                                              &
          )
     VERIFY_(status)
