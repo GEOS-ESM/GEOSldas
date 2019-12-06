@@ -26,6 +26,7 @@ module preprocess_module
        read_cat_param
    use LDAS_ensdrv_init_routines, only: io_domain_files
    use MAPL_IOMod
+   use pFIO
    integer,parameter :: excluded_tile_typ_land=1100
 end module
 
@@ -522,8 +523,15 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
    integer :: n,istat, filetype, rc, nVars, i, j, ndims, dimSizes(3)
    real,allocatable :: tmp1(:)
    real,allocatable :: tmp2(:,:)
-   type(MAPL_NCIO)  :: InNCIO, OutNCIO
-   character*256    :: vname
+   type(Netcdf4_FileFormatter) :: InFmt,OutFmt
+   type(FileMetadata)        :: OutCfg
+   type(FileMetadata), allocatable :: InCfg(:)
+   integer                   :: dim1,dim2
+   type(StringVariableMap), pointer :: variables
+   type(Variable), pointer :: var
+   type(StringVariableMapIterator) :: var_iter
+   type(StringVector), pointer :: var_dimensions
+   character(len=:), pointer :: vname,dname
    integer :: N_catg,N_catf
    integer,dimension(:),allocatable :: f2g
 
@@ -576,46 +584,58 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
    else
          
          ! filetype = 0 : nc4 output file will also be nc4
+      
+      call InFmt%open(trim(orig_catch), pFIO_READ,rc=rc)
+      allocate(InCfg(1))
+      InCfg = InFmt%read(rc=rc)
 
-      InNCIO = MAPL_NCIOOpen(orig_catch,rc=rc) 
+      call MAPL_IOCountNonDimVars(InCfg(1),nVars)
+      call MAPL_IOChangeRes(InCfg(1),OutCfg,(/'tile'/),(/size(f2g)/),rc=rc)
 
-      call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-      call MAPL_NCIOChangeRes(InNCIO,OutNCIO,tileSize=size(f2g),rc=rc)
-      call MAPL_NCIOSet( OutNCIO,filename=new_catch )
-      call MAPL_NCIOCreateFile(OutNCIO)  
+      call OutFmt%create(trim(new_catch),rc=rc)
+      call OutFmt%write(OutCfg,rc=rc)
 
-      do n=1,nVars
-            
-         call MAPL_NCIOGetVarName(InNCIO,n,vname)
-            
-         call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
+      variables => InCfg(1)%get_variables()
+      var_iter = variables%begin()
+      do while (var_iter /= variables%end())
+
+         vname => var_iter%key()
+         var => var_iter%value()
+         var_dimensions => var%get_dimensions()
+
+         ndims = var_dimensions%size()
+
          if (ndims == 1) then
-            call MAPL_VarRead ( InNCIO,vname,tmp1)
-            call MAPL_VarWrite(OutNCIO,vname,tmp1(f2g))
-          
+            call MAPL_VarRead (InFmt,vname,tmp1)
+            call MAPL_VarWrite(OutFmt,vname,tmp1(f2g))
          else if (ndims == 2) then
-               
-            do j=1,dimSizes(2)
-               call MAPL_VarRead ( InNCIO,vname,tmp1     ,offset1=j)
-               call MAPL_VarWrite(OutNCIO,vname,tmp1(f2g),offset1=j)
+
+            dname => var%get_ith_dimension(2)
+            dim1=InCfg(1)%get_dimension(dname)
+            do j=1,dim1
+               call MAPL_VarRead ( InFmt,vname,tmp1 ,offset1=j)
+               call MAPL_VarWrite(OutFmt,vname,tmp1(f2g),offset1=j)
             enddo
-               
+
          else if (ndims == 3) then
-               
-            do i=1,dimSizes(3)
-               do j=1,dimSizes(2)
-                  call MAPL_VarRead ( InNCIO,vname,tmp1     ,offset1=j,offset2=i)
-                  call MAPL_VarWrite(OutNCIO,vname,tmp1(f2g),offset1=j,offset2=i)
-               enddo
-            enddo
-               
+
+            dname => var%get_ith_dimension(2)
+            dim1=InCfg(1)%get_dimension(dname)
+            dname => var%get_ith_dimension(3)
+            dim2=InCfg(1)%get_dimension(dname)
+            do i=1,dim2
+               do j=1,dim1
+                 call MAPL_VarRead ( InFmt,vname,tmp1 ,offset1=j,offset2=i)
+                 call MAPL_VarWrite(OutFmt,vname,tmp1(f2g) ,offset1=j,offset2=i)
+              enddo
+           enddo
+
          end if
+         call var_iter%next()
       enddo
-                
-      call MAPL_NCIOClose      (InNCIO)
-      call MAPL_NCIOClose      (OutNCIO)
-         
-   end if
+      call inFmt%close(rc=rc)
+      call OutFmt%close(rc=rc)
+   end if ! file type nc4
    print*, "done create local catchment restart"
 end subroutine createLocalCatchRestart
 
@@ -627,8 +647,13 @@ subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
    integer,parameter :: subtile=4
    integer :: n,istat, filetype, rc, nVars, i, j, ndims, dimSizes(3)
    real,allocatable :: tmp1(:)
-   type(MAPL_NCIO)  :: InNCIO, OutNCIO
-   character*256    :: vname
+   type(Netcdf4_FileFormatter) :: InFmt,OutFmt
+   type(FileMetadata)        :: OutCfg
+   type(FileMetadata), allocatable :: InCfg(:)
+   
+   type(StringVariableMap), pointer :: variables
+   type(StringVariableMapIterator) :: var_iter
+   character(len=:), pointer :: vname
    integer :: N_catg,N_catf
    integer,dimension(:),allocatable :: f2g
 
@@ -640,26 +665,28 @@ subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
    allocate(tmp1(N_catg))
          
    ! nc4 in and out file will also be nc4
+   call InFmt%open(trim(orig_mwrtm), pFIO_READ,rc=rc)
+   allocate(InCfg(1))
+   InCfg = InFmt%read(rc=rc)
 
-   InNCIO = MAPL_NCIOOpen(orig_mwrtm,rc=rc) 
+   call MAPL_IOCountNonDimVars(InCfg(1),nVars)
+   call MAPL_IOChangeRes(InCfg(1),OutCfg,(/'tile'/),(/size(f2g)/),rc=rc)
 
-   call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
-   call MAPL_NCIOChangeRes(InNCIO,OutNCIO,tileSize=size(f2g),rc=rc)
-   call MAPL_NCIOSet( OutNCIO,filename=new_mwrtm )
-   call MAPL_NCIOCreateFile(OutNCIO)  
+   call OutFmt%create(trim(new_mwrtm),rc=rc)
+   call OutFmt%write(OutCfg,rc=rc)
 
-   do n=1,nVars
-            
-      call MAPL_NCIOGetVarName(InNCIO,n,vname)
-            
-      call MAPL_VarRead ( InNCIO,vname,tmp1)
-      call MAPL_VarWrite(OutNCIO,vname,tmp1(f2g))
-          
+   variables => InCfg(1)%get_variables()
+   var_iter = variables%begin()
+   do while (var_iter /= variables%end())
+      vname => var_iter%key()
+      call MAPL_VarRead (InFmt,vname,tmp1)
+      call MAPL_VarWrite(OutFmt,vname,tmp1(f2g))
    enddo
-   call MAPL_NCIOClose      (InNCIO)
-   call MAPL_NCIOClose      (OutNCIO)
 
-   !deallocate(f2g,tmp1)
+   call inFmt%close(rc=rc)
+   call OutFmt%close(rc=rc)
+
+   deallocate(f2g,tmp1)
          
 end subroutine createLocalmwRTMRestart
 
