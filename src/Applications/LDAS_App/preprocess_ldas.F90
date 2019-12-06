@@ -26,6 +26,7 @@ module preprocess_module
        read_cat_param
    use LDAS_ensdrv_init_routines, only: io_domain_files
    use MAPL_IOMod
+   use gFTL_StringVector
    use pFIO
    integer,parameter :: excluded_tile_typ_land=1100
 end module
