@@ -2,6 +2,7 @@
 File name:	README.GEOSldas_history
 
 Description:	History of GEOS LDAS ("LDASsa"; "GEOSldas") development
+		in Git and CVS
 
 Author:		reichle, 20 Jul 2010 (first version; updated regularly)
 
@@ -21,8 +22,19 @@ project, with the ultimate goal of bringing the land model updates from the off-
 system into the GEOS AGCM and integrating the GEOS LDAS into the atmospheric DAS.  During 
 this period, LDASsa and GEOSldas development continued in parallel.
 
+In 2019, GEOS LDAS version control transferred from CVS to Git.
+
 This README file contains the history of stable LDASsa and GEOSldas versions ("tags") 
 and change logs.
+
+
+Overview of Git tags:
+^^^^^^^^^^^^^^^^^^^^^
+=====================================================================================
+Git tag		Created      Application/Comments
+=====================================================================================
+17.8.0          Dec 2019     Closest match to LDASsa CVS tag LDASsa_m3-16_6_p2
+		    	     (for generating the Version 4 L4_SM product)
 
 
 
@@ -206,7 +218,7 @@ overlapped.
 
 ***********************************************************************************
 *                                                                                 *
-*                           GEOSldas change log                                   *
+*                           GEOSldas CVS change log                               *
 *                                                                                 *
 ***********************************************************************************
 
