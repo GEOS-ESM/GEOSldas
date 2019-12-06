@@ -33,8 +33,8 @@ Overview of Git tags:
 =====================================================================================
 Git tag		Created      Application/Comments
 =====================================================================================
-17.8.0          Dec 2019     Closest match to LDASsa CVS tag LDASsa_m3-16_6_p2
-		    	     (for generating the Version 4 L4_SM product)
+v17.8.0         Dec 2019    Closest match to LDASsa CVS tag LDASsa_m3-16_6_p2
+                            (for generating the Version 4 L4_SM product)
 
 
 
