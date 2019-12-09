@@ -948,6 +948,7 @@ contains
             currTime=internal%mf%TimePrv,                                       &
             INTV=internal%mf%ntrvl,                                             &
             ZTHB=internal%mf%zenav,                                             &
+            STEPSIZE=150.0,                                                     &
             rc=status                                                           &
             )
        VERIFY_(STATUS) 
@@ -980,6 +981,7 @@ contains
          INTV=ModelTimeStep,                                                    &
          ZTHB=zth,                                                              &
          currTime=ModelTimeCur,                                                 &
+         STEPSIZE=150.0,                                                        &
          rc=status                                                              &
          )
     VERIFY_(status)

@@ -102,12 +102,12 @@ sleep 2
 
 if($LSM_CHOICE == 1) then
    if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then 
-      ncks -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A catch_internal_rst
+      ncks -4  -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A catch_internal_rst
    endif
    ln -s  catch_internal_rst catch_internal_rst.$YYYYMMDD
 else
    if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then 
-      ncks -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A catchcn_internal_rst 
+      ncks -4 -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A catchcn_internal_rst 
    endif
    ln -s  catchcn_internal_rst catchcn_internal_rst.$YYYYMMDD
 endif
@@ -149,7 +149,7 @@ case [1]:
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
            echo  bin/mk_LDASsaRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s 50 -r Y -t ${TILFILE}  >> this.file
-           echo  ncks -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} >> this.file 
+           echo  ncks -4  -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} >> this.file 
            @ j++
         end
 

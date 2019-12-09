@@ -442,7 +442,7 @@ EOF
           sed -i -e "s/DATAVALUES/$tstep2/g" timestamp.cdl
           ncgen -k4 -o timestamp.nc4 timestamp.cdl
           ncrcat -h $EXPID.$ThisCol.${YYYY}${MM}${DD}_* ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
-          ncks -h -v time_stamp timestamp.nc4 -A ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
+          ncks -4 -h -v time_stamp timestamp.nc4 -A ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
           /bin/rm timestamp.cdl
           /bin/rm timestamp.nc4
           /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4 
@@ -514,7 +514,7 @@ while ($inens < $NENS)
 
     set rstf = 'landpert'
     if (-f ${rstf}${ENSID}_internal_checkpoint ) then
-       ncks -O -C -x -v lat,lon -L 2 ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+       ncks -4 -O -C -x -v lat,lon -L 2 ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
        /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
        /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
        /bin/ln -s  $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin} $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
@@ -553,7 +553,7 @@ while ($inens < $NENS)
           set TM = `echo $ThisTime | cut -c5-6` 
           set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
           if (! -e $THISDIR            ) mkdir -p $THISDIR
-          ncks -O -C -x -v lat,lon -L 2 $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4
+          ncks -4 -O -C -x -v lat,lon -L 2 $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4
           /bin/rm -f $rfile
        end
     endif
