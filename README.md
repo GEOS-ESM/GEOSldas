@@ -59,7 +59,7 @@ development (not quite ready for prime time), the user should checkout the
 
 ```
 git checkout develop
-parallel_build.csh -develop
+parallel_build.csh
 ```
 This is equivalent of the development `-UNSTABLE` tag in the CVS days.
 
