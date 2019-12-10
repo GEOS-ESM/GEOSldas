@@ -264,12 +264,10 @@ COMMONLY USED boundary conditions (bcs):
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NL/
 ```
 
-  Note: DON'T USE unless to replicate previous experiments. There is "missing"
-  	data in green*.data, nirdf*.dat, and visdf*.dat files.
-    
-  	This path remains in place to permit recreating experiments that have used this path.
-	The sub-directory "Icarus-NL_MERRA-2/" contains the "new land" bcs.  The string "MERRA-2" 
-        in this sub-directory name refers to ocean bcs that are not relevant for GEOSldas.
+Notes:
+- _DON'T USE_ unless to replicate previous experiments. There is "missing" data in green*.data, nirdf*.dat, and visdf*.dat files.
+- This path remains in place to permit recreating experiments that have used this path.
+- The sub-directory "Icarus-NL_MERRA-2/" contains the "new land" bcs.  The string "MERRA-2" in this sub-directory name refers to ocean bcs that are not relevant for GEOSldas.
 
 
 #### Icarus-NL ("New Land") v2
@@ -277,35 +275,24 @@ COMMONLY USED boundary conditions (bcs):
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv2/
 ```
 
-  Note: Icarus-NLv2 is a update to Icarus-NL bcs. A patch has been applied to files green*.data, nirdf*.dat, and
-  	visdf*.dat. No patched data were created for:
-	    - /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_Tripolar/*
-	    - /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_Ostia/CF1152x6C_DE2880xPE1440
-	    - /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_Ostia/CF0768x6C_DE2880xPE1440
-	There are no current replacements for these in Icarus-NLv2. Additionally,
-  	the resolution Icarus-NLv2_Ostia/CF0360x6C_CF0360x6C was added.
-
-	DEFAULT for GEOSldas v17.8.0 
+Notes: 
+- Icarus-NLv2 is a update to Icarus-NL bcs. A patch has been applied to files green*.data, nirdf*.dat, and visdf*.dat. 
+- DEFAULT for GEOSldas v17.8.0 
 	
 #### Icarus-NL ("New Land") v3
 ```
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv3/
 ```
 
-  Note: Soil paramters for a small fraction (< 0.05%) of tiles changed
-        to correct "Mali" bug.
+Notes: 
+- Soil parameters for a small fraction (< 0.05%) of tiles changed to correct "Mali" bug.
+- Vegdyn.data reverts to using Dorman / Sellers veg heights, instead of JPL Lidar Data. Vegdyn.data is now netcdf4
+- Some underlying ASCII data files are now grouped to netcdf4. I.e., data in ar.new, bf.dat, ts.dat, etc are now in:
+    - clsm/catch_params.nc4   (for Catch)
+    - clsm/catchcn_params.nc4 (for CatchCN)
 
-    	Vegdyn.data reverts to using Dorman / Sellers veg heights,
-    	instead of JPL Lidar Data. Vegdyn.data is now netcdf4
-
-    	Some underlying ASCII data files are now grouped to netcdf4
-             I.e., data in ar.new, bf.dat, ts.dat, etc are now in:
-             clsm/catch_params.nc4   (for Catch)
-             clsm/catchcn_params.nc4 (for CatchCN)
-
-	Generated with cvs tag Jason-3_0_LANDBCS
-
-	DEFAULT for GEOSldas AFTER v17.8.0
+- Generated with cvs tag Jason-3_0_LANDBCS
+- DEFAULT for GEOSldas AFTER v17.8.0
 
 
       
