@@ -38,10 +38,10 @@ _These are additions put in development, that will be in the next stable tag_
 
 
 Overview of Git tags:
----------------------
+============================
 
 [v17.8.0] - 2015-12-03
-----------------------
+------------------------
 - Closest match to LDASsa CVS tag LDASsa_m3-16_6_p2, the LDASsa tag used for generating the Version 4 L4_SM product. 
 - v17.8.0 is a debugged version of GEOSldas_m4-17_8.
 			    
@@ -49,7 +49,8 @@ Overview of Git tags:
 			    
 
 Overview of Previous CVS tags:
-------------------
+=======================================
+
 Tags are ordered by *version*, beginning with LDASsa tags and followed by GEOSldas tags.  
 
 Between 4 Oct 2017 and 7 Mar 2019, LDASsa and GEOSldas development overlapped and 
