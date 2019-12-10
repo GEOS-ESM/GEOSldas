@@ -9,6 +9,7 @@ History of GEOS LDAS ("LDASsa"; "GEOSldas") development in Git and CVS
 Author:
 --------
 reichle, 20 Jul 2010 (first version; updated regularly)
+
 jperket, 10 Dec 2019 Converted to Markdown
 
 Summary and Objective:
