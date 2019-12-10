@@ -30,9 +30,8 @@ and change logs.
 Unreleased
 ^^^^^^^^^^^^^^^^^^^^^
 - Fix PAR bug affecting assim
-- Accepted Incarus-NLv3 as default BCs
-- Changed Z0_FORMULATION to 4 (Reverts to look-up veg heights, adds simple
-tree SAI)
+- Accepted Icarus-NLv3 as default BCs (reverting to look-up veg heights)
+- Changed default Z0_FORMULATION to 4 (incl. addition of simple tree SAI)
 
 Overview of Git tags:
 ^^^^^^^^^^^^^^^^^^^^^
