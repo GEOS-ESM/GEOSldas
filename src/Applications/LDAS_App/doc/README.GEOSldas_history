@@ -27,6 +27,12 @@ In 2019, GEOS LDAS version control transferred from CVS to Git.
 This README file contains the history of stable LDASsa and GEOSldas versions ("tags") 
 and change logs.
 
+Unreleased
+^^^^^^^^^^^^^^^^^^^^^
+- Fix PAR bug affecting assim
+- Accepted Incarus-NLv3 as default BCs
+- Changed Z0_FORMULATION to 4 (Reverts to look-up veg heights, adds simple
+tree SAI)
 
 Overview of Git tags:
 ^^^^^^^^^^^^^^^^^^^^^

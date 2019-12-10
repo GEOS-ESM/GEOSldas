@@ -289,7 +289,7 @@ Icarus-NL ("New Land") v3
 
 	Generated with cvs tag Jason-3_0_LANDBCS
 
-	NOT YET DEFAULT for GEOSldas (as of v17.8.0)
+	DEFAULT for GEOSldas AFTER v17.8.0
 
 =========================== EOF =======================================================================
 
