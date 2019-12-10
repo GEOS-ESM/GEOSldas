@@ -1,6 +1,6 @@
 
-README.GEOSldas_history
-=======================
+GEOSldas History / Changelog
+===============================
 
 Description:
 ------------
