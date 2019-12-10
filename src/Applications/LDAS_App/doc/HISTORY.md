@@ -56,6 +56,8 @@ new tags were created for both software systems.  During this period, there is s
 overlap between LDASsa and GEOSldas tags in terms of science versions, with LDASsa
 tags primarily intended for the SMAP L4_SM ops system. 
 
+```text
+
 =====================================================================================
 CVS tag					Created      Application/Comments
 =====================================================================================
@@ -2135,7 +2137,7 @@ See also "src/release_notes.txt".
 
 
 Source code:
-~~~~~~~~~~~~
+---------------------------
  For complete list of source files see "Makefile".
  
  "catchment.f" should match same from GEOS5.
@@ -2150,7 +2152,7 @@ Source code:
 
 
 Build:
-~~~~~~
+---------------------------
  Makefile
  configure.sh -> Makefile.conf
 
@@ -2159,18 +2161,18 @@ Build:
 
 
 "Global" fortran parameter files:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+------------------------------------------------------  
  clsm_ensdrv_glob_param.f90       
  clsm_ensupd_glob_param.f90
 
 
 Run script:
-~~~~~~~~~~~
+---------------------------
  run_job_global.sh
 
  
 Hierarchy of command-line and namelist inputs:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+------------------------------------------------------ 
  1. Command line arguments are used.
  2. If not available, namelist inputs from "special" namelist files (path
     and file name specified as command line argument) are used.
@@ -2180,7 +2182,7 @@ Hierarchy of command-line and namelist inputs:
 
 
 Namelist files:
-~~~~~~~~~~~~~~~
+---------------------------
  Default namelist files: 
 
  reading *default* driver inputs from ./../etc//clsm_ensdrv_default_inputs.nml
@@ -2199,7 +2201,7 @@ Namelist files:
 
 
 Restart files:
-~~~~~~~~~~~~~~
+---------------------------
  run1.ensXXXX.rstrt.bkg.19860601_0000  (Catchment model prognostic variables, first time
                                         around only ensemble member 0 is required)
 
@@ -2211,7 +2213,7 @@ Restart files:
 
 
 Domain/grid/tile-space input files:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------------
  Paths are specified in clsm_driver_inputs.nml
 
  Example files below are for special 1 deg-by-1 deg "GSWP" grid.  For 1/2 deg MERRA
@@ -2237,7 +2239,7 @@ Domain/grid/tile-space input files:
 
 
 Catchment model parameter input files (soil, vegetation, etc):
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------------------------------------------------------
  Paths are specified in clsm_driver_inputs.nml - all files are same as GEOS5 (even though 
  the land group maintain their own directories in /land/l_data/...)
 
@@ -2260,7 +2262,7 @@ Catchment model parameter input files (soil, vegetation, etc):
 
 
 Meteorological forcing input files:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
   Path to surface meteorological forcing files ("met_path") is specified via namelist.
   Need to point to GEOS5-DAS "inst2d" and "tavg2d" output files.
 
@@ -2268,7 +2270,7 @@ Meteorological forcing input files:
 
 
 Observations input files:
-~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
   Path to observations and related scaling files is specified via namelist.
 
   (File names for observations are not echoed to screen at this time.)
@@ -2276,6 +2278,10 @@ Observations input files:
   Example scaling file:
 
   /land/reichle/NSIPP/catch/output/Tskin_sarith/run1tmp/GLOBAL_GSWP-2/stats/run1tmp.mean_std.1986-1995.Jun_03z.bin
-
-
-===================== EOF =======================================================================
+  
+  ```
+  
+  [Unreleased]: https://github.com/GEOS-ESM/GEOSldas/tree/develop
+  [v17.8.0]: https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.8.0
+  
+  
