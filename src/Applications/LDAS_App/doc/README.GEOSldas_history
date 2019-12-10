@@ -1,15 +1,18 @@
 
-File name:	README.GEOSldas_history
+README.GEOSldas_history
+=======================
 
-Description:	History of GEOS LDAS ("LDASsa"; "GEOSldas") development
-		in Git and CVS
+Description:
+------------
+History of GEOS LDAS ("LDASsa"; "GEOSldas") development in Git and CVS
 
-Author:		reichle, 20 Jul 2010 (first version; updated regularly)
-
-
+Author:
+--------
+reichle, 20 Jul 2010 (first version; updated regularly)
+jperket, 10 Dec 2019 Converted to Markdown
 
 Summary and Objective:
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 The development of the off-line (land-only) GEOS LDAS land modeling and assimilation 
 system started with the "land EnKF driver" for the GEOS Catchment model in the early 
 2000s.  
@@ -24,22 +27,28 @@ this period, LDASsa and GEOSldas development continued in parallel.
 
 In 2019, GEOS LDAS version control transferred from CVS to Git.
 
-This README file contains the history of stable LDASsa and GEOSldas versions ("tags") 
-and change logs.
+This README file contains the history of stable GEOSldas versions ("tags") in Git, followed by older, CVS LDASsa and GEOSldas versions and change logs.
+
+
+[Unreleased] Features:
+--------------------
+_These are additions put in development, that will be in the next stable tag_
+
 
 
 Overview of Git tags:
-^^^^^^^^^^^^^^^^^^^^^
-=====================================================================================
-Git tag		Created      Application/Comments
-=====================================================================================
-v17.8.0         Dec 2019    Closest match to LDASsa CVS tag LDASsa_m3-16_6_p2, the
-                            LDASsa tag used for generating the Version 4 L4_SM product.
-                            v17.8.0 is a debugged version of GEOSldas_m4-17_8.
+---------------------
+
+[v17.8.0] - 2015-12-03
+----------------------
+- Closest match to LDASsa CVS tag LDASsa_m3-16_6_p2, the LDASsa tag used for generating the Version 4 L4_SM product. 
+- v17.8.0 is a debugged version of GEOSldas_m4-17_8.
 			    
 
-Overview of CVS tags:
-^^^^^^^^^^^^^^^^^^^^^
+			    
+
+Overview of Previous CVS tags:
+------------------
 Tags are ordered by *version*, beginning with LDASsa tags and followed by GEOSldas tags.  
 
 Between 4 Oct 2017 and 7 Mar 2019, LDASsa and GEOSldas development overlapped and 
