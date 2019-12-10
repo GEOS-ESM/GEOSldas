@@ -21,7 +21,7 @@ module clsm_ensdrv_drv_routines
        N_snow => CATCH_N_SNOW,                    &
        N_gt   => CATCH_N_GT
 
-  use catch_iau,                        ONLY:     &
+  use catch_incr,                        ONLY:     &
        check_catch_progn
   
   use MAPL_ConstantsMod,                ONLY:     &

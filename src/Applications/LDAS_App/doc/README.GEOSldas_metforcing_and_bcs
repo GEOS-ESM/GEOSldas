@@ -257,6 +257,7 @@ Icarus-NL ("New Land")
 	The sub-directory "Icarus-NL_MERRA-2/" contains the "new land" bcs.  The string "MERRA-2" 
         in this sub-directory name refers to ocean bcs that are not relevant for GEOSldas.
 
+
 Icarus-NL ("New Land") v2
 
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv2/
@@ -269,8 +270,26 @@ Icarus-NL ("New Land") v2
 	There are no current replacements for these in Icarus-NLv2. Additionally,
   	the resolution Icarus-NLv2_Ostia/CF0360x6C_CF0360x6C was added.
 
+	DEFAULT for GEOSldas v17.8.0 
+	
+Icarus-NL ("New Land") v3
 
+  BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv3/
 
+  Note: Soil paramters for a small fraction (< 0.05%) of tiles changed
+        to correct "Mali" bug.
+
+    	Vegdyn.data reverts to using Dorman / Sellers veg heights,
+    	instead of JPL Lidar Data. Vegdyn.data is now netcdf4
+
+    	Some underlying ASCII data files are now grouped to netcdf4
+             I.e., data in ar.new, bf.dat, ts.dat, etc are now in:
+             clsm/catch_params.nc4   (for Catch)
+             clsm/catchcn_params.nc4 (for CatchCN)
+
+	Generated with cvs tag Jason-3_0_LANDBCS
+
+	NOT YET DEFAULT for GEOSldas (as of v17.8.0)
 
 =========================== EOF =======================================================================
 

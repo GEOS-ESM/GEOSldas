@@ -3919,6 +3919,7 @@ contains
     ! reichle, 19 Jan 2017: added FP transition from e5131 to f516
     ! reichle, 30 Oct 2017: added FP transition from f516 to f517
     ! reichle,  9 Jul 2018: added FP transition from f517 to f521
+    ! reichle, 10 Oct 2019: added FP transition from f521 to f522
     !    
     ! ---------------------------------------------------------------------------    
 
@@ -3957,6 +3958,7 @@ contains
     type(date_time_type)        :: dt_end_f516_fp
     type(date_time_type)        :: dt_end_f517_fp   
     type(date_time_type)        :: dt_end_f521_fp   
+    type(date_time_type)        :: dt_end_f522_fp
 
     character(len=*), parameter :: Iam = 'parse_G5DAS_met_tag'
     character(len=400) :: err_msg
@@ -3968,9 +3970,9 @@ contains
     !
     !            | stream start |  stream end (as of 5 Dec 2014)
     ! ----------------------------------------
-    ! rpit1      |  1 Jan 2000  |   1 Jun 2007          
-    ! rpit2      |  1 Jun 2006  |  30 Dec 2011          
-    ! rpit3      |  1 Jan 2011  |   6 May 2013
+    ! d591_rpit1 |  1 Jan 2000  |   1 Jun 2007          
+    ! d591_rpit2 |  1 Jun 2006  |  30 Dec 2011          
+    ! d591_rpit3 |  1 Jan 2011  |   6 May 2013
     ! d591_fpit  | 30 Dec 2012  |   (present) 
 
     dt_end_d591_rpit1%year      = 2007
@@ -4040,7 +4042,10 @@ contains
     ! e5110_fp   | 11 Jun 2013  | 19 Aug 2014 
     ! e5130_fp   |  1 Aug 2014  |  4 May 2015
     ! e5131_fp   |  1 May 2015  | 24 Jan 2017
-    ! f516_fp    | 24 Jan 2015  |   (present)
+    ! f516_fp    | 24 Jan 2017  |  1 Nov 2017
+    ! f517_fp    |  1 Nov 2017  | 11 Jul 2018
+    ! f521_fp    | 11 Jul 2018  | 13 Mar 2019
+    ! f522_fp    | 13 Mar 2019  |   (present)
     !
     ! Official stream transition times (as defined
     ! by GMAO ops group) are:
@@ -4050,6 +4055,7 @@ contains
     ! FP e5131 --> f516  : 24 Jan 2017, 6z ADAS analysis
     ! FP f516  --> f517  :  1 Nov 2017, 6z ADAS analysis
     ! FP f517  --> f521  : 11 Jul 2018, 6z ADAS analysis
+    ! FP f521  --> f522  : 13 Mar 2019, 6z ADAS analysis
     !
     ! Official stream transition times refer to the definition
     ! of the official FP files with generic file names on the 
@@ -4105,12 +4111,19 @@ contains
     dt_end_f517_fp%min     = 0
     dt_end_f517_fp%sec     = 0  
 
-    dt_end_f521_fp%year    = 9999
-    dt_end_f521_fp%month   = 1
-    dt_end_f521_fp%day     = 1
-    dt_end_f521_fp%hour    = 0
+    dt_end_f521_fp%year    = 2019
+    dt_end_f521_fp%month   = 3
+    dt_end_f521_fp%day     = 13
+    dt_end_f521_fp%hour    = 3
     dt_end_f521_fp%min     = 0
     dt_end_f521_fp%sec     = 0
+
+    dt_end_f522_fp%year    = 9999
+    dt_end_f522_fp%month   = 1
+    dt_end_f522_fp%day     = 1
+    dt_end_f522_fp%hour    = 0
+    dt_end_f522_fp%min     = 0
+    dt_end_f522_fp%sec     = 0  
 
     ! ----------------------------------------------------
 
@@ -4246,9 +4259,15 @@ contains
           
           stream = 'f517_fp'            ! use GEOS-5.17.x output
 
-       else
-
+      elseif (datetime_le_refdatetime( date_time, dt_end_f521_fp )) then
+          
+          ! Note "less-than-or-equal" (_le_) above
+          
           stream = 'f521_fp'            ! use GEOS-5.21.x output
+
+       else
+          
+          stream = 'f522_fp'            ! use GEOS-5.22.x output
 
        end if
 

@@ -25,9 +25,6 @@ module clsm_ensupd_enkf_update
        catch_calc_soil_moist,                     &
        catch_calc_tp
   
-  use catch_iau,                        ONLY:     &
-       check_catch_progn
-  
   use LDAS_ensdrv_globals,           ONLY:     &
        logit,                                     &
        logunit,                                   &
