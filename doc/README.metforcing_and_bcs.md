@@ -286,7 +286,7 @@ Notes:
 
 Notes: 
 - Soil parameters for a small fraction (< 0.05%) of tiles changed to correct "Mali" bug.
-- Vegdyn.data reverts to using Dorman / Sellers veg heights, instead of JPL Lidar Data. Vegdyn.data is now netcdf4
+- Vegdyn.data now netcdf4; reverts to using Dorman/Sellers veg heights (from JPL/Simard et al. 2011 Lidar data). 
 - Some underlying ASCII data files are now grouped to netcdf4. I.e., data in ar.new, bf.dat, ts.dat, etc are now in:
     - clsm/catch_params.nc4   (for Catch)
     - clsm/catchcn_params.nc4 (for CatchCN)
