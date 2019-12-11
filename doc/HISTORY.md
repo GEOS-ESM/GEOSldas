@@ -35,6 +35,11 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 _These are additions put in development, that will be in the next stable tag_
 
 
+Unreleased
+^^^^^^^^^^^^^^^^^^^^^
+- Fix PAR bug affecting assim
+- Accepted Icarus-NLv3 as default BCs (reverting to look-up veg heights)
+- Changed default Z0_FORMULATION to 4 (incl. addition of simple tree SAI)
 
 Overview of Git tags:
 ============================
