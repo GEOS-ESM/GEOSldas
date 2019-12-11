@@ -1,35 +1,39 @@
 
-File name:	README.GEOSldas_metforcing_and_bcs
+README.metforcing_and_bcs
+=====================
 
-Description:	Information about met forcing and boundary conditions for GEOSldas.
+Description:
+---------------
+Information about met forcing and boundary conditions for GEOSldas.
 
-Author:		reichle,  5 Oct 2017   (first version; updated regularly)
+Author:	
+---------------
+- reichle (5 Oct 2017) - first version; updated regularly
+- jperket (10 Dec 2019) - converted to markdown
 
-================================================================================
-===                                                                          ===
-===                          Met Forcing                                     ===
-===                                                                          ===
-================================================================================
+
+Met Forcing
+=========                                      
 
 Surface meteorological forcing data
 
 The spatial (horizontal) interpolation method for the met forcing is controlled
-by "MET_HINTERP" (see optional parameters in "exeinp" input file to ldas_setup).
+by `MET_HINTERP` (see optional parameters in `exeinp` input file to ldas_setup).
 
-"MET_PATH" and "MET_TAG" must be consistent:
+`MET_PATH` and `MET_TAG` must be consistent:
 
- - "MET_PATH" is the full path to the forcing data set
+ - `MET_PATH` is the full path to the forcing data set
 
- - "MET_TAG" is an identifier for the forcing data set
+ - `MET_TAG` is an identifier for the forcing data set
 
- - available non-MERRA and non-GEOS-5 forcing data sets are pre-defined 
+ - Available non-MERRA and non-GEOS-5 forcing data sets are pre-defined 
     in subroutine get_forcing()
 
- - for MERRA and other GEOS-5 forcing datasets see special "MET_TAG" 
+ - For MERRA and other GEOS-5 forcing datasets see special `MET_TAG`
     parsing conventions in subroutines parse_MERRA_met_tag(), parse_MERRA2_met_tag()
     and parse_G5DAS_met_tag()
 
- - for details on corrected precipitation data see also Reichle and Liu (2014), 
+ - For details on corrected precipitation data see also Reichle and Liu (2014), 
     Observation-Corrected Precipitation Estimates in GEOS-5, 
     NASA Technical Report Series on Global Modeling and Data Assimilation, 
     NASA/TM-2014-104606, Vol. 35, National Aeronautics and Space Administration, 
@@ -37,164 +41,172 @@ by "MET_HINTERP" (see optional parameters in "exeinp" input file to ldas_setup).
     https://gmao.gsfc.nasa.gov/pubs/     
 
 
-COMMONLY USED values for "MET_PATH":
+COMMONLY USED values for `MET_PATH`:
 ------------------------------------
 
 Legacy datasets
-
+```
   MET_PATH : [XXX]/l_data/ECMWF/GRID/CORRECTED/netcdf/
   MET_PATH : [XXX]/l_data/GLDAS/netcdf/
   MET_PATH : [XXX]/l_data/GSWP-2/Baseline_Forcings/
   MET_PATH : [XXX]/l_data/RedArk/RedArk_subbasin_forcing/red_ark_forc/
-
+```
 
 MERRA  forcing (including precip-corrected MERRA forcing)
-
+```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA_land_forcing/ 
-
+```
 
 MERRA2 forcing (including precip-corrected MERRA forcing)
-
+```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/ 
-
+```
 
 SMAP_Nature_v03
-
+```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
-
+```
 
 SMAP_Nature_v04, SMAP_Nature_v04.1
-
+```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
-
+```
 
 SMAP_Nature_v05
-
+```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/  ! before 1/1/2015
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/   ! after  1/1/2015
-
+```
 
 GEOS-5 forcing (including FP, FP-IT/RP-IT, and precip-corrected GEOS-5 forcing)
-
+```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
+```
 
-
-COMMONLY USED values for "MET_TAG":
+COMMONLY USED values for `MET_TAG`:
 ------------------------------------
 
-Legacy datasets
-
+#### Legacy datasets
+```
   MET_TAG  : Berg_netcdf
   MET_TAG  : GLDAS_2x2_5_netcdf
   MET_TAG  : GSWP2_1x1_netcdf
   MET_TAG  : RedArk_ASCII
+```
 
-
-MERRA
-
+#### MERRA
+```
   MET_TAG  : d5_merra_cross__GEOSdas-2_1_4
+```
 
-
-MERRA-Land
-
+#### MERRA-Land
+```
   MET_TAG  : d5_merra_cross__GEOSdas-2_1_4__precCPCU
+```
 
+#### MERRA-2
 
-MERRA-2
-
- All MERRA-2 options use native MERRA-2 "lfo" files for all surface met forcing fields
+ - All MERRA-2 options use native MERRA-2 "lfo" files for all surface met forcing fields
  *except* precipitation.
 
- Option 1a: 
+ - Option 1a: 
    Use corrected precip seen by the land w/in the MERRA-2 system (i.e., native MERRA-2 "lfo" files).
    Precip is as corrected within the MERRA-2 system.  Closest to land-only MERRA-2 replay. 
-
-  MET_TAG  : M2COR_cross 
-  MET_TAG  : M2COR_100   
-  MET_TAG  : M2COR_200   
-  MET_TAG  : M2COR_300   
-  MET_TAG  : M2COR_400   
-
- Option 1b: 
+   
+   ```
+    MET_TAG  : M2COR_cross 
+    MET_TAG  : M2COR_100   
+    MET_TAG  : M2COR_200   
+    MET_TAG  : M2COR_300   
+    MET_TAG  : M2COR_400   
+    ```
+ - Option 1b: 
    Use corrected precip forcing constructed in post-processing using MERRA-2 as background.  
    Background precip is typically from MERRA-2 "int" data, but corrected precip is stored
    in files that look like MERRA-2 "lfo" files.
 
    For example, select corrected precip version "CPCUGPCP22clim_MERRA2_BMTXS" as follows:
-
-  MET_TAG  : M2COR_cross__precCPCUGPCP22clim_MERRA2_BMTXS  
-  MET_TAG  : M2COR_100__precCPCUGPCP22clim_MERRA2_BMTXS    
-  MET_TAG  : M2COR_200__precCPCUGPCP22clim_MERRA2_BMTXS    
-  MET_TAG  : M2COR_300__precCPCUGPCP22clim_MERRA2_BMTXS    
-  MET_TAG  : M2COR_400__precCPCUGPCP22clim_MERRA2_BMTXS    
-
+   ```
+    MET_TAG  : M2COR_cross__precCPCUGPCP22clim_MERRA2_BMTXS  
+    MET_TAG  : M2COR_100__precCPCUGPCP22clim_MERRA2_BMTXS    
+    MET_TAG  : M2COR_200__precCPCUGPCP22clim_MERRA2_BMTXS    
+    MET_TAG  : M2COR_300__precCPCUGPCP22clim_MERRA2_BMTXS    
+    MET_TAG  : M2COR_400__precCPCUGPCP22clim_MERRA2_BMTXS    
+   ```
+   
    This particular version uses as background the MERRA-2 model ("int") precip, rescaled to 
    the GPCPv2.2 climatology (indicated by "S" in "BMTXS").  Outside of Africa and the high 
    latitudes (tapered between 42.5 and 62.5 deg lat), this background precipitation is corrected 
    with CPCU data (also rescaled to the GPCPv2.2 climatology).  See Reichle and Liu (2014)
    GMAO Tech Memo #35 for more information on methods "BMTX".
 
- Option 2:
+ - Option 2:
    Use uncorrected precip generated by the AGCM w/in the MERRA-2 system (i.e., native 
    MERRA-2 "int" files).
-
-  MET_TAG  : M2INT_cross 
-  MET_TAG  : M2INT_100   
-  MET_TAG  : M2INT_200   
-  MET_TAG  : M2INT_300   
-  MET_TAG  : M2INT_400   
-
-RP-IT/FP-IT (d591)
-
+   ```
+    MET_TAG  : M2INT_cross 
+    MET_TAG  : M2INT_100   
+    MET_TAG  : M2INT_200   
+    MET_TAG  : M2INT_300   
+    MET_TAG  : M2INT_400   
+    ```
+    
+#### RP-IT/FP-IT (d591)
+```
   MET_TAG  : d591_rpit1_jan00
   MET_TAG  : d591_rpit2_jun06
   MET_TAG  : d591_rpit3_jan11
   MET_TAG  : d591_fpit
   MET_TAG  : cross_d591_RPFPIT
+```
 
-RP-IT/FP-IT (d5124)
-
+#### RP-IT/FP-IT (d5124)
+```
   MET_TAG  : d5124_rpit1_jan00
   MET_TAG  : d5124_rpit2_jun04
   MET_TAG  : d5124_rpit3_jan12                ! updated through present
   MET_TAG  : cross_d5124_RPFPIT               ! uses "late-look" through present
+```
 
-FP
-
+#### FP
+```
   MET_TAG  : e5110_fp
   MET_TAG  : e5130_fp
   MET_TAG  : e5131_fp
   MET_TAG  : cross_FP
+```
 
-FP with precip corrections as in pre-beta SMAP L4_SM products
-
+#### FP with precip corrections as in pre-beta SMAP L4_SM products
+```
   MET_TAG  : cross_FP__precCPCUG5FPv2
+```
 
-SMAP_Nature_v03
-
+#### SMAP_Nature_v03
+```
   MET_TAG  : cross_RPFPIT__precCPCUG5RPFPITv1                ! before 1/1/2014
   MET_TAG  : cross_FP__precCPCUG5FPv1		            ! after  1/1/2014
+```
 
-SMAP_Nature_v04      
-
+#### SMAP_Nature_v04      
+```
   MET_TAG  : cross_d591_RPFPIT__precCPCUG5RPFPITv2           ! before 1/1/2014
   MET_TAG  : cross_FP__precCPCUG5FPv2                        ! after  1/1/2014
+```
 
-SMAP_Nature_v04.1      
-
+#### SMAP_Nature_v04.1      
+```
   MET_TAG  : cross_d5124_RPFPIT__precCPCUG5RPFPITv2.1        ! before 1/1/2015
   MET_TAG  : cross_FP__precCPCUG5FPv2                        ! after  1/1/2015
+```
 
-SMAP_Nature_v05
-
+#### SMAP_Nature_v05
+```
   MET_TAG  : M2COR_cross__precCPCUGPCP22clim_MERRA2_BMTXS    ! before 1/1/2015
   MET_TAG  : cross_FP__precCPCUG5FPv3                        ! after  1/1/2015
+```
 
 
-================================================================================
-===                                                                          ===
-===                      Boundary Conditions                                 ===
-===                                                                          ===
+Boundary Conditions  
 ================================================================================
 
 Boundary conditions (bcs) are tile-space model parameters that are provided in a 
@@ -203,12 +215,12 @@ Boundary conditions (bcs) are tile-space model parameters that are provided in a
 For "land" tiles, the discretization (tile-space) is constructed in one of two
   different ways:
 
- a) by intersecting watersheds with a regular grid (typically that used in
+  1. by intersecting watersheds with a regular grid (typically that used in
       the atmospheric model), e.g., DC0576xPC0361, where "DC" indicates that
       the grid cells are centered on the date line and "PC" indicates that
       the grid cells are centered on the poles.
 
- b) directly on a regular grid, e.g., SMAP_EASEv2_M09.
+  2. directly on a regular grid, e.g., SMAP_EASEv2_M09.
 
 
 Note: GEOSldas can be run with older bcs.  Note, however, that GEOSldas requires some bcs 
@@ -220,78 +232,68 @@ Note: GEOSldas can be run with older bcs.  Note, however, that GEOSldas requires
 COMMONLY USED boundary conditions (bcs):
 ----------------------------------------
 
- MERRA-Land (and MERRA)
-
+#### MERRA-Land (and MERRA)
+```
   BCS_PATH = /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/SiB2_V2_bad_lon_onDL/DC/
+```
 
-
-MERRA2
-
+#### MERRA2
+```
   BCS_PATH : /discover/nobackup/ltakacs/bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/
-
+```
   Note: The same land bcs (for cube-shere only) are also in /discover/nobackup/ltakacs/bcs/Icarus/Icarus_MERRA-2/
 
 
-SMAP Nature Run v03
-
+#### SMAP Nature Run v03
+```
   BCS_PATH = /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_v15/
+```
 
-
-SMAP Nature Run v04, v04.1
-
+#### SMAP Nature Run v04, v04.1
+```
   BCS_PATH = /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v001/
+```
 
-
-SMAP Nature Run v05
-
+#### SMAP Nature Run v05
+```
   BCS_PATH = /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/
+```
 
-
-Icarus-NL ("New Land")
-
+#### Icarus-NL ("New Land")
+```
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NL/
+```
 
-  Note: DON'T USE unless to replicate previous experiments. There is "missing"
-  	data in green*.data, nirdf*.dat, and visdf*.dat files.
-  	This path remains in place to permit recreating experiments that have used this path.
-	The sub-directory "Icarus-NL_MERRA-2/" contains the "new land" bcs.  The string "MERRA-2" 
-        in this sub-directory name refers to ocean bcs that are not relevant for GEOSldas.
+Notes:
+- _DON'T USE_ unless to replicate previous experiments. There is "missing" data in green*.data, nirdf*.dat, and visdf*.dat files.
+- This path remains in place to permit recreating experiments that have used this path.
+- The sub-directory "Icarus-NL_MERRA-2/" contains the "new land" bcs.  The string "MERRA-2" in this sub-directory name refers to ocean bcs that are not relevant for GEOSldas.
 
 
-Icarus-NL ("New Land") v2
-
+#### Icarus-NL ("New Land") v2
+```
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv2/
+```
 
-  Note: Icarus-NLv2 is a update to Icarus-NL bcs. A patch has been applied to files green*.data, nirdf*.dat, and
-  	visdf*.dat. No patched data were created for:
-	    - /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_Tripolar/*
-	    - /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_Ostia/CF1152x6C_DE2880xPE1440
-	    - /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_Ostia/CF0768x6C_DE2880xPE1440
-	There are no current replacements for these in Icarus-NLv2. Additionally,
-  	the resolution Icarus-NLv2_Ostia/CF0360x6C_CF0360x6C was added.
-
-	DEFAULT for GEOSldas v17.8.0 
+Notes: 
+- Icarus-NLv2 is a update to Icarus-NL bcs. A patch has been applied to files green*.data, nirdf*.dat, and visdf*.dat. 
+- DEFAULT for GEOSldas v17.8.0 
 	
-Icarus-NL ("New Land") v3
-
+#### Icarus-NL ("New Land") v3
+```
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv3/
+```
 
-  Note: Soil paramters for a small fraction (< 0.05%) of tiles changed
-        to correct "Mali" bug.
+Notes: 
+- Soil parameters for a small fraction (< 0.05%) of tiles changed to correct "Mali" bug.
+- Vegdyn.data now netcdf4; reverts to using Dorman/Sellers veg heights (abandons JPL/Simard et al. 2011 Lidar data). 
+- Some underlying ASCII data files are now grouped to netcdf4. I.e., data in ar.new, bf.dat, ts.dat, etc are now in:
+    - clsm/catch_params.nc4   (for Catch)
+    - clsm/catchcn_params.nc4 (for CatchCN)
 
-    	Vegdyn.data reverts to using Dorman / Sellers veg heights,
-    	instead of JPL Lidar Data. Vegdyn.data is now netcdf4
+- Generated with cvs tag Jason-3_0_LANDBCS
+- DEFAULT for GEOSldas AFTER v17.8.0
 
-    	Some underlying ASCII data files are now grouped to netcdf4
-             I.e., data in ar.new, bf.dat, ts.dat, etc are now in:
-             clsm/catch_params.nc4   (for Catch)
-             clsm/catchcn_params.nc4 (for CatchCN)
-
-	Generated with cvs tag Jason-3_0_LANDBCS
-
-	DEFAULT for GEOSldas AFTER v17.8.0
-
-=========================== EOF =======================================================================
 
       
 
