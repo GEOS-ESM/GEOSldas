@@ -2431,6 +2431,11 @@ contains
     !
     ! reichle, 27 Jul 2015 - added MERRA-2 forcing
     !
+    ! jkolassa+reichle, 17 Dec 2019 - fixed "met_path", "prec_path", and "met_tag" at stream boundaries
+    !                                  (for MERRA-2, always point to publicly available files)
+    !                               - updated comments
+    !
+    !
     ! -----------------------------------
     !
     ! Use MERRA, MERRA-2 or GEOS-5 DAS file specs based on parsing of "met_tag".
