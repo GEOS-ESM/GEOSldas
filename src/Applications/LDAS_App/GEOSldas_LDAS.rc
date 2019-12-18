@@ -91,8 +91,9 @@ CHOOSEMOSFC                    : 0
 #    1 : Ganymed-4_1,  SMAP NRv4/NRv4.1
 #    2 : Heracles-4_3, Icarus (AGCM default)
 #    3 :               SMAP NRv5/NRv7.2
+#    4 : f525land_fpp
 #
-Z0_FORMULATION                 : 3
+Z0_FORMULATION                 : 4
 
 # ---- ASCAT-derived roughness length:
 #    0 : Default - do not use ASCAT information.

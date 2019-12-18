@@ -1,14 +1,18 @@
 
-File name:	README.GEOSldas_history
+GEOSldas History / Changelog
+===============================
 
-Description:	History of GEOS LDAS ("LDASsa"; "GEOSldas") development
+Description:
+------------
+History of GEOS LDAS ("LDASsa"; "GEOSldas") development in Git and CVS
 
-Author:		reichle, 20 Jul 2010 (first version; updated regularly)
-
-
+Author:
+--------
+- reichle (20 Jul 2010), first version; updated regularly
+- jperket (10 Dec 2019), converted to Markdown
 
 Summary and Objective:
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 The development of the off-line (land-only) GEOS LDAS land modeling and assimilation 
 system started with the "land EnKF driver" for the GEOS Catchment model in the early 
 2000s.  
@@ -21,19 +25,44 @@ project, with the ultimate goal of bringing the land model updates from the off-
 system into the GEOS AGCM and integrating the GEOS LDAS into the atmospheric DAS.  During 
 this period, LDASsa and GEOSldas development continued in parallel.
 
-This README file contains the history of stable LDASsa and GEOSldas versions ("tags") 
-and change logs.
+In 2019, GEOS LDAS version control transferred from CVS to Git.
+
+This README file contains the history of stable GEOSldas versions ("tags") in Git, followed by older, CVS LDASsa and GEOSldas versions and change logs.
 
 
+[Unreleased] Features:
+--------------------
+_These are additions put in development, that will be in the next stable tag_
 
-Overview of CVS tags:
+
+Unreleased
 ^^^^^^^^^^^^^^^^^^^^^
+- Fix PAR bug affecting assim
+- Accepted Icarus-NLv3 as default BCs (reverting to look-up veg heights)
+- Changed default Z0_FORMULATION to 4 (incl. addition of simple tree SAI)
+
+Overview of Git tags:
+============================
+
+[v17.8.0] - 2019-12-10
+------------------------
+- Closest match to LDASsa CVS tag LDASsa_m3-16_6_p2, the LDASsa tag used for generating the Version 4 L4_SM product. 
+- v17.8.0 is a debugged version of GEOSldas_m4-17_8.
+			    
+
+			    
+
+Overview of Previous CVS tags:
+=======================================
+
 Tags are ordered by *version*, beginning with LDASsa tags and followed by GEOSldas tags.  
 
 Between 4 Oct 2017 and 7 Mar 2019, LDASsa and GEOSldas development overlapped and 
 new tags were created for both software systems.  During this period, there is some 
 overlap between LDASsa and GEOSldas tags in terms of science versions, with LDASsa
 tags primarily intended for the SMAP L4_SM ops system. 
+
+```text
 
 =====================================================================================
 CVS tag					Created      Application/Comments
@@ -206,7 +235,7 @@ overlapped.
 
 ***********************************************************************************
 *                                                                                 *
-*                           GEOSldas change log                                   *
+*                           GEOSldas CVS change log                               *
 *                                                                                 *
 ***********************************************************************************
 
@@ -2114,7 +2143,7 @@ See also "src/release_notes.txt".
 
 
 Source code:
-~~~~~~~~~~~~
+---------------------------
  For complete list of source files see "Makefile".
  
  "catchment.f" should match same from GEOS5.
@@ -2129,7 +2158,7 @@ Source code:
 
 
 Build:
-~~~~~~
+---------------------------
  Makefile
  configure.sh -> Makefile.conf
 
@@ -2138,18 +2167,18 @@ Build:
 
 
 "Global" fortran parameter files:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+------------------------------------------------------  
  clsm_ensdrv_glob_param.f90       
  clsm_ensupd_glob_param.f90
 
 
 Run script:
-~~~~~~~~~~~
+---------------------------
  run_job_global.sh
 
  
 Hierarchy of command-line and namelist inputs:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+------------------------------------------------------ 
  1. Command line arguments are used.
  2. If not available, namelist inputs from "special" namelist files (path
     and file name specified as command line argument) are used.
@@ -2159,7 +2188,7 @@ Hierarchy of command-line and namelist inputs:
 
 
 Namelist files:
-~~~~~~~~~~~~~~~
+---------------------------
  Default namelist files: 
 
  reading *default* driver inputs from ./../etc//clsm_ensdrv_default_inputs.nml
@@ -2178,7 +2207,7 @@ Namelist files:
 
 
 Restart files:
-~~~~~~~~~~~~~~
+---------------------------
  run1.ensXXXX.rstrt.bkg.19860601_0000  (Catchment model prognostic variables, first time
                                         around only ensemble member 0 is required)
 
@@ -2190,7 +2219,7 @@ Restart files:
 
 
 Domain/grid/tile-space input files:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------------
  Paths are specified in clsm_driver_inputs.nml
 
  Example files below are for special 1 deg-by-1 deg "GSWP" grid.  For 1/2 deg MERRA
@@ -2216,7 +2245,7 @@ Domain/grid/tile-space input files:
 
 
 Catchment model parameter input files (soil, vegetation, etc):
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------------------------------------------------------
  Paths are specified in clsm_driver_inputs.nml - all files are same as GEOS5 (even though 
  the land group maintain their own directories in /land/l_data/...)
 
@@ -2239,7 +2268,7 @@ Catchment model parameter input files (soil, vegetation, etc):
 
 
 Meteorological forcing input files:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
   Path to surface meteorological forcing files ("met_path") is specified via namelist.
   Need to point to GEOS5-DAS "inst2d" and "tavg2d" output files.
 
@@ -2247,7 +2276,7 @@ Meteorological forcing input files:
 
 
 Observations input files:
-~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
   Path to observations and related scaling files is specified via namelist.
 
   (File names for observations are not echoed to screen at this time.)
@@ -2255,6 +2284,10 @@ Observations input files:
   Example scaling file:
 
   /land/reichle/NSIPP/catch/output/Tskin_sarith/run1tmp/GLOBAL_GSWP-2/stats/run1tmp.mean_std.1986-1995.Jun_03z.bin
-
-
-===================== EOF =======================================================================
+  
+  ```
+  
+  [Unreleased]: https://github.com/GEOS-ESM/GEOSldas/tree/develop
+  [v17.8.0]: https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.8.0
+  
+  

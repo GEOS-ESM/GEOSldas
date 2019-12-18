@@ -53,13 +53,15 @@ from a head node. Doing so will checkout all the external repositories of the mo
 
 #### Develop Version of LDAS
 
-The user will notice two files in the main directory: `Externals.cfg` and `Develop.cfg`. The difference between these two is that `Externals.cfg` always refers to stable tested released subrepositories. The `Develop.cfg` points to the `develop` branches of the subrespositories, or more recent tags not ready for prime time. This is equivalent in the CVS days of the difference between a stable tag and the development `-UNSTABLE` tag. In order to build the `Develop.cfg` version of the model with `parallel_build.csh` do:
+By default, your clone will be one the `master` branch. To get the most recent
+development (not quite ready for prime time), the user should checkout the
+`develop` branch  before building.
 
 ```
 git checkout develop
-parallel_build.csh -develop
+parallel_build.csh
 ```
-Note you have to first checkout the develop branch, and then also use Develop.cfg (This may be simplified in the future)
+This is equivalent of the development `-UNSTABLE` tag in the CVS days.
 
 #### Debug Version of LDAS
 
