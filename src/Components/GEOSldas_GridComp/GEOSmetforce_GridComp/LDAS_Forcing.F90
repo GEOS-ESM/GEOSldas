@@ -4545,7 +4545,7 @@ contains
 
       N_cat = size(tile_coord,1)
 
-      ! if demensions are the same, no need to recalculate the local_info
+      ! if dimensions are the same, no need to recalculate the local_info
       if( local_info%N_lat == N_lat .and. local_info%N_lon == N_lon ) then
          RETURN_(ESMF_SUCCESS)
       endif
