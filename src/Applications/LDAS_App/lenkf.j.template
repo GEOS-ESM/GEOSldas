@@ -76,7 +76,7 @@ set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 #######################################################################
 
 cd $SCRDIR
-/bin/rm -rf *.*
+/bin/rm -rf *
 /bin/cp     $HOMDIR/cap_restart .
 /bin/cp -f  $HOMDIR/*.rc .
 /bin/cp -f  $HOMDIR/*.nml .
