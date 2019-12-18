@@ -2431,9 +2431,14 @@ contains
     !
     ! reichle, 27 Jul 2015 - added MERRA-2 forcing
     !
+    ! jkolassa+reichle, 17 Dec 2019 - fixed "met_path", "prec_path", and "met_tag" at stream boundaries
+    !                                  (for MERRA-2, always point to publicly available files)
+    !                               - updated comments
+    !
+    !
     ! -----------------------------------
     !
-    ! Use MERRA, MERRA-2 or GEOS-5 DAS file specs based on parsing of "met_tag".
+    ! Read surface met forcing from MERRA, MERRA-2 or GEOS-5 DAS (i.e., FP) based on parsing of "met_tag".
     !
     ! SEE "LDASsa_default_inputs_driver.nml" for more documentation of "met_tag" 
     ! and "met_path".
@@ -2446,20 +2451,21 @@ contains
     !
     ! Time convention for "met_force_new" as stated in get_forcing() does
     ! NOT apply to get_GEOS(), which reads forcing states (such as
-    ! Tair) at date_time and "previous" (or "backward-looking") forcing fluxes 
-    ! (such as SWdown), rather than "subsequent" (or "forward-looking") 
-    ! forcing fluxes.
+    ! Tair) at date_time (=date_time_inst) and "previous" (or "backward-looking") forcing fluxes 
+    ! (such as SWdown) at date_time_bkwd, rather than "subsequent" (or "forward-looking") 
+    ! forcing fluxes (except for init=.true.).
     !
-    ! Example: if date_time=3z, met_force_new will contain Tair at 3z
-    !          and SWdown for average from 0z to 3z (as stored in 1:30z file)
+    ! Example: if date_time=1z, met_force_new will contain TLML at 1z
+    !          and SWGDN for average from 0z to 1z (as stored in 0:30z file)
     !
     ! When LDASsa is integrated within the coupled GEOS5 DAS, initial (time-avg) 
     ! "tavg1_2d_*_Nx" files are not available.  Use optional "init" flag to 
-    ! deal with this situation.
+    ! deal with this situation.  [NOT SURE THIS STILL MAKES SENSE, reichle, 17 Dec 2019]
+
     use netcdf
     implicit none
     
-    type(date_time_type), intent(in) :: date_time
+    type(date_time_type), intent(in) :: date_time           ! date/time of 'inst' forcing
     
     integer, intent(in) :: force_dtstep
 
@@ -2497,11 +2503,17 @@ contains
 
     character(40), dimension(:,:), allocatable :: GEOSgcm_defs
 
-    character(200) :: met_path_tmp, met_path_prec
-    character( 80) :: met_tag_tmp
-    character(  3) :: met_file_ext
+    ! NOTE: met_path prec_path, and met_tag for current ('inst') time and fwd and bkwd 'tavg' 
+    !       times differ at stream boundaries -- jkolassa+reichle, 17 Dec 2019
 
-    character(  3) :: precip_corr_file_ext
+    type(date_time_type) :: date_time_inst, date_time_fwd, date_time_bkwd, date_time_tmp
+    
+    character(200)       :: met_path_inst,  met_path_fwd,  met_path_bkwd,  met_path_tmp
+    character(200)       :: prec_path_inst, prec_path_fwd, prec_path_bkwd, prec_path_tmp
+    character( 80)       :: met_tag_inst,   met_tag_fwd,   met_tag_bkwd,   met_tag_tmp  
+
+    character(  3)       :: met_file_ext
+    character(  3)       :: precip_corr_file_ext
 
     integer :: N_GEOSgcm_vars    
 
@@ -2512,8 +2524,6 @@ contains
     integer :: icur, jcur, inew, jnew
     
     real    :: xcur, ycur, xnew, ynew, fnbr(2,2)
-    
-    type(date_time_type) :: date_time_tavg_bkwd, date_time_tavg_fwd, date_time_tmp
     
    ! real,    dimension(:,:),      allocatable :: tmp_grid
     
@@ -2549,7 +2559,7 @@ contains
     !  4 - file dir ('ana' or 'diag')
     !  5 - treated as S="state" or F="flux" in subroutine interpolate_to_timestep()
     
-    ! G5DAS file specs (default, unless otherwise specified via "met_tag")
+    ! G5DAS (a.k.a. FP) file specs (default, unless otherwise specified via "met_tag")
     !
     ! lfo_inst/tavg data available from 11 Jun 2013 (start of GEOS-5 ADAS version 5.11)
 
@@ -2790,17 +2800,21 @@ contains
     
     tol = abs(nodata_forcing*nodata_tolfrac_generic)    
     
-    ! assemble date/time structures for tavg files 
-    ! (e.g. 0z-3z time average is in file with 1:30 timestamp)
-    
-    date_time_tavg_bkwd = date_time
-    
-    call augment_date_time( -force_dtstep/2, date_time_tavg_bkwd )
+    ! input variable "date_time" is for reading instantaneous ('inst') forcing variables
 
-    date_time_tavg_fwd  = date_time
+    date_time_inst = date_time
     
-    call augment_date_time( +force_dtstep/2, date_time_tavg_fwd )
+    ! assemble date/time structures for tavg files 
+    ! (e.g. 0z-1z time average is in file with 0:30z timestamp)
     
+    date_time_bkwd = date_time_inst
+    
+    call augment_date_time( -force_dtstep/2, date_time_bkwd )
+
+    date_time_fwd  = date_time_inst
+    
+    call augment_date_time( +force_dtstep/2, date_time_fwd )
+
     ! ---------------------------------------------------------------------------
     
     ! determine which file specs should be used (MERRA, MERRA-2, or G5DAS)
@@ -2836,8 +2850,14 @@ contains
 
        precip_corr_file_ext = 'nc '
               
-       call parse_MERRA_met_tag( met_path, met_tag, date_time,       &
-            met_path_tmp, met_path_prec, met_tag_tmp, use_prec_corr )
+       call parse_MERRA_met_tag( met_path, met_tag, date_time_inst,          &
+            met_path_inst, prec_path_inst, met_tag_inst, use_prec_corr )
+
+       call parse_MERRA_met_tag( met_path, met_tag, date_time_fwd,           &
+            met_path_fwd,  prec_path_fwd,  met_tag_fwd,  use_prec_corr )
+
+       call parse_MERRA_met_tag( met_path, met_tag, date_time_bkwd,          &
+            met_path_bkwd, prec_path_bkwd, met_tag_bkwd, use_prec_corr )
 
     elseif (met_tag(1:2)=='M2') then      ! MERRA-2
 
@@ -2863,8 +2883,14 @@ contains
        
        daily_met_files = .true.
        
-       call parse_MERRA2_met_tag( met_path, met_tag, date_time,       &
-            met_path_tmp, met_path_prec, met_tag_tmp, use_prec_corr )
+       call parse_MERRA2_met_tag( met_path, met_tag, date_time_inst,         &
+            met_path_inst, prec_path_inst, met_tag_inst, use_prec_corr )
+  
+       call parse_MERRA2_met_tag( met_path, met_tag, date_time_fwd,          &
+            met_path_fwd,  prec_path_fwd,  met_tag_fwd,  use_prec_corr )
+
+       call parse_MERRA2_met_tag( met_path, met_tag, date_time_bkwd,         &
+            met_path_bkwd, prec_path_bkwd, met_tag_bkwd, use_prec_corr )
        
     else
                                   ! GEOS-5 DAS
@@ -2875,10 +2901,18 @@ contains
        allocate(GEOSgcm_defs(N_GEOSgcm_vars,N_defs_cols))
        GEOSgcm_defs(1:N_G5DAS_vars,  :) = G5DAS_defs
        
-       call parse_G5DAS_met_tag( met_path, met_tag, date_time,       &
-            met_path_tmp, met_path_prec, met_tag_tmp, use_prec_corr, &
+       call parse_G5DAS_met_tag( met_path, met_tag, date_time_inst,          &
+            met_path_inst, prec_path_inst, met_tag_inst, use_prec_corr,      &
             use_Predictor )
-       
+
+       call parse_G5DAS_met_tag( met_path, met_tag, date_time_fwd,           &
+            met_path_fwd,  prec_path_fwd,  met_tag_fwd,  use_prec_corr,      &
+            use_Predictor )
+
+       call parse_G5DAS_met_tag( met_path, met_tag, date_time_bkwd,          &
+            met_path_bkwd, prec_path_bkwd, met_tag_bkwd, use_prec_corr,      &
+            use_Predictor )
+              
        if (use_Predictor) then
           
           ! append "+-" to GCM file tag (ie, replace "Nx" with "Nx+-")
@@ -2898,9 +2932,10 @@ contains
     ! ---------------------------------------------------------------------------
     !
     ! get forcing data
+
     do GEOSgcm_var = 1,N_GEOSgcm_vars
 
-       ! open GEOS file (G5DAS or MERRA)
+       ! open GEOS file (G5DAS or MERRA or MERRA-2)
        ! 
        ! Initial "tavg1_2d_*_Nx" files may not be available.  In this case,
        ! use first available file.  For G5DAS file specs, only "PS" is affected 
@@ -2911,25 +2946,33 @@ contains
        ! or stop).
        !
        ! if (init==.true.) make second attempt (j=2) to allow for possibly 
-       ! missing "diag_sfc" or "tavg" file at date_time_tavg_bkwd (and try reading 
-       ! the file at date_time_tavg_fwd).
+       ! missing "diag_sfc" or "tavg" file at date_time_bkwd (and try reading 
+       ! the file at date_time_fwd).
        
        do j=1,2
           
-          ! determine time stamp on file
+          ! determine time stamp on file and corresponding met_path, prec_path, & met_tag
           
           if      (trim(GEOSgcm_defs(GEOSgcm_var,2))=='tavg') then
-             
+
              if (j==1) then
-                date_time_tmp = date_time_tavg_bkwd
+                date_time_tmp  = date_time_bkwd
+                met_path_tmp   = met_path_bkwd
+                prec_path_tmp  = prec_path_bkwd
+                met_tag_tmp    = met_tag_bkwd
              else
-                date_time_tmp = date_time_tavg_fwd
+                date_time_tmp  = date_time_fwd
+                met_path_tmp   = met_path_fwd
+                prec_path_tmp  = prec_path_fwd
+                met_tag_tmp    = met_tag_fwd
              end if
              
           else if (trim(GEOSgcm_defs(GEOSgcm_var,2))=='inst' ) then
              
-             date_time_tmp = date_time
-             
+             date_time_tmp     = date_time_inst
+             met_path_tmp      = met_path_inst
+             prec_path_tmp     = prec_path_inst
+             met_tag_tmp       = met_tag_inst
           else
              
              call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown GEOSgcm_defs(2)')
@@ -2948,7 +2991,7 @@ contains
              if (j==1) GEOSgcm_defs(GEOSgcm_var,3) = trim(GEOSgcm_defs(GEOSgcm_var,3)) // '_corr'
              
              call get_GEOS_prec_filename(fname_full,file_exists,date_time_tmp,        &
-                  met_path_prec, met_tag_tmp, GEOSgcm_defs(GEOSgcm_var,:), precip_corr_file_ext )
+                  prec_path_tmp, met_tag_tmp, GEOSgcm_defs(GEOSgcm_var,:), precip_corr_file_ext )
 
              notime = file_exists
 
@@ -3085,13 +3128,13 @@ contains
 
        minimize_shift = .true.
        
-       ! minimize_shift should only affect "MERRA" forcing - reichle, 27 Feb 2012
+       ! minimize_shift should *only* affect "MERRA" forcing - reichle, 27 Feb 2012
 
        if  ((minimize_shift)                            .and.                    &
             (trim(GEOSgcm_defs(GEOSgcm_var,2))=='tavg') .and.                    &
             (trim(GEOSgcm_defs(GEOSgcm_var,5))=='S')           ) then
           
-          date_time_tmp = date_time_tavg_fwd
+          date_time_tmp = date_time_fwd
           
           ! open file
           
