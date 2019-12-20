@@ -35,14 +35,19 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 _These are additions put in development, that will be in the next stable tag_
 
 
-Unreleased
-^^^^^^^^^^^^^^^^^^^^^
-- Fix PAR bug affecting assim
-- Accepted Icarus-NLv3 as default BCs (reverting to look-up veg heights)
-- Changed default Z0_FORMULATION to 4 (incl. addition of simple tree SAI)
+
+
 
 Overview of Git tags:
 ============================
+
+[v17.9.0-beta.0] - 2019-12-20
+------------------------------
+- First tag for SMAP L4_SM Version 5, Catchment model consistent with f525land_fpp
+  - Changed default Z0_FORMULATION to 4 (incl. addition of simple tree SAI)
+    (to be used with Icarus-NLv3 as default BCs; reverting to look-up veg heights)
+  - Fix PAR perturbations bug affecting assim
+  - Fix GEOS forcing stream boundaries bug 
 
 [v17.8.0] - 2019-12-10
 ------------------------
@@ -2289,5 +2294,5 @@ Observations input files:
   
   [Unreleased]: https://github.com/GEOS-ESM/GEOSldas/tree/develop
   [v17.8.0]: https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.8.0
-  
+  [v17.9.0-beta.0]:  https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.0
   
