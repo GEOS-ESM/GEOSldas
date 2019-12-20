@@ -48,6 +48,7 @@ Overview of Git tags:
     (to be used with Icarus-NLv3 as default BCs; reverting to look-up veg heights)
   - Fix PAR perturbations bug affecting assim
   - Fix GEOS forcing stream boundaries bug 
+  - Changes to time stepping for sun angle
 
 [v17.8.0] - 2019-12-10
 ------------------------
