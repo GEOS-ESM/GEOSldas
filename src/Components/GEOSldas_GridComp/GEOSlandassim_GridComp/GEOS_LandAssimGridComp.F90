@@ -53,6 +53,7 @@ module GEOS_LandAssimGridCompMod
   use catch_bias_types, only: cat_bias_param_type
   use catch_types, only: cat_progn_type
   use catch_types, only: cat_param_type
+  use catch_types, only: assignment(=), operator (+), operator (/)
   use clsm_bias_routines, only: initialize_obs_bias
   use clsm_bias_routines, only: read_cat_bias_inputs 
 
@@ -78,6 +79,7 @@ public :: SetServices
 !
 !EOP
 !
+integer, parameter :: NUM_SUBTILES = 4
 integer           :: NUM_ENSEMBLE
 integer           :: FIRST_ENS_ID
 
@@ -464,6 +466,257 @@ subroutine SetServices ( GC, RC )
      DIMS       = MAPL_DimsTileOnly                  ,&
      VLOCATION  = MAPL_VLocationNone                 ,&
      RC=STATUS  )
+  VERIFY_(STATUS)
+
+!
+! Export for incr
+!
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'canopy_temperature'        ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TC1_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'canopy_temperature'        ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TC2_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'canopy_temperature'        ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TC3_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'canopy_specific_humidity'  ,&
+    UNITS              = 'kg kg-1'                   ,&
+    SHORT_NAME         = 'QC1_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'canopy_specific_humidity'  ,&
+    UNITS              = 'kg kg-1'                   ,&
+    SHORT_NAME         = 'QC2_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'canopy_specific_humidity'  ,&
+    UNITS              = 'kg kg-1'                   ,&
+    SHORT_NAME         = 'QC3_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'interception_reservoir_capac',&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CAPAC_INCR'                     ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'catchment_deficit'         ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CATDEF_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'root_zone_excess'          ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'RZEXC_INCR'                     ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'surface_excess'            ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'SRFEXC_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_1' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT1_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_2' ,&
+    UNITS              = 'J_m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT2_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_3' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT3_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_4' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT4_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_5' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT5_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'soil_heat_content_layer_6' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT6_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'snow_mass_layer_1'         ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'WESNN1_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'snow_mass_layer_2'         ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'WESNN2_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'snow_mass_layer_3'         ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'WESNN3_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'heat_content_snow_layer_1' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'HTSNNN1_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'heat_content_snow_layer_2' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'HTSNNN2_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'heat_content_snow_layer_3' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'HTSNNN3_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'snow_depth_layer_1'        ,&
+    UNITS              = 'm'                         ,&
+    SHORT_NAME         = 'SNDZN1_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'snow_depth_layer_2'        ,&
+    UNITS              = 'm'                         ,&
+    SHORT_NAME         = 'SNDZN2_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'snow_depth_layer_3'        ,&
+    UNITS              = 'm'                         ,&
+    SHORT_NAME         = 'SNDZN3_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
   VERIFY_(STATUS)
 
 !
@@ -940,7 +1193,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(date_time_type) :: date_time_new
     character(len=14)    :: datestamp
 
-    integer :: N_catl, N_catg,N_obsl_max
+    integer :: N_catl, N_catg,N_obsl_max, n_e, i
 
     character(len=300) :: out_path
     character(len=ESMF_MAXSTR) :: exp_id
@@ -956,6 +1209,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(obs_bias_type),       dimension(:,:,:), allocatable :: obs_bias 
 
     type(cat_progn_type), dimension(:,:), allocatable :: cat_progn_incr
+    type(cat_progn_type), dimension(:), allocatable :: cat_progn_incr_ensavg
     type(obs_type),       dimension(:), pointer :: Observations_l => null()
     logical  :: fresh_incr
     integer  :: N_obsf,N_obsl
@@ -1002,6 +1256,35 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, pointer :: DZ_enavg(:)=>null()
     real, pointer :: SWLAND(:)=>null()
     real, pointer :: LAI(:)=>null()
+
+!! export incr progn
+
+    real, dimension(:),pointer :: TC1_incr=>null()
+    real, dimension(:),pointer :: TC2_incr=>null()
+    real, dimension(:),pointer :: TC3_incr=>null()
+    real, dimension(:),pointer :: QC1_incr=>null()
+    real, dimension(:),pointer :: QC2_incr=>null()
+    real, dimension(:),pointer :: QC3_incr=>null()
+    real, dimension(:),pointer :: CAPAC_incr=>null()
+    real, dimension(:),pointer :: CATDEF_incr=>null()
+    real, dimension(:),pointer :: RZEXC_incr=>null()
+    real, dimension(:),pointer :: SRFEXC_incr=>null()
+    real, dimension(:),pointer :: GHTCNT1_incr=>null()
+    real, dimension(:),pointer :: GHTCNT2_incr=>null()
+    real, dimension(:),pointer :: GHTCNT3_incr=>null()
+    real, dimension(:),pointer :: GHTCNT4_incr=>null()
+    real, dimension(:),pointer :: GHTCNT5_incr=>null()
+    real, dimension(:),pointer :: GHTCNT6_incr=>null()
+    real, dimension(:),pointer :: WESNN1_incr=>null()
+    real, dimension(:),pointer :: WESNN2_incr=>null()
+    real, dimension(:),pointer :: WESNN3_incr=>null()
+    real, dimension(:),pointer :: HTSNNN1_incr=>null()
+    real, dimension(:),pointer :: HTSNNN2_incr=>null()
+    real, dimension(:),pointer :: HTSNNN3_incr=>null()
+    real, dimension(:),pointer :: SNDZN1_incr=>null()
+    real, dimension(:),pointer :: SNDZN2_incr=>null()
+    real, dimension(:),pointer :: SNDZN3_incr=>null()
+
 
     logical :: spin
     logical, save              :: firsttime=.true.
@@ -1173,7 +1456,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    
 !! get import from ens to get ensemble average forcing
 
-     ! Pointers to exports (allocate memory)
     call MAPL_GetPointer(import, TA_enavg, 'TA', rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(import, QA_enavg, 'QA', rc=status)
@@ -1208,6 +1490,59 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(status)
     call MAPL_GetPointer(import, LAI, 'LAI', rc=status)
     VERIFY_(status)
+!
+! export for incr
+!
+    call MAPL_GetPointer(export, TC1_incr,  'TC1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, TC2_incr,  'TC2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, TC3_incr,  'TC3_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, QC1_incr,  'QC1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, QC2_incr,  'QC2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, QC3_incr,  'QC3_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, CAPAC_incr,  'CAPAC_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, CATDEF_incr,  'CATDEF_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, RZEXC_incr,  'RZEXC_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, SRFEXC_incr,  'SRFEXC_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT1_incr,  'GHTCNT1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT2_incr,  'GHTCNT2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT3_incr,  'GHTCNT3_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT4_incr,  'GHTCNT4_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT5_incr,  'GHTCNT5_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT6_incr,  'GHTCNT6_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, WESNN1_incr,  'WESNN1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, WESNN2_incr,  'WESNN2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, WESNN3_incr,  'WESNN3_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, HTSNNN1_incr,  'HTSNNN1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, HTSNNN2_incr,  'HTSNNN2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, HTSNNN3_incr,  'HTSNNN3_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, SNDZN1_incr,  'SNDZN1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, SNDZN2_incr,  'SNDZN2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, SNDZN3_incr,  'SNDZN3_INCR' ,rc=status)
+    VERIFY_(status)
 
     allocate(met_force(N_catl))
     met_force(:)%Tair    = TA_enavg(:)
@@ -1238,6 +1573,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
 
     allocate(cat_progn_incr(N_catl,NUM_ENSEMBLE))
+    allocate(cat_progn_incr_ensavg(N_catl))
     allocate(Observations_l(N_obsl_max))
 
     !WY note: temportary
@@ -1420,6 +1756,50 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                 cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
                 Observations_l )
 
+                if (out_incr) then
+
+                   do i = 1, N_catl
+                      cat_progn_incr_ensavg(i) = 0.0
+                      do n_e=1, NUM_ENSEMBLE
+                         cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
+                            + cat_progn_incr(i,n_e)
+                      end do
+                      cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(NUM_ENSEMBLE)
+                   enddo
+
+                   TC1_incr(:) = cat_progn_incr_ensavg(:)%tc1
+                   TC2_incr(:) = cat_progn_incr_ensavg(:)%tc2
+                   TC3_incr(:) = cat_progn_incr_ensavg(:)%tc4
+                   QC1_incr(:) = cat_progn_incr_ensavg(:)%qa1
+                   QC2_incr(:) = cat_progn_incr_ensavg(:)%qa2
+                   QC3_incr(:) = cat_progn_incr_ensavg(:)%qa4
+
+                   CAPAC_incr(:)  = cat_progn_incr_ensavg(:)%capac
+                   CATDEF_incr(:) = cat_progn_incr_ensavg(:)%catdef
+                   RZEXC_incr(:)  = cat_progn_incr_ensavg(:)%rzexc
+                   SRFEXC_incr(:) = cat_progn_incr_ensavg(:)%srfexc
+
+                   GHTCNT1_incr(:) = cat_progn_incr_ensavg(:)%ght(1)
+                   GHTCNT2_incr(:) = cat_progn_incr_ensavg(:)%ght(2)
+                   GHTCNT3_incr(:) = cat_progn_incr_ensavg(:)%ght(3)
+                   GHTCNT4_incr(:) = cat_progn_incr_ensavg(:)%ght(4)
+                   GHTCNT5_incr(:) = cat_progn_incr_ensavg(:)%ght(5)
+                   GHTCNT6_incr(:) = cat_progn_incr_ensavg(:)%ght(6)
+
+                   WESNN1_incr(:) = cat_progn_incr_ensavg(:)%wesn(1)
+                   WESNN2_incr(:) = cat_progn_incr_ensavg(:)%wesn(2)
+                   WESNN3_incr(:) = cat_progn_incr_ensavg(:)%wesn(3)
+
+                   HTSNNN1_incr(:) = cat_progn_incr_ensavg(:)%htsn(1)
+                   HTSNNN2_incr(:) = cat_progn_incr_ensavg(:)%htsn(2)
+                   HTSNNN3_incr(:) = cat_progn_incr_ensavg(:)%htsn(3)
+
+                   SNDZN1_incr(:)  = cat_progn_incr_ensavg(:)%sndz(1)
+                   SNDZN2_incr(:)  = cat_progn_incr_ensavg(:)%sndz(2)
+                   SNDZN3_incr(:)  = cat_progn_incr_ensavg(:)%sndz(3)
+                endif
+
+
 
            ! write analysis fields into SMAP L4_SM aup file 
            ! whenever it was time for assimilation (regardless 
@@ -1445,6 +1825,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to inputs
 !--------------------
     deallocate(cat_progn_incr)
+    deallocate(cat_progn_incr_ensavg)
     deallocate(Observations_l)
 
     call MAPL_TimerOff ( MAPL, "RUN"  )
