@@ -968,9 +968,9 @@ class LDASsetup:
         print "cmd:   " + cmd
         sp.call(cmd,shell=True)
         optinxny=self._parseInputFile('optimized_distribution')
-        if (int(optinxny['GEOSldas.NX']) == 1):
-            if int(optinxny['GEOSldas.NY']) != int(self.rqdRmInp['ntasks']):
-                self.rqdRmInp['ntasks']=optinxny['GEOSldas.NY']
+        if (int(optinxny['NX']) == 1):
+            if int(optinxny['NY']) != int(self.rqdRmInp['ntasks']):
+                self.rqdRmInp['ntasks']=optinxny['NY']
                 print 'adjust ntasks %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks'])
         
         if os.path.isfile('IMS.rc') :

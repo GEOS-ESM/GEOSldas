@@ -967,13 +967,10 @@ subroutine optimize_latlon(fname,arg)
       write(10,'(A)') "GEOSldas.GRIDNAME:  " // trim(gridname)
       write(10,'(A)') "GEOSldas.GRID_TYPE:  Cubed-Sphere"
       write(10,'(A)') "GEOSldas.NF:  6"
-      write(10,'(A,I5)') "GEOSldas.NY: ",N_proc
-      write(10,'(A)') "GEOSldas.NX:   1"
+      write(10,'(A,I6)') "GEOSldas.IM_WORLD: ", IMGLOB
       write(10,'(A)') "GEOSldas.LM:   1"
       write(10,'(A,I5)') "NY: ",N_proc
       write(10,'(A)') "NX:   1"
-      write(10,'(A,I6)') "GEOSldas.IM_WORLD: ", IMGLOB
-      write(10,'(A)') "GEOSldas.JMS_FILE:    JMS.rc"
       write(10,'(A)') "JMS_FILE:    JMS.rc"
       close(10)
        
@@ -1106,12 +1103,9 @@ subroutine optimize_latlon(fname,arg)
       write(10,'(A,I6)') "GEOSldas.IM_WORLD: ",N_lon
       write(10,'(A,I6)') "GEOSldas.JM_WORLD: ",N_lat
 
-      write(10,'(A,I5)') "GEOSldas.NX: ",N_proc
-      write(10,'(A)') "GEOSldas.NY:   1"
       write(10,'(A,I5)') "NX: ",N_proc
       write(10,'(A)') "NY:   1"
 
-      write(10,'(A)') "GEOSldas.IMS_FILE:    IMS.rc"
       write(10,'(A)') "IMS_FILE:    IMS.rc"
       close(10)
        
