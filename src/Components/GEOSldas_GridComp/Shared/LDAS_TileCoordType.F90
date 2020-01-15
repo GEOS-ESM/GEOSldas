@@ -185,7 +185,7 @@ module LDAS_TileCoordType
 
   ! --------------------------------------------------------------
   
-  interface operator (.eq.)
+  interface operator (==)
      module procedure eq_grid_def_type
   end interface
   
@@ -290,8 +290,8 @@ contains
        
     case ('w','W')
 
-       if ( index(tmpstr40,'UNFORMATTED') .or.          &
-            index(tmpstr40,'unformatted')      ) then
+       if ( index(tmpstr40,'UNFORMATTED') /=0 .or.          &
+            index(tmpstr40,'unformatted') /=0     ) then
           
           ! unformatted output
           
@@ -328,8 +328,8 @@ contains
        
     case ('r','R')
        
-       if ( index(tmpstr40,'UNFORMATTED') .or.          &
-            index(tmpstr40,'unformatted')      ) then
+       if ( index(tmpstr40,'UNFORMATTED') /=0 .or.          &
+            index(tmpstr40,'unformatted') /=0     ) then
           
           ! unformatted output
           

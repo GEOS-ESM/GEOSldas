@@ -949,7 +949,7 @@ subroutine optimize_latlon(fname,arg)
       print*, "JMS.rc", JMS
       if( sum(JMS) /= JMGLOB) then
         print*, sum(JMS), JMGLOB
-        stop("wrong cs-domain distribution")
+        stop ("wrong cs-domain distribution")
       endif
       tmpint = 0
       k = 0
@@ -1091,8 +1091,8 @@ subroutine optimize_latlon(fname,arg)
 
       print*,"land_distribute: ",local_land
 
-      if( sum(local_land) /= total_land) stop("wrong distribution")
-      if( sum(IMS) /= N_lon) stop("wrong domain distribution")
+      if( sum(local_land) /= total_land) stop ("wrong distribution")
+      if( sum(IMS) /= N_lon) stop ("wrong domain distribution")
  
       open(10,file="optimized_distribution",action='write')
       write(10,'(A)') "GEOSldas.GRID_TYPE:  LatLon"

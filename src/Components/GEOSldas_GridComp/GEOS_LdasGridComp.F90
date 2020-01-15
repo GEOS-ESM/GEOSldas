@@ -203,8 +203,9 @@ contains
     ! -DATAATM-feeds-LANDPERT's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SHORT_NAME = ['Tair', 'Qair','Psurf', 'Rainf_C', 'Rainf', 'Snowf', 'LWdown',   &
-            'SWdown', 'SWnet', 'PARdrct', 'PARdffs', 'Wind','RefH'],                      &
+            SHORT_NAME = ['Tair   ', 'Qair   ', 'Psurf  ', 'Rainf_C', 'Rainf  ',   &
+                          'Snowf  ', 'LWdown ', 'SWdown ', 'SWnet  ', 'PARdrct',   &
+                          'PARdffs', 'Wind   ', 'RefH   '],                        &
            ! SRC_ID = DATAATM(i),                                                   &
             SRC_ID = DATAATM(1),                                                   &
             DST_ID = LANDPERT(i),                                                  &
@@ -214,29 +215,30 @@ contains
     ! -LANDPERT-feeds-LAND's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SRC_NAME = ['TApert', 'QApert', 'UUpert', 'UWINDLMTILEpert',           &
-            'VWINDLMTILEpert', 'PCUpert', 'PLSpert', 'SNOpert', 'DRPARpert',       &
-            'DFPARpert', 'DRNIRpert', 'DFNIRpert', 'DRUVRpert', 'DFUVRpert',       &
-            'LWDNSRFpert'],                                                        &
-            SRC_ID = LANDPERT(i),                                                     &
-            DST_NAME = ['TA',     'QA',     'UU',     'UWINDLMTILE',               &
-            'VWINDLMTILE',     'PCU',     'PLS',     'SNO',     'DRPAR',           &
-            'DFPAR',     'DRNIR',     'DFNIR',     'DRUVR',     'DFUVR',           &
-            'LWDNSRF'],                                                            &
-            DST_ID = LAND(i),                                                         &
+            SRC_NAME = ['TApert         ', 'QApert         ', 'UUpert         ',   &
+                        'UWINDLMTILEpert', 'VWINDLMTILEpert', 'PCUpert        ',   &
+                        'PLSpert        ', 'SNOpert        ', 'DRPARpert      ',   &
+                        'DFPARpert      ', 'DRNIRpert      ', 'DFNIRpert      ',   &
+                        'DRUVRpert      ', 'DFUVRpert      ', 'LWDNSRFpert    '],  &
+            SRC_ID = LANDPERT(i),                                                  &
+            DST_NAME = ['TA         ', 'QA         ', 'UU         ', 'UWINDLMTILE',&
+                        'VWINDLMTILE', 'PCU        ', 'PLS        ', 'SNO        ',&
+                        'DRPAR      ', 'DFPAR      ', 'DRNIR      ', 'DFNIR      ',&
+                        'DRUVR      ', 'DFUVR      ', 'LWDNSRF    '],              &
+            DST_ID = LAND(i),                                                      &
             rc = status                                                            &
             )
           VERIFY_(status)
     ! -DATAATM-feeds-LAND's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SRC_NAME = ['Psurf', 'RefH',                                           &
-                        'DUDP', 'DUSV', 'DUWT', 'DUSD', 'BCDP', 'BCSV',            &
-                        'BCWT', 'BCSD', 'OCDP', 'OCSV', 'OCWT', 'OCSD',            &
-                        'SUDP', 'SUSV', 'SUWT', 'SUSD', 'SSDP', 'SSSV' ],          &
+            SRC_NAME = ['Psurf', 'RefH ',                                          &
+                        'DUDP ', 'DUSV ', 'DUWT ', 'DUSD ', 'BCDP ', 'BCSV ',      &
+                        'BCWT ', 'BCSD ', 'OCDP ', 'OCSV ', 'OCWT ', 'OCSD ',      &
+                        'SUDP ', 'SUSV ', 'SUWT ', 'SUSD ', 'SSDP ', 'SSSV ' ],    &
           !  SRC_ID = DATAATM(i),                                                  &
             SRC_ID = DATAATM(1),                                                   &
-            DST_NAME = ['PS', 'DZ',                                                &
+            DST_NAME = ['PS  ', 'DZ  ',                                            &
                         'DUDP', 'DUSV', 'DUWT', 'DUSD', 'BCDP', 'BCSV',            &
                         'BCWT', 'BCSD', 'OCDP', 'OCSV', 'OCWT', 'OCSD',            &
                         'SUDP', 'SUSV', 'SUWT', 'SUSD', 'SSDP', 'SSSV' ],          &
@@ -247,16 +249,16 @@ contains
     ! -CATCH-feeds-LANDPERT's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SRC_NAME = ['TC','CATDEF','RZEXC','SRFEXC','WESNN1','WESNN2','WESNN3', &
-               'GHTCNT1','GHTCNT2','GHTCNT3','GHTCNT4','GHTCNT5','GHTCNT6',     &
-               'HTSNNN1','HTSNNN2','HTSNNN3','SNDZN1','SNDZN2','SNDZN3'],       &
-            SRC_ID = LAND(i),                                                         &
-            DST_NAME =['TCPert','CATDEFPert','RZEXCPert','SRFEXCPert','WESNN1Pert',&
-              'WESNN2Pert','WESNN3Pert','GHTCNT1Pert','GHTCNT2Pert',            &
-              'GHTCNT3Pert','GHTCNT4Pert','GHTCNT5Pert','GHTCNT6Pert',          &
-              'HTSNNN1Pert','HTSNNN2Pert','HTSNNN3Pert','SNDZN1Pert',           &
-              'SNDZN2Pert','SNDZN3Pert'],                                       &
-            DST_ID = LANDPERT(i),                                                     &
+            SRC_NAME =  ['TC     ','CATDEF ','RZEXC  ','SRFEXC ','WESNN1 ','WESNN2 ','WESNN3 ', &
+               'GHTCNT1','GHTCNT2','GHTCNT3','GHTCNT4','GHTCNT5','GHTCNT6',        &
+               'HTSNNN1','HTSNNN2','HTSNNN3','SNDZN1 ','SNDZN2 ','SNDZN3 '],       &
+            SRC_ID = LAND(i),                                                      &
+            DST_NAME =     ['TCPert     ','CATDEFPert ','RZEXCPert  ','SRFEXCPert ','WESNN1Pert ',&
+              'WESNN2Pert ','WESNN3Pert ','GHTCNT1Pert','GHTCNT2Pert',             &
+              'GHTCNT3Pert','GHTCNT4Pert','GHTCNT5Pert','GHTCNT6Pert',             &
+              'HTSNNN1Pert','HTSNNN2Pert','HTSNNN3Pert','SNDZN1Pert ',             &
+              'SNDZN2Pert ','SNDZN3Pert '],                                        &
+            DST_ID = LANDPERT(i),                                                  &
             rc = status                                                            &
             )
        VERIFY_(status)
@@ -265,11 +267,11 @@ contains
     if(assim) then
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SHORT_NAME = ['POROS', 'COND','PSIS','BEE','WPWET','GNU','VGWMAX',       &
-                        'BF1', 'BF2', 'BF3', 'CDCR1', 'CDCR2', 'ARS1',             &
-                        'ARS2', 'ARS3', 'ARA1', 'ARA2', 'ARA3', 'ARA4',            &
-                        'ARW1', 'ARW2', 'ARW3', 'ARW4', 'TSA1', 'TSA2','TSB1',     &
-                        'TSB2','ATAU','BTAU','ITY','Z2CH' ],                       &
+            SHORT_NAME = ['POROS ', 'COND  ','PSIS  ','BEE   ','WPWET ','GNU   ','VGWMAX',    &
+                          'BF1   ', 'BF2   ','BF3   ','CDCR1 ','CDCR2 ','ARS1  ',             &
+                          'ARS2  ', 'ARS3  ','ARA1  ','ARA2  ','ARA3  ','ARA4  ',             &
+                          'ARW1  ', 'ARW2  ','ARW3  ','ARW4  ','TSA1  ','TSA2  ','TSB1  ',    &
+                          'TSB2  ', 'ATAU  ','BTAU  ','ITY   ','Z2CH  ' ],                       &
             SRC_ID = LAND(1),                                                      &
             DST_ID = LANDASSIM,                                                    &
             rc = status                                                            &

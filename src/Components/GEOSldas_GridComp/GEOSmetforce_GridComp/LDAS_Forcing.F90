@@ -2565,19 +2565,19 @@ contains
     !
     ! lfo_inst/tavg data available from 11 Jun 2013 (start of GEOS-5 ADAS version 5.11)
 
-    G5DAS_defs( 1,:)=(/'SWGDN   ','tavg','tavg1_2d_lfo_Nx','diag','F'/) 
-    G5DAS_defs( 2,:)=(/'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 3,:)=(/'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 4,:)=(/'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 5,:)=(/'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 6,:)=(/'PRECCU  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 7,:)=(/'PRECLS  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)  
-    G5DAS_defs( 8,:)=(/'PRECSNO ','tavg','tavg1_2d_lfo_Nx','diag','F'/) 
-    G5DAS_defs( 9,:)=(/'PS      ','inst','inst1_2d_lfo_Nx','diag','S'/)  
-    G5DAS_defs(10,:)=(/'HLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)
-    G5DAS_defs(11,:)=(/'TLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    G5DAS_defs(12,:)=(/'QLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    G5DAS_defs(13,:)=(/'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S'/)    
+    G5DAS_defs( 1,:)=[character(len=40):: 'SWGDN   ','tavg','tavg1_2d_lfo_Nx','diag','F'] 
+    G5DAS_defs( 2,:)=[character(len=40):: 'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 3,:)=[character(len=40):: 'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 4,:)=[character(len=40):: 'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 5,:)=[character(len=40):: 'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 6,:)=[character(len=40):: 'PRECCU  ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 7,:)=[character(len=40):: 'PRECLS  ','tavg','tavg1_2d_lfo_Nx','diag','F']  
+    G5DAS_defs( 8,:)=[character(len=40):: 'PRECSNO ','tavg','tavg1_2d_lfo_Nx','diag','F'] 
+    G5DAS_defs( 9,:)=[character(len=40):: 'PS      ','inst','inst1_2d_lfo_Nx','diag','S']  
+    G5DAS_defs(10,:)=[character(len=40):: 'HLML    ','inst','inst1_2d_lfo_Nx','diag','S']
+    G5DAS_defs(11,:)=[character(len=40):: 'TLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    G5DAS_defs(12,:)=[character(len=40):: 'QLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    G5DAS_defs(13,:)=[character(len=40):: 'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S']    
 
 
     ! MERRA-2 file specs with uncorrected (AGCM) precip from the "int" Collection
@@ -2590,80 +2590,80 @@ contains
     !       which are global, as is SWGDN in the FP "lfo" files.
     !       - reichle, 7 Dec 2015
 
-    M2INT_defs( 1,:)=(/'SWGDN   ','tavg','tavg1_2d_rad_Nx','diag','F'/)  ! use "rad" Collection
-    M2INT_defs( 2,:)=(/'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2INT_defs( 3,:)=(/'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2INT_defs( 4,:)=(/'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2INT_defs( 5,:)=(/'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2INT_defs( 6,:)=(/'PRECCU  ','tavg','tavg1_2d_int_Nx','diag','F'/)  ! uncorrected
-    M2INT_defs( 7,:)=(/'PRECLS  ','tavg','tavg1_2d_int_Nx','diag','F'/)  ! uncorrected
-    M2INT_defs( 8,:)=(/'PRECSN  ','tavg','tavg1_2d_int_Nx','diag','F'/)  ! uncorrected
-    M2INT_defs( 9,:)=(/'PS      ','inst','inst1_2d_lfo_Nx','diag','S'/)  
-    M2INT_defs(10,:)=(/'HLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)
-    M2INT_defs(11,:)=(/'TLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    M2INT_defs(12,:)=(/'QLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    M2INT_defs(13,:)=(/'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S'/)    
+    M2INT_defs( 1,:)=[character(len=40):: 'SWGDN   ','tavg','tavg1_2d_rad_Nx','diag','F']  ! use "rad" Collection
+    M2INT_defs( 2,:)=[character(len=40):: 'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 3,:)=[character(len=40):: 'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 4,:)=[character(len=40):: 'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 5,:)=[character(len=40):: 'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 6,:)=[character(len=40):: 'PRECCU  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
+    M2INT_defs( 7,:)=[character(len=40):: 'PRECLS  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
+    M2INT_defs( 8,:)=[character(len=40):: 'PRECSN  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
+    M2INT_defs( 9,:)=[character(len=40):: 'PS      ','inst','inst1_2d_lfo_Nx','diag','S']  
+    M2INT_defs(10,:)=[character(len=40):: 'HLML    ','inst','inst1_2d_lfo_Nx','diag','S']
+    M2INT_defs(11,:)=[character(len=40):: 'TLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2INT_defs(12,:)=[character(len=40):: 'QLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2INT_defs(13,:)=[character(len=40):: 'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S']    
 
-    M2INT_defs(14,:)=(/'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(15,:)=(/'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(16,:)=(/'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(17,:)=(/'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(18,:)=(/'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(19,:)=(/'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(20,:)=(/'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(21,:)=(/'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(22,:)=(/'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(23,:)=(/'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(24,:)=(/'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(25,:)=(/'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(26,:)=(/'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(27,:)=(/'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(28,:)=(/'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(29,:)=(/'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(30,:)=(/'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(31,:)=(/'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(32,:)=(/'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(33,:)=(/'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(34,:)=(/'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(35,:)=(/'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(36,:)=(/'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(37,:)=(/'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(38,:)=(/'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(39,:)=(/'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(40,:)=(/'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(41,:)=(/'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(42,:)=(/'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(43,:)=(/'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(44,:)=(/'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(45,:)=(/'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(46,:)=(/'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(47,:)=(/'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(48,:)=(/'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(49,:)=(/'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(50,:)=(/'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(51,:)=(/'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(52,:)=(/'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(53,:)=(/'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(54,:)=(/'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(55,:)=(/'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(56,:)=(/'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(57,:)=(/'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(58,:)=(/'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(59,:)=(/'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(60,:)=(/'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(61,:)=(/'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(62,:)=(/'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(63,:)=(/'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(64,:)=(/'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(65,:)=(/'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(66,:)=(/'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(67,:)=(/'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(68,:)=(/'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(69,:)=(/'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(70,:)=(/'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(71,:)=(/'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(72,:)=(/'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(73,:)=(/'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
+    M2INT_defs(14,:)=[character(len=40):: 'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(15,:)=[character(len=40):: 'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(16,:)=[character(len=40):: 'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(17,:)=[character(len=40):: 'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(18,:)=[character(len=40):: 'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(19,:)=[character(len=40):: 'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(20,:)=[character(len=40):: 'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(21,:)=[character(len=40):: 'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(22,:)=[character(len=40):: 'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(23,:)=[character(len=40):: 'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(24,:)=[character(len=40):: 'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(25,:)=[character(len=40):: 'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(26,:)=[character(len=40):: 'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(27,:)=[character(len=40):: 'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(28,:)=[character(len=40):: 'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(29,:)=[character(len=40):: 'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(30,:)=[character(len=40):: 'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(31,:)=[character(len=40):: 'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(32,:)=[character(len=40):: 'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(33,:)=[character(len=40):: 'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(34,:)=[character(len=40):: 'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(35,:)=[character(len=40):: 'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(36,:)=[character(len=40):: 'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(37,:)=[character(len=40):: 'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(38,:)=[character(len=40):: 'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(39,:)=[character(len=40):: 'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(40,:)=[character(len=40):: 'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(41,:)=[character(len=40):: 'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(42,:)=[character(len=40):: 'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(43,:)=[character(len=40):: 'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(44,:)=[character(len=40):: 'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(45,:)=[character(len=40):: 'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(46,:)=[character(len=40):: 'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(47,:)=[character(len=40):: 'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(48,:)=[character(len=40):: 'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(49,:)=[character(len=40):: 'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(50,:)=[character(len=40):: 'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(51,:)=[character(len=40):: 'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(52,:)=[character(len=40):: 'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(53,:)=[character(len=40):: 'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(54,:)=[character(len=40):: 'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(55,:)=[character(len=40):: 'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(56,:)=[character(len=40):: 'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(57,:)=[character(len=40):: 'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(58,:)=[character(len=40):: 'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(59,:)=[character(len=40):: 'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(60,:)=[character(len=40):: 'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(61,:)=[character(len=40):: 'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(62,:)=[character(len=40):: 'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(63,:)=[character(len=40):: 'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(64,:)=[character(len=40):: 'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(65,:)=[character(len=40):: 'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(66,:)=[character(len=40):: 'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(67,:)=[character(len=40):: 'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(68,:)=[character(len=40):: 'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(69,:)=[character(len=40):: 'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(70,:)=[character(len=40):: 'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(71,:)=[character(len=40):: 'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(72,:)=[character(len=40):: 'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(73,:)=[character(len=40):: 'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
 
 
     ! MERRA-2 file specs with corrected precip, which could be either
@@ -2678,80 +2678,80 @@ contains
     !
     ! NOTE: Use SWGDN from the "rad" Collection (see comment above).
 
-    M2COR_defs( 1,:)=(/'SWGDN      ','tavg','tavg1_2d_rad_Nx','diag','F'/)  ! use "rad" Collection
-    M2COR_defs( 2,:)=(/'SWLAND     ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2COR_defs( 3,:)=(/'LWGAB      ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2COR_defs( 4,:)=(/'PARDR      ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2COR_defs( 5,:)=(/'PARDF      ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2COR_defs( 6,:)=(/'PRECCUCORR ','tavg','tavg1_2d_lfo_Nx','diag','F'/)  ! MERRA-2 built-in corrections
-    M2COR_defs( 7,:)=(/'PRECLSCORR ','tavg','tavg1_2d_lfo_Nx','diag','F'/)  ! MERRA-2 built-in corrections  
-    M2COR_defs( 8,:)=(/'PRECSNOCORR','tavg','tavg1_2d_lfo_Nx','diag','F'/)  ! MERRA-2 built-in corrections 
-    M2COR_defs( 9,:)=(/'PS         ','inst','inst1_2d_lfo_Nx','diag','S'/)  
-    M2COR_defs(10,:)=(/'HLML       ','inst','inst1_2d_lfo_Nx','diag','S'/)
-    M2COR_defs(11,:)=(/'TLML       ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    M2COR_defs(12,:)=(/'QLML       ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    M2COR_defs(13,:)=(/'SPEEDLML   ','inst','inst1_2d_lfo_Nx','diag','S'/)    
+    M2COR_defs( 1,:)=[character(len=40):: 'SWGDN      ','tavg','tavg1_2d_rad_Nx','diag','F']  ! use "rad" Collection
+    M2COR_defs( 2,:)=[character(len=40):: 'SWLAND     ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 3,:)=[character(len=40):: 'LWGAB      ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 4,:)=[character(len=40):: 'PARDR      ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 5,:)=[character(len=40):: 'PARDF      ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 6,:)=[character(len=40):: 'PRECCUCORR ','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections
+    M2COR_defs( 7,:)=[character(len=40):: 'PRECLSCORR ','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections  
+    M2COR_defs( 8,:)=[character(len=40):: 'PRECSNOCORR','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections 
+    M2COR_defs( 9,:)=[character(len=40):: 'PS         ','inst','inst1_2d_lfo_Nx','diag','S']  
+    M2COR_defs(10,:)=[character(len=40):: 'HLML       ','inst','inst1_2d_lfo_Nx','diag','S']
+    M2COR_defs(11,:)=[character(len=40):: 'TLML       ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2COR_defs(12,:)=[character(len=40):: 'QLML       ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2COR_defs(13,:)=[character(len=40):: 'SPEEDLML   ','inst','inst1_2d_lfo_Nx','diag','S']    
 
-    M2COR_defs(14,:)=(/'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(15,:)=(/'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(16,:)=(/'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(17,:)=(/'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(18,:)=(/'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(19,:)=(/'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(20,:)=(/'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(21,:)=(/'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(22,:)=(/'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(23,:)=(/'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(24,:)=(/'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(25,:)=(/'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(26,:)=(/'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(27,:)=(/'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(28,:)=(/'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(29,:)=(/'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(30,:)=(/'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(31,:)=(/'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(32,:)=(/'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(33,:)=(/'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(34,:)=(/'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(35,:)=(/'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(36,:)=(/'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(37,:)=(/'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(38,:)=(/'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(39,:)=(/'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(40,:)=(/'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(41,:)=(/'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(42,:)=(/'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(43,:)=(/'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(44,:)=(/'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(45,:)=(/'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(46,:)=(/'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(47,:)=(/'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(48,:)=(/'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(49,:)=(/'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(50,:)=(/'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(51,:)=(/'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(52,:)=(/'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(53,:)=(/'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(54,:)=(/'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(55,:)=(/'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(56,:)=(/'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(57,:)=(/'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(58,:)=(/'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(59,:)=(/'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(60,:)=(/'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(61,:)=(/'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(62,:)=(/'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(63,:)=(/'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(64,:)=(/'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(65,:)=(/'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(66,:)=(/'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(67,:)=(/'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(68,:)=(/'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(69,:)=(/'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(70,:)=(/'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(71,:)=(/'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(72,:)=(/'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(73,:)=(/'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
+    M2COR_defs(14,:)=[character(len=40):: 'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(15,:)=[character(len=40):: 'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(16,:)=[character(len=40):: 'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(17,:)=[character(len=40):: 'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(18,:)=[character(len=40):: 'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(19,:)=[character(len=40):: 'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(20,:)=[character(len=40):: 'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(21,:)=[character(len=40):: 'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(22,:)=[character(len=40):: 'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(23,:)=[character(len=40):: 'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(24,:)=[character(len=40):: 'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(25,:)=[character(len=40):: 'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(26,:)=[character(len=40):: 'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(27,:)=[character(len=40):: 'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(28,:)=[character(len=40):: 'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(29,:)=[character(len=40):: 'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(30,:)=[character(len=40):: 'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(31,:)=[character(len=40):: 'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(32,:)=[character(len=40):: 'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(33,:)=[character(len=40):: 'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(34,:)=[character(len=40):: 'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(35,:)=[character(len=40):: 'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(36,:)=[character(len=40):: 'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(37,:)=[character(len=40):: 'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(38,:)=[character(len=40):: 'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(39,:)=[character(len=40):: 'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(40,:)=[character(len=40):: 'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(41,:)=[character(len=40):: 'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(42,:)=[character(len=40):: 'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(43,:)=[character(len=40):: 'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(44,:)=[character(len=40):: 'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(45,:)=[character(len=40):: 'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(46,:)=[character(len=40):: 'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(47,:)=[character(len=40):: 'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(48,:)=[character(len=40):: 'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(49,:)=[character(len=40):: 'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(50,:)=[character(len=40):: 'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(51,:)=[character(len=40):: 'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(52,:)=[character(len=40):: 'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(53,:)=[character(len=40):: 'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(54,:)=[character(len=40):: 'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(55,:)=[character(len=40):: 'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(56,:)=[character(len=40):: 'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(57,:)=[character(len=40):: 'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(58,:)=[character(len=40):: 'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(59,:)=[character(len=40):: 'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(60,:)=[character(len=40):: 'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(61,:)=[character(len=40):: 'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(62,:)=[character(len=40):: 'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(63,:)=[character(len=40):: 'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(64,:)=[character(len=40):: 'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(65,:)=[character(len=40):: 'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(66,:)=[character(len=40):: 'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(67,:)=[character(len=40):: 'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(68,:)=[character(len=40):: 'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(69,:)=[character(len=40):: 'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(70,:)=[character(len=40):: 'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(71,:)=[character(len=40):: 'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(72,:)=[character(len=40):: 'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(73,:)=[character(len=40):: 'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
 
     
     ! MERRA file specs
@@ -2770,20 +2770,20 @@ contains
     !                                                                       MERRA
     !                                                                     collection
     
-    MERRA_defs( 1,:)=(/'SWGDN  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "rad"
-    MERRA_defs( 2,:)=(/'SWLAND ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 3,:)=(/'LWGAB  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "rad"
-    MERRA_defs( 4,:)=(/'PARDR  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 5,:)=(/'PARDF  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 6,:)=(/'PRECTOT','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 7,:)=(/'PRECCON','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "flx"
-    MERRA_defs( 8,:)=(/'PRECSNO','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 9,:)=(/'PS     ','tavg','tavg1_2d_lfo_Nx','diag','S'/)    ! "slv"
-    MERRA_defs(10,:)=(/'HLML   ','tavg','tavg1_2d_lfo_Nx','diag','S'/)    ! "flx"
-    MERRA_defs(11,:)=(/'TLML   ','tavg','tavg1_2d_lfo_Nx','diag','S'/)    ! "flx"
-    MERRA_defs(12,:)=(/'QLML   ','tavg','tavg1_2d_lfo_Nx','diag','S'/)    ! "flx"
-    MERRA_defs(13,:)=(/'ULML   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "flx"
-    MERRA_defs(14,:)=(/'VLML   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "flx"
+    MERRA_defs( 1,:)=[character(len=40):: 'SWGDN  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "rad"
+    MERRA_defs( 2,:)=[character(len=40):: 'SWLAND ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 3,:)=[character(len=40):: 'LWGAB  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "rad"
+    MERRA_defs( 4,:)=[character(len=40):: 'PARDR  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 5,:)=[character(len=40):: 'PARDF  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 6,:)=[character(len=40):: 'PRECTOT','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 7,:)=[character(len=40):: 'PRECCON','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
+    MERRA_defs( 8,:)=[character(len=40):: 'PRECSNO','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 9,:)=[character(len=40):: 'PS     ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "slv"
+    MERRA_defs(10,:)=[character(len=40):: 'HLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
+    MERRA_defs(11,:)=[character(len=40):: 'TLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
+    MERRA_defs(12,:)=[character(len=40):: 'QLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
+    MERRA_defs(13,:)=[character(len=40):: 'ULML   ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
+    MERRA_defs(14,:)=[character(len=40):: 'VLML   ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
     
     ! --------------------------------------------------------------------
     !

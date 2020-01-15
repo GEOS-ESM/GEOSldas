@@ -314,12 +314,6 @@ contains
 
     ! -----------------------------------------------------------------
 
-    call ESMF_VmGetCurrent(vm, rc=status)
-    VERIFY_(status)
-    call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
-    VERIFY_(status)
-    master_proc = MAPL_Am_I_Root(vm)
-
     namelist /ens_prop_inputs/       &
          N_ens,                      &
          first_ens_id,               &
@@ -349,6 +343,13 @@ contains
          ycorr_force_pert,           &
          tcorr_force_pert,           &
          ccorr_force_pert
+
+
+    call ESMF_VmGetCurrent(vm, rc=status)
+    VERIFY_(status)
+    call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
+    VERIFY_(status)
+    master_proc = MAPL_Am_I_Root(vm)
 
     ! ---------------------------------------------------------------------
     !

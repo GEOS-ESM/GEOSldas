@@ -796,7 +796,7 @@ contains
           ! Step 3b: nObs_ana -> nObsAna_vec (on root)
           call MPI_Gather(nObs_ana,1,MPI_INTEGER,                            &
                nObsAna_vec,1,MPI_INTEGER,0,mpicomm,mpierr)
-          if (master_proc .and. logit) write (logunit,'(2A,I,A,I)')          &
+          if (master_proc .and. logit) write (logunit,'(2A,I7,A,I7)')          &
                'AnaLoadBal: nObs_ana statistics:   ',                        &
                'max =', maxval(nObsAna_vec), ',  min =', minval(nObsAna_vec)
           

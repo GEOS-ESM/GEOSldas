@@ -729,7 +729,7 @@ contains
     
     character(40) :: arg
     
-    external getarg, iargc
+    !external getarg, iargc
     
     ! -----------------------------------------------------------------
     
@@ -4445,7 +4445,7 @@ contains
                 ! set temperature increment for each component temperature
                 ! (do nothing if deltaT=0. because cat_progn_incr was initialized to 0.)
                 
-                if (abs(deltaT>0.)) then
+                if (abs(deltaT)>0.) then
 
                    ! TO DO: SHOULD PHASE CHANGE BE PREVENTED FOR TC1, TC2, TC4 AS WELL?
                    !        SHOULD PHASE CHANGE BE PREVENTED BASED ON LAND COVER/CSOIL?
