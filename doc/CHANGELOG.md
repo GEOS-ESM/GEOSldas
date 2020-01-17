@@ -41,6 +41,10 @@ _These are additions put in development, that will be in the next stable tag_
 Overview of Git tags:
 ============================
 
+[v17.9.0-beta.1] - 2020-01-17
+------------------------------
+- Commented out call to check_catch_progn in apply_progn_pert.   
+
 [v17.9.0-beta.0] - 2019-12-20
 ------------------------------
 - First tag for SMAP L4_SM Version 5, Catchment model consistent with f525land_fpp
