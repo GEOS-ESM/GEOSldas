@@ -2486,6 +2486,12 @@ contains
           end select
        end do
 
+!  Removing call to check_cat_progns (wrapper for check_catch_progn) in prep for SMAP L4_SM Version 5.
+!  Call was inserted for compatibility of GEOSldas with LDASsa tag used for SMAP L4_SM Version 4 product (Tv4034).
+!  Earlier testing without the call (Tv4033) did not result in crashes of catchment() and yielded slightly drier 
+!   soil moisture in deserts.
+!   - reichle, 17 Jan 2020
+!
 !       call check_cat_progns(land_nt_local, cat_param, tcPert(:,1), tcPert(:,2), tcPert(:,4),               &
 !!          qa1,qa2,qa4, capac                       &
 !          catdefPert,                                  &
