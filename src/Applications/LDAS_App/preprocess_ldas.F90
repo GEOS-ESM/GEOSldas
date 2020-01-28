@@ -526,7 +526,7 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
    real,allocatable :: tmp2(:,:)
    type(Netcdf4_FileFormatter) :: InFmt,OutFmt
    type(FileMetadata)        :: OutCfg
-   type(FileMetadata), allocatable :: InCfg(:)
+   type(FileMetadata)        :: InCfg
    integer                   :: dim1,dim2
    type(StringVariableMap), pointer :: variables
    type(Variable), pointer :: var
@@ -587,16 +587,15 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
          ! filetype = 0 : nc4 output file will also be nc4
       
       call InFmt%open(trim(orig_catch), pFIO_READ,rc=rc)
-      allocate(InCfg(1))
-      InCfg = InFmt%read(rc=rc)
-
-      call MAPL_IOCountNonDimVars(InCfg(1),nVars)
-      call MAPL_IOChangeRes(InCfg(1),OutCfg,(/'tile'/),(/size(f2g)/),rc=rc)
+      InCfg  = InFmt%read(rc=rc)
+      OutCfg = InCfg
+      
+      call OutCfg%modify_dimension('tile', size(f2g), rc=rc)
 
       call OutFmt%create(trim(new_catch),rc=rc)
       call OutFmt%write(OutCfg,rc=rc)
 
-      variables => InCfg(1)%get_variables()
+      variables => InCfg%get_variables()
       var_iter = variables%begin()
       do while (var_iter /= variables%end())
 
@@ -606,13 +605,18 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
 
          ndims = var_dimensions%size()
 
+         if (trim(vname) =='time') then
+             call var_iter%next()
+             cycle
+         endif
+
          if (ndims == 1) then
             call MAPL_VarRead (InFmt,vname,tmp1)
             call MAPL_VarWrite(OutFmt,vname,tmp1(f2g))
          else if (ndims == 2) then
 
             dname => var%get_ith_dimension(2)
-            dim1=InCfg(1)%get_dimension(dname)
+            dim1=InCfg%get_dimension(dname)
             do j=1,dim1
                call MAPL_VarRead ( InFmt,vname,tmp1 ,offset1=j)
                call MAPL_VarWrite(OutFmt,vname,tmp1(f2g),offset1=j)
@@ -621,9 +625,9 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
          else if (ndims == 3) then
 
             dname => var%get_ith_dimension(2)
-            dim1=InCfg(1)%get_dimension(dname)
+            dim1=InCfg%get_dimension(dname)
             dname => var%get_ith_dimension(3)
-            dim2=InCfg(1)%get_dimension(dname)
+            dim2=InCfg%get_dimension(dname)
             do i=1,dim2
                do j=1,dim1
                  call MAPL_VarRead ( InFmt,vname,tmp1 ,offset1=j,offset2=i)
@@ -650,7 +654,7 @@ subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
    real,allocatable :: tmp1(:)
    type(Netcdf4_FileFormatter) :: InFmt,OutFmt
    type(FileMetadata)        :: OutCfg
-   type(FileMetadata), allocatable :: InCfg(:)
+   type(FileMetadata)        :: InCfg
    
    type(StringVariableMap), pointer :: variables
    type(StringVariableMapIterator) :: var_iter
@@ -667,21 +671,21 @@ subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
          
    ! nc4 in and out file will also be nc4
    call InFmt%open(trim(orig_mwrtm), pFIO_READ,rc=rc)
-   allocate(InCfg(1))
    InCfg = InFmt%read(rc=rc)
+   OutCfg = InCfg
 
-   call MAPL_IOCountNonDimVars(InCfg(1),nVars)
-   call MAPL_IOChangeRes(InCfg(1),OutCfg,(/'tile'/),(/size(f2g)/),rc=rc)
+   call OutCfg%modify_dimension('tile', size(f2g), rc=rc)
 
    call OutFmt%create(trim(new_mwrtm),rc=rc)
    call OutFmt%write(OutCfg,rc=rc)
 
-   variables => InCfg(1)%get_variables()
+   variables => InCfg%get_variables()
    var_iter = variables%begin()
    do while (var_iter /= variables%end())
       vname => var_iter%key()
       call MAPL_VarRead (InFmt,vname,tmp1)
       call MAPL_VarWrite(OutFmt,vname,tmp1(f2g))
+      call var_iter%next()
    enddo
 
    call inFmt%close(rc=rc)
@@ -700,10 +704,19 @@ subroutine createLocalVegRestart(orig_veg, new_veg)
    real,allocatable :: rity(:)
    real,allocatable :: z2(:)
    real,allocatable :: ascatz0(:)
+   real,allocatable :: tmp(:)
 
    integer :: N_catg,N_catf
    integer,dimension(:),allocatable :: f2g
+   integer :: filetype
+   type(Netcdf4_FileFormatter) :: InFmt,OutFmt
+   type(FileMetadata)        :: OutCfg
+   type(FileMetadata)        :: InCfg
 
+   type(StringVariableMap), pointer :: variables
+   type(StringVariableMapIterator) :: var_iter
+   character(len=:), pointer :: vname
+   integer :: rc
 
    call readsize(N_catg,N_catf)
    if(N_catg == N_catf) return
@@ -713,17 +726,47 @@ subroutine createLocalVegRestart(orig_veg, new_veg)
    allocate(rity(N_catg))
    allocate(z2(N_catg))
    allocate(ascatz0(N_catg))
-   open(10,file=trim(orig_veg),form='unformatted',action='read',status='old',iostat=istat)
-   open(20,file=trim(new_veg),form='unformatted',action='write')
-   read(10) rity 
-   read(10) z2 
-   read(10) ascatz0 
-   write(20) rity(f2g)
-   write(20) z2(f2g) 
-   write(20) ascatz0(f2g) 
 
-   close(10)
-   close(20)
+   call MAPL_NCIOGetFileType(orig_veg, filetype,rc=rc)
+
+   if (filetype /=0) then
+      open(10,file=trim(orig_veg),form='unformatted',action='read',status='old',iostat=istat)
+      open(20,file=trim(new_veg),form='unformatted',action='write')
+      read(10) rity 
+      read(10) z2 
+      read(10) ascatz0 
+      write(20) rity(f2g)
+      write(20) z2(f2g) 
+      write(20) ascatz0(f2g) 
+
+      close(10)
+      close(20)
+   else
+    ! nc4 in and out file will also be nc4
+      call InFmt%open(trim(orig_veg), pFIO_READ,rc=rc)
+      InCfg = InFmt%read(rc=rc)
+      OutCfg = InCfg
+
+      call OutCfg%modify_dimension('tile', size(f2g), rc=rc)
+
+      call OutFmt%create(trim(new_veg),rc=rc)
+      call OutFmt%write(OutCfg,rc=rc)
+
+      variables => InCfg%get_variables()
+      var_iter = variables%begin()
+      allocate(tmp(N_catg))
+      do while (var_iter /= variables%end())
+         vname => var_iter%key()
+         call MAPL_VarRead (InFmt,vname,tmp)
+         call MAPL_VarWrite(OutFmt,vname,tmp(f2g))
+         call var_iter%next()
+      enddo
+
+      call inFmt%close(rc=rc)
+      call OutFmt%close(rc=rc)
+      deallocate(tmp)
+   endif
+   deallocate(f2g)
 
 end subroutine createLocalVegRestart
 
