@@ -30,11 +30,6 @@ FIRST_ENS_ID                   : 0
 #
 MAPL_ENABLE_BOOTSTRAP          : YES
 
-# ---- Vegedyn and catchment default file types
-#
-VEGDYN_INTERNAL_RESTART_TYPE   : binary
-CATCH_INTERNAL_RESTART_TYPE    : pnc4
-CATCH_INTERNAL_CHECKPOINT_TYPE : pnc4
 
 # ---- SURFLAY
 #
