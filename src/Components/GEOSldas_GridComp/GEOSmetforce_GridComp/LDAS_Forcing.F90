@@ -3963,6 +3963,7 @@ contains
     ! reichle, 30 Oct 2017: added FP transition from f516 to f517
     ! reichle,  9 Jul 2018: added FP transition from f517 to f521
     ! reichle, 10 Oct 2019: added FP transition from f521 to f522
+    ! reichle, 17 Jan 2020: added FP transition from f522 to f525
     !    
     ! ---------------------------------------------------------------------------    
 
@@ -4002,6 +4003,7 @@ contains
     type(date_time_type)        :: dt_end_f517_fp   
     type(date_time_type)        :: dt_end_f521_fp   
     type(date_time_type)        :: dt_end_f522_fp
+    type(date_time_type)        :: dt_end_f525_fp
 
     character(len=*), parameter :: Iam = 'parse_G5DAS_met_tag'
     character(len=400) :: err_msg
@@ -4088,7 +4090,8 @@ contains
     ! f516_fp    | 24 Jan 2017  |  1 Nov 2017
     ! f517_fp    |  1 Nov 2017  | 11 Jul 2018
     ! f521_fp    | 11 Jul 2018  | 13 Mar 2019
-    ! f522_fp    | 13 Mar 2019  |   (present)
+    ! f522_fp    | 13 Mar 2019  | 30 Jan 2020
+    ! f525_fp    | 30 Jan 2020  |   (present)
     !
     ! Official stream transition times (as defined
     ! by GMAO ops group) are:
@@ -4099,6 +4102,7 @@ contains
     ! FP f516  --> f517  :  1 Nov 2017, 6z ADAS analysis
     ! FP f517  --> f521  : 11 Jul 2018, 6z ADAS analysis
     ! FP f521  --> f522  : 13 Mar 2019, 6z ADAS analysis
+    ! FP f522  --> f525  : 30 Jan 2020, 6z ADAS analysis
     !
     ! Official stream transition times refer to the definition
     ! of the official FP files with generic file names on the 
@@ -4161,12 +4165,19 @@ contains
     dt_end_f521_fp%min     = 0
     dt_end_f521_fp%sec     = 0
 
-    dt_end_f522_fp%year    = 9999
+    dt_end_f522_fp%year    = 2020
     dt_end_f522_fp%month   = 1
-    dt_end_f522_fp%day     = 1
-    dt_end_f522_fp%hour    = 0
+    dt_end_f522_fp%day     = 30
+    dt_end_f522_fp%hour    = 3
     dt_end_f522_fp%min     = 0
     dt_end_f522_fp%sec     = 0  
+
+    dt_end_f525_fp%year    = 9999
+    dt_end_f525_fp%month   = 1
+    dt_end_f525_fp%day     = 1
+    dt_end_f525_fp%hour    = 0
+    dt_end_f525_fp%min     = 0
+    dt_end_f525_fp%sec     = 0  
 
     ! ----------------------------------------------------
 
@@ -4308,9 +4319,15 @@ contains
           
           stream = 'f521_fp'            ! use GEOS-5.21.x output
 
-       else
+      elseif (datetime_le_refdatetime( date_time, dt_end_f522_fp )) then
+          
+          ! Note "less-than-or-equal" (_le_) above
           
           stream = 'f522_fp'            ! use GEOS-5.22.x output
+
+       else
+          
+          stream = 'f525_fp'            ! use GEOS-5.25.x output
 
        end if
 
