@@ -1523,6 +1523,16 @@ def _printExeInputKeys(rqdExeInpKeys):
     _f.close()
     print
     print
+
+    _fn = '../etc/GEOS_LandGridComp.rc'   # run ldas_setup from /bin directory
+
+    _f = open(_fn)
+    for line in _f:
+       sys.stdout.write(line)
+       sys.stdout.flush()
+    _f.close()
+    print
+    print
  
 def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     """
