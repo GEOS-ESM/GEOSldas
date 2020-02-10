@@ -770,7 +770,7 @@ class LDASsetup:
                   '/output/'+self.rqdExeInp['RESTART_DOMAIN']+'/rc_out/'
 
         # pass into process_rst
-        sponserid = self.rqdRmInp['account']
+        sponsorid = self.rqdRmInp['account']
         exp_id    = self.rqdExeInp['EXP_ID']
         exp_dir   = self.exphome
         bcdir     = self.rqdExeInp['BCS_PATH']
@@ -793,7 +793,7 @@ class LDASsetup:
                os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ensid +'_rst')
                self.has_landassim_seed = True
  
-        cmd= '  '.join(['./process_rst.csh', sponserid, exp_id, exp_dir,
+        cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, exp_dir,
                         bcdir, tilefile, lsmchoice, have_rst, YYYYMMDD,
                         rstid, rstdomain, rstpath0, str(self.nens), str(self.rqdExeInp['RUN_IRRIG']),
                         dzsf, wemin_in, wemin_out])
