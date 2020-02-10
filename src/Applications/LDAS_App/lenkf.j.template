@@ -518,8 +518,9 @@ while ($inens < $NENS)
 
     set rstf = 'landpert'
     if (-f ${rstf}${ENSID}_internal_checkpoint ) then
-       ncks -4 -O -C -x -v lat,lon -L 2 ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
-       /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
+       /bin/mv  ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+       #ncks -4 -O -C -x -v lat,lon -L 2 ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+       #/bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
        /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
        /bin/ln -s  $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin} $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
     endif

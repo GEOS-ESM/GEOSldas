@@ -1379,7 +1379,7 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
          dims(3)= Nforce
 
          status = NF90_DEF_VAR(NCFOutID,'fpert_ntrmdt',NF90_REAL, dims, forceid)
-         status = nf90_def_var_deflate(NCFOutID, forceid, shuffle, deflate, deflate_level)
+         !status = nf90_def_var_deflate(NCFOutID, forceid, shuffle, deflate, deflate_level)
          status = NF90_PUT_ATT(NCFOutID, forceid, 'long_name', 'force_pert_intermediate')
          status = NF90_PUT_ATT(NCFOutID, forceid, 'units', '1')
          status = nf90_put_att(NCFOutID, forceid, '_FillValue', fill_value)
@@ -1388,7 +1388,7 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
          dims(3)= Nprogn
 
          status = NF90_DEF_VAR(NCFOutID, 'ppert_ntrmdt', NF90_REAL, dims, prognid)
-         status = nf90_def_var_deflate(NCFOutID, prognid, shuffle, deflate, deflate_level)
+         !status = nf90_def_var_deflate(NCFOutID, prognid, shuffle, deflate, deflate_level)
          status = NF90_PUT_ATT(NCFOutID, prognid, 'long_name', 'progn_pert_intermediate')
          status = NF90_PUT_ATT(NCFOutID, prognid, 'units', '1')
          status = nf90_put_att(NCFOutID, prognid, '_FillValue', fill_value)
