@@ -10,7 +10,10 @@
 #--------------------------------------------------------#
 
 # ---- Using offline?
-#    1 : yes, offline
+#
+#    0: DEFAULT for GCM. (WW,CH,CM,CQ,FR) are required in catchment restart file 
+#    1: DEFAULT for GEOSldas (WW,CH,CM,CQ,FR) are optional
+#    2: (WW,CH,CM,CQ,FR) are optional for input restart but will be in output restart 
 #
 CATCHMENT_OFFLINE              : 1
 
