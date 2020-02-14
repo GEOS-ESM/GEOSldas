@@ -314,12 +314,6 @@ contains
 
     ! -----------------------------------------------------------------
 
-    call ESMF_VmGetCurrent(vm, rc=status)
-    VERIFY_(status)
-    call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
-    VERIFY_(status)
-    master_proc = MAPL_Am_I_Root(vm)
-
     namelist /ens_prop_inputs/       &
          N_ens,                      &
          first_ens_id,               &
@@ -349,6 +343,13 @@ contains
          ycorr_force_pert,           &
          tcorr_force_pert,           &
          ccorr_force_pert
+
+
+    call ESMF_VmGetCurrent(vm, rc=status)
+    VERIFY_(status)
+    call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
+    VERIFY_(status)
+    master_proc = MAPL_Am_I_Root(vm)
 
     ! ---------------------------------------------------------------------
     !
@@ -716,8 +717,8 @@ contains
        !for cubed-sphere grid, global lat_lon grid
        N_x=tile_grid%n_lon
 
-       n_lon=3*N_x
-       n_lat=2*N_x
+       n_lon=4*N_x
+       n_lat=3*N_x
        write(lattmp,'(I6.6)') n_lat
        write(lontmp,'(I6.6)') n_lon
        latlon_gridname = "DE"//lontmp//"x"//"PE"//lattmp

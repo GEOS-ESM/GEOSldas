@@ -544,7 +544,7 @@ contains
     ! 
     ! -------------------------------------------------------------------
     use ESMF
-    USE GEOS_MOD 
+    USE MAPL_MOD 
 
     implicit none
     type(ESMF_GridComp),intent(inout) :: GC 
