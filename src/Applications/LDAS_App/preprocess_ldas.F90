@@ -55,16 +55,12 @@ program main
    character(len=200) :: orig_BC
    character(len=200) :: new_BC
    character(len=200) :: orig_Veg
-   character(len=200) :: Veg_path
    character(len=200) :: new_veg
    character(len=200) :: orig_ease
    character(len=200) :: new_ease
    character(len=12)  :: ymdhm
    character(len=12)  :: SURFLAY
 
-   integer :: istat,n
-   logical :: file_exist
-   
    call get_command_argument(1,option)
    call get_command_argument(2,arg1)
    call get_command_argument(3,arg2)
@@ -154,14 +150,10 @@ subroutine createf2g(orig_tile,domain_def,out_path,catch_def_file,exp_id,ymdhm, 
    real :: minlon,maxlon,minlat,maxlat
    character(len=200):: black_file,white_file
    character(len=300):: bcs_path
-   type(date_time_type) :: start_time
    logical :: file_exist
    logical :: d_exist,c_exist
 
-   integer :: gg_id, g_id, n,ty,stat,N_tile,N_grid, f_id,tym,N_cTile
-   character(len=200):: line,cline,res_ftag
-
-   integer :: local_size
+   integer :: n
 
    type(grid_def_type) :: tile_grid_g,tile_grid_d
    type(tile_coord_type), dimension(:), pointer :: tile_coord_g => null()
@@ -382,7 +374,7 @@ subroutine readf2g(N_catf,f2g)
 
    integer :: N_catg
    logical :: file_exist
-   integer :: local_size,n,status
+   integer :: local_size,n
 
    inquire(file=trim('f2g.txt'),exist=file_exist)
    if(file_exist) then
@@ -416,12 +408,10 @@ subroutine createLocalTilefile(orig_tile,new_tile)
    character(len=200):: line
 
    logical :: file_exist
-   logical :: d_exist,c_exist
-
 
    integer, dimension(:),allocatable :: f2g 
    integer :: N_catg, N_catf,n,stat, ty
-   integer :: N_tile,N_grid,g_id,f_id
+   integer :: N_tile,N_grid,g_id
 
    inquire(file=trim(orig_tile),exist=file_exist)
    if( .not. file_exist) stop ("original tile file not exist")
@@ -484,13 +474,9 @@ subroutine createLocalBC(orig_BC, new_BC)
    character(*),intent(in) :: orig_BC
    character(*),intent(in) :: new_BC
 
-   integer :: N_times
-   real,allocatable :: orig_data(:)
-   real,allocatable :: orig_new(:)
-        
    real,dimension(14) :: tmprealvec14
    real,allocatable ::   tmpvec(:)  
-   integer :: n,istat, N_catg,N_catf
+   integer :: istat, N_catg,N_catf
    integer,dimension(:),allocatable :: f2g
   
    call readsize(N_catg,N_catf)
@@ -520,7 +506,7 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
    character(*),intent(in):: orig_catch
    character(*),intent(in):: new_catch
    integer,parameter :: subtile=4
-   integer :: n,istat, filetype, rc, nVars, i, j, ndims, dimSizes(3)
+   integer :: istat, filetype, rc,i, j, ndims
    real,allocatable :: tmp1(:)
    real,allocatable :: tmp2(:,:)
    type(Netcdf4_FileFormatter) :: InFmt,OutFmt
@@ -532,7 +518,7 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
    type(StringVariableMapIterator) :: var_iter
    type(StringVector), pointer :: var_dimensions
    character(len=:), pointer :: vname,dname
-   integer :: N_catg,N_catf
+   integer ::n, N_catg,N_catf
    integer,dimension(:),allocatable :: f2g
 
    call readsize(N_catg,N_catf)
@@ -649,7 +635,7 @@ subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
    character(*),intent(in):: orig_mwrtm
    character(*),intent(in):: new_mwrtm
    integer,parameter :: subtile=4
-   integer :: n,istat, filetype, rc, nVars, i, j, ndims, dimSizes(3)
+   integer :: rc
    real,allocatable :: tmp1(:)
    type(Netcdf4_FileFormatter) :: InFmt,OutFmt
    type(FileMetadata)        :: OutCfg
@@ -773,9 +759,8 @@ subroutine correctEase(orig_ease,new_ease)
    implicit none
    character(*),intent(in) :: orig_ease
    character(*),intent(in) :: new_ease
-   integer :: istat,n,i
    logical :: file_exist,is_oldEASE
-   integer :: N_tile,N_grid
+   integer :: i, N_tile, N_grid
    character(len=200) :: tmpline
 
    inquire(file=trim(orig_ease),exist=file_exist)
@@ -831,7 +816,7 @@ subroutine optimize_latlon(fname,arg)
    integer :: total_land
    integer :: n,typ,tmpint
    real ::  tmpreal
-   integer :: avg_land,avg_lon,n0,local
+   integer :: avg_land,n0,local
    integer :: i,s,e,j,k,n1,n2
    logical :: file_exist
    character(len=100):: tmpLine
@@ -1279,8 +1264,8 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
           integer :: nrandseed_tmp
           type(grid_def_type) :: pert_grid_f_tmp 
           character(len=*), parameter :: Iam = 'io_pert_rstrt'
-          integer :: itmp, jtmp,xstart,xend,ystart,yend
-          integer :: k, n, i,j
+          integer :: k
+          real, allocatable :: real_tmp(:)
  
           open(10, file=pfile_name, convert='big_endian',form='unformatted', status='old', &
           action='read', iostat=istat)
@@ -1330,17 +1315,23 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
           end if
 
           ! reading
-          read (10) (Pert_rseed(n), n=1,NRANDSEED)
+          read (10) Pert_rseed(:)
+          allocate(real_tmp(N_lonf*N_latf))
           do k=1,N_force_pert
-             read (10) ((Force_pert_ntrmdt_f(i,j,k), i=1,N_lonf),j=1,N_latf)
+             !read (10) ((Force_pert_ntrmdt_f(i,j,k), i=1,N_lonf),j=1,N_latf)
+             read (10) real_tmp(:)
+             Force_pert_ntrmdt_f(:,:,k) = reshape(real_tmp,[N_lonf, N_latf])
           end do
 
           do k=1,N_progn_pert
-             read (10) ((Progn_pert_ntrmdt_f(i,j,k), i=1,N_lonf),j=1,N_latf)
+             !read (10) ((Progn_pert_ntrmdt_f(i,j,k), i=1,N_lonf),j=1,N_latf)
+             read (10) real_tmp(:)
+             Progn_pert_ntrmdt_f(:,:,k) = reshape(real_tmp,[N_lonf, N_latf])
           end do
-
+          
           close(10)
-
+          deallocate(real_tmp)
+          rc = 0
       end subroutine i_pert_ldas
 
       subroutine o_pert_GEOSldas(rc)
@@ -1348,7 +1339,7 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
          integer :: NCFOutID, STATUS
          integer :: seeddim,latdim, londim, Nforce,NProgn
          integer :: dims(3), seedid,forceid,prognid        
-         integer :: xstart, ystart,i,j,k
+         integer :: xstart, ystart
          integer :: shuffle, deflate, deflate_level
          real    :: fill_value
 
@@ -1426,5 +1417,9 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
                  count=[N_lonf,N_latf,N_progn_pert])
 
          STATUS   = NF90_CLOSE (NCFOutID)
+   
+         deallocate(Force_pert_ntrmdt_f, Progn_pert_ntrmdt_f)
+
+         rc = status
       end subroutine o_pert_GEOSldas
 end subroutine convert_pert_rst
