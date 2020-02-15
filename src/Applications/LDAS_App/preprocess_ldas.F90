@@ -3,7 +3,7 @@
 !
 module preprocess_module
    use netcdf
-   use MAPL_SortMod, only: MAPL_sort
+   use MAPL
    use LDAS_TileCoordType,              ONLY:   &
        tile_coord_type,                         &
        grid_def_type,                           &
@@ -25,7 +25,6 @@ module preprocess_module
        domain_setup, &
        read_cat_param
    use LDAS_ensdrv_init_routines, only: io_domain_files
-   use MAPL_IOMod
    use gFTL_StringVector
    use pFIO
    integer,parameter :: excluded_tile_typ_land=1100
@@ -1014,7 +1013,7 @@ subroutine optimize_latlon(fname,arg)
       write(10,'(A)') "GEOSldas.LM:   1"
       write(10,'(A,I5)') "NY: ",N_proc
       write(10,'(A)') "NX:   1"
-      write(10,'(A)') "JMS_FILE:    JMS.rc"
+      write(10,'(A)') "GEOSldas.JMS_FILE:    JMS.rc"
       close(10)
        
       open(10,file="JMS.rc",action='write')
@@ -1149,7 +1148,7 @@ subroutine optimize_latlon(fname,arg)
       write(10,'(A,I5)') "NX: ",N_proc
       write(10,'(A)') "NY:   1"
 
-      write(10,'(A)') "IMS_FILE:    IMS.rc"
+      write(10,'(A)') "GEOSldas.IMS_FILE:    IMS.rc"
       close(10)
        
       open(10,file="IMS.rc",action='write')

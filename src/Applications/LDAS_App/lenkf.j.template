@@ -481,13 +481,13 @@ set new_mwrtm_file  =  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXP
 set new_catch_param =  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXPID}.ldas_catparam.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}z.bin
 
 if (-f $old_mwrtm_file) then
-  /bin/cp $old_mwrtm_file $new_mwrtm_file
+  /bin/ln -s $old_mwrtm_file $new_mwrtm_file
   /bin/rm ../input/restart/mwrtm_param_rst
   /bin/ln -s $new_mwrtm_file ../input/restart/mwrtm_param_rst
 endif
 
 if (-f $old_catch_param) then
-  /bin/cp $old_catch_param $new_catch_param
+  /bin/ln -s $old_catch_param $new_catch_param
 endif
 
 # Move Intermediate Checkpoints to RESTARTS directory

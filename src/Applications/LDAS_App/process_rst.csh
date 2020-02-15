@@ -81,7 +81,6 @@ setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib
 limit stacksize unlimited
  
-#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
 $INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
 sleep 3
@@ -92,7 +91,6 @@ else
    /bin/cp OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst
 endif
 
-#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
 $INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
 _EOI_
