@@ -81,7 +81,7 @@ setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib
 limit stacksize unlimited
  
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
 sleep 3
 
@@ -91,7 +91,7 @@ else
    /bin/cp OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst
 endif
 
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
 _EOI_
 
@@ -155,7 +155,7 @@ case [1]:
         set j = 0
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           echo  $INSTDIR/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}  >> this.file
+           echo  $INSTDIR/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}  >> this.file
            echo  ncks -4  -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} >> this.file 
            @ j++
         end
@@ -207,7 +207,7 @@ setenv LAIFILE `find ${BCSDIR}/lai_clim*`
 setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
 limit stacksize unlimited
  
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
 sleep 3
 
 _EOI3_

@@ -3,17 +3,17 @@
 PROGRAM mk_GEOSldasRestarts
 
 ! USAGE/HELP (NOTICE mpirun -np 1) 
-!  mpirun -np 1 bin/mk_GEOSldasRestarts -h
+!  mpirun -np 1 bin/mk_GEOSldasRestarts.x -h
 !
 ! (1) to create an initial catch(cn)_internal_rst file ready for an offline experiment :
 ! --------------------------------------------------------------------------------------
-! (1.1) mpirun -np 1 bin/mk_GEOSldasRestarts -a SPONSORCODE -b BCSDIR -m MODEL -s SURFLAY(20/50) -t TILFILE
+! (1.1) mpirun -np 1 bin/mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -m MODEL -s SURFLAY(20/50) -t TILFILE
 ! where MODEL : catch or catchcn
 ! (1.2) sbatch mkLDAS.j
 !    
 ! (2) to reorder an LDASsa restart file to the order of the BCs for use in an GCM experiment :
 ! --------------------------------------------------------------------------------------------
-! mpirun -np 1 bin/mk_GEOSldasRestarts -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE -p PARAMFILE
+! mpirun -np 1 bin/mk_GEOSldasRestarts.x -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE -p PARAMFILE
 
   use MAPL
   use gFTL_StringVector 
@@ -32,7 +32,7 @@ PROGRAM mk_GEOSldasRestarts
   ! Carbon model specifics
   ! ----------------------
 
-  character*256 :: Usage="mk_GEOSldasRestarts -a SPONSORCODE -b BCSDIR -d YYYYMMDD  -e EXPNAME -j JOBFILE -k ENS -l EXPDIR -m MODEL -r REORDER -s SURFLAY -t TILFILE -p PARAMFILE"
+  character*256 :: Usage="mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -d YYYYMMDD  -e EXPNAME -j JOBFILE -k ENS -l EXPDIR -m MODEL -r REORDER -s SURFLAY -t TILFILE -p PARAMFILE"
   character*256 :: BCSDIR, SPONSORCODE, EXPNAME, EXPDIR, MODEL, TILFILE, YYYYMMDD, SFL, PFILE
   character*400 :: CMD
 
@@ -163,13 +163,13 @@ PROGRAM mk_GEOSldasRestarts
         print *,'   '
         print *,'(1) to create an initial catch(cn)_internal_rst file ready for an offline experiment :'
         print *,'--------------------------------------------------------------------------------------'
-        print *,'(1.1) mpirun -np 1 bin/mk_GEOSldasRestarts -a SPONSORCODE -b BCSDIR -m MODEL -s SURFLAY(20/50)'
+        print *,'(1.1) mpirun -np 1 bin/mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -m MODEL -s SURFLAY(20/50)'
         print *,'where MODEL : catch or catchcn'
         print *,'(1.2) sbatch mkLDAS.j'
         print *,'   '
         print *,'(2) to reorder an LDASsa restart file to the order of the BCs for use in an GCM experiment :'
         print *,'--------------------------------------------------------------------------------------------'
-        print *,'mpirun -np 1 bin/mk_GEOSldasRestarts -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE -p PARAMFILE'
+        print *,'mpirun -np 1 bin/mk_GEOSldasRestarts.x -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE -p PARAMFILE'
         stop
      case ('j')
         JOBFILE = trim(arg)
