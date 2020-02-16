@@ -473,9 +473,9 @@ subroutine SetServices ( GC, RC )
 !
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'canopy_temperature'        ,&
+    LONG_NAME          = 'increment_canopy_temperature_saturated_zone'  ,&
     UNITS              = 'K'                         ,&
-    SHORT_NAME         = 'TC1_INCR'                        ,&
+    SHORT_NAME         = 'TCFSAT_INCR'                        ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -483,18 +483,18 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'canopy_temperature'        ,&
+    LONG_NAME          = 'increment_canopy_temperature_transition_zone'   ,&
     UNITS              = 'K'                         ,&
-    SHORT_NAME         = 'TC2_INCR'                        ,&
+    SHORT_NAME         = 'TCFTRN_INCR'                        ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'canopy_temperature'        ,&
+    LONG_NAME          = 'increment_canopy_temperature_wilting_zone'    ,&
     UNITS              = 'K'                         ,&
-    SHORT_NAME         = 'TC3_INCR'                        ,&
+    SHORT_NAME         = 'TCFWLT_INCR'                        ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -502,9 +502,9 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'canopy_specific_humidity'  ,&
+    LONG_NAME          = 'increment_canopy_specific_humidity_saturated_zone'  ,&
     UNITS              = 'kg kg-1'                   ,&
-    SHORT_NAME         = 'QC1_INCR'                        ,&
+    SHORT_NAME         = 'QCFSAT_INCR'                        ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -512,18 +512,18 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'canopy_specific_humidity'  ,&
+    LONG_NAME          = 'increment_canopy_specific_humidity_transition_zone'  ,&
     UNITS              = 'kg kg-1'                   ,&
-    SHORT_NAME         = 'QC2_INCR'                        ,&
+    SHORT_NAME         = 'QCFTRN_INCR'                        ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'canopy_specific_humidity'  ,&
+    LONG_NAME          = 'increment_canopy_specific_humidity_wilting_zone'  ,&
     UNITS              = 'kg kg-1'                   ,&
-    SHORT_NAME         = 'QC3_INCR'                        ,&
+    SHORT_NAME         = 'QCFWLT_INCR'                        ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
@@ -531,7 +531,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'interception_reservoir_capac',&
+    LONG_NAME          = 'increment_interception_reservoir_capac',&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CAPAC_INCR'                     ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -541,7 +541,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'catchment_deficit'         ,&
+    LONG_NAME          = 'increment_catchment_deficit'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CATDEF_INCR'                    ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -551,7 +551,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'root_zone_excess'          ,&
+    LONG_NAME          = 'increment_root_zone_excess'          ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'RZEXC_INCR'                     ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -562,7 +562,7 @@ subroutine SetServices ( GC, RC )
 
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'surface_excess'            ,&
+    LONG_NAME          = 'increment_surface_excess'            ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'SRFEXC_INCR'                    ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -572,7 +572,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'soil_heat_content_layer_1' ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_1' ,&
     UNITS              = 'J m-2'                     ,&
     SHORT_NAME         = 'GHTCNT1_INCR'                   ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -582,7 +582,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'soil_heat_content_layer_2' ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_2' ,&
     UNITS              = 'J_m-2'                     ,&
     SHORT_NAME         = 'GHTCNT2_INCR'                   ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -592,7 +592,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'soil_heat_content_layer_3' ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_3' ,&
     UNITS              = 'J m-2'                     ,&
     SHORT_NAME         = 'GHTCNT3_INCR'                   ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -602,7 +602,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'soil_heat_content_layer_4' ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_4' ,&
     UNITS              = 'J m-2'                     ,&
     SHORT_NAME         = 'GHTCNT4_INCR'                   ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -611,7 +611,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'soil_heat_content_layer_5' ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_5' ,&
     UNITS              = 'J m-2'                     ,&
     SHORT_NAME         = 'GHTCNT5_INCR'                   ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -621,7 +621,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'soil_heat_content_layer_6' ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_6' ,&
     UNITS              = 'J m-2'                     ,&
     SHORT_NAME         = 'GHTCNT6_INCR'                   ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -631,7 +631,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'snow_mass_layer_1'         ,&
+    LONG_NAME          = 'increment_snow_mass_layer_1'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'WESNN1_INCR'                    ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -641,7 +641,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'snow_mass_layer_2'         ,&
+    LONG_NAME          = 'increment_snow_mass_layer_2'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'WESNN2_INCR'                    ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -651,7 +651,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'snow_mass_layer_3'         ,&
+    LONG_NAME          = 'increment_snow_mass_layer_3'         ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'WESNN3_INCR'                    ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -661,7 +661,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'heat_content_snow_layer_1' ,&
+    LONG_NAME          = 'increment_heat_content_snow_layer_1' ,&
     UNITS              = 'J m-2'                     ,&
     SHORT_NAME         = 'HTSNNN1_INCR'                   ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -671,7 +671,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'heat_content_snow_layer_2' ,&
+    LONG_NAME          = 'increment_heat_content_snow_layer_2' ,&
     UNITS              = 'J m-2'                     ,&
     SHORT_NAME         = 'HTSNNN2_INCR'                   ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -681,7 +681,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'heat_content_snow_layer_3' ,&
+    LONG_NAME          = 'increment_heat_content_snow_layer_3' ,&
     UNITS              = 'J m-2'                     ,&
     SHORT_NAME         = 'HTSNNN3_INCR'                   ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -691,7 +691,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'snow_depth_layer_1'        ,&
+    LONG_NAME          = 'increment_snow_depth_layer_1'        ,&
     UNITS              = 'm'                         ,&
     SHORT_NAME         = 'SNDZN1_INCR'                    ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -701,7 +701,7 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'snow_depth_layer_2'        ,&
+    LONG_NAME          = 'increment_snow_depth_layer_2'        ,&
     UNITS              = 'm'                         ,&
     SHORT_NAME         = 'SNDZN2_INCR'                    ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -710,7 +710,7 @@ subroutine SetServices ( GC, RC )
                                            RC=STATUS  )
   VERIFY_(STATUS)
   call MAPL_AddExportSpec(GC                  ,&
-    LONG_NAME          = 'snow_depth_layer_3'        ,&
+    LONG_NAME          = 'increment_snow_depth_layer_3'        ,&
     UNITS              = 'm'                         ,&
     SHORT_NAME         = 'SNDZN3_INCR'                    ,&
 !    FRIENDLYTO         = trim(COMP_NAME)             ,&
@@ -1294,7 +1294,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     character(len=300) :: fname_tpl
     character(len=4) :: id_string
     integer:: ens, nymd, nhms
-    
+
 #ifdef DBG_LANDASSIM_INPUTS
         ! vars for debugging purposes
         type(ESMF_Grid)                 :: TILEGRID
@@ -1493,17 +1493,17 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !
 ! export for incr
 !
-    call MAPL_GetPointer(export, TC1_incr,  'TC1_INCR' ,rc=status)
+    call MAPL_GetPointer(export, TC1_incr,  'TCFSAT_INCR' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, TC2_incr,  'TC2_INCR' ,rc=status)
+    call MAPL_GetPointer(export, TC2_incr,  'TCFTRN_INCR' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, TC3_incr,  'TC3_INCR' ,rc=status)
+    call MAPL_GetPointer(export, TC3_incr,  'TCFWLT_INCR' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, QC1_incr,  'QC1_INCR' ,rc=status)
+    call MAPL_GetPointer(export, QC1_incr,  'QCFSAT_INCR' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, QC2_incr,  'QC2_INCR' ,rc=status)
+    call MAPL_GetPointer(export, QC2_incr,  'QCFTRN_INCR' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, QC3_incr,  'QC3_INCR' ,rc=status)
+    call MAPL_GetPointer(export, QC3_incr,  'QCFWLT_INCR' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, CAPAC_incr,  'CAPAC_INCR' ,rc=status)
     VERIFY_(status)
@@ -1745,7 +1745,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            if (mod(secs_in_day, dtstep_assim)==0) then                       
 
-                call output_incr_etc( out_ObsFcstAna, out_incr,              &
+                call output_incr_etc( out_ObsFcstAna, out_incr,             &
                 out_incr_format, date_time_new, trim(out_path), trim(exp_id),            &
                 N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
                 N_catl, tile_coord_l,                                        &
