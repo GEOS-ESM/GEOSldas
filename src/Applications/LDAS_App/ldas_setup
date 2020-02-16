@@ -968,9 +968,9 @@ class LDASsetup:
         print "cmd:   " + cmd
         sp.call(cmd,shell=True)
         optinxny=self._parseInputFile('optimized_distribution')
-        if (int(optinxny['GEOSldas.NX']) == 1):
-            if int(optinxny['GEOSldas.NY']) != int(self.rqdRmInp['ntasks']):
-                self.rqdRmInp['ntasks']=optinxny['GEOSldas.NY']
+        if (int(optinxny['NX']) == 1):
+            if int(optinxny['NY']) != int(self.rqdRmInp['ntasks']):
+                self.rqdRmInp['ntasks']=optinxny['NY']
                 print 'adjust ntasks %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks'])
         
         if os.path.isfile('IMS.rc') :
@@ -1071,42 +1071,28 @@ class LDASsetup:
                    ldasrcInp[keyn]= valn
 
                 # create restart item in RC
-                catch_type='pnc4'
-                catchck_type='pnc4'
-                mwrtm_type='pnc4'
-                vegdyn_type='binary'
                 catch_ = self.catch.upper()
                 if catch_+'_INTERNAL_RESTART_TYPE' in ldasrcInp :
-                    catch_type= ldasrcInp[ catch_ +'_INTERNAL_RESTART_TYPE']
                     # avoid duplicate
                     del ldasrcInp[ catch_ +'_INTERNAL_RESTART_TYPE']
                 if catch_+'_INTERNAL_CHECKPOINT_TYPE' in ldasrcInp :
-                    catchck_type= ldasrcInp[ catch_ +'_INTERNAL_CHECKPOINT_TYPE']
                     # avoid duplicate
                     del ldasrcInp[ catch_ +'_INTERNAL_CHECKPOINT_TYPE']
                 if 'VEGDYN_INTERNAL_RESTART_TYPE' in ldasrcInp :
-                    vegdyn_type= ldasrcInp['VEGDYN_INTERNAL_RESTART_TYPE']
                     # avoid duplicate
                     del ldasrcInp['VEGDYN_INTERNAL_RESTART_TYPE']
-                if(catch_type != catchck_type) :
-                    print "WARNING!!: catch restart and checkpoint types differ"
         
                 rstkey=[catch_,'VEGDYN']
                 rstval=[self.catch,'vegdyn']
-                rsttyp=[catch_type,vegdyn_type]
                 _perturb = 1 if self.nens > 1 else 0
                 if((self.has_ldassa_pert or self.has_geos_pert) and _perturb == 1) :
                    rstkey=[catch_,'VEGDYN','LANDPERT']
                    rstval=[self.catch,'vegdyn','landpert']
-                   rsttyp=[catch_type,vegdyn_type,'pnc4']
 
                 _assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
                 if self.has_mwrtm and _assim ==1 :
                    keyn='LANDASSIM_INTERNAL_RESTART_FILE'
                    valn='../input/restart/mwrtm_param_rst'
-                   ldasrcInp[keyn]= valn
-                   keyn='LANDASSIM_INTERNAL_RESTART_TYPE'
-                   valn='pnc4'
                    ldasrcInp[keyn]= valn
 
                 if self.has_landassim_seed and _assim ==1 :
@@ -1126,7 +1112,7 @@ class LDASsetup:
                    valn='4'
                    ldasrcInp[keyn]= valn
        
-                for key,val,typ in zip(rstkey,rstval,rsttyp) :
+                for key,val in zip(rstkey,rstval) :
                     keyn = key+ '_INTERNAL_RESTART_FILE'
                     valn = '../input/restart/'+val+ensid+'_internal_rst'
                     ldasrcInp[keyn]= valn

@@ -106,7 +106,7 @@ contains
     
     character(40) :: arg
     
-    external getarg, iargc
+    !external getarg, iargc
     
     ! -----------------------------------------------------------------
     

@@ -10,6 +10,18 @@ COLLECTIONS:
 #CUBE            'tavg1_2D_lfs_Nx'	
            ::
 
+#CUBE GRID_LABELS: PC720x361-DC
+
+           ::
+
+#CUBE PC720x361-DC.GRID_TYPE: LatLon
+#CUBE PC720x361-DC.IM_WORLD: 720
+#CUBE PC720x361-DC.JM_WORLD: 361
+#CUBE PC720x361-DC.POLE: PC
+#CUBE PC720x361-DC.DATELINE: DC
+#CUBE PC720x361-DC.LM: 1
+
+
   tavg1_1D_lfs_Nt.template:  '%y4%m2%d2_%h2%n2z.bin',
   tavg1_1D_lfs_Nt.archive:   '%c/Y%y4',
   tavg1_1D_lfs_Nt.mode:      'time-averaged',
@@ -44,7 +56,7 @@ COLLECTIONS:
   tavg1_2D_lfs_Nx.format:    'CFIO',
   tavg1_2D_lfs_Nx.regrid_exch:'../input/tile.data'
   tavg1_2D_lfs_Nx.regrid_name:'GRIDNAME'
-  tavg1_2D_lfs_Nx.resolution: 720 361,
+  tavg1_2D_lfs_Nx.grid_label: PC720x361-DC
   tavg1_2D_lfs_Nx.deflate:  2,
   tavg1_2D_lfs_Nx.fields:    'Tair'       , 'DATAATM'      ,
                           'Qair'       , 'DATAATM'      ,
@@ -168,7 +180,7 @@ COLLECTIONS:
   tavg1_2D_lnd_Nx.format:       'CFIO',
   tavg1_2D_lnd_Nx.regrid_exch:'../input/tile.data'
   tavg1_2D_lnd_Nx.regrid_name: 'GRIDNAME'
-  tavg1_2D_lnd_Nx.resolution:   720 361,
+  tavg1_2D_lnd_Nx.grid_label: PC720x361-DC
   tavg1_2D_lnd_Nx.deflate:      2,
   tavg1_2D_lnd_Nx.fields:      'WET3'       , 'GridComp'  , 'GWETPROF'     ,
                                'WET2'       , 'GridComp'  , 'GWETROOT'     ,

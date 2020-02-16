@@ -2328,18 +2328,6 @@ contains
           
        end if
 
-
-    elseif( index(tile_grid%gridtype,'c3') /=0 ) then
-
-        lats(1) = lat
-        lons(1) = lon
-        ! note: should call for many points instead of 1 for efficiency
-        call MAPL_GetHorzIJIndex(1, i_inds, j_inds, lon=lons, lat=lats, IMGlob=tile_grid%N_lon, JMGlob=tile_grid%N_lat, &
-             EdgeLons = tile_grid%LonEdge, EdgeLats = tile_grid%LatEdge)
-        i_ind = i_inds(1) 
-        j_ind = j_inds(1) 
-
-
     else
 
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown grid type')

@@ -1,10 +1,12 @@
 #include "MAPL_Generic.h"  
+
 module LDAS_ForceMod
 
   ! collection of *forcing* subroutines for enkf_driver
   ! (originally these routines were in clsm_ensdrv_drv_routines.F90)
 
   ! reichle, 13 Aug 2008
+  use, intrinsic :: iso_c_binding
   use ESMF
   use MAPL_Mod
   use MAPL_ShmemMod
@@ -72,7 +74,7 @@ module LDAS_ForceMod
   character(10), private :: tmpstring10
   character(40), private :: tmpstring40
 
-  real,pointer :: ptrShForce(:,:)=>null()
+  real, contiguous, pointer :: ptrShForce(:,:)=>null()
 
   type local_grid
      integer :: N_lon = 0
@@ -2563,19 +2565,19 @@ contains
     !
     ! lfo_inst/tavg data available from 11 Jun 2013 (start of GEOS-5 ADAS version 5.11)
 
-    G5DAS_defs( 1,:)=(/'SWGDN   ','tavg','tavg1_2d_lfo_Nx','diag','F'/) 
-    G5DAS_defs( 2,:)=(/'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 3,:)=(/'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 4,:)=(/'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 5,:)=(/'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 6,:)=(/'PRECCU  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    G5DAS_defs( 7,:)=(/'PRECLS  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)  
-    G5DAS_defs( 8,:)=(/'PRECSNO ','tavg','tavg1_2d_lfo_Nx','diag','F'/) 
-    G5DAS_defs( 9,:)=(/'PS      ','inst','inst1_2d_lfo_Nx','diag','S'/)  
-    G5DAS_defs(10,:)=(/'HLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)
-    G5DAS_defs(11,:)=(/'TLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    G5DAS_defs(12,:)=(/'QLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    G5DAS_defs(13,:)=(/'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S'/)    
+    G5DAS_defs( 1,:)=[character(len=40):: 'SWGDN   ','tavg','tavg1_2d_lfo_Nx','diag','F'] 
+    G5DAS_defs( 2,:)=[character(len=40):: 'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 3,:)=[character(len=40):: 'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 4,:)=[character(len=40):: 'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 5,:)=[character(len=40):: 'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 6,:)=[character(len=40):: 'PRECCU  ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 7,:)=[character(len=40):: 'PRECLS  ','tavg','tavg1_2d_lfo_Nx','diag','F']  
+    G5DAS_defs( 8,:)=[character(len=40):: 'PRECSNO ','tavg','tavg1_2d_lfo_Nx','diag','F'] 
+    G5DAS_defs( 9,:)=[character(len=40):: 'PS      ','inst','inst1_2d_lfo_Nx','diag','S']  
+    G5DAS_defs(10,:)=[character(len=40):: 'HLML    ','inst','inst1_2d_lfo_Nx','diag','S']
+    G5DAS_defs(11,:)=[character(len=40):: 'TLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    G5DAS_defs(12,:)=[character(len=40):: 'QLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    G5DAS_defs(13,:)=[character(len=40):: 'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S']    
 
 
     ! MERRA-2 file specs with uncorrected (AGCM) precip from the "int" Collection
@@ -2588,80 +2590,80 @@ contains
     !       which are global, as is SWGDN in the FP "lfo" files.
     !       - reichle, 7 Dec 2015
 
-    M2INT_defs( 1,:)=(/'SWGDN   ','tavg','tavg1_2d_rad_Nx','diag','F'/)  ! use "rad" Collection
-    M2INT_defs( 2,:)=(/'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2INT_defs( 3,:)=(/'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2INT_defs( 4,:)=(/'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2INT_defs( 5,:)=(/'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2INT_defs( 6,:)=(/'PRECCU  ','tavg','tavg1_2d_int_Nx','diag','F'/)  ! uncorrected
-    M2INT_defs( 7,:)=(/'PRECLS  ','tavg','tavg1_2d_int_Nx','diag','F'/)  ! uncorrected
-    M2INT_defs( 8,:)=(/'PRECSN  ','tavg','tavg1_2d_int_Nx','diag','F'/)  ! uncorrected
-    M2INT_defs( 9,:)=(/'PS      ','inst','inst1_2d_lfo_Nx','diag','S'/)  
-    M2INT_defs(10,:)=(/'HLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)
-    M2INT_defs(11,:)=(/'TLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    M2INT_defs(12,:)=(/'QLML    ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    M2INT_defs(13,:)=(/'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S'/)    
+    M2INT_defs( 1,:)=[character(len=40):: 'SWGDN   ','tavg','tavg1_2d_rad_Nx','diag','F']  ! use "rad" Collection
+    M2INT_defs( 2,:)=[character(len=40):: 'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 3,:)=[character(len=40):: 'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 4,:)=[character(len=40):: 'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 5,:)=[character(len=40):: 'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 6,:)=[character(len=40):: 'PRECCU  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
+    M2INT_defs( 7,:)=[character(len=40):: 'PRECLS  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
+    M2INT_defs( 8,:)=[character(len=40):: 'PRECSN  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
+    M2INT_defs( 9,:)=[character(len=40):: 'PS      ','inst','inst1_2d_lfo_Nx','diag','S']  
+    M2INT_defs(10,:)=[character(len=40):: 'HLML    ','inst','inst1_2d_lfo_Nx','diag','S']
+    M2INT_defs(11,:)=[character(len=40):: 'TLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2INT_defs(12,:)=[character(len=40):: 'QLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2INT_defs(13,:)=[character(len=40):: 'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S']    
 
-    M2INT_defs(14,:)=(/'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(15,:)=(/'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(16,:)=(/'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(17,:)=(/'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(18,:)=(/'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(19,:)=(/'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(20,:)=(/'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(21,:)=(/'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(22,:)=(/'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(23,:)=(/'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(24,:)=(/'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(25,:)=(/'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(26,:)=(/'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(27,:)=(/'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(28,:)=(/'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(29,:)=(/'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(30,:)=(/'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(31,:)=(/'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(32,:)=(/'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(33,:)=(/'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(34,:)=(/'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(35,:)=(/'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(36,:)=(/'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(37,:)=(/'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(38,:)=(/'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(39,:)=(/'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(40,:)=(/'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(41,:)=(/'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(42,:)=(/'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(43,:)=(/'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(44,:)=(/'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(45,:)=(/'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(46,:)=(/'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(47,:)=(/'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(48,:)=(/'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(49,:)=(/'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(50,:)=(/'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(51,:)=(/'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(52,:)=(/'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(53,:)=(/'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(54,:)=(/'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(55,:)=(/'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(56,:)=(/'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(57,:)=(/'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(58,:)=(/'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(59,:)=(/'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(60,:)=(/'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(61,:)=(/'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(62,:)=(/'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(63,:)=(/'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(64,:)=(/'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(65,:)=(/'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(66,:)=(/'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(67,:)=(/'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(68,:)=(/'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(69,:)=(/'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(70,:)=(/'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(71,:)=(/'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(72,:)=(/'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2INT_defs(73,:)=(/'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
+    M2INT_defs(14,:)=[character(len=40):: 'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(15,:)=[character(len=40):: 'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(16,:)=[character(len=40):: 'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(17,:)=[character(len=40):: 'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(18,:)=[character(len=40):: 'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(19,:)=[character(len=40):: 'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(20,:)=[character(len=40):: 'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(21,:)=[character(len=40):: 'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(22,:)=[character(len=40):: 'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(23,:)=[character(len=40):: 'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(24,:)=[character(len=40):: 'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(25,:)=[character(len=40):: 'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(26,:)=[character(len=40):: 'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(27,:)=[character(len=40):: 'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(28,:)=[character(len=40):: 'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(29,:)=[character(len=40):: 'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(30,:)=[character(len=40):: 'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(31,:)=[character(len=40):: 'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(32,:)=[character(len=40):: 'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(33,:)=[character(len=40):: 'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(34,:)=[character(len=40):: 'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(35,:)=[character(len=40):: 'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(36,:)=[character(len=40):: 'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(37,:)=[character(len=40):: 'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(38,:)=[character(len=40):: 'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(39,:)=[character(len=40):: 'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(40,:)=[character(len=40):: 'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(41,:)=[character(len=40):: 'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(42,:)=[character(len=40):: 'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(43,:)=[character(len=40):: 'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(44,:)=[character(len=40):: 'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(45,:)=[character(len=40):: 'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(46,:)=[character(len=40):: 'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(47,:)=[character(len=40):: 'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(48,:)=[character(len=40):: 'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(49,:)=[character(len=40):: 'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(50,:)=[character(len=40):: 'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(51,:)=[character(len=40):: 'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(52,:)=[character(len=40):: 'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(53,:)=[character(len=40):: 'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(54,:)=[character(len=40):: 'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(55,:)=[character(len=40):: 'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(56,:)=[character(len=40):: 'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(57,:)=[character(len=40):: 'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(58,:)=[character(len=40):: 'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(59,:)=[character(len=40):: 'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(60,:)=[character(len=40):: 'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(61,:)=[character(len=40):: 'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(62,:)=[character(len=40):: 'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(63,:)=[character(len=40):: 'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(64,:)=[character(len=40):: 'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(65,:)=[character(len=40):: 'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(66,:)=[character(len=40):: 'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(67,:)=[character(len=40):: 'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(68,:)=[character(len=40):: 'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(69,:)=[character(len=40):: 'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(70,:)=[character(len=40):: 'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(71,:)=[character(len=40):: 'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(72,:)=[character(len=40):: 'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(73,:)=[character(len=40):: 'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
 
 
     ! MERRA-2 file specs with corrected precip, which could be either
@@ -2676,80 +2678,80 @@ contains
     !
     ! NOTE: Use SWGDN from the "rad" Collection (see comment above).
 
-    M2COR_defs( 1,:)=(/'SWGDN      ','tavg','tavg1_2d_rad_Nx','diag','F'/)  ! use "rad" Collection
-    M2COR_defs( 2,:)=(/'SWLAND     ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2COR_defs( 3,:)=(/'LWGAB      ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2COR_defs( 4,:)=(/'PARDR      ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2COR_defs( 5,:)=(/'PARDF      ','tavg','tavg1_2d_lfo_Nx','diag','F'/)
-    M2COR_defs( 6,:)=(/'PRECCUCORR ','tavg','tavg1_2d_lfo_Nx','diag','F'/)  ! MERRA-2 built-in corrections
-    M2COR_defs( 7,:)=(/'PRECLSCORR ','tavg','tavg1_2d_lfo_Nx','diag','F'/)  ! MERRA-2 built-in corrections  
-    M2COR_defs( 8,:)=(/'PRECSNOCORR','tavg','tavg1_2d_lfo_Nx','diag','F'/)  ! MERRA-2 built-in corrections 
-    M2COR_defs( 9,:)=(/'PS         ','inst','inst1_2d_lfo_Nx','diag','S'/)  
-    M2COR_defs(10,:)=(/'HLML       ','inst','inst1_2d_lfo_Nx','diag','S'/)
-    M2COR_defs(11,:)=(/'TLML       ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    M2COR_defs(12,:)=(/'QLML       ','inst','inst1_2d_lfo_Nx','diag','S'/)    
-    M2COR_defs(13,:)=(/'SPEEDLML   ','inst','inst1_2d_lfo_Nx','diag','S'/)    
+    M2COR_defs( 1,:)=[character(len=40):: 'SWGDN      ','tavg','tavg1_2d_rad_Nx','diag','F']  ! use "rad" Collection
+    M2COR_defs( 2,:)=[character(len=40):: 'SWLAND     ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 3,:)=[character(len=40):: 'LWGAB      ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 4,:)=[character(len=40):: 'PARDR      ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 5,:)=[character(len=40):: 'PARDF      ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 6,:)=[character(len=40):: 'PRECCUCORR ','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections
+    M2COR_defs( 7,:)=[character(len=40):: 'PRECLSCORR ','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections  
+    M2COR_defs( 8,:)=[character(len=40):: 'PRECSNOCORR','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections 
+    M2COR_defs( 9,:)=[character(len=40):: 'PS         ','inst','inst1_2d_lfo_Nx','diag','S']  
+    M2COR_defs(10,:)=[character(len=40):: 'HLML       ','inst','inst1_2d_lfo_Nx','diag','S']
+    M2COR_defs(11,:)=[character(len=40):: 'TLML       ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2COR_defs(12,:)=[character(len=40):: 'QLML       ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2COR_defs(13,:)=[character(len=40):: 'SPEEDLML   ','inst','inst1_2d_lfo_Nx','diag','S']    
 
-    M2COR_defs(14,:)=(/'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(15,:)=(/'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(16,:)=(/'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(17,:)=(/'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(18,:)=(/'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(19,:)=(/'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(20,:)=(/'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(21,:)=(/'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(22,:)=(/'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(23,:)=(/'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(24,:)=(/'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(25,:)=(/'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(26,:)=(/'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(27,:)=(/'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(28,:)=(/'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(29,:)=(/'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(30,:)=(/'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(31,:)=(/'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(32,:)=(/'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(33,:)=(/'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(34,:)=(/'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(35,:)=(/'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(36,:)=(/'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(37,:)=(/'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(38,:)=(/'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(39,:)=(/'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(40,:)=(/'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(41,:)=(/'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(42,:)=(/'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(43,:)=(/'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(44,:)=(/'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(45,:)=(/'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(46,:)=(/'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(47,:)=(/'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(48,:)=(/'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(49,:)=(/'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(50,:)=(/'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(51,:)=(/'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(52,:)=(/'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(53,:)=(/'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(54,:)=(/'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(55,:)=(/'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(56,:)=(/'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(57,:)=(/'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(58,:)=(/'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(59,:)=(/'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(60,:)=(/'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(61,:)=(/'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(62,:)=(/'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(63,:)=(/'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(64,:)=(/'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(65,:)=(/'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(66,:)=(/'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(67,:)=(/'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(68,:)=(/'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(69,:)=(/'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(70,:)=(/'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(71,:)=(/'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(72,:)=(/'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
-    M2COR_defs(73,:)=(/'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F'/)
+    M2COR_defs(14,:)=[character(len=40):: 'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(15,:)=[character(len=40):: 'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(16,:)=[character(len=40):: 'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(17,:)=[character(len=40):: 'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(18,:)=[character(len=40):: 'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(19,:)=[character(len=40):: 'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(20,:)=[character(len=40):: 'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(21,:)=[character(len=40):: 'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(22,:)=[character(len=40):: 'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(23,:)=[character(len=40):: 'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(24,:)=[character(len=40):: 'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(25,:)=[character(len=40):: 'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(26,:)=[character(len=40):: 'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(27,:)=[character(len=40):: 'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(28,:)=[character(len=40):: 'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(29,:)=[character(len=40):: 'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(30,:)=[character(len=40):: 'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(31,:)=[character(len=40):: 'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(32,:)=[character(len=40):: 'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(33,:)=[character(len=40):: 'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(34,:)=[character(len=40):: 'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(35,:)=[character(len=40):: 'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(36,:)=[character(len=40):: 'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(37,:)=[character(len=40):: 'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(38,:)=[character(len=40):: 'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(39,:)=[character(len=40):: 'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(40,:)=[character(len=40):: 'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(41,:)=[character(len=40):: 'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(42,:)=[character(len=40):: 'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(43,:)=[character(len=40):: 'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(44,:)=[character(len=40):: 'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(45,:)=[character(len=40):: 'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(46,:)=[character(len=40):: 'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(47,:)=[character(len=40):: 'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(48,:)=[character(len=40):: 'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(49,:)=[character(len=40):: 'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(50,:)=[character(len=40):: 'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(51,:)=[character(len=40):: 'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(52,:)=[character(len=40):: 'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(53,:)=[character(len=40):: 'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(54,:)=[character(len=40):: 'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(55,:)=[character(len=40):: 'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(56,:)=[character(len=40):: 'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(57,:)=[character(len=40):: 'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(58,:)=[character(len=40):: 'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(59,:)=[character(len=40):: 'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(60,:)=[character(len=40):: 'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(61,:)=[character(len=40):: 'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(62,:)=[character(len=40):: 'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(63,:)=[character(len=40):: 'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(64,:)=[character(len=40):: 'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(65,:)=[character(len=40):: 'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(66,:)=[character(len=40):: 'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(67,:)=[character(len=40):: 'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(68,:)=[character(len=40):: 'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(69,:)=[character(len=40):: 'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(70,:)=[character(len=40):: 'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(71,:)=[character(len=40):: 'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(72,:)=[character(len=40):: 'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(73,:)=[character(len=40):: 'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
 
     
     ! MERRA file specs
@@ -2768,20 +2770,20 @@ contains
     !                                                                       MERRA
     !                                                                     collection
     
-    MERRA_defs( 1,:)=(/'SWGDN  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "rad"
-    MERRA_defs( 2,:)=(/'SWLAND ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 3,:)=(/'LWGAB  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "rad"
-    MERRA_defs( 4,:)=(/'PARDR  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 5,:)=(/'PARDF  ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 6,:)=(/'PRECTOT','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 7,:)=(/'PRECCON','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "flx"
-    MERRA_defs( 8,:)=(/'PRECSNO','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "lnd"
-    MERRA_defs( 9,:)=(/'PS     ','tavg','tavg1_2d_lfo_Nx','diag','S'/)    ! "slv"
-    MERRA_defs(10,:)=(/'HLML   ','tavg','tavg1_2d_lfo_Nx','diag','S'/)    ! "flx"
-    MERRA_defs(11,:)=(/'TLML   ','tavg','tavg1_2d_lfo_Nx','diag','S'/)    ! "flx"
-    MERRA_defs(12,:)=(/'QLML   ','tavg','tavg1_2d_lfo_Nx','diag','S'/)    ! "flx"
-    MERRA_defs(13,:)=(/'ULML   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "flx"
-    MERRA_defs(14,:)=(/'VLML   ','tavg','tavg1_2d_lfo_Nx','diag','F'/)    ! "flx"
+    MERRA_defs( 1,:)=[character(len=40):: 'SWGDN  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "rad"
+    MERRA_defs( 2,:)=[character(len=40):: 'SWLAND ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 3,:)=[character(len=40):: 'LWGAB  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "rad"
+    MERRA_defs( 4,:)=[character(len=40):: 'PARDR  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 5,:)=[character(len=40):: 'PARDF  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 6,:)=[character(len=40):: 'PRECTOT','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 7,:)=[character(len=40):: 'PRECCON','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
+    MERRA_defs( 8,:)=[character(len=40):: 'PRECSNO','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 9,:)=[character(len=40):: 'PS     ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "slv"
+    MERRA_defs(10,:)=[character(len=40):: 'HLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
+    MERRA_defs(11,:)=[character(len=40):: 'TLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
+    MERRA_defs(12,:)=[character(len=40):: 'QLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
+    MERRA_defs(13,:)=[character(len=40):: 'ULML   ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
+    MERRA_defs(14,:)=[character(len=40):: 'VLML   ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
     
     ! --------------------------------------------------------------------
     !
@@ -3030,7 +3032,7 @@ contains
           
        end do  ! j=1,2
 
-       call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord%com_lon,tile_coord%com_lat,met_hinterp)
+       call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,met_hinterp)
 
        !fid = ptrNode%fid 
 
@@ -3142,7 +3144,7 @@ contains
                met_path_tmp, met_tag_tmp,                                        &
                GEOSgcm_defs(GEOSgcm_var,:), met_file_ext)
 
-          call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord%com_lon,tile_coord%com_lat,met_hinterp)
+          call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,met_hinterp)
 
           !fid = ptrNode%fid
 
@@ -3433,6 +3435,9 @@ contains
     ! real,allocatable :: tmp_grid(:,:)
      integer begDate, begTime, seconds, minutes, incSecs
      integer iistart(3), iicount(3), timeIndex
+     integer istart(4), icount(4) ! cs grid
+     real, pointer :: tmpShared(:,:,:,:) ! cs grid
+     type(c_ptr) ::   c_address
      integer nv_id,imin, jmin, imax, jmax,ierr
      integer DiffDate
 
@@ -3445,7 +3450,7 @@ contains
      !integer :: rank,myid, io_rank, total_prcs
      !integer :: length
      character(*),parameter :: Iam="LDAS_getvar" 
-
+     logical :: isCubed
     ! call ESMF_VmGetCurrent(vm, rc=ierr)
     ! VERIFY_(ierr)
     ! call ESMF_VmGet(vm, mpicommunicator=comm, rc=ierr)
@@ -3453,10 +3458,21 @@ contains
     ! call MPI_COMM_SIZE(comm,total_prcs,ierr)
     ! call MPI_COMM_RANK(comm,myid,ierr)
      rc = 0
-     iistart = 1
-     iicount(1) = local_info%N_lon
-     iicount(2) = local_info%N_lat
-     iicount(3) = 1
+     isCubed = .false.
+     if(local_info%N_lat == 6*local_info%N_lon) then
+        isCubed = .true.
+        istart = 1
+        icount(1) = local_info%N_lon
+        icount(2) = local_info%N_lon
+        icount(3) = 6
+        icount(4) = 1
+     else
+        iistart = 1
+        iicount(1) = local_info%N_lon
+        iicount(2) = local_info%N_lat
+        iicount(3) = 1
+     endif
+
      if (.not. notime ) then
         call GetBegDateTime ( fid, begDate, begTime, incSecs, rc )
         if (rc .NE. 0) then
@@ -3488,14 +3504,25 @@ contains
         else
            timeIndex = seconds/incSecs + 1
         endif
-        iistart(3) =timeIndex
+        iistart(3)=timeIndex
+        istart(4) =timeIndex
      endif
      ! node root read and share
      call MAPL_SyncSharedMemory(rc=status)
+
      if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
         rc= NF90_INQ_VARID( fid, vname, nv_id)
-        rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount) 
+        ASSERT_( rc == nf90_noerr)
+        if (isCubed) then
+          c_address = c_loc(ptrShForce(1,1))
+          call c_f_pointer(c_address,tmpShared,shape=icount)
+          rc= NF90_GET_VAR( fid, nv_id, tmpShared, start=istart,count=icount) 
+        else
+          rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount) 
+        endif
+        ASSERT_( rc == nf90_noerr)
      endif
+
      call MAPL_SyncSharedMemory(rc=status)
 
   end subroutine LDAS_GetVar
@@ -3963,6 +3990,7 @@ contains
     ! reichle, 30 Oct 2017: added FP transition from f516 to f517
     ! reichle,  9 Jul 2018: added FP transition from f517 to f521
     ! reichle, 10 Oct 2019: added FP transition from f521 to f522
+    ! reichle, 17 Jan 2020: added FP transition from f522 to f525
     !    
     ! ---------------------------------------------------------------------------    
 
@@ -4002,6 +4030,7 @@ contains
     type(date_time_type)        :: dt_end_f517_fp   
     type(date_time_type)        :: dt_end_f521_fp   
     type(date_time_type)        :: dt_end_f522_fp
+    type(date_time_type)        :: dt_end_f525_fp
 
     character(len=*), parameter :: Iam = 'parse_G5DAS_met_tag'
     character(len=400) :: err_msg
@@ -4088,7 +4117,8 @@ contains
     ! f516_fp    | 24 Jan 2017  |  1 Nov 2017
     ! f517_fp    |  1 Nov 2017  | 11 Jul 2018
     ! f521_fp    | 11 Jul 2018  | 13 Mar 2019
-    ! f522_fp    | 13 Mar 2019  |   (present)
+    ! f522_fp    | 13 Mar 2019  | 30 Jan 2020
+    ! f525_fp    | 30 Jan 2020  |   (present)
     !
     ! Official stream transition times (as defined
     ! by GMAO ops group) are:
@@ -4099,6 +4129,7 @@ contains
     ! FP f516  --> f517  :  1 Nov 2017, 6z ADAS analysis
     ! FP f517  --> f521  : 11 Jul 2018, 6z ADAS analysis
     ! FP f521  --> f522  : 13 Mar 2019, 6z ADAS analysis
+    ! FP f522  --> f525  : 30 Jan 2020, 6z ADAS analysis
     !
     ! Official stream transition times refer to the definition
     ! of the official FP files with generic file names on the 
@@ -4161,12 +4192,19 @@ contains
     dt_end_f521_fp%min     = 0
     dt_end_f521_fp%sec     = 0
 
-    dt_end_f522_fp%year    = 9999
+    dt_end_f522_fp%year    = 2020
     dt_end_f522_fp%month   = 1
-    dt_end_f522_fp%day     = 1
-    dt_end_f522_fp%hour    = 0
+    dt_end_f522_fp%day     = 30
+    dt_end_f522_fp%hour    = 3
     dt_end_f522_fp%min     = 0
     dt_end_f522_fp%sec     = 0  
+
+    dt_end_f525_fp%year    = 9999
+    dt_end_f525_fp%month   = 1
+    dt_end_f525_fp%day     = 1
+    dt_end_f525_fp%hour    = 0
+    dt_end_f525_fp%min     = 0
+    dt_end_f525_fp%sec     = 0  
 
     ! ----------------------------------------------------
 
@@ -4308,9 +4346,15 @@ contains
           
           stream = 'f521_fp'            ! use GEOS-5.21.x output
 
-       else
+      elseif (datetime_le_refdatetime( date_time, dt_end_f522_fp )) then
+          
+          ! Note "less-than-or-equal" (_le_) above
           
           stream = 'f522_fp'            ! use GEOS-5.22.x output
+
+       else
+          
+          stream = 'f525_fp'            ! use GEOS-5.25.x output
 
        end if
 
@@ -4486,32 +4530,32 @@ contains
 
 !**********************************************************
 
-  subroutine GEOS_openfile(FileOpenedHash,fname_full,fid,lons,lats,m_hinterp)
+  subroutine GEOS_openfile(FileOpenedHash, fname_full, fid, tile_coord, m_hinterp, rc)
       use netcdf
       implicit none
       include 'mpif.h'
       type(Hash_Table),intent(inout) :: FileOpenedHash
       character(*),intent(in)        :: fname_full
       integer,intent(out) :: fid
-      real,intent(in) ::lats(:),lons(:)
+      type(tile_coord_type), dimension(:), intent(in) :: tile_coord
       integer,intent(in) :: m_hinterp
+      integer, optional, intent(out) :: rc
  
-      integer :: N_lat,N_lon,N_cat
+      integer :: N_lat,N_lon,N_cat, N_f
       integer,allocatable :: i1(:),i2(:),j1(:),j2(:)
       real,allocatable :: x1(:),x2(:),y1(:),y2(:)
       integer :: ierr,k
-      integer :: latid, lonid
+      integer :: latid, lonid, nfid, xdimid
       real :: dlon,dlat,ll_lon,ll_lat,this_lon,this_lat,tmp_lon,tmp_lat
       integer :: icur,jcur,inew,jnew
       real :: xcur,ycur,xnew,ynew
       character(len=100) :: err_msg
       character(*),parameter :: Iam="GEOS_openfile"
+      logical :: isCubed
       ! add mpi
       type(ESMF_VM) :: vm
       integer :: comm,total_prcs,myrank
-      integer :: rc,status
-      !integer :: imin,imax,jmin,jmax
-      !integer,allocatable :: imins(:),imaxs(:),jmins(:),jmaxs(:)
+      integer :: status
 
       call FileOpenedHash%init()
 
@@ -4519,159 +4563,167 @@ contains
       VERIFY_(status)
       call ESMF_VmGet(vm, mpicommunicator=comm, rc=status)
       VERIFY_(status)
-      !call MPI_COMM_SIZE(comm,total_prcs,ierr)
-      !call MPI_COMM_RANK(comm,myrank,ierr)
-  
-      !if(myrank == total_prcs -1) then
-      !  allocate(imins(0:total_prcs-1))
-      !  allocate(jmins(0:total_prcs-1))
-      !  allocate(imaxs(0:total_prcs-1))
-      !  allocate(jmaxs(0:total_prcs-1))
-      !else
-      !  allocate(imins(0))
-      !  allocate(jmins(0))
-      !  allocate(imaxs(0))
-      !  allocate(jmaxs(0))
-      !endif
 
       call FileOpenedHash%get(fname_full,fid)
-      if( fid < 0) then
+
+      if( fid == -9999 ) then ! not open yet
          ierr=nf90_open(fname_full,IOR(NF90_NOWRITE, NF90_MPIIO), fid, &
-              comm = comm,info = MPI_INFO_NULL)
+           comm = comm,info = MPI_INFO_NULL)
+
          if(master_logit) then
-            write(logunit,*) "opening file: "//trim(fname_full)
+           write(logunit,*) "opening file: "//trim(fname_full)
          endif
-         if(ierr /= nf90_noerr) then
-            print *, trim(nf90_strerror(ierr))
-            write(logunit,*) "failed opening file: "//trim(fname_full)
-            stop 2
-         end if
+         ASSERT_( ierr == nf90_noerr)
+         call FileOpenedHash%put(fname_full,fid)
+      endif
+     ! check if it is cs grid
+      ierr =  nf90_inq_dimid(fid,"nf",nfid)
+
+      if (ierr == nf90_noerr) then ! it is cs grid if face dimension is found
+
+         ierr  =  nf90_inq_dimid(fid,"Xdim",xdimid)
+         ASSERT_( ierr == nf90_noerr)
+         ierr  =  nf90_Inquire_Dimension(fid,nfid,  len=N_f)
+         ASSERT_( ierr == nf90_noerr)
+         ASSERT_( n_f == 6)
+         ierr  =  nf90_Inquire_Dimension(fid,xdimid,len=N_lon)
+         ASSERT_( ierr == nf90_noerr)
+         N_lat = N_f*N_lon
+         ASSERT_( m_hinterp == 0)
+         isCubed = .true.       
+      else
          ierr =  nf90_inq_dimid(fid,"lat",latid)
          ierr =  nf90_inq_dimid(fid,"lon",lonid)
          ierr =  nf90_Inquire_Dimension(fid,latid,len=N_lat)
          ierr =  nf90_Inquire_Dimension(fid,lonid,len=N_lon)
-         N_cat = size(lats)
-
-         ! if the forcing resolution changes, change the local info
-         if( local_info%N_lat /= N_lat .or. local_info%N_lon /= N_lon) then 
-  
-            dlon = 360./real(N_lon)
-            dlat = 180./real(N_lat-1)
-            ll_lon = -180. - dlon/2.
-            ll_lat =  -90. - dlat/2.
-
-            allocate(i1(N_cat),j1(N_cat))
-            allocate(i2(N_cat),j2(N_cat),x1(N_cat),x2(N_cat),y1(N_cat),y2(N_cat))
-
-            select case (m_hinterp)
-         
-            case (0)  ! nearest-neighbor
-
-             ! compute indices for nearest neighbor interpolation from GEOSgcm grid
-             ! to tile space
-
-                do k=1,N_cat
-
-                ! ll_lon and ll_lat refer to lower left corner of grid cell
-                ! (as opposed to the grid point in the center of the grid cell)
-
-                   this_lon = lons(k)
-                   this_lat = lats(k)
-
-                   i1(k) = ceiling((this_lon - ll_lon)/dlon)
-                   j1(k) = ceiling((this_lat - ll_lat)/dlat)
-
-                ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
-                !  we now have i1=(grid%N_lon+1)
-                ! This needs to be fixed as follows:
-
-                   if (i1(k)> N_lon)  i1(k)=1
-
-                end do
-
-            case (1)  ! bilinear interpolation
-
-             ! compute indices of nearest neighbors needed for bilinear
-             ! interpolation from GEOSgcm grid to tile space
-
-
-               do k=1,N_cat
-
-                ! ll_lon and ll_lat refer to lower left corner of grid cell
-                ! (as opposed to the grid point in the center of the grid cell)
-
-                ! pchakrab: For bilinear interpolation, for each tile, we need:
-                !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
-                !  i1, i2, j1, j2 (defining the indices of four neighbors)
-
-                ! find nearest neighbor forcing grid cell ("1")
-
-                ! com of kth tile
-                   this_lon = lons(k)
-                   this_lat = lats(k)
-                   icur =  ceiling((this_lon - ll_lon)/dlon)
-                   jcur =  ceiling((this_lat - ll_lat)/dlat)
-
-                ! wrap-around
-                   if (icur>N_lon) icur = 1
-                   if (jcur>N_lat) then
-                      err_msg = "encountered tile near the poles"
-                      call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                   end if
-                   xcur = real(icur-1)*dlon - 180.0
-                   ycur = real(jcur-1)*dlat -  90.0
-                   i1(k) = icur
-                   j1(k) = jcur
-                   x1(k) = xcur    ! lon of grid cell center
-                   y1(k) = ycur    ! lat of grid cell center
-
-                ! find forcing grid cell ("2") diagonally across from icur, jcur
-
-                   tmp_lon = this_lon + 0.5*dlon
-                   tmp_lat = this_lat + 0.5*dlat
-                   inew =  ceiling((tmp_lon  - ll_lon)/dlon)
-                   jnew =  ceiling((tmp_lat  - ll_lat)/dlat)
-                   if (inew==icur) inew = inew - 1
-                   if (jnew==jcur) jnew = jnew - 1
-                   xnew = real(inew-1)*dlon - 180.0
-                   ynew = real(jnew-1)*dlat -  90.0
-                   ! wrap-around
-                   if (inew==0) inew = N_lon
-                   if (inew>N_lon) inew = 1
-                   if ((jnew==0) .or. (jnew>N_lat)) then
-                      err_msg = "encountered tile near the poles"
-                      call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                   end if
-
-                   i2(k) = inew
-                   j2(k) = jnew
-                   x2(k) = xnew    ! lon of grid cell center
-                   y2(k) = ynew    ! lat of grid cell center
-                end do
-
-            case default
-
-               err_msg = "unknown horizontal interpolation method"
-               call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-            end select
-            local_info%N_lat = N_lat
-            local_info%N_lon = N_lon
-            local_info%N_cat = N_cat
-            call move_alloc(i1,local_info%i1)
-            call move_alloc(i2,local_info%i2)
-            call move_alloc(j1,local_info%j1)
-            call move_alloc(j2,local_info%j2)
-            call move_alloc(x1,local_info%x1)
-            call move_alloc(x2,local_info%x2)
-            call move_alloc(y1,local_info%y1)
-            call move_alloc(y2,local_info%y2)
-          endif ! new N_lon, N_lat
-
-          call FileOpenedHash%put(fname_full,fid)
-
+         isCubed = .false.       
+         dlon = 360./real(N_lon)
+         dlat = 180./real(N_lat-1)
+         ll_lon = -180. - dlon/2.
+         ll_lat =  -90. - dlat/2.
       endif
 
+      N_cat = size(tile_coord,1)
+
+      ! if dimensions are the same, no need to recalculate the local_info
+      if( local_info%N_lat == N_lat .and. local_info%N_lon == N_lon ) then
+         RETURN_(ESMF_SUCCESS)
+      endif
+
+      allocate(i1(N_cat),j1(N_cat))
+      allocate(i2(N_cat),j2(N_cat),x1(N_cat),x2(N_cat),y1(N_cat),y2(N_cat))
+
+      select case (m_hinterp)
+   
+      case (0)  ! nearest-neighbor
+
+       ! compute indices for nearest neighbor interpolation from GEOSgcm grid
+       ! to tile space
+          if( isCubed ) then ! cs grid
+             ! i_indg and j_indg are changed to LatLon grid
+             do k=1,N_cat
+                i1(k) = tile_coord(k)%cs_i_indg
+                j1(k) = tile_coord(k)%cs_j_indg
+             enddo
+          else
+             do k=1,N_cat
+
+          ! ll_lon and ll_lat refer to lower left corner of grid cell
+          ! (as opposed to the grid point in the center of the grid cell)
+
+                this_lon = tile_coord(k)%com_lon
+                this_lat = tile_coord(k)%com_lat
+
+                i1(k) = ceiling((this_lon - ll_lon)/dlon)
+                j1(k) = ceiling((this_lat - ll_lat)/dlat)
+
+          ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
+          !  we now have i1=(grid%N_lon+1)
+          ! This needs to be fixed as follows:
+
+                if (i1(k)> N_lon)  i1(k)=1
+
+             end do
+          endif ! cs grid
+      case (1)  ! bilinear interpolation
+
+       ! compute indices of nearest neighbors needed for bilinear
+       ! interpolation from GEOSgcm grid to tile space
+
+
+         do k=1,N_cat
+
+          ! ll_lon and ll_lat refer to lower left corner of grid cell
+          ! (as opposed to the grid point in the center of the grid cell)
+
+          ! pchakrab: For bilinear interpolation, for each tile, we need:
+          !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
+          !  i1, i2, j1, j2 (defining the indices of four neighbors)
+
+          ! find nearest neighbor forcing grid cell ("1")
+
+          ! com of kth tile
+             this_lon = tile_coord(k)%com_lon
+             this_lat = tile_coord(k)%com_lat
+             icur =  ceiling((this_lon - ll_lon)/dlon)
+             jcur =  ceiling((this_lat - ll_lat)/dlat)
+
+          ! wrap-around
+             if (icur>N_lon) icur = 1
+             if (jcur>N_lat) then
+                err_msg = "encountered tile near the poles"
+                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+             end if
+             xcur = real(icur-1)*dlon - 180.0
+             ycur = real(jcur-1)*dlat -  90.0
+             i1(k) = icur
+             j1(k) = jcur
+             x1(k) = xcur    ! lon of grid cell center
+             y1(k) = ycur    ! lat of grid cell center
+
+          ! find forcing grid cell ("2") diagonally across from icur, jcur
+
+             tmp_lon = this_lon + 0.5*dlon
+             tmp_lat = this_lat + 0.5*dlat
+             inew =  ceiling((tmp_lon  - ll_lon)/dlon)
+             jnew =  ceiling((tmp_lat  - ll_lat)/dlat)
+             if (inew==icur) inew = inew - 1
+             if (jnew==jcur) jnew = jnew - 1
+             xnew = real(inew-1)*dlon - 180.0
+             ynew = real(jnew-1)*dlat -  90.0
+             ! wrap-around
+             if (inew==0) inew = N_lon
+             if (inew>N_lon) inew = 1
+             if ((jnew==0) .or. (jnew>N_lat)) then
+                err_msg = "encountered tile near the poles"
+                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+             end if
+
+             i2(k) = inew
+             j2(k) = jnew
+             x2(k) = xnew    ! lon of grid cell center
+             y2(k) = ynew    ! lat of grid cell center
+          end do
+
+      case default
+
+         err_msg = "unknown horizontal interpolation method"
+         call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+
+      end select
+      local_info%N_lat = N_lat
+      local_info%N_lon = N_lon
+      local_info%N_cat = N_cat
+      call move_alloc(i1,local_info%i1)
+      call move_alloc(i2,local_info%i2)
+      call move_alloc(j1,local_info%j1)
+      call move_alloc(j2,local_info%j2)
+      call move_alloc(x1,local_info%x1)
+      call move_alloc(x2,local_info%x2)
+      call move_alloc(y1,local_info%y1)
+      call move_alloc(y2,local_info%y2)
+      
+      RETURN_(ESMF_SUCCESS)
   end subroutine GEOS_openfile 
 
   subroutine GEOS_closefile(fid)

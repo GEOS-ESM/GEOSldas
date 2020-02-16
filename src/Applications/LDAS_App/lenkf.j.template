@@ -16,18 +16,22 @@
 #######################################################################
 #    System Settings and Architecture Specific Environment Variables
 #######################################################################
-
+umask 022
 limit stacksize unlimited
+setenv ARCH `uname`
+
 setenv EXPID      MY_EXPID
 setenv EXPDOMAIN  MY_EXPDOMAIN
 setenv EXPDIR     MY_EXPDIR
 setenv ESMADIR    $EXPDIR/build/
 setenv GEOSBIN    $ESMADIR/bin/
 source $GEOSBIN/g5_modules
-setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0
-#setenv MKL_CBWR SSE4_2 # ensure zero-diff across archs
-#setenv MV2_ON_DEMAND_THRESHOLD 8192 # MVAPICH2
+
+setenv I_MPI_DAPL_UD enable
+
+setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
 setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
+setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 
 #######################################################################
 #             Experiment Specific Environment Variables
@@ -71,7 +75,7 @@ set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 #######################################################################
 
 cd $SCRDIR
-/bin/rm -rf *.*
+/bin/rm -rf *
 /bin/cp     $HOMDIR/cap_restart .
 /bin/cp -f  $HOMDIR/*.rc .
 /bin/cp -f  $HOMDIR/*.nml .
@@ -281,8 +285,8 @@ if( $DEBUGGER == 2) then
     exit
 endif
 
-#$GEOSBIN/esma_mpirun -np $numprocs $GEOSBIN/GEOSldas.x
-mpirun -map-by core --mca btl ^vader -np $numprocs $GEOSBIN/GEOSldas.x
+$GEOSBIN/RmShmKeys_sshmpi.csh
+$RUN_CMD $numprocs $GEOSBIN/GEOSldas.x
 
 if( -e EGRESS.ldas ) then
    set rc = 0
@@ -477,13 +481,13 @@ set new_mwrtm_file  =  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXP
 set new_catch_param =  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXPID}.ldas_catparam.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}z.bin
 
 if (-f $old_mwrtm_file) then
-  /bin/cp $old_mwrtm_file $new_mwrtm_file
+  /bin/ln -s $old_mwrtm_file $new_mwrtm_file
   /bin/rm ../input/restart/mwrtm_param_rst
   /bin/ln -s $new_mwrtm_file ../input/restart/mwrtm_param_rst
 endif
 
 if (-f $old_catch_param) then
-  /bin/cp $old_catch_param $new_catch_param
+  /bin/ln -s $old_catch_param $new_catch_param
 endif
 
 # Move Intermediate Checkpoints to RESTARTS directory
@@ -514,8 +518,9 @@ while ($inens < $NENS)
 
     set rstf = 'landpert'
     if (-f ${rstf}${ENSID}_internal_checkpoint ) then
-       ncks -4 -O -C -x -v lat,lon -L 2 ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
-       /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
+       /bin/mv  ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+       #ncks -4 -O -C -x -v lat,lon -L 2 ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+       #/bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
        /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
        /bin/ln -s  $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin} $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
     endif
