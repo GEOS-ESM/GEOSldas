@@ -26,8 +26,6 @@ module preprocess_module
        read_cat_param
    use LDAS_ensdrv_init_routines, only: io_domain_files
    use MAPL_IOMod
-   use gFTL_StringVector
-   use pFIO
    integer,parameter :: excluded_tile_typ_land=1100
 end module
 
@@ -524,15 +522,8 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
    integer :: n,istat, filetype, rc, nVars, i, j, ndims, dimSizes(3)
    real,allocatable :: tmp1(:)
    real,allocatable :: tmp2(:,:)
-   type(Netcdf4_FileFormatter) :: InFmt,OutFmt
-   type(FileMetadata)        :: OutCfg
-   type(FileMetadata)        :: InCfg
-   integer                   :: dim1,dim2
-   type(StringVariableMap), pointer :: variables
-   type(Variable), pointer :: var
-   type(StringVariableMapIterator) :: var_iter
-   type(StringVector), pointer :: var_dimensions
-   character(len=:), pointer :: vname,dname
+   type(MAPL_NCIO)  :: InNCIO, OutNCIO
+   character*256    :: vname
    integer :: N_catg,N_catf
    integer,dimension(:),allocatable :: f2g
 
@@ -585,62 +576,46 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
    else
          
          ! filetype = 0 : nc4 output file will also be nc4
-      
-      call InFmt%open(trim(orig_catch), pFIO_READ,rc=rc)
-      InCfg  = InFmt%read(rc=rc)
-      OutCfg = InCfg
-      
-      call OutCfg%modify_dimension('tile', size(f2g), rc=rc)
 
-      call OutFmt%create(trim(new_catch),rc=rc)
-      call OutFmt%write(OutCfg,rc=rc)
+      InNCIO = MAPL_NCIOOpen(orig_catch,rc=rc) 
 
-      variables => InCfg%get_variables()
-      var_iter = variables%begin()
-      do while (var_iter /= variables%end())
+      call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
+      call MAPL_NCIOChangeRes(InNCIO,OutNCIO,tileSize=size(f2g),rc=rc)
+      call MAPL_NCIOSet( OutNCIO,filename=new_catch )
+      call MAPL_NCIOCreateFile(OutNCIO)  
 
-         vname => var_iter%key()
-         var => var_iter%value()
-         var_dimensions => var%get_dimensions()
-
-         ndims = var_dimensions%size()
-
-         if (trim(vname) =='time') then
-             call var_iter%next()
-             cycle
-         endif
-
+      do n=1,nVars
+            
+         call MAPL_NCIOGetVarName(InNCIO,n,vname)
+            
+         call MAPL_NCIOVarGetDims(InNCIO,vname,nDims,dimSizes)
          if (ndims == 1) then
-            call MAPL_VarRead (InFmt,vname,tmp1)
-            call MAPL_VarWrite(OutFmt,vname,tmp1(f2g))
+            call MAPL_VarRead ( InNCIO,vname,tmp1)
+            call MAPL_VarWrite(OutNCIO,vname,tmp1(f2g))
+          
          else if (ndims == 2) then
-
-            dname => var%get_ith_dimension(2)
-            dim1=InCfg%get_dimension(dname)
-            do j=1,dim1
-               call MAPL_VarRead ( InFmt,vname,tmp1 ,offset1=j)
-               call MAPL_VarWrite(OutFmt,vname,tmp1(f2g),offset1=j)
+               
+            do j=1,dimSizes(2)
+               call MAPL_VarRead ( InNCIO,vname,tmp1     ,offset1=j)
+               call MAPL_VarWrite(OutNCIO,vname,tmp1(f2g),offset1=j)
             enddo
-
+               
          else if (ndims == 3) then
-
-            dname => var%get_ith_dimension(2)
-            dim1=InCfg%get_dimension(dname)
-            dname => var%get_ith_dimension(3)
-            dim2=InCfg%get_dimension(dname)
-            do i=1,dim2
-               do j=1,dim1
-                 call MAPL_VarRead ( InFmt,vname,tmp1 ,offset1=j,offset2=i)
-                 call MAPL_VarWrite(OutFmt,vname,tmp1(f2g) ,offset1=j,offset2=i)
-              enddo
-           enddo
-
+               
+            do i=1,dimSizes(3)
+               do j=1,dimSizes(2)
+                  call MAPL_VarRead ( InNCIO,vname,tmp1     ,offset1=j,offset2=i)
+                  call MAPL_VarWrite(OutNCIO,vname,tmp1(f2g),offset1=j,offset2=i)
+               enddo
+            enddo
+               
          end if
-         call var_iter%next()
       enddo
-      call inFmt%close(rc=rc)
-      call OutFmt%close(rc=rc)
-   end if ! file type nc4
+                
+      call MAPL_NCIOClose      (InNCIO)
+      call MAPL_NCIOClose      (OutNCIO)
+         
+   end if
    print*, "done create local catchment restart"
 end subroutine createLocalCatchRestart
 
@@ -652,13 +627,8 @@ subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
    integer,parameter :: subtile=4
    integer :: n,istat, filetype, rc, nVars, i, j, ndims, dimSizes(3)
    real,allocatable :: tmp1(:)
-   type(Netcdf4_FileFormatter) :: InFmt,OutFmt
-   type(FileMetadata)        :: OutCfg
-   type(FileMetadata)        :: InCfg
-   
-   type(StringVariableMap), pointer :: variables
-   type(StringVariableMapIterator) :: var_iter
-   character(len=:), pointer :: vname
+   type(MAPL_NCIO)  :: InNCIO, OutNCIO
+   character*256    :: vname
    integer :: N_catg,N_catf
    integer,dimension(:),allocatable :: f2g
 
@@ -670,28 +640,26 @@ subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
    allocate(tmp1(N_catg))
          
    ! nc4 in and out file will also be nc4
-   call InFmt%open(trim(orig_mwrtm), pFIO_READ,rc=rc)
-   InCfg = InFmt%read(rc=rc)
-   OutCfg = InCfg
 
-   call OutCfg%modify_dimension('tile', size(f2g), rc=rc)
+   InNCIO = MAPL_NCIOOpen(orig_mwrtm,rc=rc) 
 
-   call OutFmt%create(trim(new_mwrtm),rc=rc)
-   call OutFmt%write(OutCfg,rc=rc)
+   call MAPL_NCIOGetDimSizes(InNCIO,nVars=nVars)
+   call MAPL_NCIOChangeRes(InNCIO,OutNCIO,tileSize=size(f2g),rc=rc)
+   call MAPL_NCIOSet( OutNCIO,filename=new_mwrtm )
+   call MAPL_NCIOCreateFile(OutNCIO)  
 
-   variables => InCfg%get_variables()
-   var_iter = variables%begin()
-   do while (var_iter /= variables%end())
-      vname => var_iter%key()
-      call MAPL_VarRead (InFmt,vname,tmp1)
-      call MAPL_VarWrite(OutFmt,vname,tmp1(f2g))
-      call var_iter%next()
+   do n=1,nVars
+            
+      call MAPL_NCIOGetVarName(InNCIO,n,vname)
+            
+      call MAPL_VarRead ( InNCIO,vname,tmp1)
+      call MAPL_VarWrite(OutNCIO,vname,tmp1(f2g))
+          
    enddo
+   call MAPL_NCIOClose      (InNCIO)
+   call MAPL_NCIOClose      (OutNCIO)
 
-   call inFmt%close(rc=rc)
-   call OutFmt%close(rc=rc)
-
-   deallocate(f2g,tmp1)
+   !deallocate(f2g,tmp1)
          
 end subroutine createLocalmwRTMRestart
 
@@ -704,19 +672,10 @@ subroutine createLocalVegRestart(orig_veg, new_veg)
    real,allocatable :: rity(:)
    real,allocatable :: z2(:)
    real,allocatable :: ascatz0(:)
-   real,allocatable :: tmp(:)
 
    integer :: N_catg,N_catf
    integer,dimension(:),allocatable :: f2g
-   integer :: filetype
-   type(Netcdf4_FileFormatter) :: InFmt,OutFmt
-   type(FileMetadata)        :: OutCfg
-   type(FileMetadata)        :: InCfg
 
-   type(StringVariableMap), pointer :: variables
-   type(StringVariableMapIterator) :: var_iter
-   character(len=:), pointer :: vname
-   integer :: rc
 
    call readsize(N_catg,N_catf)
    if(N_catg == N_catf) return
@@ -726,47 +685,17 @@ subroutine createLocalVegRestart(orig_veg, new_veg)
    allocate(rity(N_catg))
    allocate(z2(N_catg))
    allocate(ascatz0(N_catg))
+   open(10,file=trim(orig_veg),form='unformatted',action='read',status='old',iostat=istat)
+   open(20,file=trim(new_veg),form='unformatted',action='write')
+   read(10) rity 
+   read(10) z2 
+   read(10) ascatz0 
+   write(20) rity(f2g)
+   write(20) z2(f2g) 
+   write(20) ascatz0(f2g) 
 
-   call MAPL_NCIOGetFileType(orig_veg, filetype,rc=rc)
-
-   if (filetype /=0) then
-      open(10,file=trim(orig_veg),form='unformatted',action='read',status='old',iostat=istat)
-      open(20,file=trim(new_veg),form='unformatted',action='write')
-      read(10) rity 
-      read(10) z2 
-      read(10) ascatz0 
-      write(20) rity(f2g)
-      write(20) z2(f2g) 
-      write(20) ascatz0(f2g) 
-
-      close(10)
-      close(20)
-   else
-    ! nc4 in and out file will also be nc4
-      call InFmt%open(trim(orig_veg), pFIO_READ,rc=rc)
-      InCfg = InFmt%read(rc=rc)
-      OutCfg = InCfg
-
-      call OutCfg%modify_dimension('tile', size(f2g), rc=rc)
-
-      call OutFmt%create(trim(new_veg),rc=rc)
-      call OutFmt%write(OutCfg,rc=rc)
-
-      variables => InCfg%get_variables()
-      var_iter = variables%begin()
-      allocate(tmp(N_catg))
-      do while (var_iter /= variables%end())
-         vname => var_iter%key()
-         call MAPL_VarRead (InFmt,vname,tmp)
-         call MAPL_VarWrite(OutFmt,vname,tmp(f2g))
-         call var_iter%next()
-      enddo
-
-      call inFmt%close(rc=rc)
-      call OutFmt%close(rc=rc)
-      deallocate(tmp)
-   endif
-   deallocate(f2g)
+   close(10)
+   close(20)
 
 end subroutine createLocalVegRestart
 
@@ -992,7 +921,7 @@ subroutine optimize_latlon(fname,arg)
       print*, "JMS.rc", JMS
       if( sum(JMS) /= JMGLOB) then
         print*, sum(JMS), JMGLOB
-        stop ("wrong cs-domain distribution")
+        stop("wrong cs-domain distribution")
       endif
       tmpint = 0
       k = 0
@@ -1010,10 +939,13 @@ subroutine optimize_latlon(fname,arg)
       write(10,'(A)') "GEOSldas.GRIDNAME:  " // trim(gridname)
       write(10,'(A)') "GEOSldas.GRID_TYPE:  Cubed-Sphere"
       write(10,'(A)') "GEOSldas.NF:  6"
-      write(10,'(A,I6)') "GEOSldas.IM_WORLD: ", IMGLOB
+      write(10,'(A,I5)') "GEOSldas.NY: ",N_proc
+      write(10,'(A)') "GEOSldas.NX:   1"
       write(10,'(A)') "GEOSldas.LM:   1"
       write(10,'(A,I5)') "NY: ",N_proc
       write(10,'(A)') "NX:   1"
+      write(10,'(A,I6)') "GEOSldas.IM_WORLD: ", IMGLOB
+      write(10,'(A)') "GEOSldas.JMS_FILE:    JMS.rc"
       write(10,'(A)') "JMS_FILE:    JMS.rc"
       close(10)
        
@@ -1134,8 +1066,8 @@ subroutine optimize_latlon(fname,arg)
 
       print*,"land_distribute: ",local_land
 
-      if( sum(local_land) /= total_land) stop ("wrong distribution")
-      if( sum(IMS) /= N_lon) stop ("wrong domain distribution")
+      if( sum(local_land) /= total_land) stop("wrong distribution")
+      if( sum(IMS) /= N_lon) stop("wrong domain distribution")
  
       open(10,file="optimized_distribution",action='write')
       write(10,'(A)') "GEOSldas.GRID_TYPE:  LatLon"
@@ -1146,9 +1078,12 @@ subroutine optimize_latlon(fname,arg)
       write(10,'(A,I6)') "GEOSldas.IM_WORLD: ",N_lon
       write(10,'(A,I6)') "GEOSldas.JM_WORLD: ",N_lat
 
+      write(10,'(A,I5)') "GEOSldas.NX: ",N_proc
+      write(10,'(A)') "GEOSldas.NY:   1"
       write(10,'(A,I5)') "NX: ",N_proc
       write(10,'(A)') "NY:   1"
 
+      write(10,'(A)') "GEOSldas.IMS_FILE:    IMS.rc"
       write(10,'(A)') "IMS_FILE:    IMS.rc"
       close(10)
        
@@ -1379,7 +1314,7 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
          dims(3)= Nforce
 
          status = NF90_DEF_VAR(NCFOutID,'fpert_ntrmdt',NF90_REAL, dims, forceid)
-         !status = nf90_def_var_deflate(NCFOutID, forceid, shuffle, deflate, deflate_level)
+         status = nf90_def_var_deflate(NCFOutID, forceid, shuffle, deflate, deflate_level)
          status = NF90_PUT_ATT(NCFOutID, forceid, 'long_name', 'force_pert_intermediate')
          status = NF90_PUT_ATT(NCFOutID, forceid, 'units', '1')
          status = nf90_put_att(NCFOutID, forceid, '_FillValue', fill_value)
@@ -1388,7 +1323,7 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
          dims(3)= Nprogn
 
          status = NF90_DEF_VAR(NCFOutID, 'ppert_ntrmdt', NF90_REAL, dims, prognid)
-         !status = nf90_def_var_deflate(NCFOutID, prognid, shuffle, deflate, deflate_level)
+         status = nf90_def_var_deflate(NCFOutID, prognid, shuffle, deflate, deflate_level)
          status = NF90_PUT_ATT(NCFOutID, prognid, 'long_name', 'progn_pert_intermediate')
          status = NF90_PUT_ATT(NCFOutID, prognid, 'units', '1')
          status = nf90_put_att(NCFOutID, prognid, '_FillValue', fill_value)
