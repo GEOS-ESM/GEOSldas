@@ -82,7 +82,8 @@ setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib
 limit stacksize unlimited
  
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
+#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
 sleep 3
 
@@ -92,7 +93,8 @@ else
    /bin/cp OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst
 endif
 
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
+#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
 _EOI_
 
@@ -156,7 +158,7 @@ case [1]:
         set j = 0
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           echo  $INSTDIR/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}  >> this.file
+           echo  $INSTDIR/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}  >> this.file
            echo  ncks -4  -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} >> this.file 
            @ j++
         end
@@ -208,7 +210,7 @@ setenv LAIFILE `find ${BCSDIR}/lai_clim*`
 setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
 limit stacksize unlimited
  
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
 sleep 3
 
 _EOI3_
@@ -244,23 +246,103 @@ _EOI4_
     cd $PWD
     breaksw
 
-case [M]:
+case [FGM]:
 
     set YYYY = `echo $YYYYMMDD | cut -c1-4`
     set   MM = `echo $YYYYMMDD | cut -c5-6`
-    set ARCDIR = /archive/users/gmao_ops/MERRA2/gmao_ops/GEOSadas-5_12_4/d5124_m2_jan79/rs/Y ; set mlable = jan79
-    if ($YYYY > 1991) set ARCDIR = /archive/users/gmao_ops/MERRA2/gmao_ops/GEOSadas-5_12_4/d5124_m2_jan91/rs/Y ; set mlable = jan91
-    if ($YYYY > 2000) set ARCDIR = /archive/users/gmao_ops/MERRA2/gmao_ops/GEOSadas-5_12_4/d5124_m2_jan00/rs/Y ; set mlable = jan00
-    if ($YYYY > 2010) set ARCDIR = /archive/users/gmao_ops/MERRA2/gmao_ops/GEOSadas-5_12_4/d5124_m2_jan10/rs/Y ; set mlable = jan10
+    set   DD = `echo $YYYYMMDD | cut -c7-8`
 
-    set rstfile = ${ARCDIR}${YYYY}/M${MM}/d5124_m2_${mlable}.catch_internal_rst.${YYYYMMDD}_21z.bin
-    dmget $rstfile
     mkdir -p $EXPDIR/$EXPID/mk_restarts/InData/
     mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData.1/
     mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData.2/
 
-    /bin/cp -p $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
-    /bin/ln -s /gpfsm/dnb02/ltakacs/bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til $EXPDIR/$EXPID/mk_restarts/InData/InTilFile
+    if ($HAVE_RESTART == M) then
+	set ARCDIR = /archive/users/gmao_ops/MERRA2/gmao_ops/GEOSadas-5_12_4/d5124_m2_jan79/rs/Y ; set mlable = jan79
+	if ($YYYY > 1991) set ARCDIR = /archive/users/gmao_ops/MERRA2/gmao_ops/GEOSadas-5_12_4/d5124_m2_jan91/rs/Y ; set mlable = jan91
+	if ($YYYY > 2000) set ARCDIR = /archive/users/gmao_ops/MERRA2/gmao_ops/GEOSadas-5_12_4/d5124_m2_jan00/rs/Y ; set mlable = jan00
+	if ($YYYY > 2010) set ARCDIR = /archive/users/gmao_ops/MERRA2/gmao_ops/GEOSadas-5_12_4/d5124_m2_jan10/rs/Y ; set mlable = jan10	
+	set rstfile = ${ARCDIR}${YYYY}/M${MM}/d5124_m2_${mlable}.catch_internal_rst.${YYYYMMDD}_21z.bin
+	dmget $rstfile
+	set INTILFILE = /gpfsm/dnb02/ltakacs/bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/CF0180x6C_DE1440xPE0720/CF0180x6C_DE1440xPE0720-Pfafstetter.til
+	set  WEMIN_IN = 26
+	/bin/cp -p $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
+    endif
+
+    if ($HAVE_RESTART == G) then
+	set   rstfile = $RESTART_PATH
+	set INTILFILE = $RESTART_ID/scratch/tile.data
+	/bin/cp -p $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
+    endif
+
+    if ($HAVE_RESTART == F) then
+	set date_16 = `date -d"2017-1-24" +%Y%m%d`
+	set date_17 = `date -d"2017-11-1" +%Y%m%d`
+	set date_21 = `date -d"2018-7-11" +%Y%m%d`
+	set date_22 = `date -d"2019-3-13" +%Y%m%d`
+	set date_25 = `date -d"2020-1-30" +%Y%m%d`
+	set expdate = `date -d"$YYYY-$MM-$DD" +%Y%m%d`
+	if ($expdate < $date_16) then
+	    echo "WARNING : FP restarts before $date_16 are not availale."
+  	    echo "          Please select RESTART: M and use MERRA-2, instead."
+	    exit
+	endif
+
+	if (($expdate >= $date_16) && ($expdate < $date_17)) then
+	    set fpver = GEOS-5.16/GEOSadas-5_16/
+	    set fplab = f516_fp
+	    set INTILFILE = /discover/nobackup/ltakacs/bcs/Ganymed-4_0/Ganymed-4_0_Ostia/CF0720x6C_DE2880xPE1440/CF0720x6C_DE2880xPE1440-Pfafstetter.til
+  	    set  WEMIN_IN = 26
+	    set   rstfile = /archive/u/dao_ops/$fpver/${fplab}/rs/Y${YYYY}/M${MM}/${fplab}.catch_internal_rst.${YYYYMMDD}_21z.bin
+	    dmget $rstfile
+	    /bin/cp -p $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
+	endif
+	if (($expdate >= $date_17) && ($expdate < $date_21)) then
+	    set fpver = GEOS-5.17/GEOSadas-5_17/
+	    set fplab = f517_fp
+	    set INTILFILE = /discover/nobackup/ltakacs/bcs/Icarus/Icarus_Ostia/CF0720x6C_CF0720x6C/CF0720x6C_CF0720x6C-Pfafstetter.til
+  	    set  WEMIN_IN = 26
+	    set TARFILE = /archive/u/dao_ops/$fpver/${fplab}/rs/Y${YYYY}/M${MM}/${fplab}.rst.${YYYYMMDD}_21z.tar
+	    dmget $TARFILE
+	    set   rstfile = ${fplab}.catch_internal_rst.${YYYYMMDD}_21z.nc4
+	    tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart	 	    
+	endif
+	if (($expdate >= $date_21) && ($expdate < $date_22)) then
+	    set fpver = GEOS-5.21/GEOSadas-5_21/
+	    set fplab = f521_fp
+	    set INTILFILE = /discover/nobackup/ltakacs/bcs/Icarus/Icarus_Ostia/CF0720x6C_CF0720x6C/CF0720x6C_CF0720x6C-Pfafstetter.til
+  	    set  WEMIN_IN = 26
+	    set TARFILE = /archive/u/dao_ops/$fpver/${fplab}/rs/Y${YYYY}/M${MM}/${fplab}.rst.${YYYYMMDD}_21z.tar
+	    dmget $TARFILE
+	    set   rstfile = ${fplab}.catch_internal_rst.${YYYYMMDD}_21z.nc4
+	    tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart	 	    
+	endif
+	if (($expdate >= $date_22) && ($expdate < $date_25)) then
+	    set fpver = GEOS-5.22/GEOSadas-5_22/
+	    set fplab = f522_fpp
+	    set INTILFILE = /discover/nobackup/ltakacs/bcs/Icarus/Icarus_Ostia/CF0720x6C_CF0720x6C/CF0720x6C_CF0720x6C-Pfafstetter.til
+  	    set  WEMIN_IN = 26
+	    set TARFILE = /archive/u/dao_ops/$fpver/${fplab}/rs/Y${YYYY}/M${MM}/${fplab}.rst.${YYYYMMDD}_21z.tar
+	    dmget $TARFILE
+	    set   rstfile = ${fplab}.catch_internal_rst.${YYYYMMDD}_21z.nc4
+	    tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart	 	    
+	endif
+	if ($expdate >= $date_25) then
+	    set fpver = GEOS-5.25/GEOSadas-5_25/
+	    set fplab = f525land_fpp
+	    set INTILFILE = /discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_Ostia/CF0720x6C_CF0720x6C/CF0720x6C_CF0720x6C-Pfafstetter.til
+  	    set  WEMIN_IN = 13
+	    set TARFILE = /archive/u/dao_ops/$fpver/${fplab}/rs/Y${YYYY}/M${MM}/${fplab}.rst.${YYYYMMDD}_21z.tar
+	    dmget $TARFILE
+	    set   rstfile = ${fplab}.catch_internal_rst.${YYYYMMDD}_21z.nc4
+	    tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
+	endif
+
+	
+	tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
+
+    endif
+    
+    /bin/ln -s $INTILFILE $EXPDIR/$EXPID/mk_restarts/InData/InTilFile
     /bin/ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData.1/OutTilFile
     /bin/ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData.2/OutTilFile
     /bin/ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData.2/clsm
