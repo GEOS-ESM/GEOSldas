@@ -276,12 +276,14 @@ case [FGM]:
     endif
 
     if ($HAVE_RESTART == F) then
+
 	set date_16 = `date -d"2017-1-24" +%Y%m%d`
 	set date_17 = `date -d"2017-11-1" +%Y%m%d`
 	set date_21 = `date -d"2018-7-11" +%Y%m%d`
 	set date_22 = `date -d"2019-3-13" +%Y%m%d`
 	set date_25 = `date -d"2020-1-30" +%Y%m%d`
 	set expdate = `date -d"$YYYY-$MM-$DD" +%Y%m%d`
+
 	if ($expdate < $date_16) then
 	    echo "WARNING : FP restarts before $date_16 are not availale."
   	    echo "          Please select RESTART: M and use MERRA-2, instead."
@@ -337,9 +339,6 @@ case [FGM]:
 	    set   rstfile = ${fplab}.catch_internal_rst.${YYYYMMDD}_21z.nc4
 	    tar -xvf $TARFILE $rstfile && /bin/mv $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
 	endif
-
-	
-	tar -xvf $TARFILE $rstfile && /bin/mv $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
 
     endif
     
