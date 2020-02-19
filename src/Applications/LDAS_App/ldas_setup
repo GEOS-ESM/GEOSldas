@@ -117,10 +117,13 @@ class LDASsetup:
                 self.rqdExeInp['RESTART_DOMAIN'] = "none"
                 self.rqdExeInp['RESTART_PATH']   = "none"
         else:
-           rqdExeInpKeys = rqdExeInpKeys_rst
-           self.rqdExeInp['RESTART_ID']     = "none"
-           self.rqdExeInp['RESTART_DOMAIN'] = "none"
-           self.rqdExeInp['RESTART_PATH']   = "none" 
+            if self.rqdExeInp['RESTART'] =='G' :
+                rqdExeInpKeys = rqdExeInpKeys_rst
+                self.rqdExeInp['RESTART_DOMAIN'] = "none"
+            else:
+                self.rqdExeInp['RESTART_ID']     = "none"
+                self.rqdExeInp['RESTART_DOMAIN'] = "none"
+                self.rqdExeInp['RESTART_PATH']   = "none"
 
         for key in rqdExeInpKeys :
             assert key in self.rqdExeInp,' "%s" is required in the input file %s' % (key,self.exeinpfile)
@@ -1543,9 +1546,8 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '# RESTART: G                                               #'
     print '#   and set:                                               #'
     print '#   RESTART_ID   : full_path_to_AGCM_experiment_directory  #'
-    print '#   RESTART_PATH : full_path_of_your_agcm_restart_file     #'
-    print '#   RESTART_DOMAIN is not required.                        #'
-    print '#   Weiyuan/Rolf we need to pass WEMIN from user for this  #'
+    print '#   RESTART_PATH : full_path_of_the_AGCM_restart_file      #'
+    print '#   #RESTART_DOMAIN is not required.                        #'
     print '#                                                          #'
     print '############################################################'
 

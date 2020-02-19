@@ -269,8 +269,9 @@ case [FGM]:
     endif
 
     if ($HAVE_RESTART == G) then
-	set   rstfile = $RESTART_PATH
-	set INTILFILE = $RESTART_ID/scratch/tile.data
+	set rstfile = `echo $RESTART_PATH | rev | cut -c 2- | rev`
+	set INTILFILE = `readlink $RESTART_ID/scratch/tile.data`
+	if ( `echo $INTILFILE | grep -n 'NLv3'` == '' ) set  WEMIN_IN = 26
 	/bin/cp -p $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
     endif
 
@@ -304,7 +305,7 @@ case [FGM]:
 	    set TARFILE = /archive/u/dao_ops/$fpver/${fplab}/rs/Y${YYYY}/M${MM}/${fplab}.rst.${YYYYMMDD}_21z.tar
 	    dmget $TARFILE
 	    set   rstfile = ${fplab}.catch_internal_rst.${YYYYMMDD}_21z.nc4
-	    tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart	 	    
+	    tar -xvf $TARFILE $rstfile && /bin/mv $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart	 	    
 	endif
 	if (($expdate >= $date_21) && ($expdate < $date_22)) then
 	    set fpver = GEOS-5.21/GEOSadas-5_21/
@@ -314,7 +315,7 @@ case [FGM]:
 	    set TARFILE = /archive/u/dao_ops/$fpver/${fplab}/rs/Y${YYYY}/M${MM}/${fplab}.rst.${YYYYMMDD}_21z.tar
 	    dmget $TARFILE
 	    set   rstfile = ${fplab}.catch_internal_rst.${YYYYMMDD}_21z.nc4
-	    tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart	 	    
+	    tar -xvf $TARFILE $rstfile && /bin/mv $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart	 	    
 	endif
 	if (($expdate >= $date_22) && ($expdate < $date_25)) then
 	    set fpver = GEOS-5.22/GEOSadas-5_22/
@@ -324,7 +325,7 @@ case [FGM]:
 	    set TARFILE = /archive/u/dao_ops/$fpver/${fplab}/rs/Y${YYYY}/M${MM}/${fplab}.rst.${YYYYMMDD}_21z.tar
 	    dmget $TARFILE
 	    set   rstfile = ${fplab}.catch_internal_rst.${YYYYMMDD}_21z.nc4
-	    tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart	 	    
+	    tar -xvf $TARFILE $rstfile && /bin/mv $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart	 	    
 	endif
 	if ($expdate >= $date_25) then
 	    set fpver = GEOS-5.25/GEOSadas-5_25/
@@ -334,11 +335,11 @@ case [FGM]:
 	    set TARFILE = /archive/u/dao_ops/$fpver/${fplab}/rs/Y${YYYY}/M${MM}/${fplab}.rst.${YYYYMMDD}_21z.tar
 	    dmget $TARFILE
 	    set   rstfile = ${fplab}.catch_internal_rst.${YYYYMMDD}_21z.nc4
-	    tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
+	    tar -xvf $TARFILE $rstfile && /bin/mv $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
 	endif
 
 	
-	tar -xvf $TARFILE $rstfile && /bin/mv $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
+	tar -xvf $TARFILE $rstfile && /bin/mv $rstfile $EXPDIR/$EXPID/mk_restarts/InData/M2Restart
 
     endif
     
