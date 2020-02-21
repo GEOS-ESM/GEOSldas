@@ -30,7 +30,11 @@ source $GEOSBIN/g5_modules
 setenv I_MPI_DAPL_UD enable
 
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
-setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
+if ( -e /etc/os-release ) then
+  module load nco/4.8.1
+else
+  module load other/nco-4.6.8-gcc-5.3-sp3
+endif
 setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 
 #######################################################################
@@ -518,9 +522,11 @@ while ($inens < $NENS)
 
     set rstf = 'landpert'
     if (-f ${rstf}${ENSID}_internal_checkpoint ) then
-       /bin/mv  ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
-       #ncks -4 -O -C -x -v lat,lon -L 2 ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
-       #/bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
+       #/bin/mv  ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+        ncks -4 -O -C -x -v lat,lon ${rstf}${ENSID}_internal_checkpoint $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+       /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
+       set old_rst = `/usr/bin/readlink $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`
+       /usr/bin/gzip old_rst
        /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
        /bin/ln -s  $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin} $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
     endif
@@ -558,7 +564,8 @@ while ($inens < $NENS)
           set TM = `echo $ThisTime | cut -c5-6` 
           set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
           if (! -e $THISDIR            ) mkdir -p $THISDIR
-          ncks -4 -O -C -x -v lat,lon -L 2 $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4
+          ncks -4 -O -C -x -v lat,lon $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4
+          /usr/bin/gzip ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4
           /bin/rm -f $rfile
        end
     endif
