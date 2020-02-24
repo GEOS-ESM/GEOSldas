@@ -9,6 +9,7 @@ COLLECTIONS:
 #CUBE            'tavg1_2D_lnd_Nx'
 #EASE            'tavg1_1D_lfs_Nt'
 #CUBE            'tavg1_2D_lfs_Nx'	
+#                'catch_progn_incr'
            ::
 
 #CUBE GRID_LABELS: PC720x361-DC
@@ -317,4 +318,36 @@ COLLECTIONS:
                                'GRN'        , 'VEGDYN'  , 'vegetation_greenness_fraction'     ,
                                'LAI'        , 'VEGDYN'  , 'leaf_area_index'                   ,
                                ::
+
+  catch_progn_incr.descr:       'tile-space, Ensemble-Averaged,Single-Level,Assimilation,Land prog Increment' ,
+  catch_progn_incr.template:    '%y4%m2%d2_%h2%n2z.bin' ,
+  catch_progn_incr.mode:        'instantaneous' ,
+  catch_progn_incr.frequency:   030000,
+  catch_progn_incr.ref_time:    000000,
+  catch_progn_incr.fields:     'TCFSAT_INCR'    , 'LANDASSIM'      ,
+                               'TCFTRN_INCR'    , 'LANDASSIM'      ,
+                               'TCFWLT_INCR'    , 'LANDASSIM'      ,
+                               'QCFSAT_INCR'    , 'LANDASSIM'      ,
+                               'QCFTRN_INCR'    , 'LANDASSIM'      ,
+                               'QCFWLT_INCR'    , 'LANDASSIM'      ,
+                               'CAPAC_INCR'     , 'LANDASSIM'      ,
+                               'CATDEF_INCR'    , 'LANDASSIM'      ,
+                               'RZEXC_INCR'     , 'LANDASSIM'      ,
+                               'SRFEXC_INCR'    , 'LANDASSIM'      ,
+                               'GHTCNT1_INCR'   , 'LANDASSIM'      ,
+                               'GHTCNT2_INCR'   , 'LANDASSIM'      ,
+                               'GHTCNT3_INCR'   , 'LANDASSIM'      ,
+                               'GHTCNT4_INCR'   , 'LANDASSIM'      ,
+                               'GHTCNT5_INCR'   , 'LANDASSIM'      ,
+                               'GHTCNT6_INCR'   , 'LANDASSIM'      ,
+                               'WESNN1_INCR'    , 'LANDASSIM'      ,
+                               'WESNN2_INCR'    , 'LANDASSIM'      ,
+                               'WESNN3_INCR'    , 'LANDASSIM'      ,
+                               'HTSNNN1_INCR'   , 'LANDASSIM'      ,
+                               'HTSNNN2_INCR'   , 'LANDASSIM'      ,
+                               'HTSNNN3_INCR'   , 'LANDASSIM'      ,
+                               'SNDZN1_INCR'    , 'LANDASSIM'      ,
+                               'SNDZN2_INCR'    , 'LANDASSIM'      ,
+                               'SNDZN3_INCR'    , 'LANDASSIM'      ,
+                         ::
 
