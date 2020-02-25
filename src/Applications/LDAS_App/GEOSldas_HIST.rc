@@ -2,7 +2,7 @@
 #
 # This file is edited by "ldsetup" via "process_hist.csh".  The strings '#ASSIM', '#EASE', and '#CUBE' 
 #  are not linked to MAPL HISTORY functionality.  For example, the line 
-#    "#CUBE            'tavg1_2D_lnd_Nx'"
+#    "#CUBE            'tavg24_2d_lnd_Nx'"
 #  does not mean that the 'lnd' output will be on a cube-sphere grid. 
 
 #CUBE VERSION: 1
@@ -11,11 +11,11 @@ EXPDSC: GEOSldas_output
 EXPSRC: GEOSldas
 
 COLLECTIONS:
+#EASE            'tavg24_1d_lfs_Nt'
+#CUBE            'tavg24_2d_lfs_Nx'	
+#EASE            'tavg24_1d_lnd_Nt'	
+#CUBE            'tavg24_2d_lnd_Nx'
 #ASSIM           'SMAP_L4_SM_gph'
-#EASE            'tavg1_1d_lnd_Nt'	
-#CUBE            'tavg1_2d_lnd_Nx'
-#EASE            'tavg1_1d_lfs_Nt'
-#CUBE            'tavg1_2d_lfs_Nx'	
 #                'catch_progn_incr'
            ::
 
