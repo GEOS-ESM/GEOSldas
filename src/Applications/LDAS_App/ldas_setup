@@ -101,7 +101,7 @@ class LDASsetup:
         self.has_landassim_seed = False
         self.has_geos_pert = False
         self.has_ldassa_pert = False
-        self.nSegments = 0
+        self.nSegments = 1
         # ------
         # Read exe input file which is required to setup the dir
         # ------
@@ -192,13 +192,14 @@ class LDASsetup:
         print int(self.rqdExeInp['NUM_SGMT'])
         _d = self.begDates[0]
         _endDate = self.endDates[0]
+        _d = _d + _difftime
         while _d < _endDate :
             print _difftime.days
-            _d = _d+ _difftime
             self.nSegments +=1
             print _d.year, _d.month, _d.day
             self.begDates.append(_d)
             self.endDates.insert(-1,_d)
+            _d = _d+ _difftime
 
         # make sure path is path
         if self.rqdExeInp['BCS_PATH'][-1] != '/':
@@ -1203,13 +1204,13 @@ class LDASsetup:
         status = False
 
         rm_name = self.rqdRmInp['rm_name'].lower()
-        nSegments = self.nSegments
         os.chdir(self.rundir)
         fout =open(self.rundir+'/ldas_batchrun.j','w')
         fout.write("#!/bin/bash -f\n")
         jobid = None
         expid = self.rqdExeInp['EXP_ID']
         fout.write("\nsed -i 's/if($capdate<$enddate) sbatch /#if($capdate<$enddate) sbatch /g' lenkf.j\n\n")
+        nSegments = self.nSegments
         for iseg in xrange(nSegments):
             if iseg ==0 :
                 fout.write("jobid%d=$(echo $(sbatch lenkf.j) | cut -d' ' -f 4)\n"%(iseg))
@@ -1256,7 +1257,6 @@ class LDASsetup:
         status = False
 
         rm_name = self.rqdRmInp['rm_name'].lower()
-        nSegments = len(self.begDates)
         os.chdir(self.rundir)
         lenkf=self.blddir+'/etc/lenkf.j.template'
         shutil.copy(lenkf,'lenkf.j')
