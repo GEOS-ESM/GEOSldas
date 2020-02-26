@@ -1,12 +1,13 @@
 ecbuild_add_executable (
    TARGET GEOSldas.x 
    SOURCES GEOSldas.F90
-   LIBS GEOSldas_GridComp MAPL_Base)
+   LIBS GEOSldas_GridComp MAPL)
 
 set(executables 
    preprocess_ldas 
    tile_bin2nc4 
-   mwrtm_bin2nc4)
+   mwrtm_bin2nc4
+   mk_GEOSldasRestarts)
 
 foreach (prog ${executables})
    ecbuild_add_executable (
