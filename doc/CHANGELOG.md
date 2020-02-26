@@ -41,10 +41,40 @@ _These are additions put in development, that will be in the next stable tag_
 Overview of Git tags:
 ============================
 
-[v17.9.0-beta.1] - 2020-01-17
+[v17.9.0-beta.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.2) - 2020-02-26
+------------------------------
+- New/Updated Science Functionality:
+
+  - Assimilation when running on cube-sphere tiles.
+  - Read forcing from cube-sphere grid when running on matching cube-sphere tiles.
+  - Output of Catchment analysis increments via HISTORY.  
+  - Added FP-5.25 upgrade (30 Jan 2020) to "cross-stream" forcing option.
+  - Functionality to create regional (non-global) nc4 vegdyn restart file.
+  - Configuration option to add extra variables into catch restart files (as needed by GCM).
+  - Allows processing of (assimilation) observations for innovations output *without* perturbations turned on.
+
+- New/Updated Infrastructure:
+
+  - Support for SLES 12 in addition to SLES11 (ESMA_env v2.0.2).
+  - Updated to MAPL v2.0.
+  - Removed dycore and FMS
+  - Conforms to GNU compiler (gcc-9.1).
+  - Post-processing compression (gzip) of landpert restart files (except final time).
+  - Added LDAS_app/mk_GEOSldasRestarts.F90 (adapted from GCM GridComp's mk_LDASsaRestarts.F90 in preparation for re-tiling changes).
+  - Fixed output log file name and location.
+
+- Bug Fixes and Other Minor Changes: 
+
+  - Bug fix in select-update_type 9 (abs(deltaT)>0.)
+  - Bug fix for local mwRTM and time dimension restart.
+  - Replaced copy ("cp") with link ("ln") for catparam and mwrtm diagnostic output files.
+
+------------------------------
+[v17.9.0-beta.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.1) - 2020-01-17
 ------------------------------
 - Commented out call to check_catch_progn in apply_progn_pert.   
 
+------------------------------
 [v17.9.0-beta.0] - 2019-12-20
 ------------------------------
 - First tag for SMAP L4_SM Version 5, Catchment model consistent with f525land_fpp
@@ -54,11 +84,13 @@ Overview of Git tags:
   - Fix GEOS forcing stream boundaries bug 
   - Changes to time stepping for sun angle
 
+------------------------------
 [v17.8.0] - 2019-12-10
-------------------------
+------------------------------
 - Closest match to LDASsa CVS tag LDASsa_m3-16_6_p2, the LDASsa tag used for generating the Version 4 L4_SM product. 
 - v17.8.0 is a debugged version of GEOSldas_m4-17_8.
 			    
+------------------------------
 
 			    
 
