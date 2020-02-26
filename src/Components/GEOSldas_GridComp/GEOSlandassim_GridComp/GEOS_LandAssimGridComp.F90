@@ -93,9 +93,7 @@ real    :: xcompact, ycompact
 integer :: N_obs_param
 logical :: out_obslog
 logical :: out_ObsFcstAna
-logical :: out_incr
 logical :: out_smapL4SMaup
-integer :: out_incr_format
 integer :: N_obsbias_max
 
 integer,dimension(:),pointer :: N_catl_vec,low_ind
@@ -1115,8 +1113,8 @@ subroutine Initialize(gc, import, export, clock, rc)
        obs_param,                               &
        out_obslog,                              &
        out_ObsFcstAna,                          &
-       out_incr,                                &
-       out_incr_format,                         &
+!       out_incr,                                &
+!       out_incr_format,                         &
        out_smapL4SMaup,                         &
        N_obsbias_max                            &
        )
@@ -1134,8 +1132,8 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MPI_BCAST(N_obs_param,           1, MPI_INTEGER,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_obslog,            1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_ObsFcstAna,        1, MPI_LOGICAL,        0,MPICOMM,mpierr)
-    call MPI_BCAST(out_incr,              1, MPI_LOGICAL,        0,MPICOMM,mpierr)
-    call MPI_BCAST(out_incr_format,       1, MPI_INTEGER,        0,MPICOMM,mpierr)
+!    call MPI_BCAST(out_incr,              1, MPI_LOGICAL,        0,MPICOMM,mpierr)
+!    call MPI_BCAST(out_incr_format,       1, MPI_INTEGER,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_smapL4SMaup,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
 
@@ -1261,10 +1259,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
     real, dimension(:),pointer :: TC1_incr=>null()
     real, dimension(:),pointer :: TC2_incr=>null()
-    real, dimension(:),pointer :: TC3_incr=>null()
+    real, dimension(:),pointer :: TC4_incr=>null()
     real, dimension(:),pointer :: QC1_incr=>null()
     real, dimension(:),pointer :: QC2_incr=>null()
-    real, dimension(:),pointer :: QC3_incr=>null()
+    real, dimension(:),pointer :: QC4_incr=>null()
     real, dimension(:),pointer :: CAPAC_incr=>null()
     real, dimension(:),pointer :: CATDEF_incr=>null()
     real, dimension(:),pointer :: RZEXC_incr=>null()
@@ -1497,13 +1495,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(status)
     call MAPL_GetPointer(export, TC2_incr,  'TCFTRN_INCR' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, TC3_incr,  'TCFWLT_INCR' ,rc=status)
+    call MAPL_GetPointer(export, TC4_incr,  'TCFWLT_INCR' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, QC1_incr,  'QCFSAT_INCR' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, QC2_incr,  'QCFTRN_INCR' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, QC3_incr,  'QCFWLT_INCR' ,rc=status)
+    call MAPL_GetPointer(export, QC4_incr,  'QCFWLT_INCR' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, CAPAC_incr,  'CAPAC_INCR' ,rc=status)
     VERIFY_(status)
@@ -1743,10 +1741,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
            ! Need to find the number 
            N_catg = maxval(rf2g)
 
-           if (mod(secs_in_day, dtstep_assim)==0) then                       
+           if (mod(secs_in_day, dtstep_assim)==0) then
 
-                call output_incr_etc( out_ObsFcstAna, out_incr,             &
-                out_incr_format, date_time_new, trim(out_path), trim(exp_id),            &
+               call output_incr_etc( out_ObsFcstAna,             &
+                date_time_new, trim(out_path), trim(exp_id),            &
                 N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
                 N_catl, tile_coord_l,                                        &
                 N_catf, tile_coord_rf, tcinternal%grid_f, tcinternal%grid_g, &
@@ -1756,48 +1754,46 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                 cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
                 Observations_l )
 
-                if (out_incr) then
 
-                   do i = 1, N_catl
-                      cat_progn_incr_ensavg(i) = 0.0
-                      do n_e=1, NUM_ENSEMBLE
-                         cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
-                            + cat_progn_incr(i,n_e)
-                      end do
-                      cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(NUM_ENSEMBLE)
-                   enddo
+              do i = 1, N_catl
+                 cat_progn_incr_ensavg(i) = 0.0
+                 do n_e=1, NUM_ENSEMBLE
+                    cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
+                       + cat_progn_incr(i,n_e)
+                 end do
+                 cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(NUM_ENSEMBLE)
+              enddo
 
-                   TC1_incr(:) = cat_progn_incr_ensavg(:)%tc1
-                   TC2_incr(:) = cat_progn_incr_ensavg(:)%tc2
-                   TC3_incr(:) = cat_progn_incr_ensavg(:)%tc4
-                   QC1_incr(:) = cat_progn_incr_ensavg(:)%qa1
-                   QC2_incr(:) = cat_progn_incr_ensavg(:)%qa2
-                   QC3_incr(:) = cat_progn_incr_ensavg(:)%qa4
+              if(associated(TC1_incr))  TC1_incr(:) = cat_progn_incr_ensavg(:)%tc1
+              if(associated(TC2_incr))  TC2_incr(:) = cat_progn_incr_ensavg(:)%tc2
+              if(associated(TC4_incr))  TC4_incr(:) = cat_progn_incr_ensavg(:)%tc4
+              if(associated(QC1_incr))  QC1_incr(:) = cat_progn_incr_ensavg(:)%qa1
+              if(associated(QC2_incr))  QC2_incr(:) = cat_progn_incr_ensavg(:)%qa2
+              if(associated(QC4_incr))  QC4_incr(:) = cat_progn_incr_ensavg(:)%qa4
 
-                   CAPAC_incr(:)  = cat_progn_incr_ensavg(:)%capac
-                   CATDEF_incr(:) = cat_progn_incr_ensavg(:)%catdef
-                   RZEXC_incr(:)  = cat_progn_incr_ensavg(:)%rzexc
-                   SRFEXC_incr(:) = cat_progn_incr_ensavg(:)%srfexc
+              if(associated(CAPAC_incr))   CAPAC_incr(:)  = cat_progn_incr_ensavg(:)%capac
+              if(associated(CATDEF_incr))  CATDEF_incr(:) = cat_progn_incr_ensavg(:)%catdef
+              if(associated(RZEXC_incr))   RZEXC_incr(:)  = cat_progn_incr_ensavg(:)%rzexc
+              if(associated(SRFEXC_incr))  SRFEXC_incr(:) = cat_progn_incr_ensavg(:)%srfexc
 
-                   GHTCNT1_incr(:) = cat_progn_incr_ensavg(:)%ght(1)
-                   GHTCNT2_incr(:) = cat_progn_incr_ensavg(:)%ght(2)
-                   GHTCNT3_incr(:) = cat_progn_incr_ensavg(:)%ght(3)
-                   GHTCNT4_incr(:) = cat_progn_incr_ensavg(:)%ght(4)
-                   GHTCNT5_incr(:) = cat_progn_incr_ensavg(:)%ght(5)
-                   GHTCNT6_incr(:) = cat_progn_incr_ensavg(:)%ght(6)
+              if(associated(GHTCNT1_incr)) GHTCNT1_incr(:) = cat_progn_incr_ensavg(:)%ght(1)
+              if(associated(GHTCNT2_incr)) GHTCNT2_incr(:) = cat_progn_incr_ensavg(:)%ght(2)
+              if(associated(GHTCNT3_incr)) GHTCNT3_incr(:) = cat_progn_incr_ensavg(:)%ght(3)
+              if(associated(GHTCNT4_incr)) GHTCNT4_incr(:) = cat_progn_incr_ensavg(:)%ght(4)
+              if(associated(GHTCNT5_incr)) GHTCNT5_incr(:) = cat_progn_incr_ensavg(:)%ght(5)
+              if(associated(GHTCNT6_incr)) GHTCNT6_incr(:) = cat_progn_incr_ensavg(:)%ght(6)
 
-                   WESNN1_incr(:) = cat_progn_incr_ensavg(:)%wesn(1)
-                   WESNN2_incr(:) = cat_progn_incr_ensavg(:)%wesn(2)
-                   WESNN3_incr(:) = cat_progn_incr_ensavg(:)%wesn(3)
+              if(associated(WESNN1_incr))  WESNN1_incr(:) = cat_progn_incr_ensavg(:)%wesn(1)
+              if(associated(WESNN2_incr))  WESNN2_incr(:) = cat_progn_incr_ensavg(:)%wesn(2)
+              if(associated(WESNN3_incr))  WESNN3_incr(:) = cat_progn_incr_ensavg(:)%wesn(3)
 
-                   HTSNNN1_incr(:) = cat_progn_incr_ensavg(:)%htsn(1)
-                   HTSNNN2_incr(:) = cat_progn_incr_ensavg(:)%htsn(2)
-                   HTSNNN3_incr(:) = cat_progn_incr_ensavg(:)%htsn(3)
+              if(associated(HTSNNN1_incr)) HTSNNN1_incr(:) = cat_progn_incr_ensavg(:)%htsn(1)
+              if(associated(HTSNNN2_incr)) HTSNNN2_incr(:) = cat_progn_incr_ensavg(:)%htsn(2)
+              if(associated(HTSNNN3_incr)) HTSNNN3_incr(:) = cat_progn_incr_ensavg(:)%htsn(3)
 
-                   SNDZN1_incr(:)  = cat_progn_incr_ensavg(:)%sndz(1)
-                   SNDZN2_incr(:)  = cat_progn_incr_ensavg(:)%sndz(2)
-                   SNDZN3_incr(:)  = cat_progn_incr_ensavg(:)%sndz(3)
-                endif
+              if(associated(SNDZN1_incr))  SNDZN1_incr(:)  = cat_progn_incr_ensavg(:)%sndz(1)
+              if(associated(SNDZN2_incr))  SNDZN2_incr(:)  = cat_progn_incr_ensavg(:)%sndz(2)
+              if(associated(SNDZN3_incr))  SNDZN3_incr(:)  = cat_progn_incr_ensavg(:)%sndz(3)
 
 
 
