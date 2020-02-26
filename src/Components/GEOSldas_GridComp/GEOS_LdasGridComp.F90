@@ -8,11 +8,10 @@ module GEOS_LdasGridCompMod
 
   use ESMF
   use MAPL_Mod
-  use CubedSphereGridFactoryMod
-  use MAPL_GridManagerMod, only: grid_manager
-  use MAPL_RegridderManagerMod
-  use MAPL_AbstractRegridderMod
-  use MAPL_RegridderSpecMod
+  !use MAPL_GridManagerMod, only: grid_manager
+  !use MAPL_RegridderManagerMod
+  !use MAPL_AbstractRegridderMod
+  !use MAPL_RegridderSpecMod
 
   use GEOS_MetforceGridCompMod, only: MetforceSetServices => SetServices
   use GEOS_LandGridCompMod, only: LandSetServices => SetServices
@@ -23,9 +22,9 @@ module GEOS_LdasGridCompMod
   use LDAS_EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
   use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type
-  use LDAS_TileCoordRoutines, only: get_tile_grid
+  use LDAS_TileCoordRoutines, only: get_tile_grid, get_ij_ind_from_latlon
   use LDAS_ConvertMod, only: esmf2ldas
-
+  use LDAS_PertRoutinesMod, only: get_pert_grid
   use LDAS_ensdrv_functions,ONLY:  get_io_filename 
   use LDAS_DateTimeMod,ONLY: date_time_type
   use LDAS_ensdrv_mpi, only: MPI_tile_coord_type, MPI_grid_def_type
@@ -204,8 +203,9 @@ contains
     ! -DATAATM-feeds-LANDPERT's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SHORT_NAME = ['Tair', 'Qair','Psurf', 'Rainf_C', 'Rainf', 'Snowf', 'LWdown',   &
-            'SWdown', 'SWnet', 'PARdrct', 'PARdffs', 'Wind','RefH'],                      &
+            SHORT_NAME = ['Tair   ', 'Qair   ', 'Psurf  ', 'Rainf_C', 'Rainf  ',   &
+                          'Snowf  ', 'LWdown ', 'SWdown ', 'SWnet  ', 'PARdrct',   &
+                          'PARdffs', 'Wind   ', 'RefH   '],                        &
            ! SRC_ID = DATAATM(i),                                                   &
             SRC_ID = DATAATM(1),                                                   &
             DST_ID = LANDPERT(i),                                                  &
@@ -215,29 +215,30 @@ contains
     ! -LANDPERT-feeds-LAND's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SRC_NAME = ['TApert', 'QApert', 'UUpert', 'UWINDLMTILEpert',           &
-            'VWINDLMTILEpert', 'PCUpert', 'PLSpert', 'SNOpert', 'DRPARpert',       &
-            'DFPARpert', 'DRNIRpert', 'DFNIRpert', 'DRUVRpert', 'DFUVRpert',       &
-            'LWDNSRFpert'],                                                        &
-            SRC_ID = LANDPERT(i),                                                     &
-            DST_NAME = ['TA',     'QA',     'UU',     'UWINDLMTILE',               &
-            'VWINDLMTILE',     'PCU',     'PLS',     'SNO',     'DRPAR',           &
-            'DFPAR',     'DRNIR',     'DFNIR',     'DRUVR',     'DFUVR',           &
-            'LWDNSRF'],                                                            &
-            DST_ID = LAND(i),                                                         &
+            SRC_NAME = ['TApert         ', 'QApert         ', 'UUpert         ',   &
+                        'UWINDLMTILEpert', 'VWINDLMTILEpert', 'PCUpert        ',   &
+                        'PLSpert        ', 'SNOpert        ', 'DRPARpert      ',   &
+                        'DFPARpert      ', 'DRNIRpert      ', 'DFNIRpert      ',   &
+                        'DRUVRpert      ', 'DFUVRpert      ', 'LWDNSRFpert    '],  &
+            SRC_ID = LANDPERT(i),                                                  &
+            DST_NAME = ['TA         ', 'QA         ', 'UU         ', 'UWINDLMTILE',&
+                        'VWINDLMTILE', 'PCU        ', 'PLS        ', 'SNO        ',&
+                        'DRPAR      ', 'DFPAR      ', 'DRNIR      ', 'DFNIR      ',&
+                        'DRUVR      ', 'DFUVR      ', 'LWDNSRF    '],              &
+            DST_ID = LAND(i),                                                      &
             rc = status                                                            &
             )
           VERIFY_(status)
     ! -DATAATM-feeds-LAND's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SRC_NAME = ['Psurf', 'RefH',                                           &
-                        'DUDP', 'DUSV', 'DUWT', 'DUSD', 'BCDP', 'BCSV',            &
-                        'BCWT', 'BCSD', 'OCDP', 'OCSV', 'OCWT', 'OCSD',            &
-                        'SUDP', 'SUSV', 'SUWT', 'SUSD', 'SSDP', 'SSSV' ],          &
+            SRC_NAME = ['Psurf', 'RefH ',                                          &
+                        'DUDP ', 'DUSV ', 'DUWT ', 'DUSD ', 'BCDP ', 'BCSV ',      &
+                        'BCWT ', 'BCSD ', 'OCDP ', 'OCSV ', 'OCWT ', 'OCSD ',      &
+                        'SUDP ', 'SUSV ', 'SUWT ', 'SUSD ', 'SSDP ', 'SSSV ' ],    &
           !  SRC_ID = DATAATM(i),                                                  &
             SRC_ID = DATAATM(1),                                                   &
-            DST_NAME = ['PS', 'DZ',                                                &
+            DST_NAME = ['PS  ', 'DZ  ',                                            &
                         'DUDP', 'DUSV', 'DUWT', 'DUSD', 'BCDP', 'BCSV',            &
                         'BCWT', 'BCSD', 'OCDP', 'OCSV', 'OCWT', 'OCSD',            &
                         'SUDP', 'SUSV', 'SUWT', 'SUSD', 'SSDP', 'SSSV' ],          &
@@ -248,16 +249,16 @@ contains
     ! -CATCH-feeds-LANDPERT's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SRC_NAME = ['TC','CATDEF','RZEXC','SRFEXC','WESNN1','WESNN2','WESNN3', &
-               'GHTCNT1','GHTCNT2','GHTCNT3','GHTCNT4','GHTCNT5','GHTCNT6',     &
-               'HTSNNN1','HTSNNN2','HTSNNN3','SNDZN1','SNDZN2','SNDZN3'],       &
-            SRC_ID = LAND(i),                                                         &
-            DST_NAME =['TCPert','CATDEFPert','RZEXCPert','SRFEXCPert','WESNN1Pert',&
-              'WESNN2Pert','WESNN3Pert','GHTCNT1Pert','GHTCNT2Pert',            &
-              'GHTCNT3Pert','GHTCNT4Pert','GHTCNT5Pert','GHTCNT6Pert',          &
-              'HTSNNN1Pert','HTSNNN2Pert','HTSNNN3Pert','SNDZN1Pert',           &
-              'SNDZN2Pert','SNDZN3Pert'],                                       &
-            DST_ID = LANDPERT(i),                                                     &
+            SRC_NAME =  ['TC     ','CATDEF ','RZEXC  ','SRFEXC ','WESNN1 ','WESNN2 ','WESNN3 ', &
+               'GHTCNT1','GHTCNT2','GHTCNT3','GHTCNT4','GHTCNT5','GHTCNT6',        &
+               'HTSNNN1','HTSNNN2','HTSNNN3','SNDZN1 ','SNDZN2 ','SNDZN3 '],       &
+            SRC_ID = LAND(i),                                                      &
+            DST_NAME =     ['TCPert     ','CATDEFPert ','RZEXCPert  ','SRFEXCPert ','WESNN1Pert ',&
+              'WESNN2Pert ','WESNN3Pert ','GHTCNT1Pert','GHTCNT2Pert',             &
+              'GHTCNT3Pert','GHTCNT4Pert','GHTCNT5Pert','GHTCNT6Pert',             &
+              'HTSNNN1Pert','HTSNNN2Pert','HTSNNN3Pert','SNDZN1Pert ',             &
+              'SNDZN2Pert ','SNDZN3Pert '],                                        &
+            DST_ID = LANDPERT(i),                                                  &
             rc = status                                                            &
             )
        VERIFY_(status)
@@ -266,11 +267,11 @@ contains
     if(assim) then
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
-            SHORT_NAME = ['POROS', 'COND','PSIS','BEE','WPWET','GNU','VGWMAX',       &
-                        'BF1', 'BF2', 'BF3', 'CDCR1', 'CDCR2', 'ARS1',             &
-                        'ARS2', 'ARS3', 'ARA1', 'ARA2', 'ARA3', 'ARA4',            &
-                        'ARW1', 'ARW2', 'ARW3', 'ARW4', 'TSA1', 'TSA2','TSB1',     &
-                        'TSB2','ATAU','BTAU','ITY','Z2CH' ],                       &
+            SHORT_NAME = ['POROS ', 'COND  ','PSIS  ','BEE   ','WPWET ','GNU   ','VGWMAX',    &
+                          'BF1   ', 'BF2   ','BF3   ','CDCR1 ','CDCR2 ','ARS1  ',             &
+                          'ARS2  ', 'ARS3  ','ARA1  ','ARA2  ','ARA3  ','ARA4  ',             &
+                          'ARW1  ', 'ARW2  ','ARW3  ','ARW4  ','TSA1  ','TSA2  ','TSB1  ',    &
+                          'TSB2  ', 'ATAU  ','BTAU  ','ITY   ','Z2CH  ' ],                       &
             SRC_ID = LAND(1),                                                      &
             DST_ID = LANDASSIM,                                                    &
             rc = status                                                            &
@@ -305,9 +306,9 @@ contains
   ! !INTERFACE:
 
   subroutine Initialize(gc, import, export, clock, rc)
-    use LatLonToCubeRegridderMod
-    use CubeToLatLonRegridderMod
-    use CubeToCubeRegridderMod
+    !use MAPL_LatLonToCubeRegridderMod
+    !use MAPL_CubeToLatLonRegridderMod
+    !use MAPL_CubeToCubeRegridderMod
     ! !ARGUMENTS:
 
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
@@ -381,10 +382,10 @@ contains
     type(grid_def_type) :: tile_grid_l
     type(date_time_type):: start_time
     type(ESMF_Time)     :: CurrentTime
-    type(CubedSphereGridFactory) :: cubed_sphere_factory
-    type (CubeToLatLonRegridder) :: cube_to_latlon_prototype
-    type (LatLonToCubeRegridder) :: latlon_to_cube_prototype
-    type (CubeToCubeRegridder) :: cube_to_cube_prototype
+    !type(CubedSphereGridFactory) :: cubed_sphere_factory
+    !type (CubeToLatLonRegridder) :: cube_to_latlon_prototype
+    !type (LatLonToCubeRegridder) :: latlon_to_cube_prototype
+    !type (CubeToCubeRegridder) :: cube_to_cube_prototype
     real :: DT, DT_Solar
     type(ESMF_Alarm) :: SolarAlarm
     type(ESMF_TimeInterval) :: Solar_DT
@@ -433,16 +434,16 @@ contains
     call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
     VERIFY_(STATUS)
 
-    if (trim(grid_type) == "Cubed-Sphere") then
-       call grid_manager%add_prototype("Cubed-Sphere", cubed_sphere_factory)
-       associate (method => REGRID_METHOD_BILINEAR, mgr => regridder_manager)
-          call mgr%add_prototype('Cubed-Sphere', 'LatLon', method, cube_to_latlon_prototype)
-          call mgr%add_prototype('LatLon', 'Cubed-Sphere', method, latlon_to_cube_prototype)
-          call mgr%add_prototype('Cubed-Sphere', 'Cubed-Sphere', method, cube_to_cube_prototype)
-       end associate
+   ! if (trim(grid_type) == "Cubed-Sphere") then
+   !    call grid_manager%add_prototype("Cubed-Sphere", cubed_sphere_factory)
+   !    associate (method => REGRID_METHOD_BILINEAR, mgr => regridder_manager)
+   !       call mgr%add_prototype('Cubed-Sphere', 'LatLon', method, cube_to_latlon_prototype)
+   !       call mgr%add_prototype('LatLon', 'Cubed-Sphere', method, latlon_to_cube_prototype)
+   !       call mgr%add_prototype('Cubed-Sphere', 'Cubed-Sphere', method, cube_to_cube_prototype)
+   !    end associate
+   ! endif
 
-    endif
-    ! Create atmospheric (single level atm grid covers all of surface) grid
+   ! Create atmospheric (single level atm grid covers all of surface) grid
     call MAPL_GridCreate(gc, rc=status)
     VERIFY_(status)
 
@@ -586,6 +587,34 @@ contains
        write(10,*) N_catf
        close(10)
        call io_grid_def_type('w', logunit, tile_grid_f, 'tile_grid_f')
+
+       block 
+          type(grid_def_type) :: latlon_tmp_g
+          integer :: perturbations
+
+          call MAPL_GetResource(MAPL, perturbations, 'PERTURBATIONS:', default=0, rc=status)
+          if(trim(grid_type) == "Cubed-Sphere" ) then
+
+            ASSERT_(index(tile_grid_g%gridtype, 'c3') /=0)
+            !1) save original index
+            tile_coord_f%cs_i_indg = tile_coord_f%i_indg 
+            tile_coord_f%cs_j_indg = tile_coord_f%j_indg 
+            
+            !2) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
+            call get_pert_grid(tile_grid_g, latlon_tmp_g)
+            tile_grid_g = latlon_tmp_g
+            !3) change the index
+            !   need to chang min_lon, max_lon, min_lat , max_lat? 
+            do i = 1, N_catf
+               call get_ij_ind_from_latlon(latlon_tmp_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
+                 tile_coord_f(i)%i_indg,tile_coord_f(i)%j_indg)
+            enddo
+            !3) re-generate tile_grid_f in Lat-Lon
+            call get_tile_grid(N_catf, tile_coord_f, tile_grid_g, tile_grid_f)
+            
+          endif
+       end block 
+
     endif
     
     call MPI_BCAST(N_catf,1,MPI_INTEGER,0,mpicomm,mpierr)
@@ -864,21 +893,14 @@ contains
     if (assim) then 
        igc = LANDASSIM
        call MAPL_TimerOn(MAPL, gcnames(igc))
-       ! get cat_param
-       ! it is moved to ensavg
-      ! call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=1, userRC=status)
-      ! VERIFY_(status)
-       !import state is the export from ens_GridComp
-       call ESMF_GridCompRun(gcs(igc), importState=gex(ENSAVG), exportState=gex(igc), clock=clock, phase=2, userRC=status)
+       !import state is the export from ens_GridComp, assimilation run
+       call ESMF_GridCompRun(gcs(igc), importState=gex(ENSAVG), exportState=gex(igc), clock=clock, phase=1, userRC=status)
        VERIFY_(status)
 
        do i = 1, NUM_ENSEMBLE
-          ! update catch_progn and pert_rseed
-          call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(LAND(i)), clock=clock, phase=3, userRC=status)
+          ! update catch_progn 
+          call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(LAND(i)), clock=clock, phase=2, userRC=status)
           VERIFY_(status)
-          ! update pert_rseed
-          !call ESMF_GridCompRun(gcs(LANDPERT(i)), importState=gim(LANDPERT(i)), exportState=gex(LANDPERT(i)), clock=clock, phase=5, userRC=status)
-          !VERIFY_(status)
           
        enddo
        call MAPL_TimerOff(MAPL, gcnames(igc))

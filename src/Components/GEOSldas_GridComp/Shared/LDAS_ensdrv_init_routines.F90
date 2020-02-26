@@ -2485,7 +2485,7 @@ contains
     character(len=*), parameter :: Iam = 'clsm_ensdrv_get_command_line'
     character(len=400) :: err_msg
 
-    external getarg, iargc
+    !external getarg, iargc
     
     ! -----------------------------------------------------------------
 

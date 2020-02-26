@@ -101,7 +101,7 @@ class LDASsetup:
         self.has_landassim_seed = False
         self.has_geos_pert = False
         self.has_ldassa_pert = False
-        self.nSegments = 0
+        self.nSegments = 1
         # ------
         # Read exe input file which is required to setup the dir
         # ------
@@ -191,12 +191,15 @@ class LDASsetup:
         _difftime = int(self.rqdExeInp['NUM_SGMT'])*_difftime
         print int(self.rqdExeInp['NUM_SGMT'])
         _d = self.begDates[0]
-        while _d < self.endDates[0]:
+        _endDate = self.endDates[0]
+        _d = _d + _difftime
+        while _d < _endDate :
             print _difftime.days
-            _d = _d+ _difftime
             self.nSegments +=1
             print _d.year, _d.month, _d.day
-
+            self.begDates.append(_d)
+            self.endDates.insert(-1,_d)
+            _d = _d+ _difftime
 
         # make sure path is path
         if self.rqdExeInp['BCS_PATH'][-1] != '/':
@@ -413,95 +416,95 @@ class LDASsetup:
         # start/end_times are now lists of len > 1
         # ------
         # wj notes: disable daysperjob
-        self.daysperjob = 0 
-        if self.daysperjob:
-            # shorthands
-            _dpj = self.daysperjob
-            _start = self.begDates[0]
-            _end = self.endDates[0]
-            assert _dpj>0, 'daysperjob = %d' % _dpj
-            # total number of days for the given job
-            nDays = (_end - _start).days
-            assert nDays>_dpj, \
-                'Days per job [%d] >= Duration [%d days]' %\
-                (_dpj, nDays)
-            # number of job segments
-            q = nDays/_dpj
-            r = nDays%_dpj
-            if r>0:
-                nSegments = q+1
-            else:
-                nSegments = q
-            # lists of start times, end times
-            _start_list = list()
-            _end_list = list()
-            for iseg in xrange(nSegments):
-                _start_list.append(_start+timedelta(days=iseg*_dpj))
-            for iseg in xrange(nSegments-1):
-                _end_list.append(_start_list[iseg+1])
-            _end_list.append(_end)
-
-            #update beg dates and end dates
-            self.begDates = _start_list
-            self.endDates = _end_list
-            self.job_sgmt = list()
-            for iseg in xrange(nSegments):
-                self.job_sgmt.append("JOB_SGMT: 000000%02d 000000"%(self.endDates[iseg]-self.begDates[iseg]).days)
- 
-            # print, if requested
-            if self.verbose:
-                print '\nn          start                  end'
-                for iseg in xrange(nSegments):
-                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
-
-        # wj notes: disable monthsperjob
-        self.monthsperjob = 0
-        if self.monthsperjob:
-            # shorthands
-            _mpj = self.monthsperjob
-            assert _mpj>0, 'monthsperjob = %d' % _mpj
-            _start = self.begDates[0]
-            _end = self.endDates[0]
-            # for this option the start/end dates have to be
-            # 0z on the first of the month
-            assert (_start.day==1 and _start.hour==0 and 
-                    _start.minute==0 and _start.second==0
-                    ), 'invalid start_time: %s for --monthsperjob' % \
-                    _start.strftime('%Y-%m-%d-%H-%M-%S')
-            assert (_end.day==1 and _end.hour==0 and 
-                    _end.minute==0 and _end.second==0
-                    ), 'invalid end_time: %s for --monthsperjob' % \
-                    _end.strftime('%Y-%m-%d-%H-%M-%S')
-            _start_list = list()
-            _end_list = list()
-            for dt in rrule.rrule(rrule.MONTHLY, interval=_mpj, dtstart=_start, until=_end):
-                seg_start = dt
-                seg_end = dt+relativedelta(months=_mpj)
-                if seg_end>_end:
-                    seg_end = _end
-                if(seg_start>=seg_end) :
-                    break
-                _start_list.append(seg_start)
-                _end_list.append(seg_end)
-
-            #update beg dates and end dates
-
-            self.begDates = _start_list
-            self.endDates = _end_list
-            self.job_sgmt =list()
-            for iseg in xrange(len(_start_list)):
-                months = 0
-                dt = relativedelta(months=+1)
-                d = self.begDates[iseg]
-                while d <self.endDates[iseg]:
-                    d +=dt
-                    months+=1
-                self.job_sgmt.append("JOB_SGMT: 0000%02d00 000000"% months)
-
-            if self.verbose:
-                print '\nn          start                  end'
-                for iseg in xrange(len(_start_list)):
-                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
+#        self.daysperjob = 0 
+#        if self.daysperjob:
+#            # shorthands
+#            _dpj = self.daysperjob
+#            _start = self.begDates[0]
+#            _end = self.endDates[0]
+#            assert _dpj>0, 'daysperjob = %d' % _dpj
+#            # total number of days for the given job
+#            nDays = (_end - _start).days
+#            assert nDays>_dpj, \
+#                'Days per job [%d] >= Duration [%d days]' %\
+#                (_dpj, nDays)
+#            # number of job segments
+#            q = nDays/_dpj
+#            r = nDays%_dpj
+#            if r>0:
+#                nSegments = q+1
+#            else:
+#                nSegments = q
+#            # lists of start times, end times
+#            _start_list = list()
+#            _end_list = list()
+#            for iseg in xrange(nSegments):
+#                _start_list.append(_start+timedelta(days=iseg*_dpj))
+#            for iseg in xrange(nSegments-1):
+#                _end_list.append(_start_list[iseg+1])
+#            _end_list.append(_end)
+#
+#            #update beg dates and end dates
+#            self.begDates = _start_list
+#            self.endDates = _end_list
+#            self.job_sgmt = list()
+#            for iseg in xrange(nSegments):
+#                self.job_sgmt.append("JOB_SGMT: 000000%02d 000000"%(self.endDates[iseg]-self.begDates[iseg]).days)
+# 
+#            # print, if requested
+#            if self.verbose:
+#                print '\nn          start                  end'
+#                for iseg in xrange(nSegments):
+#                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
+#
+#        # wj notes: disable monthsperjob
+#        self.monthsperjob = 0
+#        if self.monthsperjob:
+#            # shorthands
+#            _mpj = self.monthsperjob
+#            assert _mpj>0, 'monthsperjob = %d' % _mpj
+#            _start = self.begDates[0]
+#            _end = self.endDates[0]
+#            # for this option the start/end dates have to be
+#            # 0z on the first of the month
+#            assert (_start.day==1 and _start.hour==0 and 
+#                    _start.minute==0 and _start.second==0
+#                    ), 'invalid start_time: %s for --monthsperjob' % \
+#                    _start.strftime('%Y-%m-%d-%H-%M-%S')
+#            assert (_end.day==1 and _end.hour==0 and 
+#                    _end.minute==0 and _end.second==0
+#                    ), 'invalid end_time: %s for --monthsperjob' % \
+#                    _end.strftime('%Y-%m-%d-%H-%M-%S')
+#            _start_list = list()
+#            _end_list = list()
+#            for dt in rrule.rrule(rrule.MONTHLY, interval=_mpj, dtstart=_start, until=_end):
+#                seg_start = dt
+#                seg_end = dt+relativedelta(months=_mpj)
+#                if seg_end>_end:
+#                    seg_end = _end
+#                if(seg_start>=seg_end) :
+#                    break
+#                _start_list.append(seg_start)
+#                _end_list.append(seg_end)
+#
+#            #update beg dates and end dates
+#
+#            self.begDates = _start_list
+#            self.endDates = _end_list
+#            self.job_sgmt =list()
+#            for iseg in xrange(len(_start_list)):
+#                months = 0
+#                dt = relativedelta(months=+1)
+#                d = self.begDates[iseg]
+#                while d <self.endDates[iseg]:
+#                    d +=dt
+#                    months+=1
+#                self.job_sgmt.append("JOB_SGMT: 0000%02d00 000000"% months)
+#
+#            if self.verbose:
+#                print '\nn          start                  end'
+#                for iseg in xrange(len(_start_list)):
+#                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
 
 
     def _parseInputFile(self, inpfile):
@@ -588,7 +591,7 @@ class LDASsetup:
         self._mkdir_p(myMetDir)
 
         # ensxxxx directories
-        nSegments = len(self.begDates)
+        nSegments = self.nSegments
         for iseg in xrange(nSegments):
             _start = self.begDates[iseg]
             _end = self.endDates[iseg]
@@ -968,9 +971,9 @@ class LDASsetup:
         print "cmd:   " + cmd
         sp.call(cmd,shell=True)
         optinxny=self._parseInputFile('optimized_distribution')
-        if (int(optinxny['GEOSldas.NX']) == 1):
-            if int(optinxny['GEOSldas.NY']) != int(self.rqdRmInp['ntasks']):
-                self.rqdRmInp['ntasks']=optinxny['GEOSldas.NY']
+        if (int(optinxny['NX']) == 1):
+            if int(optinxny['NY']) != int(self.rqdRmInp['ntasks']):
+                self.rqdRmInp['ntasks']=optinxny['NY']
                 print 'adjust ntasks %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks'])
         
         if os.path.isfile('IMS.rc') :
@@ -1023,7 +1026,6 @@ class LDASsetup:
             if shortfile == 'CAP.rc':    
                 tmprcfile = self.rundir+'/CAP.rc'
                 shutil.copy2(rcfile,tmprcfile)
-                iseg = len(self.job_sgmt)
          
                 _num_sgmt = int(self.rqdExeInp['NUM_SGMT'])
 
@@ -1034,7 +1036,7 @@ class LDASsetup:
                 for line in fileinput.input(tmprcfile,inplace=True):
                     print line.rstrip().replace('BEG_DATE:',self.begDates[0].strftime('BEG_DATE: %Y%m%d %H%M%S'))
                 for line in fileinput.input(tmprcfile,inplace=True):
-                    print line.rstrip().replace('END_DATE:',self.endDates[iseg-1].strftime('END_DATE: %Y%m%d %H%M%S'))
+                    print line.rstrip().replace('END_DATE:',self.endDates[-1].strftime('END_DATE: %Y%m%d %H%M%S'))
                     
             if shortfile == 'LDAS.rc' :
                 default_ldasrcInp = self._parseInputFile(rcfile)
@@ -1071,42 +1073,28 @@ class LDASsetup:
                    ldasrcInp[keyn]= valn
 
                 # create restart item in RC
-                catch_type='pnc4'
-                catchck_type='pnc4'
-                mwrtm_type='pnc4'
-                vegdyn_type='binary'
                 catch_ = self.catch.upper()
                 if catch_+'_INTERNAL_RESTART_TYPE' in ldasrcInp :
-                    catch_type= ldasrcInp[ catch_ +'_INTERNAL_RESTART_TYPE']
                     # avoid duplicate
                     del ldasrcInp[ catch_ +'_INTERNAL_RESTART_TYPE']
                 if catch_+'_INTERNAL_CHECKPOINT_TYPE' in ldasrcInp :
-                    catchck_type= ldasrcInp[ catch_ +'_INTERNAL_CHECKPOINT_TYPE']
                     # avoid duplicate
                     del ldasrcInp[ catch_ +'_INTERNAL_CHECKPOINT_TYPE']
                 if 'VEGDYN_INTERNAL_RESTART_TYPE' in ldasrcInp :
-                    vegdyn_type= ldasrcInp['VEGDYN_INTERNAL_RESTART_TYPE']
                     # avoid duplicate
                     del ldasrcInp['VEGDYN_INTERNAL_RESTART_TYPE']
-                if(catch_type != catchck_type) :
-                    print "WARNING!!: catch restart and checkpoint types differ"
         
                 rstkey=[catch_,'VEGDYN']
                 rstval=[self.catch,'vegdyn']
-                rsttyp=[catch_type,vegdyn_type]
                 _perturb = 1 if self.nens > 1 else 0
                 if((self.has_ldassa_pert or self.has_geos_pert) and _perturb == 1) :
                    rstkey=[catch_,'VEGDYN','LANDPERT']
                    rstval=[self.catch,'vegdyn','landpert']
-                   rsttyp=[catch_type,vegdyn_type,'pnc4']
 
                 _assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
                 if self.has_mwrtm and _assim ==1 :
                    keyn='LANDASSIM_INTERNAL_RESTART_FILE'
                    valn='../input/restart/mwrtm_param_rst'
-                   ldasrcInp[keyn]= valn
-                   keyn='LANDASSIM_INTERNAL_RESTART_TYPE'
-                   valn='pnc4'
                    ldasrcInp[keyn]= valn
 
                 if self.has_landassim_seed and _assim ==1 :
@@ -1126,7 +1114,7 @@ class LDASsetup:
                    valn='4'
                    ldasrcInp[keyn]= valn
        
-                for key,val,typ in zip(rstkey,rstval,rsttyp) :
+                for key,val in zip(rstkey,rstval) :
                     keyn = key+ '_INTERNAL_RESTART_FILE'
                     valn = '../input/restart/'+val+ensid+'_internal_rst'
                     ldasrcInp[keyn]= valn
@@ -1209,59 +1197,57 @@ class LDASsetup:
         return directives
 
 
-    def _getPostCommand(self, iseg):
+    def createBatchRun(self):
         """
         """
-        _nens= self.nens
-        ensdirs = self.ensdirs
-        ensdirs_avg = self.ensdirs_avg
-        cmd=''
-        # if failed to finish, return
-        cmd += "\nif (-e EGRESS.ldas) then\n  /bin/rm EGRESS.ldas\nelse\n  echo failed \n  exit\nendif\n"
-        # move the history to the output
-        for dt in rrule.rrule(rrule.MONTHLY, dtstart=self.begDates[iseg],until=self.endDates[iseg]):
-            # Yyyyy/Mmm between StartDateTime and EndDateTime
-            y4m2 ='Y%4d/M%02d' % (dt.year, dt.month)
-            filen='%4d%02d'%(dt.year,dt.month)
-            for ensid in ensdirs_avg:
-                mydir= '/'.join([
-                    self.outdir,
-                    self.rqdExeInp['EXP_DOMAIN'],
-                    'cat', # ana/cat/rs/rc_out
-                    ensid,
-                    y4m2
-                    ])
-                fn='*'+filen+'*'
-                if len(ensdirs) ==1 :
-                    ens=''
-                else :
-                    ens=ensid.split('s')[1]
-                    fn='*'+ens+fn
-                cmd += '\n/bin/mv '+fn +' ' + mydir
-                cmd += '\n/bin/cp *.ctl ' + mydir
 
+        status = False
 
-        # remove the old restart link and create a new link
-        enddate=self.endDates[iseg].strftime('%Y%m%d_%H%M')
+        rm_name = self.rqdRmInp['rm_name'].lower()
+        os.chdir(self.rundir)
+        fout =open(self.rundir+'/ldas_batchrun.j','w')
+        fout.write("#!/bin/bash -f\n")
+        jobid = None
+        expid = self.rqdExeInp['EXP_ID']
+        fout.write("\nsed -i 's/if($capdate<$enddate) sbatch /#if($capdate<$enddate) sbatch /g' lenkf.j\n\n")
+        nSegments = self.nSegments
+        for iseg in xrange(nSegments):
+            if iseg ==0 :
+                fout.write("jobid%d=$(echo $(sbatch lenkf.j) | cut -d' ' -f 4)\n"%(iseg))
+                fout.write("echo $jobid%d\n"%iseg )
+            else :
+                _start = self.begDates[iseg]
+                myDateTime = '%04d%02d%02d_%02d%02dz' % \
+                   (_start.year, _start.month, _start.day,_start.hour,_start.minute)
+                _logfile = os.path.relpath(
+                   '/'.join([
+                        self.outdir,
+                        self.rqdExeInp['EXP_DOMAIN'],
+                        'rc_out',
+                        'Y%04d' % _start.year,
+                        'M%02d' % _start.month,
+                        '.'.join([expid, 'ldas_log', myDateTime, 'txt']),
+                        ]),
+                    self.rundir)
+                _errfile = os.path.relpath(
+                   '/'.join([
+                        self.outdir,
+                        self.rqdExeInp['EXP_DOMAIN'],
+                        'rc_out',
+                        'Y%04d' % _start.year,
+                        'M%02d' % _start.month,
+                        '.'.join([expid, 'ldas_err', myDateTime, 'txt']),
+                        ]),
+                    self.rundir)
 
-        #for ensid in ensdirs :
-        for iens in xrange(self.nens) :
-            ensdir = self.ensdirs[iens]
-            ensid  = self.ensids[iens]
-            rsdir =  '/'.join([
-                    self.outdir,
-                    self.rqdExeInp['EXP_DOMAIN'],
-                    'rs', # ana/cat/rs/rc_out
-                    ensdir,
-                    y4m2
-                    ])
-            # catch interal restart
-            rstname = self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+enddate
-            cmd += '\n/bin/mv '+self.catch + ensid+'_internal_checkpoint '+ rsdir+'/'+rstname
-            cmd += '\n/bin/rm -f ../input/restart/'+self.catch+ensid+'_internal_rst'
-            cmd += '\n/bin/ln -s '+ rsdir+'/'+rstname + ' ../input/restart/'+self.catch+ensid+'_internal_rst'
+                fout.write("jobid%d=$(echo $(sbatch --dependency=afterany:$jobid%d --output=%s --error=%s lenkf.j) | cut -d' ' -f 4)\n"%(iseg,iseg-1,_logfile, _errfile))
+                fout.write("echo $jobid%d\n"%iseg )
+        fout.write("\nsed -i 's/#if($capdate<$enddate) sbatch/if($capdate<$enddate) sbatch /g' lenkf.j")
+        fout.close()
 
-        return cmd
+        os.chmod(self.rundir+'/ldas_batchrun.j', 0755) 
+        status = True
+        return status
 
 
     def createRunScripts(self):
@@ -1270,92 +1256,7 @@ class LDASsetup:
 
         status = False
 
-        bindir = self.blddirLn + '/bin'
-
-        ntasks = int(self.rqdRmInp['ntasks'])
-        cmd = '\nmpiexec_mpt -np %d \\\n %s' % (ntasks, self.exefyl)
-        nSegments = len(self.begDates)
-        for iseg in xrange(nSegments):
-            # start/end times for this segment
-            _start_seg = self.begDates[iseg]
-            _end_seg = self.endDates[iseg]
-            jobname = 'lenkf.%d.j' % iseg
-            # open
-            jobfile = self.rundir + '/' + jobname
-            fout = open(jobfile, 'w')
-            fout.write('#!/bin/csh -fx\n\n');
-            # resource manager directives
-            directives = self._getRMdirectives(_start_seg)+'\n'
-            fout.write(directives)
-            # set environment
-            fout.write('limit stacksize unlimited\n')
-            fout.write('source %s/g5_modules\n' % os.path.relpath(bindir,self.rundir))
-            fout.write('setenv MKL_CBWR SSE4_2 # ensure zero-diff across archs\n')
-            fout.write('setenv MV2_ON_DEMAND_THRESHOLD 8192 # MVAPICH2\n')
-           
- 
-	    enddate=self.endDates[iseg].strftime('END_DATE: %Y%m%d %H%M%S')
-	    startdate=self.begDates[iseg].strftime('%Y%m%d %H%M%S')
-            fout.write("\nif !(-e cap_restart) then\n   echo " + startdate+ " >cap_restart \nendif\n")
-            fout.write("\n# replace the end date and job_sgmt\n")
-            fout.write(r"sed -i '/END_DATE/c" +"\\"+ enddate + r"'"+ '  CAP.rc\n')
-            fout.write(r"sed -i '/JOB_SGMT/c" +"\\"+ self.job_sgmt[iseg] + r"'"+ '  CAP.rc\n')
-
-            expid="EXPID: "+ self.rqdExeInp['EXP_ID']
-            fout.write(r"sed -i '/EXPID/c" +"\\"+ expid + r"'"+ '  HISTORY.rc\n')
-            # write run command
-
-            fout.write(cmd+'\n')
-
-            # write post proccess for next job
-            post=self._getPostCommand(iseg)
-            fout.write(post+'\n')
-            fout.close()
-            os.chmod(jobfile, 0755)
-
-        expdir = '/'.join(self.rundir.rstrip('/').split('/')[:-1])
-        print '\nExperiment directory: %s' % expdir
-
-        status = True
-        return status
-
-    def createBatchRun(self):
-        """
-        """
-
-        status = False
-
         rm_name = self.rqdRmInp['rm_name'].lower()
-        nSegments = self.nSegments
-        os.chdir(self.rundir)
-        fout =open(self.rundir+'/ldas_batchrun.j','w')
-        fout.write("#!/bin/bash -f\n")
-        jobid = None
-
-        fout.write("\nsed -i 's/if($capdate<$enddate) sbatch $HOMDIR\/lenkf.j/#if($capdate<$enddate) sbatch $HOMDIR\/lenkf.j/g' lenkf.j\n\n")
-        for iseg in xrange(nSegments):
-            if iseg ==0 :
-                fout.write("jobid%d=$(echo $(sbatch lenkf.j) | cut -d' ' -f 4)\n"%(iseg))
-                fout.write("echo $jobid%d\n"%iseg )
-            else :
-                fout.write("jobid%d=$(echo $(sbatch --dependency=afterany:$jobid%d lenkf.j) | cut -d' ' -f 4)\n"%(iseg,iseg-1))
-                fout.write("echo $jobid%d\n"%iseg )
-        fout.write("\nsed -i 's/#if($capdate<$enddate) sbatch $HOMDIR\/lenkf.j/if($capdate<$enddate) sbatch $HOMDIR\/lenkf.j/g' lenkf.j")
-        fout.close()
-
-        os.chmod(self.rundir+'/ldas_batchrun.j', 0755) 
-        status = True
-        return status
-
-
-    def createBatchRun_gcm(self):
-        """
-        """
-
-        status = False
-
-        rm_name = self.rqdRmInp['rm_name'].lower()
-        nSegments = len(self.begDates)
         os.chdir(self.rundir)
         lenkf=self.blddir+'/etc/lenkf.j.template'
         shutil.copy(lenkf,'lenkf.j')
@@ -1665,12 +1566,8 @@ if __name__=='__main__':
     status =ld.createRCFiles()
     assert status
 
-    #print "creating Run script"
-    #status = ld.createRunScripts()
-    #assert(status)
-
     print "creating gcm style batch Run scripts lenkf.j"
-    status = ld.createBatchRun_gcm()
+    status = ld.createRunScripts()
 
     print "creating batch Run scripts"
     status = ld.createBatchRun()

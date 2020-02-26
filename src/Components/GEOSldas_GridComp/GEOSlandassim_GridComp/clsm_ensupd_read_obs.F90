@@ -3612,7 +3612,7 @@ contains
     ! the following mapping is produced with 
     ! land01:/home/reichle/GMAO/station_data/CEOP/EOP3n4/matlab/map_GEOS5_to_ISCCP_halfdeg.m
 
-    integer, dimension(2,N_tiles) :: GEOS5_to_ISCCP = (/ &
+    integer, dimension(2,N_tiles) :: GEOS5_to_ISCCP = reshape( (/ &
          64402,        -999,    &
          68663,          12,    &
          68677,          11,    &
@@ -3653,7 +3653,7 @@ contains
          101896,          6,    &
          101899,          5,    &
          101901,          9,    &
-         106846,          1 /)
+         106846,          1 /), (/2,N_tiles/))
 
     ! ISCCP files are available every 3h
     

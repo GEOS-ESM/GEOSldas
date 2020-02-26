@@ -38,7 +38,7 @@ module GEOS_LandPertGridCompMod
   use LDAS_PertRoutinesMod, only: GEOSldas_PROGN_PERT_DTSTEP
   use LDAS_PertRoutinesMod, only: GEOSldas_NUM_ENSEMBLE
   use LDAS_PertRoutinesMod, only: GEOSldas_FIRST_ENS_ID
-  use LDAS_TileCoordRoutines, only: grid2tile, tile_mask_grid
+  use LDAS_TileCoordRoutines, only: grid2tile, tile2grid, tile_mask_grid
   use LDAS_TileCoordRoutines, only: get_ij_ind_from_latlon
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
@@ -876,7 +876,7 @@ contains
     integer :: land_nt_local,m,n, i1, in, j1, jn
     logical :: IAmRoot
     logical :: COLDSTART
-    integer :: ipert,n_lon,n_lat
+    integer :: ipert,n_lon,n_lat, n_lon_g, n_lat_g
     integer, allocatable :: pert_rseed(:)
     real :: dlon, dlat,locallat,locallon
     type(ESMF_Grid) :: Grid
@@ -961,10 +961,10 @@ contains
 
    ! Pointers to mapl internals
     if ( internal%isCubedSphere ) then
-       n_lon = internal%pgrid_g%n_lon
-       n_lat = internal%pgrid_g%n_lat
-       allocate(internal%fpert_ntrmdt(n_lon, n_lat, N_FORCE_PERT_MAX), source=0.0)
-       allocate(internal%ppert_ntrmdt(n_lon, n_lat, N_PROGN_PERT_MAX), source=0.0)
+       n_lon_g = internal%pgrid_g%n_lon
+       n_lat_g = internal%pgrid_g%n_lat
+       allocate(internal%fpert_ntrmdt(n_lon_g, n_lat_g, N_FORCE_PERT_MAX), source=0.0)
+       allocate(internal%ppert_ntrmdt(n_lon_g, n_lat_g, N_PROGN_PERT_MAX), source=0.0)
        allocate(internal%pert_rseed_r8(NRANDSEED), source=0.0d0)
        
        call MAPL_GetResource(MAPL, rst_fname, trim(comp_name)//'_INTERNAL_RESTART_FILE:',DEFAULT='NONE', rc=status)
@@ -975,13 +975,13 @@ contains
           if ( IAmRoot) then
             call read_pert_rst(trim(rst_fname),internal%fpert_ntrmdt,internal%ppert_ntrmdt, internal%pert_rseed_r8) 
           endif
-          n = n_lat*N_lon*N_FORCE_PERT_MAX
+          n = n_lat_g*n_lon_g*N_FORCE_PERT_MAX
           call c_f_pointer(c_loc(internal%fpert_ntrmdt(1,1,1)), pert_ptr, [n])
           call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
           VERIFY_(status)
           pert_ptr=>null()
 
-          n = n_lat*N_lon*N_PROGN_PERT_MAX
+          n = n_lat_g*n_lon_g*N_PROGN_PERT_MAX
           call c_f_pointer(c_loc(internal%ppert_ntrmdt(1,1,1)), pert_ptr, [n])
           call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
           VERIFY_(status)
@@ -993,10 +993,10 @@ contains
        fpert_ntrmdt => internal%fpert_ntrmdt      
        ppert_ntrmdt => internal%ppert_ntrmdt      
        pert_rseed_r8 => internal%pert_rseed_r8      
-       lon1 = 1
-       lon2 = n_lon
-       lat1 = 1
-       lat2 = n_lat
+       lon1 = internal%pgrid_l%i_offg + 1
+       lon2 = internal%pgrid_l%i_offg + n_lon
+       lat1 = internal%pgrid_l%j_offg + 1
+       lat2 = internal%pgrid_l%j_offg + n_lat
     else
        call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=MINTERNAL, rc=status)
        VERIFY_(status)
@@ -1044,19 +1044,8 @@ contains
     VERIFY_(status) 
     allocate(internal%j_indgs(land_nt_local),stat=status)
     VERIFY_(status)
-    ! if it cubbed-sphere grid, calculalte the mapping for grid2tile 
-    if(index(tcwrap%ptr%grid_g%gridtype,"c3") /=0) then
-      do n=1,land_nt_local
-         call get_ij_ind_from_latlon(internal%pgrid_g,tile_coord(n)%com_lat,tile_coord(n)%com_lon, &
-              internal%i_indgs(n),internal%j_indgs(n))
-         internal%i_indgs(n) = min( internal%pgrid_g%N_lon, max( 1, internal%i_indgs(n)))
-         internal%j_indgs(n) = min( internal%pgrid_g%N_lat, max( 1, internal%j_indgs(n)))
-      enddo
-    else
-      internal%i_indgs(:)=tile_coord(:)%i_indg
-      internal%j_indgs(:)=tile_coord(:)%j_indg
-    endif
-
+    internal%i_indgs(:)=tile_coord(:)%i_indg
+    internal%j_indgs(:)=tile_coord(:)%j_indg
 
     ! Get pert options from *default* namelist files
     ! WARNING: get_force/progn_pert_param() calls allocate memory
@@ -1514,6 +1503,7 @@ contains
     ! Internal private state variables
     type(T_LANDPERT_STATE), pointer :: internal=>null()
     type(LANDPERT_WRAP) :: wrap
+    type(TILECOORD_WRAP) :: tcwrap
     type(MAPL_LocStream) :: locstream
  
     ! MAPL internal pointers
@@ -1526,6 +1516,12 @@ contains
     logical :: IAmRoot
     integer, allocatable :: pert_rseed(:)
     integer :: m,n_lon,n_lat, land_nt_local
+
+    integer :: nfpert, nppert, n_tile
+    type(tile_coord_type), pointer :: tile_coord_f(:)=>null()    
+    type (ESMF_Grid)    :: tilegrid
+    integer, pointer    :: mask(:)
+    real, allocatable, dimension(:,:) :: tile_data_f, tile_data_p, tile_data_f_all, tile_data_p_all
 
     ! Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -1590,8 +1586,61 @@ contains
     pert_rseed = nint(pert_rseed_r8)
 
 
-    if (MAPL_RecordAlarmIsRinging(MAPL, rc=status)) then
-       if (internal%isCubedSphere .and. IamRoot) then
+    if (MAPL_RecordAlarmIsRinging(MAPL, rc=status) .and. internal%isCubedSphere) then
+
+       call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
+       VERIFY_(STATUS)
+       call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
+       VERIFY_(status)
+
+       nfpert = internal%ForcePert%npert
+       nppert = internal%PrognPert%npert
+       tile_coord_f => tcwrap%ptr%tile_coord_f
+       n_tile =  size(tile_coord_f,1)
+       ! 1) grid2tile
+       allocate(tile_data_f(land_nt_local,nfpert))
+       allocate(tile_data_p(land_nt_local,nppert))
+       do m = 1, nfpert
+         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+                fpert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_f(:,m)) 
+       enddo
+       do m = 1, nppert
+         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+                ppert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_p(:,m)) 
+       enddo
+       ! 2) gather tiledata
+       if (IAmRoot) then
+          allocate(tile_data_f_all(n_tile,nfpert), stat=status)
+          VERIFY_(STATUS)
+          allocate(tile_data_p_all(n_tile,nppert), stat=status)
+          VERIFY_(STATUS)
+       else
+          allocate(tile_data_f_all(0,nfpert), stat=status)
+          VERIFY_(STATUS)
+          allocate(tile_data_p_all(0,nppert), stat=status)
+          VERIFY_(STATUS)
+       end if
+
+       do m = 1, nfpert
+         call ArrayGather(tile_data_f(:,m), tile_data_f_all(:,m), tilegrid, mask=mask, rc=status)
+         VERIFY_(STATUS)
+       enddo
+       do m = 1, nppert
+         call ArrayGather(tile_data_p(:,m), tile_data_p_all(:,m), tilegrid, mask=mask, rc=status)
+         VERIFY_(STATUS)
+       enddo
+       if (IamRoot) then
+       ! 3) tile2grid
+          do m = 1, nfpert
+             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+          enddo
+          do m = 1, nppert
+             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+          enddo
+       
+       ! 4) writing
           call MAPL_DateStampGet(clock, datestamp, rc=status)
           VERIFY_(STATUS)
 
@@ -1599,8 +1648,10 @@ contains
           if(internal%NUM_ENSEMBLE ==1 ) id_string=''
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp
+
           call write_pert_checkpoint(trim(chk_fname),internal%fpert_ntrmdt, internal%ppert_ntrmdt, internal%pert_rseed_r8)
        endif
+       deallocate(tile_data_f, tile_data_p, tile_data_f_all, tile_data_p_all)
     endif
 
     if (ESMF_AlarmIsRinging(ForcePertAlarm)) then
@@ -2619,7 +2670,15 @@ contains
     ! Internal private state variables
     type(T_LANDPERT_STATE), pointer :: internal=>null()
     type(LANDPERT_WRAP) :: wrap
+    type(MAPL_LocStream) :: locstream
+    type(TILECOORD_WRAP) :: tcwrap
+    integer :: m,n_lon,n_lat, land_nt_local
 
+    integer :: nfpert, nppert, n_tile
+    type(tile_coord_type), pointer :: tile_coord_f(:)=>null()
+    type (ESMF_Grid)    :: tilegrid
+    integer, pointer    :: mask(:)
+    real, allocatable, dimension(:,:) :: tile_data_f, tile_data_p, tile_data_f_all, tile_data_p_all
     ! Begin...
 
 
@@ -2638,12 +2697,71 @@ contains
     VERIFY_(status)
     internal => wrap%ptr
 
-    if ( MAPL_Am_I_Root() .and. internal%isCubedSphere .and. internal%PERTURBATIONS /= 0) then 
-       write(id_string,'(I4.4)') internal%ens_id
-       if(internal%NUM_ENSEMBLE ==1 ) id_string=''
+    if ( internal%isCubedSphere .and. internal%PERTURBATIONS /= 0) then
+       call MAPL_Get(MAPL, LocStream=locstream,rc=status)
+       VERIFY_(status)
+       call MAPL_LocStreamGet(locstream, NT_LOCAL=land_nt_local,rc=status)
+       VERIFY_(status)
+       call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
+       VERIFY_(STATUS)
+       call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
+       VERIFY_(STATUS)
+       call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
+       VERIFY_(status)
 
-       chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint'
-       call write_pert_checkpoint(trim(chk_fname),internal%fpert_ntrmdt, internal%ppert_ntrmdt, internal%pert_rseed_r8)
+       nfpert = internal%ForcePert%npert
+       nppert = internal%PrognPert%npert
+       tile_coord_f => tcwrap%ptr%tile_coord_f
+       n_tile =  size(tile_coord_f,1)
+       ! 1) grid2tile
+       allocate(tile_data_f(land_nt_local,nfpert))
+       allocate(tile_data_p(land_nt_local,nppert))
+       do m = 1, nfpert
+         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+                internal%fpert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_f(:,m)) 
+       enddo
+       do m = 1, nppert
+         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+                internal%ppert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_p(:,m)) 
+       enddo
+       ! 2) gather tiledata
+       if (MAPL_am_I_Root()) then
+          allocate(tile_data_f_all(n_tile,nfpert), stat=status)
+          VERIFY_(STATUS)
+          allocate(tile_data_p_all(n_tile,nppert), stat=status)
+          VERIFY_(STATUS)
+       else
+          allocate(tile_data_f_all(0,nfpert), stat=status)
+          VERIFY_(STATUS)
+          allocate(tile_data_p_all(0,nppert), stat=status)
+          VERIFY_(STATUS)
+       end if
+
+       do m = 1, nfpert
+         call ArrayGather(tile_data_f(:,m), tile_data_f_all(:,m), tilegrid, mask=mask, rc=status)
+         VERIFY_(STATUS)
+       enddo
+       do m = 1, nppert
+         call ArrayGather(tile_data_p(:,m), tile_data_p_all(:,m), tilegrid, mask=mask, rc=status)
+         VERIFY_(STATUS)
+       enddo
+       if (MAPL_am_I_Root()) then
+       ! 3) tile2grid
+          do m = 1, nfpert
+             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+          enddo
+          do m = 1, nppert
+             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+          enddo
+
+        ! 4) writing
+          write(id_string,'(I4.4)') internal%ens_id
+          if(internal%NUM_ENSEMBLE ==1 ) id_string=''
+
+          chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint'
+          call write_pert_checkpoint(trim(chk_fname),internal%fpert_ntrmdt, internal%ppert_ntrmdt, internal%pert_rseed_r8)
+       endif
+       deallocate(tile_data_f, tile_data_p, tile_data_f_all, tile_data_p_all)
     endif
 
     ! Clean up private internal state
@@ -2779,6 +2897,8 @@ contains
      call check( nf90_def_var(ncid, 'ppert_ntrmdt', NF90_REAL,   dimids, p_varid) )
      call check( nf90_def_var(ncid, 'pert_rseed',   NF90_DOUBLE, seed_dimid, s_varid) )
 
+     call check( nf90_def_var_deflate(ncid, f_varid, 1, 1, 2))
+     call check( nf90_def_var_deflate(ncid, p_varid, 1, 1, 2))
   ! Assign attribute
      call check( nf90_put_att(ncid, f_varid, UNITS, units_) )
      call check( nf90_put_att(ncid, p_varid, UNITS, units_) )

@@ -174,8 +174,8 @@ contains
        obs_param,                               &
        out_obslog,                              &
        out_ObsFcstAna,                          &
-       out_incr,                                &
-       out_incr_format,                         &
+!       out_incr,                                &
+!       out_incr_format,                         &
        out_smapL4SMaup,                         &
        N_obsbias_max                            &
        )
@@ -229,10 +229,10 @@ contains
     
     logical,              intent(out)   :: out_obslog
     logical,              intent(out)   :: out_ObsFcstAna
-    logical,              intent(out)   :: out_incr
+!    logical,              intent(out)   :: out_incr
     logical,              intent(out)   :: out_smapL4SMaup
 
-    integer,              intent(out)   :: out_incr_format    
+!    integer,              intent(out)   :: out_incr_format    
     
     integer,              intent(out)   :: N_obsbias_max
     
@@ -277,8 +277,8 @@ contains
          centered_update,          &
          out_obslog,               &
          out_ObsFcstAna,           &
-         out_incr,                 &
-         out_incr_format,          & 
+!         out_incr,                 &
+!         out_incr_format,          & 
          out_smapL4SMaup,          &
          xcompact, ycompact,       &
          obs_param_nml
@@ -729,7 +729,7 @@ contains
     
     character(40) :: arg
     
-    external getarg, iargc
+    !external getarg, iargc
     
     ! -----------------------------------------------------------------
     
@@ -4445,7 +4445,7 @@ contains
                 ! set temperature increment for each component temperature
                 ! (do nothing if deltaT=0. because cat_progn_incr was initialized to 0.)
                 
-                if (abs(deltaT>0.)) then
+                if (abs(deltaT)>0.) then
 
                    ! TO DO: SHOULD PHASE CHANGE BE PREVENTED FOR TC1, TC2, TC4 AS WELL?
                    !        SHOULD PHASE CHANGE BE PREVENTED BASED ON LAND COVER/CSOIL?

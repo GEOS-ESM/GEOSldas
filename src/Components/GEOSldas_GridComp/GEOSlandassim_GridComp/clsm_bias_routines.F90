@@ -111,7 +111,7 @@ contains
     
     character(40) :: arg
     
-    external getarg, iargc
+    !external getarg, iargc
     
     ! -----------------------------------------------------------------
     
@@ -1493,7 +1493,7 @@ contains
                Observations(i)%obs -                                      &
                obs_bias(ind_catl, ind_spec, indv_time(ind_spec))%bias )
 
-          if (Observations(i)%assim .EQ. .TRUE.) then
+          if (Observations(i)%assim) then
              
              ! determine of obs bias correction is good enough for use of
              ! obs in state update

@@ -53,6 +53,7 @@ module GEOS_LandAssimGridCompMod
   use catch_bias_types, only: cat_bias_param_type
   use catch_types, only: cat_progn_type
   use catch_types, only: cat_param_type
+  use catch_types, only: assignment(=), operator (+), operator (/)
   use clsm_bias_routines, only: initialize_obs_bias
   use clsm_bias_routines, only: read_cat_bias_inputs 
 
@@ -78,6 +79,7 @@ public :: SetServices
 !
 !EOP
 !
+integer, parameter :: NUM_SUBTILES = 4
 integer           :: NUM_ENSEMBLE
 integer           :: FIRST_ENS_ID
 
@@ -91,9 +93,7 @@ real    :: xcompact, ycompact
 integer :: N_obs_param
 logical :: out_obslog
 logical :: out_ObsFcstAna
-logical :: out_incr
 logical :: out_smapL4SMaup
-integer :: out_incr_format
 integer :: N_obsbias_max
 
 integer,dimension(:),pointer :: N_catl_vec,low_ind
@@ -101,7 +101,6 @@ integer :: N_catf
 !reordered tile_coord_rf and mapping l2rf
 integer,dimension(:),pointer :: l2rf, rf2l,rf2g
 type(tile_coord_type), dimension(:), pointer :: tile_coord_rf => null()
-!type(cat_param_type), allocatable :: cat_param(:)
 integer, allocatable :: Pert_rseed(:,:)
 real(kind=ESMF_KIND_R8), allocatable :: pert_rseed_r8(:,:)
 
@@ -154,16 +153,7 @@ subroutine SetServices ( GC, RC )
          )
     VERIFY_(status)
 
-    !phase 1: get cat_param
-    call MAPL_GridCompSetEntryPoint(                                            &
-         gc,                                                                    &
-         ESMF_METHOD_RUN,                                                       &
-         GET_CAT_PARAM ,                                                        &
-         rc=status                                                              &
-         )
-    VERIFY_(status)
-
-    !phase 2: assimilation run
+    !phase 1: assimilation run
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
@@ -172,7 +162,7 @@ subroutine SetServices ( GC, RC )
          )
     VERIFY_(status)
 
-    !phase 3: feed back to change catch_progn  
+    !phase 2: feed back to change catch_progn  
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
@@ -477,6 +467,257 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
 !
+! Export for incr
+!
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_canopy_temperature_saturated_zone'  ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TCFSAT_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_canopy_temperature_transition_zone'   ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TCFTRN_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_canopy_temperature_wilting_zone'    ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TCFWLT_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_canopy_specific_humidity_saturated_zone'  ,&
+    UNITS              = 'kg kg-1'                   ,&
+    SHORT_NAME         = 'QCFSAT_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_canopy_specific_humidity_transition_zone'  ,&
+    UNITS              = 'kg kg-1'                   ,&
+    SHORT_NAME         = 'QCFTRN_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_canopy_specific_humidity_wilting_zone'  ,&
+    UNITS              = 'kg kg-1'                   ,&
+    SHORT_NAME         = 'QCFWLT_INCR'                        ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_interception_reservoir_capac',&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CAPAC_INCR'                     ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_catchment_deficit'         ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CATDEF_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_root_zone_excess'          ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'RZEXC_INCR'                     ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_surface_excess'            ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'SRFEXC_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_1' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT1_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_2' ,&
+    UNITS              = 'J_m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT2_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_3' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT3_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_4' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT4_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_5' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT5_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_soil_heat_content_layer_6' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'GHTCNT6_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_snow_mass_layer_1'         ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'WESNN1_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_snow_mass_layer_2'         ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'WESNN2_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_snow_mass_layer_3'         ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'WESNN3_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_heat_content_snow_layer_1' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'HTSNNN1_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_heat_content_snow_layer_2' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'HTSNNN2_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_heat_content_snow_layer_3' ,&
+    UNITS              = 'J m-2'                     ,&
+    SHORT_NAME         = 'HTSNNN3_INCR'                   ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_snow_depth_layer_1'        ,&
+    UNITS              = 'm'                         ,&
+    SHORT_NAME         = 'SNDZN1_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_snow_depth_layer_2'        ,&
+    UNITS              = 'm'                         ,&
+    SHORT_NAME         = 'SNDZN2_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+  call MAPL_AddExportSpec(GC                  ,&
+    LONG_NAME          = 'increment_snow_depth_layer_3'        ,&
+    UNITS              = 'm'                         ,&
+    SHORT_NAME         = 'SNDZN3_INCR'                    ,&
+!    FRIENDLYTO         = trim(COMP_NAME)             ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+!
 ! INTERNAL STATE
 !
    call MAPL_AddInternalSpec(GC                ,&
@@ -685,7 +926,7 @@ subroutine Initialize(gc, import, export, clock, rc)
     type(MAPL_LocStream) :: locstream
 
     character(len=300) :: out_path,fname
-    character(len=ESMF_MAXSTR) :: exp_id
+    character(len=ESMF_MAXSTR) :: exp_id, GridName
     integer :: model_dtstep
     type(date_time_type) :: start_time
 
@@ -810,13 +1051,6 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MPI_Bcast(pert_rseed, NRANDSEED*NUM_ENSEMBLE, MPI_INTEGER, 0, mpicomm, mpierr)
 
 
-    !allocate(cat_param(land_nt_local))
-
-    !fname = get_io_filename(trim(out_path), trim(exp_id), 'ldas_catparam', date_time=start_time,&
-    !               dir_name='rc_out', file_ext='.bin')
-
-    !call GEOS_read_catparam(GC,trim(fname),cat_param)
-
     allocate(N_catl_vec(numprocs))
     allocate(low_ind(numprocs))
     allocate(l2rf(land_nt_local))
@@ -861,7 +1095,7 @@ subroutine Initialize(gc, import, export, clock, rc)
       rf2l( l2rf(i) ) = i
     end do
     
-    if (master_proc)                            &
+    if (master_proc) then
       call read_ens_upd_inputs(                 &
        trim(out_path),                          &
        trim(exp_id),                            &
@@ -879,11 +1113,15 @@ subroutine Initialize(gc, import, export, clock, rc)
        obs_param,                               &
        out_obslog,                              &
        out_ObsFcstAna,                          &
-       out_incr,                                &
-       out_incr_format,                         &
+!       out_incr,                                &
+!       out_incr_format,                         &
        out_smapL4SMaup,                         &
        N_obsbias_max                            &
        )
+      call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
+      VERIFY_(STATUS)
+      if (index(GridName,"-CF") /=0) out_smapL4SMaup = .false. ! no out_smap for now if it is cs frid
+    endif
 
     call MPI_BCAST(need_mwRTM_param,      1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(update_type,           1, MPI_INTEGER,        0,MPICOMM,mpierr)
@@ -894,8 +1132,8 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MPI_BCAST(N_obs_param,           1, MPI_INTEGER,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_obslog,            1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_ObsFcstAna,        1, MPI_LOGICAL,        0,MPICOMM,mpierr)
-    call MPI_BCAST(out_incr,              1, MPI_LOGICAL,        0,MPICOMM,mpierr)
-    call MPI_BCAST(out_incr_format,       1, MPI_INTEGER,        0,MPICOMM,mpierr)
+!    call MPI_BCAST(out_incr,              1, MPI_LOGICAL,        0,MPICOMM,mpierr)
+!    call MPI_BCAST(out_incr_format,       1, MPI_INTEGER,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_smapL4SMaup,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
 
@@ -914,195 +1152,6 @@ subroutine Initialize(gc, import, export, clock, rc)
     RETURN_(ESMF_SUCCESS)
 
 end subroutine Initialize
-!BOP
-
-subroutine GET_CAT_PARAM( GC, IMPORT, EXPORT, CLOCK, RC )
-
-! !ARGUMENTS:
-
-    type(ESMF_GridComp),intent(inout) :: GC     !Gridded component
-    type(ESMF_State),   intent(inout) :: IMPORT !Import state
-    type(ESMF_State),   intent(inout) :: EXPORT !Export state
-    type(ESMF_Clock),   intent(inout) :: CLOCK  !The clock
-    integer,optional,   intent(out  ) :: RC     !Error code:
-
-!EOP
-! ErrLog Variables
-
-    character(len=ESMF_MAXSTR) :: IAm
-    integer :: STATUS
-    character(len=ESMF_MAXSTR) :: COMP_NAME
-!
-
-! Locals
-    type(MAPL_MetaComp), pointer :: MAPL=>null()
-    logical :: firsttime = .true.
-
-    real, pointer :: poros(:) =>null()
-    real, pointer :: cond(:) =>null()
-    real, pointer :: psis(:) =>null()
-    real, pointer :: bee(:) =>null()
-    real, pointer :: wpwet(:) =>null()
-    real, pointer :: gnu(:) =>null()
-    real, pointer :: vgwmax(:) =>null()
-    real, pointer :: bf1(:) =>null()
-    real, pointer :: bf2(:) =>null()
-    real, pointer :: bf3(:) =>null()
-    real, pointer :: cdcr1(:) =>null()
-    real, pointer :: cdcr2(:) =>null()
-    real, pointer :: ars1(:) =>null()
-    real, pointer :: ars2(:) =>null()
-    real, pointer :: ars3(:) =>null()
-    real, pointer :: ara1(:) =>null()
-    real, pointer :: ara2(:) =>null()
-    real, pointer :: ara3(:) =>null()
-    real, pointer :: ara4(:) =>null()
-    real, pointer :: arw1(:) =>null()
-    real, pointer :: arw2(:) =>null()
-    real, pointer :: arw3(:) =>null()
-    real, pointer :: arw4(:) =>null()
-    real, pointer :: tsa1(:) =>null()
-    real, pointer :: tsa2(:) =>null()
-    real, pointer :: tsb1(:) =>null()
-    real, pointer :: tsb2(:) =>null()
-    real, pointer :: atau(:) =>null()
-    real, pointer :: btau(:) =>null()
-    real, pointer :: ity(:) =>null()
-    real, pointer :: z2ch(:) =>null()
-
-    real :: SURFLAY, x
-    integer :: i
-
-    if (firsttime) then
-       firsttime = .false.
-       call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-       VERIFY_(STATUS)
-
-       call MAPL_GetPointer(import, poros, 'POROS', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, cond, 'COND', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, psis, 'PSIS', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, bee, 'BEE', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, wpwet, 'WPWET', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, gnu, 'GNU', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, vgwmax, 'VGWMAX', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, bf1, 'BF1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, bf2, 'BF2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, bf3, 'BF3', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, cdcr1, 'CDCR1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, cdcr2, 'CDCR2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ars1, 'ARS1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ars2, 'ARS2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ars3, 'ARS3', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ara1, 'ARA1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ara2, 'ARA2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ara3, 'ARA3', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ara4, 'ARA4', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, arw1, 'ARW1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, arw2, 'ARW2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, arw3, 'ARW3', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, arw4, 'ARW4', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, tsa1, 'TSA1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, tsa2, 'TSA2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, tsb1, 'TSB1', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, tsb2, 'TSB2', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, atau, 'ATAU', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, btau, 'BTAU', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, ity, 'ITY', rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(import, z2ch, 'Z2CH', rc=status)
-       VERIFY_(status)
-
-       cat_param(:)%dzgt(1) = dzgt(1)
-       cat_param(:)%dzgt(2) = dzgt(2)
-       cat_param(:)%dzgt(3) = dzgt(3)
-       cat_param(:)%dzgt(4) = dzgt(4)
-       cat_param(:)%dzgt(5) = dzgt(5)
-       cat_param(:)%dzgt(6) = dzgt(6)
-       cat_param(:)%poros = poros
-       cat_param(:)%cond  = cond
-       cat_param(:)%psis  = psis
-       cat_param(:)%bee   = bee
-       cat_param(:)%wpwet = wpwet
-       cat_param(:)%gnu   = gnu
-       cat_param(:)%vgwmax= vgwmax
-       cat_param(:)%bf1   = bf1
-       cat_param(:)%bf2   = bf2
-       cat_param(:)%bf3   = bf3
-       cat_param(:)%cdcr1 = cdcr1
-       cat_param(:)%cdcr2 = cdcr2
-       cat_param(:)%ars1 = ars1
-       cat_param(:)%ars2 = ars2
-       cat_param(:)%ars3 = ars3
-       cat_param(:)%ara1 = ara1
-       cat_param(:)%ara2 = ara2
-       cat_param(:)%ara3 = ara3
-       cat_param(:)%ara4 = ara4
-       cat_param(:)%arw1 = arw1
-       cat_param(:)%arw2 = arw2
-       cat_param(:)%arw3 = arw3
-       cat_param(:)%arw4 = arw4
-       cat_param(:)%tsa1 = tsa1
-       cat_param(:)%tsa2 = tsa2
-       cat_param(:)%tsb1 = tsb1
-       cat_param(:)%tsb2 = tsb2
-       cat_param(:)%atau = atau
-       cat_param(:)%btau = btau
-       cat_param(:)%vegcls  = nint(ity)
-       cat_param(:)%veghght = z2ch
-
-       call MAPL_GetResource(MAPL, SURFLAY, Label="SURFLAY:", DEFAULT=50.0, rc=status)
-    
-       cat_param(:)%dzsf = SURFLAY
-       cat_param(:)%dzpr = (cdcr2/(1.-wpwet)) / poros
-       cat_param(:)%dzrz = vgwmax/poros
-
-       !assign NaN to other fields
-       x = ieee_value(x,ieee_quiet_nan)
-       cat_param(:)%soilcls30  = transfer(x,i)
-       cat_param(:)%soilcls100 = transfer(x,i)
-       cat_param(:)%gravel30   = x
-       cat_param(:)%orgC30     = x
-       cat_param(:)%orgC       = x
-       cat_param(:)%sand30     = x
-       cat_param(:)%clay30     = x
-       cat_param(:)%sand       = x
-       cat_param(:)%clay       = x
-       cat_param(:)%wpwet30    = x
-       cat_param(:)%poros30    = x
-       cat_param(:)%dpth       = x
-    endif
-    RETURN_(ESMF_SUCCESS)
-end subroutine GET_CAT_PARAM
-
 
 ! !IROUTINE: RUN 
 ! !INTERFACE:
@@ -1142,7 +1191,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(date_time_type) :: date_time_new
     character(len=14)    :: datestamp
 
-    integer :: N_catl, N_catg,N_obsl_max
+    integer :: N_catl, N_catg,N_obsl_max, n_e, i
 
     character(len=300) :: out_path
     character(len=ESMF_MAXSTR) :: exp_id
@@ -1158,6 +1207,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(obs_bias_type),       dimension(:,:,:), allocatable :: obs_bias 
 
     type(cat_progn_type), dimension(:,:), allocatable :: cat_progn_incr
+    type(cat_progn_type), dimension(:), allocatable :: cat_progn_incr_ensavg
     type(obs_type),       dimension(:), pointer :: Observations_l => null()
     logical  :: fresh_incr
     integer  :: N_obsf,N_obsl
@@ -1205,6 +1255,35 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, pointer :: SWLAND(:)=>null()
     real, pointer :: LAI(:)=>null()
 
+!! export incr progn
+
+    real, dimension(:),pointer :: TC1_incr=>null()
+    real, dimension(:),pointer :: TC2_incr=>null()
+    real, dimension(:),pointer :: TC4_incr=>null()
+    real, dimension(:),pointer :: QC1_incr=>null()
+    real, dimension(:),pointer :: QC2_incr=>null()
+    real, dimension(:),pointer :: QC4_incr=>null()
+    real, dimension(:),pointer :: CAPAC_incr=>null()
+    real, dimension(:),pointer :: CATDEF_incr=>null()
+    real, dimension(:),pointer :: RZEXC_incr=>null()
+    real, dimension(:),pointer :: SRFEXC_incr=>null()
+    real, dimension(:),pointer :: GHTCNT1_incr=>null()
+    real, dimension(:),pointer :: GHTCNT2_incr=>null()
+    real, dimension(:),pointer :: GHTCNT3_incr=>null()
+    real, dimension(:),pointer :: GHTCNT4_incr=>null()
+    real, dimension(:),pointer :: GHTCNT5_incr=>null()
+    real, dimension(:),pointer :: GHTCNT6_incr=>null()
+    real, dimension(:),pointer :: WESNN1_incr=>null()
+    real, dimension(:),pointer :: WESNN2_incr=>null()
+    real, dimension(:),pointer :: WESNN3_incr=>null()
+    real, dimension(:),pointer :: HTSNNN1_incr=>null()
+    real, dimension(:),pointer :: HTSNNN2_incr=>null()
+    real, dimension(:),pointer :: HTSNNN3_incr=>null()
+    real, dimension(:),pointer :: SNDZN1_incr=>null()
+    real, dimension(:),pointer :: SNDZN2_incr=>null()
+    real, dimension(:),pointer :: SNDZN3_incr=>null()
+
+
     logical :: spin
     logical, save              :: firsttime=.true.
     type(cat_bias_param_type)  :: cat_bias_param
@@ -1213,7 +1292,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     character(len=300) :: fname_tpl
     character(len=4) :: id_string
     integer:: ens, nymd, nhms
-    
+
 #ifdef DBG_LANDASSIM_INPUTS
         ! vars for debugging purposes
         type(ESMF_Grid)                 :: TILEGRID
@@ -1375,7 +1454,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
    
 !! get import from ens to get ensemble average forcing
 
-     ! Pointers to exports (allocate memory)
     call MAPL_GetPointer(import, TA_enavg, 'TA', rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(import, QA_enavg, 'QA', rc=status)
@@ -1410,6 +1488,59 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(status)
     call MAPL_GetPointer(import, LAI, 'LAI', rc=status)
     VERIFY_(status)
+!
+! export for incr
+!
+    call MAPL_GetPointer(export, TC1_incr,  'TCFSAT_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, TC2_incr,  'TCFTRN_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, TC4_incr,  'TCFWLT_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, QC1_incr,  'QCFSAT_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, QC2_incr,  'QCFTRN_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, QC4_incr,  'QCFWLT_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, CAPAC_incr,  'CAPAC_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, CATDEF_incr,  'CATDEF_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, RZEXC_incr,  'RZEXC_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, SRFEXC_incr,  'SRFEXC_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT1_incr,  'GHTCNT1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT2_incr,  'GHTCNT2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT3_incr,  'GHTCNT3_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT4_incr,  'GHTCNT4_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT5_incr,  'GHTCNT5_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, GHTCNT6_incr,  'GHTCNT6_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, WESNN1_incr,  'WESNN1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, WESNN2_incr,  'WESNN2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, WESNN3_incr,  'WESNN3_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, HTSNNN1_incr,  'HTSNNN1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, HTSNNN2_incr,  'HTSNNN2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, HTSNNN3_incr,  'HTSNNN3_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, SNDZN1_incr,  'SNDZN1_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, SNDZN2_incr,  'SNDZN2_INCR' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, SNDZN3_incr,  'SNDZN3_INCR' ,rc=status)
+    VERIFY_(status)
 
     allocate(met_force(N_catl))
     met_force(:)%Tair    = TA_enavg(:)
@@ -1440,6 +1571,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     end if
 
     allocate(cat_progn_incr(N_catl,NUM_ENSEMBLE))
+    allocate(cat_progn_incr_ensavg(N_catl))
     allocate(Observations_l(N_obsl_max))
 
     !WY note: temportary
@@ -1609,10 +1741,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
            ! Need to find the number 
            N_catg = maxval(rf2g)
 
-           if (mod(secs_in_day, dtstep_assim)==0) then                       
+           if (mod(secs_in_day, dtstep_assim)==0) then
 
-                call output_incr_etc( out_ObsFcstAna, out_incr,              &
-                out_incr_format, date_time_new, trim(out_path), trim(exp_id),            &
+               call output_incr_etc( out_ObsFcstAna,             &
+                date_time_new, trim(out_path), trim(exp_id),            &
                 N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
                 N_catl, tile_coord_l,                                        &
                 N_catf, tile_coord_rf, tcinternal%grid_f, tcinternal%grid_g, &
@@ -1621,6 +1753,48 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                 met_force, lai,                     &
                 cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
                 Observations_l )
+
+
+              do i = 1, N_catl
+                 cat_progn_incr_ensavg(i) = 0.0
+                 do n_e=1, NUM_ENSEMBLE
+                    cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
+                       + cat_progn_incr(i,n_e)
+                 end do
+                 cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(NUM_ENSEMBLE)
+              enddo
+
+              if(associated(TC1_incr))  TC1_incr(:) = cat_progn_incr_ensavg(:)%tc1
+              if(associated(TC2_incr))  TC2_incr(:) = cat_progn_incr_ensavg(:)%tc2
+              if(associated(TC4_incr))  TC4_incr(:) = cat_progn_incr_ensavg(:)%tc4
+              if(associated(QC1_incr))  QC1_incr(:) = cat_progn_incr_ensavg(:)%qa1
+              if(associated(QC2_incr))  QC2_incr(:) = cat_progn_incr_ensavg(:)%qa2
+              if(associated(QC4_incr))  QC4_incr(:) = cat_progn_incr_ensavg(:)%qa4
+
+              if(associated(CAPAC_incr))   CAPAC_incr(:)  = cat_progn_incr_ensavg(:)%capac
+              if(associated(CATDEF_incr))  CATDEF_incr(:) = cat_progn_incr_ensavg(:)%catdef
+              if(associated(RZEXC_incr))   RZEXC_incr(:)  = cat_progn_incr_ensavg(:)%rzexc
+              if(associated(SRFEXC_incr))  SRFEXC_incr(:) = cat_progn_incr_ensavg(:)%srfexc
+
+              if(associated(GHTCNT1_incr)) GHTCNT1_incr(:) = cat_progn_incr_ensavg(:)%ght(1)
+              if(associated(GHTCNT2_incr)) GHTCNT2_incr(:) = cat_progn_incr_ensavg(:)%ght(2)
+              if(associated(GHTCNT3_incr)) GHTCNT3_incr(:) = cat_progn_incr_ensavg(:)%ght(3)
+              if(associated(GHTCNT4_incr)) GHTCNT4_incr(:) = cat_progn_incr_ensavg(:)%ght(4)
+              if(associated(GHTCNT5_incr)) GHTCNT5_incr(:) = cat_progn_incr_ensavg(:)%ght(5)
+              if(associated(GHTCNT6_incr)) GHTCNT6_incr(:) = cat_progn_incr_ensavg(:)%ght(6)
+
+              if(associated(WESNN1_incr))  WESNN1_incr(:) = cat_progn_incr_ensavg(:)%wesn(1)
+              if(associated(WESNN2_incr))  WESNN2_incr(:) = cat_progn_incr_ensavg(:)%wesn(2)
+              if(associated(WESNN3_incr))  WESNN3_incr(:) = cat_progn_incr_ensavg(:)%wesn(3)
+
+              if(associated(HTSNNN1_incr)) HTSNNN1_incr(:) = cat_progn_incr_ensavg(:)%htsn(1)
+              if(associated(HTSNNN2_incr)) HTSNNN2_incr(:) = cat_progn_incr_ensavg(:)%htsn(2)
+              if(associated(HTSNNN3_incr)) HTSNNN3_incr(:) = cat_progn_incr_ensavg(:)%htsn(3)
+
+              if(associated(SNDZN1_incr))  SNDZN1_incr(:)  = cat_progn_incr_ensavg(:)%sndz(1)
+              if(associated(SNDZN2_incr))  SNDZN2_incr(:)  = cat_progn_incr_ensavg(:)%sndz(2)
+              if(associated(SNDZN3_incr))  SNDZN3_incr(:)  = cat_progn_incr_ensavg(:)%sndz(3)
+
 
 
            ! write analysis fields into SMAP L4_SM aup file 
@@ -1647,6 +1821,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to inputs
 !--------------------
     deallocate(cat_progn_incr)
+    deallocate(cat_progn_incr_ensavg)
     deallocate(Observations_l)
 
     call MAPL_TimerOff ( MAPL, "RUN"  )

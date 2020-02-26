@@ -320,7 +320,7 @@ contains
     
     !---------------------------------------------------
     
-    if (logunit) write(logunit,*) 'entering mwRTM_get_Tb...'
+    if (logit) write(logunit,*) 'entering mwRTM_get_Tb...'
 
     ! check first element of elevation against no-data-value
 
@@ -492,7 +492,7 @@ contains
 
     end do
     
-    if (logunit) write(logunit,*) 'exiting mwRTM_get_Tb.'
+    if (logit) write(logunit,*) 'exiting mwRTM_get_Tb.'
     
   end subroutine mwRTM_get_Tb
   
