@@ -93,9 +93,7 @@ real    :: xcompact, ycompact
 integer :: N_obs_param
 logical :: out_obslog
 logical :: out_ObsFcstAna
-logical :: out_incr
 logical :: out_smapL4SMaup
-integer :: out_incr_format
 integer :: N_obsbias_max
 
 integer,dimension(:),pointer :: N_catl_vec,low_ind
@@ -1115,8 +1113,8 @@ subroutine Initialize(gc, import, export, clock, rc)
        obs_param,                               &
        out_obslog,                              &
        out_ObsFcstAna,                          &
-       out_incr,                                &
-       out_incr_format,                         &
+!       out_incr,                                &
+!       out_incr_format,                         &
        out_smapL4SMaup,                         &
        N_obsbias_max                            &
        )
@@ -1134,8 +1132,8 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MPI_BCAST(N_obs_param,           1, MPI_INTEGER,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_obslog,            1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_ObsFcstAna,        1, MPI_LOGICAL,        0,MPICOMM,mpierr)
-    call MPI_BCAST(out_incr,              1, MPI_LOGICAL,        0,MPICOMM,mpierr)
-    call MPI_BCAST(out_incr_format,       1, MPI_INTEGER,        0,MPICOMM,mpierr)
+!    call MPI_BCAST(out_incr,              1, MPI_LOGICAL,        0,MPICOMM,mpierr)
+!    call MPI_BCAST(out_incr_format,       1, MPI_INTEGER,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_smapL4SMaup,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
 
@@ -1745,11 +1743,8 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
            if (mod(secs_in_day, dtstep_assim)==0) then
 
-               ! out_incr is set to false, the output collection can be set up in HISTORY.rc
-               out_incr = .false.
-
-               call output_incr_etc( out_ObsFcstAna, out_incr,             &
-                out_incr_format, date_time_new, trim(out_path), trim(exp_id),            &
+               call output_incr_etc( out_ObsFcstAna,             &
+                date_time_new, trim(out_path), trim(exp_id),            &
                 N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
                 N_catl, tile_coord_l,                                        &
                 N_catf, tile_coord_rf, tcinternal%grid_f, tcinternal%grid_g, &
