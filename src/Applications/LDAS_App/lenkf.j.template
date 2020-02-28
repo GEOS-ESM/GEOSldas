@@ -414,7 +414,7 @@ while ( $counter <= ${NUM_SGMT} )
           #ncra -h $EXPID.${ThisCol}.$YYYY$MM.nc4 $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4
           
           #/bin/rm $EXPID.${ThisCol}.$YYYY$MM.nc4
-          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??_*z.nc4 ${EXPID}.${ThisCol}.$YYYY$MM.nc4
+          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??_*z.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
           
           # don't want a daily? delete the daily and sub-dailies and continue
           #
