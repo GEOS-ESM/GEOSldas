@@ -346,6 +346,33 @@ PROGRAM tile_bin2nc4
     case ('RMELTOC001'); LONG_NAME = 'flushed_out_organic_carbon_mass_flux_from_the_bottom_layer_bin_1'; UNITS = 'kg m-2 s-1'
     case ('RMELTOC002'); LONG_NAME = 'flushed_out_organic_carbon_mass_flux_from_the_bottom_layer_bin_2'; UNITS = 'kg m-2 s-1'
 
+!#sqz 2020-01 
+    case ('TCFSAT_INCR'); LONG_NAME = 'increment_canopy_temperature_saturated_zone'; UNITS = 'K' 
+    case ('TCFTRN_INCR'); LONG_NAME = 'increment_canopy_temperature_transition_zone'; UNITS = 'K'
+    case ('TCFWLT_INCR'); LONG_NAME = 'increment_canopy_temperature_wilting_zone'; UNITS = 'K'
+    case ('QCFSAT_INCR'); LONG_NAME = 'increment_canopy_specific_humidity_saturated_zone'; UNITS = 'kg kg-1'
+    case ('QCFTRN_INCR'); LONG_NAME = 'increment_canopy_specific_humidity_transition_zone'; UNITS = 'kg kg-1'
+    case ('QCFWLT_INCR'); LONG_NAME = 'increment_canopy_specific_humidity_wilting_zone'; UNITS = 'kg kg-1'
+    case ('CAPAC_INCR'); LONG_NAME = 'increment_interception_reservoir_capac'; UNITS = 'kg m-2'
+    case ('CATDEF_INCR'); LONG_NAME = 'increment_catchment_deficit'; UNITS = 'kg m-2'
+    case ('RZEXC_INCR'); LONG_NAME = 'increment_root_zone_excess'; UNITS = 'kg m-2'
+    case ('SRFEXC_INCR'); LONG_NAME = 'increment_surface_excess'; UNITS = 'kg m-2'
+    case ('GHTCNT1_INCR'); LONG_NAME = 'increment_soil_heat_content_layer_1'; UNITS = 'J m-2'
+    case ('GHTCNT2_INCR'); LONG_NAME = 'increment_soil_heat_content_layer_2'; UNITS = 'J m-2'
+    case ('GHTCNT3_INCR'); LONG_NAME = 'increment_soil_heat_content_layer_3'; UNITS = 'J m-2' 
+    case ('GHTCNT4_INCR'); LONG_NAME = 'increment_soil_heat_content_layer_4'; UNITS = 'J m-2'
+    case ('GHTCNT5_INCR'); LONG_NAME = 'increment_soil_heat_content_layer_5'; UNITS = 'J m-2'
+    case ('GHTCNT6_INCR'); LONG_NAME = 'increment_soil_heat_content_layer_6'; UNITS = 'J m-2'
+    case ('WESNN1_INCR');  LONG_NAME = 'increment_snow_mass_layer_1'; UNITS = 'kg m-2'
+    case ('WESNN2_INCR');  LONG_NAME = 'increment_snow_mass_layer_2'; UNITS = 'kg m-2'
+    case ('WESNN3_INCR');  LONG_NAME = 'increment_snow_mass_layer_3'; UNITS = 'kg m-2'
+    case ('HTSNNN1_INCR'); LONG_NAME = 'increment_heat_content_snow_layer_1'; UNITS = 'J m-2'
+    case ('HTSNNN2_INCR'); LONG_NAME = 'increment_heat_content_snow_layer_2'; UNITS = 'J m-2'
+    case ('HTSNNN3_INCR'); LONG_NAME = 'increment_heat_content_snow_layer_3'; UNITS = 'J m-2'
+    case ('SNDZN1_INCR'); LONG_NAME = 'increment_snow_depth_layer_1'; UNITS = 'm'
+    case ('SNDZN2_INCR'); LONG_NAME = 'increment_snow_depth_layer_2'; UNITS = 'm'
+    case ('SNDZN3_INCR'); LONG_NAME = 'increment_snow_depth_layer_3'; UNITS = 'm'
+
     case default;        LONG_NAME = 'Check_GridComp';   UNITS = 'No to fix getAttribute table in tile_bin2nc4.F90';
     end select
 

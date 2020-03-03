@@ -174,8 +174,8 @@ contains
        obs_param,                               &
        out_obslog,                              &
        out_ObsFcstAna,                          &
-       out_incr,                                &
-       out_incr_format,                         &
+!       out_incr,                                &
+!       out_incr_format,                         &
        out_smapL4SMaup,                         &
        N_obsbias_max                            &
        )
@@ -229,10 +229,10 @@ contains
     
     logical,              intent(out)   :: out_obslog
     logical,              intent(out)   :: out_ObsFcstAna
-    logical,              intent(out)   :: out_incr
+!    logical,              intent(out)   :: out_incr
     logical,              intent(out)   :: out_smapL4SMaup
 
-    integer,              intent(out)   :: out_incr_format    
+!    integer,              intent(out)   :: out_incr_format    
     
     integer,              intent(out)   :: N_obsbias_max
     
@@ -277,8 +277,8 @@ contains
          centered_update,          &
          out_obslog,               &
          out_ObsFcstAna,           &
-         out_incr,                 &
-         out_incr_format,          & 
+!         out_incr,                 &
+!         out_incr_format,          & 
          out_smapL4SMaup,          &
          xcompact, ycompact,       &
          obs_param_nml
