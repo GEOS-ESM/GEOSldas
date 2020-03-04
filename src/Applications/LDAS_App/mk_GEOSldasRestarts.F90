@@ -16,7 +16,7 @@ PROGRAM mk_GEOSldasRestarts
 ! mpirun -np 1 bin/mk_GEOSldasRestarts.x -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE -p PARAMFILE
 
   use MAPL
-  use mk_restarts_getidsMod, only: GetIDs, ReadCNTilFile
+  use mk_restarts_getidsMod, only: GetIDs, ReadTileFile_RealLatLon
   use gFTL_StringVector 
   use ieee_arithmetic, only: isnan => ieee_is_nan
   USE STIEGLITZSNOW,   ONLY :                 &
@@ -412,7 +412,7 @@ contains
         allocate (lon_rst  (1:ntiles_rst))
         allocate (lat_rst  (1:ntiles_rst))
 
-        call ReadCNTilFile ('OutData1/OutTileFile', i, long, latg); VERIFY_(i-ntiles)
+        call ReadTileFile_RealLatLon ('OutData1/OutTileFile', i, long, latg); VERIFY_(i-ntiles)
 
         read  (10) LDAS2BCS
         read  (10) tile_id
@@ -1127,18 +1127,18 @@ contains
        allocate (latg   (ntiles))
        allocate (ld_reorder(ntiles_smap)) 
 
-       call ReadCNTilFile ('OutData1/OutTileFile', i, long, latg); VERIFY_(i-ntiles)
+       call ReadTileFile_RealLatLon ('OutData1/OutTileFile', i, long, latg); VERIFY_(i-ntiles)
        
        ! ---------------------------------------------
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
        
        if(trim(MODEL) == 'CATCHCN') then
-          call ReadCNTilFile(trim(InCNTilFile ),i,lonc,latc) 
+          call ReadTileFile_RealLatLon(trim(InCNTilFile ),i,lonc,latc) 
           VERIFY_(i-ntiles_smap)
        endif
        if(trim(MODEL) == 'CATCH'  ) then
-          call ReadCNTilFile(trim(InCatTilFile),i,lonc,latc) 
+          call ReadTileFile_RealLatLon(trim(InCatTilFile),i,lonc,latc) 
           VERIFY_(i-ntiles_smap)
        endif
        if(trim(MODEL) == 'CATCHCN') then
@@ -1781,7 +1781,7 @@ contains
        allocate (latg   (ntiles))
        allocate (DAYX   (NTILES))
 
-       call ReadCNTilFile (OutTileFile, i, long, latg); VERIFY_(i-ntiles)
+       call ReadTileFile_RealLatLon (OutTileFile, i, long, latg); VERIFY_(i-ntiles)
 
        ! Compute DAYX
        ! ------------
@@ -1794,7 +1794,7 @@ contains
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
 
-       call ReadCNTilFile(trim(InCNTilFile),i,lonc,latc); VERIFY_(i-ntiles_cn)
+       call ReadTileFile_RealLatLon(trim(InCNTilFile),i,lonc,latc); VERIFY_(i-ntiles_cn)
 
     endif
 
