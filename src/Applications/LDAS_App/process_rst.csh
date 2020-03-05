@@ -69,16 +69,21 @@ case [0] :
 #SBATCH --error=mkLDAS.e
  
 source $INSTDIR/bin/g5_modules
+if ( -e /etc/os-release ) then
+  module load nco/4.8.1
+else
+  module load other/nco-4.6.8-gcc-5.3-sp3 
+endif
 #setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0
 #setenv MKL_CBWR SSE4_2 # ensure zero-diff across archs
 #setenv MV2_ON_DEMAND_THRESHOLD 8192 # MVAPICH2
 setenv LAIFILE `find ${BCSDIR}/lai_clim*`
-setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib
+
 limit stacksize unlimited
  
-#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
 
 sleep 3
 
@@ -88,8 +93,8 @@ else
    /bin/cp OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst
 endif
 
-#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_LDASsaRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+#mpirun -map-by core --mca btl ^vader -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s 50 -j Y
 
 _EOI_
 
@@ -123,7 +128,7 @@ _EOI2_
     rm mkLDASsa.j2
     sbatch mkLDASsa.j
     cd $PWD
-    breaksw
+     breaksw
 case [1]:
 
     set coordfile=${RESTART_short}/rc_out/${RESTART_ID}.ldas_tilecoord.bin
@@ -146,14 +151,18 @@ case [1]:
         cd $EXPDIR/$EXPID/mk_restarts/
         echo '#\!/bin/csh -f ' > this.file
         echo 'source $INSTDIR/bin/g5_modules' >> this.file
+        echo 'if ( -e /etc/os-release ) then' >> this.file
+        echo '    module load nco/4.8.1'      >> this.file
+        echo 'else'                           >> this.file
+        echo 'module load other/nco-4.6.8-gcc-5.3-sp3 ' >> this.file
+        echo 'endif' >> this.file
         #echo 'setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0' >> this.file
         echo 'setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib' >> this.file
-        echo 'setenv PATH $PATH\:/usr/local/other/SLES11.3/nco/4.6.8/gcc-5.3-sp3/bin/' >> this.file
 
         set j = 0
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           echo  $INSTDIR/bin/esma_mpirun -np 1 bin/mk_LDASsaRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s 50 -r Y -t ${TILFILE}  >> this.file
+           echo  $INSTDIR/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s 50 -r Y -t ${TILFILE}  >> this.file
            echo  ncks -4  -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} >> this.file 
            @ j++
         end

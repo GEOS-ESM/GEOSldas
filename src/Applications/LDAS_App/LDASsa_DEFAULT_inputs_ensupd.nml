@@ -42,7 +42,7 @@ centered_update = .false.
 
 out_obslog      = .true.
 out_ObsFcstAna  = .false.
-out_incr        = .false.
+!out_incr        = .false.
 out_smapL4SMaup = .false.
 
 ! select format of increments output	
@@ -51,7 +51,7 @@ out_smapL4SMaup = .false.
 !  1: suitable for land incremental analysis update (LIAU) in GEOS-5 GCM
 !     (output on global domain in GEOS-5 global tile order)
 
-out_incr_format = 0       
+!out_incr_format = 0       
 
 ! ---------------------------------------------------------------------
 !

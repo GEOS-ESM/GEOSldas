@@ -2166,8 +2166,10 @@ contains
     call MAPL_TimerOff(MAPL, '-MetForcing2Catch')
 
     ! Update the r8 version of pert_rseed
-    pert_rseed_r8 = real(pert_rseed,kind=ESMF_kind_r8)
-    pert_iseed(:,internal%ens_id+1) = pert_rseed
+    if (internal%PERTURBATIONS /=0 ) then
+       pert_rseed_r8 = real(pert_rseed,kind=ESMF_kind_r8)
+       pert_iseed(:,internal%ens_id+1) = pert_rseed
+    endif
 
     ! Clean up
     if (allocated(mfPert)) then

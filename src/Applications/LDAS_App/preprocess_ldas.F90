@@ -1014,7 +1014,7 @@ subroutine optimize_latlon(fname,arg)
       write(10,'(A)') "GEOSldas.LM:   1"
       write(10,'(A,I5)') "NY: ",N_proc
       write(10,'(A)') "NX:   1"
-      write(10,'(A)') "JMS_FILE:    JMS.rc"
+      write(10,'(A)') "GEOSldas.JMS_FILE:    JMS.rc"
       close(10)
        
       open(10,file="JMS.rc",action='write')
@@ -1149,7 +1149,7 @@ subroutine optimize_latlon(fname,arg)
       write(10,'(A,I5)') "NX: ",N_proc
       write(10,'(A)') "NY:   1"
 
-      write(10,'(A)') "IMS_FILE:    IMS.rc"
+      write(10,'(A)') "GEOSldas.IMS_FILE:    IMS.rc"
       close(10)
        
       open(10,file="IMS.rc",action='write')
