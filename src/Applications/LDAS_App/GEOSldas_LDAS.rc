@@ -10,10 +10,7 @@
 #--------------------------------------------------------#
 
 # ---- Using offline?
-#
-#    0: DEFAULT for GCM. (WW,CH,CM,CQ,FR) are required in catchment restart file 
-#    1: DEFAULT for GEOSldas (WW,CH,CM,CQ,FR) are optional
-#    2: (WW,CH,CM,CQ,FR) are optional for input restart but will be in output restart 
+#    1 : yes, offline
 #
 CATCHMENT_OFFLINE              : 1
 
@@ -33,11 +30,11 @@ FIRST_ENS_ID                   : 0
 #
 MAPL_ENABLE_BOOTSTRAP          : YES
 
-# ---- SURFLAY (Thickness of surface layer for soil moisture [mm])
-# SURFLAY: 50.0 for New Soil Params (default, Ganymed-4 and later)
-# SURFLAY: 20.0 Old Soil Params  (Ganymed-3 and earlier)
+# ---- Vegedyn and catchment default file types
 #
-SURFLAY                        : 50.0
+VEGDYN_INTERNAL_RESTART_TYPE   : binary
+CATCH_INTERNAL_RESTART_TYPE    : pnc4
+CATCH_INTERNAL_CHECKPOINT_TYPE : pnc4
 
 #--------------------------------------------------------#
 # Optional parameters. Users can overwrite the defaults  #
@@ -78,56 +75,6 @@ LSM_CHOICE                     : 1
 #
 # BLACK_FILE                     : '' 
 # WHITE_FILE                     : '' 
-
-# ---- Surface layer turbulence scheme:
-#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
-#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
-#
-CHOOSEMOSFC                    : 0
-
-# ---- Formulation for turbulent roughness length (Z0):
-#    0 : Fortuna,      SMAP NRv3
-#    1 : Ganymed-4_1,  SMAP NRv4/NRv4.1
-#    2 : Heracles-4_3, Icarus (AGCM default)
-#    3 :               SMAP NRv5/NRv7.2
-#    4 : Icarus-NLv3 (f525_fp)
-#                      SMAP NRv8.1
-#
-Z0_FORMULATION                 : 4
-
-# ---- ASCAT-derived roughness length:
-#    0 : Default - do not use ASCAT information.
-#    1 : Replace model roughness length with ASCAT Z0 where climatological NDVI<0.2.
-#
-USE_ASCATZ0                    : 0
-
-# ---- Aerosol deposition on snow (available only with MERRA-2 forcings):
-#    0 : DEFAULT, ALL GOCART Aerosol are NOT used
-#    1 : use all GOCART aerosol data 
-#    2 : GOCART DUST is NOT used
-#    3 : GOCART Black Carbon is NOT used
-#    4 : GOCART Organic Carbon is NOT used
-#
-AEROSOL_DEPOSITION             : 0
-
-# ---- Run the irrigation model :
-#    0 : Default - NO Do not run the irrigation model
-#    1 : YES run the irrigation model
-#
-RUN_IRRIG                     : 0
-
-# ---- irrigation model method :
-#    0 : Default - Sprinkler and Flood irrigation combined
-#    1 : sprinkler irrigation only
-#    2 : flood irrigation only
-#
-IRRIG_METHOD                  : 0
-
-# ---- Number of constituents for GOSWIM (the GOddard SnoW Impurity Module)
-#    0 : Default, GOSWIM snow albedo scheme is turned OFF for land
-#    9 : GOSWIM snow albedo scheme is turned ON for land
-#
-N_CONST_LAND4SNWALB            : 0
 
 # ---- Perturbations (If num_ensemble > 1, PERTURBATIONS will automatically be set to 1): 
 #    0 : No perturbactions.
@@ -190,60 +137,29 @@ MET_HINTERP                    : 1
 #
 LAND_ASSIM                     : NO
 
-# ---- Choose land model version
-#    Icarus  : Current DEFAULT for the Icarus AGCM (Scientifically close to MERRA-2)
-#    V24_C05 : DEFAULT for GEOSldas_m4-17_0
-#    NRv7.2  : Current DEFAULT beginning with GEOSldas_m4-17_6 (same in NRv8.1)
-#
-LAND_PARAMS                    : NRv7.2
-
 # ---- File name for mwRTM parameter file (nc4 format) used in assimilation runs.
 #      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
 #      If empty or commented out, GEOSldas will search the restart directory.
 #
 # MWRTM_FILE                     : ''
 
+# ---- Surface layer turbulence scheme:
+#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
+#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
+#
+CHOOSEMOSFC                    : 0
+
+# --- Storm Fraction i.e. the fraction tile that precipitation falls on 0. < value <= 1.  :
+#      1.0  :                      (default value for AGCM and GEOSldas); 
+#     0.025 : recommended value to deal with AGCM's drizzle
+# 
+# PRECIPFRAC: 0.025
+
 #--------------------------------------------------------#
-#             CatchCN Model specific parameters          #
+#  GEOSland_GridComp optional physics parametrizations   #
 #--------------------------------------------------------#
 
-# ---- Time step for carbon/nitrogen routines in CatchmentCN model (default 5400):
-#      (Time step for water/energy routines is controlled by HEARTBEAT_DT in CAP.rc)
-#
-# DTCN                           : 5400
+# -- Land Physics Parameters Resource File
 
-#  ---- Atmospheric CO2
-#    0: use a fix value as defined by below CO2 (default=350.e-6)
-#    1: NOAA CT tracker monthly mean diurnal cycle
-#    2: NOAA CT tracker monthly mean diurnal cycle scaled to match EEA global average CO2
-#       By default NOAA CT CO2 is scaled to the EEA global average CO2 linearly interpolated to the METFORCE year. 
-#       For offline simulations : the default holds but with the below optional parameter CO2_YEAR, which permits user to 
-#       set the beginning year of the atmospheric CO2 concentration of the simulation if it's earlier than the METFORCE year.
-#    3: CMIP5 recommended annual average global mean concentrations from getco2.F90 (1765-2150)
-#    4: import AGCM model CO2 (AGCM Only)
-#
-# ATM_CO2: 2
-# CO2: 350.e-6
-# CO2_YEAR:
-
-# ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation 
-#    0 : NO Run CN Model interactively (Default)
-#    1 : YES Prescribe interannually varying LAI and SAI
-#    2 : YES Prescribe climatological LAI and SAI
-#    3 : Estimated LAI/SAI using anomalies at the beginning of the foeecast and climatological LAI/SAI
-#    4 : Write LAI/SAI anomalies in catchcn_internal_rst for above option 3
-#
-# PRESCRIBE_DVG: 0
-
-# ---- Scale CATCHCN ALBEDO and FPAR
-#    0: NO scaling is performed (default)
-#    1: Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
-#    2: Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
-#    3: Perform both 1 and 2 above 
-#
-# SCALE_ALBFPAR: 0
-
-#land Physics Parameters Resource File
-# -------------------------------------
-#
 LANDRC: LDAS.rc
+
