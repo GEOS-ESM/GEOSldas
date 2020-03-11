@@ -99,6 +99,9 @@ source g5_modules;
 ###################################################
 
 cd /discover/nobackup/$USER/GEOSldas_nightly/scripts
+/bin/ln -s /discover/swdev/gmao_SIteam/Baselibs/latest-mpiuni/Linux/bin/cdo
+/bin/ln -s /discover/swdev/gmao_SIteam/Baselibs/latest-mpiuni/Linux/bin/nccmp
+
 nohup ./LDAS_Nightly_Cron.csh &
 
 
