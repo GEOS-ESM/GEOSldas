@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+import sys
+from collections import OrderedDict
+
+GLGRC = {}
+_fn = '../etc/GEOS_LandGridComp.rc'   # run ldas_setup from /bin directory
+_f = open(_fn)
+for line in _f:
+    if 'GEOSldas=>' in line:
+        GLGRC[line.split(">")[1].split(":")[0]] = line.split(">")[1].split(":")[1].rstrip()
+    sys.stdout.flush()
+_f.close()
+
+filenames = sys.argv[1:]
+
+fin  = open(str(filenames[0]), 'r')
+fout = open(str(filenames[1]), 'w')
+
+inpdict = OrderedDict()
+errstr = "line [%d] of [%s] is not in the form 'key: value'"
+linenum = 0
+for line in fin:
+    linenum += 1
+    line = line.strip()
+    
+    # blank line
+    if not line:
+        fout.write(line+'\n')
+        continue
+    # handle comments
+    position = line.find('#')
+    if position==0: # comment line
+        fout.write(line+'\n')
+        continue
+    if position>0:  # strip out comment
+        line = line[:position]
+    # we expect a line to be of the form
+    # key = value
+    assert ':' in line, errstr % (linenum, filename0)
+
+    key, val = line.split(':',1)
+    key = key.strip()
+    val = val.strip()
+    if not key or not val:
+        raise Exception(errstr % (linenum, filename0))
+    if key in inpdict:
+        raise Exception('Duplicate key [%s] in [%s]' % (key, filename0))
+    inpdict[key] = val.strip()
+    if key in GLGRC:
+        keyn=(key+" : ").ljust(0)
+        fout.write(keyn+str(GLGRC[key]).ljust(0)+'\n')
+    else:
+        fout.write(line+'\n')       
+    
+fin.close()
+
+# add missing keywords
+
+for key in GLGRC:
+    if key not in inpdict:
+        keyn=(key+" : ").ljust(0)
+        fout.write(keyn+str(GLGRC[key]).ljust(0)+'\n')    
+
+fout.close()
+
+                    
+
+

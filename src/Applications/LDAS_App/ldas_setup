@@ -1445,9 +1445,11 @@ def _printExeInputKeys(rqdExeInpKeys):
     for line in _f:
         if 'GEOSldas=>' in line:
             sys.stdout.write(line.split(">")[1])
+        elif 'GEOSldas!=' in line:
+            sys.stdout.write('')
         else:
             sys.stdout.write(line)
-       sys.stdout.flush()
+        sys.stdout.flush()
     _f.close()
     print
     print
