@@ -88,19 +88,20 @@ mkdir -p /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/
 # WJ: At the momemnt CONUS only
 /bin/cp -p $SYSTESTDIR/input/LDAS/conus.model.slurm /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/.
 
+set GROUPS    = `groups`
+set GROUProot = $GROUPS[1]
+
 source g5_modules;
-./read_GEOS_LandGridComp $SYSTESTDIR/input/LDAS/conus.model.exec /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/conus.model.exec
+./edit_input_files $SYSTESTDIR/input/LDAS/conus.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/conus.model $GROUProot 
 
 ###################################################
 #                RUN Matt's SCRIPTS               # 
 ###################################################
 
-set PWD = `pwd`
 cd /discover/nobackup/$USER/GEOSldas_nightly/scripts
 nohup ./LDAS_Nightly_Cron.csh &
 
-cd $PWD
-/bin/rm git.exec
+
 
 
 

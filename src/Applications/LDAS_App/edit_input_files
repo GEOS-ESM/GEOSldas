@@ -14,8 +14,10 @@ _f.close()
 
 filenames = sys.argv[1:]
 
-fin  = open(str(filenames[0]), 'r')
-fout = open(str(filenames[1]), 'w')
+# 1) .exec files
+
+fin  = open(str(filenames[0])+'.exec', 'r')
+fout = open(str(filenames[1])+'.exec', 'w')
 
 inpdict = OrderedDict()
 errstr = "line [%d] of [%s] is not in the form 'key: value'"
@@ -64,6 +66,16 @@ for key in GLGRC:
 
 fout.close()
 
-                    
+# 2. .slurm files
 
+fin  = open(str(filenames[0])+'.slurm', 'r')
+fout = open(str(filenames[1])+'.slurm', 'w')
 
+for line in fin:
+    if 'account:' in line:
+        fout.write('account: '+ str(filenames[2]).ljust(0) + '\n')
+    else:
+        fout.write(line) 
+
+fin.close()
+fout.close()
