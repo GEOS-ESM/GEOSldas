@@ -26,7 +26,6 @@ if($#argv == 0) then
     exit
 endif
 
-
 set arg_list=(`getopt -s tcsh -o hm:g:e: --long g-long,e-long: -- $argv:q`)
 
 eval set argv=\($arg_list:q\)
@@ -85,13 +84,15 @@ setenv MYEMAIL $EMAIL
 mkdir -p /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/
 /bin/cp -p $SYSTESTDIR/* /discover/nobackup/$USER/GEOSldas_nightly/scripts/.
 
-# WJ: At the momemnt CONUS only
-
 set GROUPS    = `groups`
 set GROUProot = $GROUPS[1]
 
 source g5_modules;
 ./edit_input_files $SYSTESTDIR/input/LDAS/conus.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/conus.model $GROUProot 
+./edit_input_files $SYSTESTDIR/input/LDAS/global.assim /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/global.assim $GROUProot 
+./edit_input_files $SYSTESTDIR/input/LDAS/globalcscn.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/globalcscn.model $GROUProot 
+./edit_input_files $SYSTESTDIR/input/LDAS/globalcs.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/globalcs.model $GROUProot 
+./edit_input_files $SYSTESTDIR/input/LDAS/global.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/global.model $GROUProot 
 
 ###################################################
 #                RUN Matt's SCRIPTS               # 
