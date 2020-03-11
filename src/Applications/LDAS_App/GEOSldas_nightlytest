@@ -86,7 +86,6 @@ mkdir -p /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/
 /bin/cp -p $SYSTESTDIR/* /discover/nobackup/$USER/GEOSldas_nightly/scripts/.
 
 # WJ: At the momemnt CONUS only
-/bin/cp -p $SYSTESTDIR/input/LDAS/conus.model.slurm /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/.
 
 set GROUPS    = `groups`
 set GROUProot = $GROUPS[1]
