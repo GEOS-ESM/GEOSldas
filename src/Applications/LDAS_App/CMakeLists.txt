@@ -17,7 +17,7 @@ foreach (prog ${executables})
 endforeach ()
 
 install(
-   PROGRAMS ldas_setup process_hist.csh process_rst.csh
+   PROGRAMS ldas_setup process_hist.csh process_rst.csh read_GEOS_LandGridComp GEOSldas_nightlytest
    DESTINATION bin
    )
 
