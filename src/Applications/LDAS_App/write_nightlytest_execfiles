@@ -2,9 +2,9 @@
 
 """
 This script :
-1) reads physics parameters from the BASELINE experiment: $SYSTESTDIR/input/LDAS/*.exec
+1) reads experiment details and physics parameters from the BASELINE experiment: $SYSTESTDIR/input/LDAS/*.exec
 2) reads physics parameters from the CURRENT tag:  experiment etc/GEOS_LandGridComp.rc
-3) writes the .exec file for the CURRENT experiment $NOBACKUP/GEOSldas_nightly/scripts/input/LDAS/*.exec
+3) Updates physics parameters for the CURRENT tag and writes the .exec file for the CURRENT experiment $NOBACKUP/GEOSldas_nightly/scripts/input/LDAS/*.exec
 """
 
 import sys
