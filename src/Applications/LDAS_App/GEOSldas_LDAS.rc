@@ -16,9 +16,22 @@
 #
 CATCHMENT_OFFLINE              : 1
 
+# ---- No dycore for offline
+#
+DYCORE                         : none
+
+# ---- Only one surface level
+#
+LM                             : 1
+
 # ---- First ensemble ID
 #
 FIRST_ENS_ID                   : 0
+
+# ---- For MAPL_RestartOptional
+#
+MAPL_ENABLE_BOOTSTRAP          : YES
+
 
 #--------------------------------------------------------#
 # Optional parameters. Users can overwrite the defaults  #
