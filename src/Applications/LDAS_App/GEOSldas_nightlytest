@@ -92,11 +92,11 @@ set GROUProot = $GROUPS[1]
 ###############################################################
 
 source g5_modules;
-./edit_input_files $SYSTESTDIR/input/LDAS/conus.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/conus.model $GROUProot 
-./edit_input_files $SYSTESTDIR/input/LDAS/global.assim /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/global.assim $GROUProot 
-./edit_input_files $SYSTESTDIR/input/LDAS/globalcscn.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/globalcscn.model $GROUProot 
-./edit_input_files $SYSTESTDIR/input/LDAS/globalcs.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/globalcs.model $GROUProot 
-./edit_input_files $SYSTESTDIR/input/LDAS/global.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/global.model $GROUProot 
+./write_nightlytest_execfiles $SYSTESTDIR/input/LDAS/conus.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/conus.model $GROUProot 
+./write_nightlytest_execfiles $SYSTESTDIR/input/LDAS/global.assim /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/global.assim $GROUProot 
+./write_nightlytest_execfiles $SYSTESTDIR/input/LDAS/globalcscn.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/globalcscn.model $GROUProot 
+./write_nightlytest_execfiles $SYSTESTDIR/input/LDAS/globalcs.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/globalcs.model $GROUProot 
+./write_nightlytest_execfiles $SYSTESTDIR/input/LDAS/global.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/global.model $GROUProot 
 
 ###################################################
 #                RUN Matt's SCRIPTS               # 
