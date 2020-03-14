@@ -87,6 +87,10 @@ mkdir -p /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/
 set GROUPS    = `groups`
 set GROUProot = $GROUPS[1]
 
+# Ensure physics parameter configuration in LDAS.rc of CURRENT
+#      is as same as that of the BASELINE experiment.
+###############################################################
+
 source g5_modules;
 ./edit_input_files $SYSTESTDIR/input/LDAS/conus.model /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/conus.model $GROUProot 
 ./edit_input_files $SYSTESTDIR/input/LDAS/global.assim /discover/nobackup/$USER/GEOSldas_nightly/scripts/input/LDAS/global.assim $GROUProot 
