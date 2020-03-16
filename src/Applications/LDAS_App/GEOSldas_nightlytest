@@ -72,7 +72,7 @@ endif
 #       SET ENV VARIABLES AND CREATE DIRS         #
 ###################################################
 
-setenv SYSTESTDIR /discover/nobackup/smahanam/GEOSldas_nightly/systest/
+setenv SYSTESTDIR /discover/nobackup/smahanam/GEOSldas_nightly/MTsystest/
 #setenv SYSTESTDIR /gpfsm/dhome/mathomp4/SI_Team/scripts/systest/
 setenv CURRENTTAG $GITTAG
 setenv MYEMAIL $EMAIL
