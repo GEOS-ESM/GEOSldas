@@ -1,56 +1,25 @@
-# 
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-#                                                          #
-# DEFAULT parameters in GEOSldas_LDAS.rc                   #
-#                                                          #
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+#                                                        #
+#            GEOSldas resource parameters                #
+#                                                        #
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 
 #--------------------------------------------------------#
-# Rarely changed parameters in GEOSldas                  #
+#  GEOS_LandGridComp.rc parameters                       #
 #--------------------------------------------------------#
 
-# ---- Using offline?
-#    0: DEFAULT for GCM. (WW,CH,CM,CQ,FR) are required in catchment restart file 
-#    1: DEFAULT for GEOSldas (WW,CH,CM,CQ,FR) are optional
-#    2: (WW,CH,CM,CQ,FR) are optional for input restart but will be in output restart 
+# ---- Land parameters resource file
 #
-CATCHMENT_OFFLINE              : 1
-
-# ---- No dycore for offline
-#
-DYCORE                         : none
-
-# ---- Only one surface level
-#
-LM                             : 1
-
-# ---- First ensemble ID
-#
-FIRST_ENS_ID                   : 0
-
-# ---- For MAPL_RestartOptional
-#
-MAPL_ENABLE_BOOTSTRAP          : YES
-
+LANDRC                         : LDAS.rc
 
 #--------------------------------------------------------#
 # Optional parameters. Users can overwrite the defaults  #
-# through the user-generated exeinp file.                #
+# during ldas_setup through the user-generated "exeinp"  #
+# file.                                                  #
 #--------------------------------------------------------#
 
-# ---- Metforce time step
-#      Should be set in the exeinp file where MET_PATH is defined
-#      3600 = default
+# ---- Domain definition
 #
-# FORCE_DTSTEP                   : 3600
-
-# ---- Choice of Land Surface Model:
-#    1 : Catchment Model   (Default)
-#    2 : CatchmentCN Model
-#
-LSM_CHOICE                     : 1
-
-# ---- Domain definition:
 #      The domain is determined by specifying a lat/lon rectangle in conjunction
 #      with blacklist and whitelist files.  The files contain the IDs of tiles to
 #      be excluded and included in the domain.
@@ -62,100 +31,127 @@ LSM_CHOICE                     : 1
 #      If only whitelist should be used, specify dummy valuessuch that:
 #         MINLON > MAXLON and MINLAT > MAXLAT.
 #
-# MINLON                         : -180.
-# MAXLON                         :  180.
-# MINLAT                         :  -90.
-# MAXLAT                         :   90.
+# MINLON                       : -180.
+# MAXLON                       :  180.
+# MINLAT                       :  -90.
+# MAXLAT                       :   90.
 #
 #      Specify path and filenames for blacklist and whitelist files:
 #      (May leave blank.)
 #
-# BLACK_FILE                     : '' 
-# WHITE_FILE                     : '' 
+# BLACK_FILE                   : '' 
+# WHITE_FILE                   : '' 
 
-# ---- Perturbations (If num_ensemble > 1, PERTURBATIONS will automatically be set to 1): 
+
+# ---- Surface meteorological forcing: Time step
+#
+#        Should be set in the exeinp file where MET_PATH is defined
+#        3600 = default
+#
+# FORCE_DTSTEP                 : 3600
+
+# ---- Surface meteorological forcing: Horizonal interpolation 
+#
+#    1 :  bilinear interpolation (default)
+#    0 :  nearest neighbor
+#
+MET_HINTERP                    : 1
+
+
+# ---- Specify if running model only or data assimilation
+#
+#  NO  : model only (DEFAULT; with --runmodel option)
+#  YES : assimilation (without --runmodel option)
+#
+LAND_ASSIM                     : NO
+
+
+# ---- Perturbations: On/off 
+#
+# If num_ensemble > 1, PERTURBATIONS will automatically be set to 1. 
+#
 #    0 : No perturbactions.
 #    1 : With perturbations.
 #
 PERTURBATIONS                  : 0
 
-# ---- Path to special namelist input files:
-#      This only applies for ensemble simulations. The variable values in special name list 
-#      overwrite the DEFAULT values . There may be three files: 
-#          LDASsa_SPECIAL_inputs_ensupd.nml, 
-#          LDASsa_SPECIAL_inputs_ensprop.nml, and 
+# ---- Perturbations: ID of first ensemble member
+#
+FIRST_ENS_ID                   : 0
+
+
+# ---- Path to special namelist input files
+#
+#      Applies only for ensemble simulations. The variable values in the special 
+#      namelist overwrite the DEFAULT values. There may be three files: 
+#          LDASsa_SPECIAL_inputs_ensupd.nml 
+#          LDASsa_SPECIAL_inputs_ensprop.nml 
 #          LDASsa_SPECIAL_inputs_catbias.nml 
 #
-# NML_INPUT_PATH                 : ''
+# NML_INPUT_PATH               : ''
 
-# ---- Write log file (YES/NO)?
+
+# ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format) used for Tb assimilation
 #
-LDAS_logit                     : YES
+#      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
+#      If empty or commented out, GEOSldas will search the restart directory.
+#
+# MWRTM_FILE                   : ''
 
-# ---- Job segment length:
+
+# ---- Job segments: Length
+#
 #      Specify period between output of restart files.  (GEOSldas.x shuts down and restarts.)
 #      Default is the entire simulation period (END_DATE minus BEG_DATE).
 #      Format:            yyyymmdd hhmmss
 #
-# JOB_SGMT                       : 00000100 000000
+# JOB_SGMT                     : 00000100 000000
 
-# ---- Number of segments:
+# ---- Job segments: Number
+#
 #      One lenkf.j job simulates NUM_SGMT*JOB_SGMT time, then re-submits itself,
 #      so (NUM_SGMT*JOB_SGMT) should be done within the 12 hour CPU time limit (at NCCS).
 #      Low values for NUM_SGMT are recommended for run-time and storage efficiency.
 #      Default is 1.
 #
-# NUM_SGMT                       : 1
+# NUM_SGMT                     : 1
 
-# ---- User defined Path and filename of output (HISTORY) specification file:
-#      If it is empty, ldas_setup will generate default HISTORY.rc.
+
+# ---- Output: Write log file (YES/NO)?
 #
-# HISTRC_FILE                    : ''
+LDAS_logit                     : YES
+
+# ---- Output: HISTORY definition of model diagnostics
+#
+#      User-defined path and filename of output (HISTORY) specification file.
+#      If empty, ldas_setup will generate a default HISTORY.rc file.
+#
+# HISTRC_FILE                  : ''
 
 # ---- Write only monthly output?
+#
 #      Monthly files can be created from daily files. 
-#      To have accurate monthly averages, the ref_time in HISTORY.rc should be 000000
+#      Accurate monthly averages require setting "ref_time" in HISTORY.rc to "000000"
 #
 #    0 : Output bundled into daily files per HISTORY specifications (default).
 #    1 : Monthly files will be created. Daily files will *not* be deleted.
 #    2 : Monthly files will be created and daily files will be deleted automatically.
 #
-# MONTHLY_OUTPUT                : 0
+# MONTHLY_OUTPUT               : 0
  
-# ---- Specify how to interpolate the forcing (Default is 1):
-#    1 :  bilinear interpolation
-#    0 :  nearest neighbor
-#
-MET_HINTERP                    : 1
-
-# ---- Specify if running model or assimilation:
-#    NO  : model only (DEFAULT; with --runmodel option)
-#    YES : assimilation (without --runmodel option)
-#
-LAND_ASSIM                     : NO
-
-# ---- File name for mwRTM parameter file (nc4 format) used in assimilation runs.
-#      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
-#      If empty or commented out, GEOSldas will search the restart directory.
-#
-# MWRTM_FILE                     : ''
-
-# ---- Surface layer turbulence scheme:
-#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
-#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
-#
-CHOOSEMOSFC                    : 0
-
-# --- Storm Fraction i.e. the fraction tile that precipitation falls on 0. < value <= 1.  :
-#      1.0  :                      (default value for AGCM and GEOSldas); 
-#     0.025 : recommended value to deal with AGCM's drizzle
-# 
-# PRECIPFRAC: 0.025
 
 #--------------------------------------------------------#
-#  GEOSland_GridComp optional physics parametrizations   #
+# Do not change the following parameters in GEOSldas     #
 #--------------------------------------------------------#
 
-# -- Land Physics Parameters Resource File
+# ---- No dycore for offline
+#
+DYCORE                         : none
 
-LANDRC: LDAS.rc
+# ---- Only one surface level
+#
+LM                             : 1
+
+# ---- For MAPL_RestartOptional
+#
+MAPL_ENABLE_BOOTSTRAP          : YES
