@@ -555,6 +555,9 @@ class LDASsetup:
             # blank line
             if not line:
                 continue
+            # get "GEOSldas=>" defalut in GEOS_LandGrid.rc
+            if 'GEOSldas=>' in line:
+              line = line.split('GEOSldas=>')[1]
             # handle comments
             position = line.find('#')
             if position==0: # comment line
@@ -1083,13 +1086,18 @@ class LDASsetup:
                     print line.rstrip().replace('END_DATE:',self.endDates[-1].strftime('END_DATE: %Y%m%d %H%M%S'))
                     
             if shortfile == 'LDAS.rc' :
-                default_ldasrcInp = self._parseInputFile(rcfile)
                 ldasrcInp = OrderedDict()
-                # default 
+                # land default 
+                default_landrcInp = self._parseInputFile(etcdir+'/GEOS_LandGridComp.rc')
+                for key,val in default_landrcInp.iteritems() :
+                    ldasrcInp[key] = val
+
+                # ldas default, may overiwrite land default 
+                default_ldasrcInp = self._parseInputFile(rcfile)
                 for key,val in default_ldasrcInp.iteritems() :
                     ldasrcInp[key] = val
 
-                # overide by the exeinp
+                # exeinp, may overwrite ldas default
                 for key,val in self.rqdExeInp.iteritems():
                     if key not in self.NoneLDASrcKeys:
                         ldasrcInp[key]= val
@@ -1532,7 +1540,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     _f = open(_fn)
     for line in _f:
         if 'GEOSldas=>' in line:
-           sys.stdout.write(line.split(">")[1])
+           sys.stdout.write(line.split("GEOSldas=>")[1])
         elif not line.strip() or line.strip().startswith('#'):
            sys.stdout.write(line)
         sys.stdout.flush()
