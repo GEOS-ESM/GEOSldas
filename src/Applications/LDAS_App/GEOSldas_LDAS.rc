@@ -1,22 +1,32 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 #                                                        #
-#            GEOSldas resource parameters                #
+#            GEOSldas Resource Parameters                #
+#                                                        #
+#  Values below override the hardcoded default values    #
+#    in *.F90 calls to MAPL_GetResource().               #
+#                                                        #
+#  Users can further override the values below by        #
+#    editing the "exeinp" file during ldas setup.        #
 #                                                        #
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 
-#--------------------------------------------------------#
-#  GEOS_LandGridComp.rc parameters                       #
-#--------------------------------------------------------#
 
-# ---- Land parameters resource file
+# ---- Using Catchment/CatchmentCN offline?
 #
-LANDRC                         : LDAS.rc
+#    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
+#    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
+#    2: Option  for GEOSldas, (WW,CH,CM,CQ,FR) are optional for input restart but will be in output
+#                               restart; select when using GEOSldas to create restarts for the GCM.
+#
+CATCHMENT_OFFLINE: 1
 
-#--------------------------------------------------------#
-# Optional parameters. Users can overwrite the defaults  #
-# during ldas_setup through the user-generated "exeinp"  #
-# file.                                                  #
-#--------------------------------------------------------#
+# ---- Choice of land surface model
+#
+#    1 : Catchment model   (default)
+#    2 : CatchmentCN model
+#
+LSM_CHOICE: 1
+
 
 # ---- Domain definition
 #
@@ -56,6 +66,14 @@ LANDRC                         : LDAS.rc
 #    0 :  nearest neighbor
 #
 MET_HINTERP                    : 1
+
+
+# ---- Surface layer turbulence scheme
+# 
+#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2/8.1)
+#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
+#
+CHOOSEMOSFC: 0
 
 
 # ---- Specify if running model only or data assimilation
