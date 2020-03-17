@@ -1284,7 +1284,8 @@ class LDASsetup:
                         ]),
                     self.rundir)
 
-                fout.write("jobid%d=$(echo $(sbatch --dependency=afterany:$jobid%d --output=%s --error=%s lenkf.j) | cut -d' ' -f 4)\n"%(iseg,iseg-1,_logfile, _errfile))
+                #fout.write("jobid%d=$(echo $(sbatch --dependency=afterany:$jobid%d --output=%s --error=%s lenkf.j) | cut -d' ' -f 4)\n"%(iseg,iseg-1,_logfile, _errfile))
+                fout.write("jobid%d=$(echo $(sbatch --dependency=afterok:$jobid%d lenkf.j) | cut -d' ' -f 4)\n"%(iseg,iseg-1))
                 fout.write("echo $jobid%d\n"%iseg )
         fout.write("\nsed -i 's/#if($capdate<$enddate) sbatch/if($capdate<$enddate) sbatch /g' lenkf.j")
         fout.close()
