@@ -1796,7 +1796,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
 
-
            ! write analysis fields into SMAP L4_SM aup file 
            ! whenever it was time for assimilation (regardless 
            ! of whether obs were actually assimilated and fresh
