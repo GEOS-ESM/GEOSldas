@@ -1796,48 +1796,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
 
-              do i = 1, N_catl
-                 cat_progn_incr_ensavg(i) = 0.0
-                 do n_e=1, NUM_ENSEMBLE
-                    cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
-                       + cat_progn_incr(i,n_e)
-                 end do
-                 cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(NUM_ENSEMBLE)
-              enddo
-
-              if(associated(TC1_incr))  TC1_incr(:) = cat_progn_incr_ensavg(:)%tc1
-              if(associated(TC2_incr))  TC2_incr(:) = cat_progn_incr_ensavg(:)%tc2
-              if(associated(TC4_incr))  TC4_incr(:) = cat_progn_incr_ensavg(:)%tc4
-              if(associated(QC1_incr))  QC1_incr(:) = cat_progn_incr_ensavg(:)%qa1
-              if(associated(QC2_incr))  QC2_incr(:) = cat_progn_incr_ensavg(:)%qa2
-              if(associated(QC4_incr))  QC4_incr(:) = cat_progn_incr_ensavg(:)%qa4
-
-              if(associated(CAPAC_incr))   CAPAC_incr(:)  = cat_progn_incr_ensavg(:)%capac
-              if(associated(CATDEF_incr))  CATDEF_incr(:) = cat_progn_incr_ensavg(:)%catdef
-              if(associated(RZEXC_incr))   RZEXC_incr(:)  = cat_progn_incr_ensavg(:)%rzexc
-              if(associated(SRFEXC_incr))  SRFEXC_incr(:) = cat_progn_incr_ensavg(:)%srfexc
-
-              if(associated(GHTCNT1_incr)) GHTCNT1_incr(:) = cat_progn_incr_ensavg(:)%ght(1)
-              if(associated(GHTCNT2_incr)) GHTCNT2_incr(:) = cat_progn_incr_ensavg(:)%ght(2)
-              if(associated(GHTCNT3_incr)) GHTCNT3_incr(:) = cat_progn_incr_ensavg(:)%ght(3)
-              if(associated(GHTCNT4_incr)) GHTCNT4_incr(:) = cat_progn_incr_ensavg(:)%ght(4)
-              if(associated(GHTCNT5_incr)) GHTCNT5_incr(:) = cat_progn_incr_ensavg(:)%ght(5)
-              if(associated(GHTCNT6_incr)) GHTCNT6_incr(:) = cat_progn_incr_ensavg(:)%ght(6)
-
-              if(associated(WESNN1_incr))  WESNN1_incr(:) = cat_progn_incr_ensavg(:)%wesn(1)
-              if(associated(WESNN2_incr))  WESNN2_incr(:) = cat_progn_incr_ensavg(:)%wesn(2)
-              if(associated(WESNN3_incr))  WESNN3_incr(:) = cat_progn_incr_ensavg(:)%wesn(3)
-
-              if(associated(HTSNNN1_incr)) HTSNNN1_incr(:) = cat_progn_incr_ensavg(:)%htsn(1)
-              if(associated(HTSNNN2_incr)) HTSNNN2_incr(:) = cat_progn_incr_ensavg(:)%htsn(2)
-              if(associated(HTSNNN3_incr)) HTSNNN3_incr(:) = cat_progn_incr_ensavg(:)%htsn(3)
-
-              if(associated(SNDZN1_incr))  SNDZN1_incr(:)  = cat_progn_incr_ensavg(:)%sndz(1)
-              if(associated(SNDZN2_incr))  SNDZN2_incr(:)  = cat_progn_incr_ensavg(:)%sndz(2)
-              if(associated(SNDZN3_incr))  SNDZN3_incr(:)  = cat_progn_incr_ensavg(:)%sndz(3)
-
-
-
            ! write analysis fields into SMAP L4_SM aup file 
            ! whenever it was time for assimilation (regardless 
            ! of whether obs were actually assimilated and fresh
