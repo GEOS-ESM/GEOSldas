@@ -6,12 +6,24 @@
 
 #### Load Build Modules
 
-In your `.bashrc` or `.tcshrc` or other rc file add a line:
+Make sure the correct module from the GMAO SI team is loaded:
 
-##### NCCS (SLES11)
+##### NCCS (SLES11 or SLES12)
 
 ```
 module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES11
+```
+or
+```
+module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+```
+or add the following to your `.cshrc`:
+```
+if ( ! -f /etc/os-release ) then
+   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES11
+else
+   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
+endif
 ```
 
 ##### NAS
@@ -118,6 +130,8 @@ make -j6 install
 ---
 
 ## Setup up a run
+If you are using SLES12 at NCCS, you **must** run setup on an interactive compute node.  SLES12 login nodes no longer allow running MPI.
+
 ```
 cd ../(some_architecture)/bin
 source g5_modules

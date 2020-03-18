@@ -4,8 +4,8 @@
 #                     Batch Parameters for Run Job
 #######################################################################
 
-#SBATCH --output=MY_LOGFILE
-#SBATCH --error=MY_ERRFILE
+#SBATCH --output=../scratch/GEOSldas_log_txt
+#SBATCH --error=../scratch/GEOSldas_err_txt
 #SBATCH --account=MY_ACCOUNT
 #SBATCH --time=MY_WALLTIME
 #SBATCH --ntasks=MY_NTASKS
@@ -79,7 +79,7 @@ set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 #######################################################################
 
 cd $SCRDIR
-/bin/rm -rf *
+/bin/rm -rf *.*
 /bin/cp     $HOMDIR/cap_restart .
 /bin/cp -f  $HOMDIR/*.rc .
 /bin/cp -f  $HOMDIR/*.nml .
@@ -269,7 +269,14 @@ while ( $counter <= ${NUM_SGMT} )
    
    set old_mwrtm_file  =  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${bYEAR}/M${bMON}/${EXPID}.ldas_mwRTMparam.${bYEAR}${bMON}${bDAY}_${bHour}${bMin}z.nc4
    set old_catch_param =  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${bYEAR}/M${bMON}/${EXPID}.ldas_catparam.${bYEAR}${bMON}${bDAY}_${bHour}${bMin}z.bin
-   
+   if ( -l "$old_mwrtm_file" ) then
+      set old_mwrtm_file = `/usr/bin/readlink -f $old_mwrtm_file`
+   endif  
+   if ( -l "$old_catch_param" ) then
+      set old_catch_param = `/usr/bin/readlink -f $old_catch_param`
+   endif  
+
+ 
    /bin/cp LDAS.rc  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${bYEAR}/M${bMON}/${EXPID}.ldas_LDAS_rc.${bYEAR}${bMON}${bDAY}_${bHour}${bMin}z.txt
    /bin/cp CAP.rc  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${bYEAR}/M${bMON}/${EXPID}.ldas_CAP_rc.${bYEAR}${bMON}${bDAY}_${bHour}${bMin}z.txt
    
@@ -410,10 +417,12 @@ while ( $counter <= ${NUM_SGMT} )
           if ($LEN != $LEN_AVAIL) continue
    
           # create the monly average
-          ncrcat -h $EXPID.$ThisCol.${YYYY}${MM}* ${EXPID}.${ThisCol}.$YYYY$MM.nc4
-          ncra -h $EXPID.${ThisCol}.$YYYY$MM.nc4 $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4
-          /bin/rm $EXPID.${ThisCol}.$YYYY$MM.nc4
-         
+          #ncrcat -h $EXPID.$ThisCol.${YYYY}${MM}* ${EXPID}.${ThisCol}.$YYYY$MM.nc4
+          #ncra -h $EXPID.${ThisCol}.$YYYY$MM.nc4 $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4
+          
+          #/bin/rm $EXPID.${ThisCol}.$YYYY$MM.nc4
+          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??_*z.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
+          
           # don't want a daily? delete the daily and sub-dailies and continue
           #
           if($NODAILIES == 2) then
@@ -485,12 +494,18 @@ while ( $counter <= ${NUM_SGMT} )
    set new_catch_param =  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXPID}.ldas_catparam.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}z.bin
    
    if (-f $old_mwrtm_file) then
+     if ( -l "$new_mwrtm_file" ) then
+        /bin/rm -f $new_mwrtm_file
+     endif
      /bin/ln -s $old_mwrtm_file $new_mwrtm_file
      /bin/rm ../input/restart/mwrtm_param_rst
      /bin/ln -s $new_mwrtm_file ../input/restart/mwrtm_param_rst
    endif
    
    if (-f $old_catch_param) then
+     if ( -l "$new_catch_param" ) then
+        /bin/rm -f $new_catch_param
+     endif
      /bin/ln -s $old_catch_param $new_catch_param
    endif
    
@@ -526,7 +541,7 @@ while ( $counter <= ${NUM_SGMT} )
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
           ncks -4 -O -C -x -v lat,lon ${rstf}${ENSID}_internal_checkpoint $tmp_file
           /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
-          set old_rst = `/usr/bin/readlink $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`
+          set old_rst = `/usr/bin/readlink -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /bin/ln -s $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /usr/bin/gzip $old_rst
@@ -631,8 +646,18 @@ end
 #            set next log and error file 
 #######################################################################
 
-set logfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXPID}.ldas_log.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}z.txt
-set errfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXPID}.ldas_err.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}z.txt
+set logfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${logYEAR}/M${logMON}/${EXPID}.ldas_log.${logYEAR}${logMON}${logDAY}_${logHour}${logMin}z.txt
+set errfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${logYEAR}/M${logMON}/${EXPID}.ldas_err.${logYEAR}${logMON}${logDAY}_${logHour}${logMin}z.txt
+
+if (-f GEOSldas_log_txt) then
+   /bin/cp GEOSldas_log_txt $logfile
+   /bin/rm -f GEOSldas_log_txt 
+endif
+
+if(-f GEOSldas_err_txt) then
+  /bin/cp GEOSldas_err_txt $errfile
+  /bin/rm -f GEOSldas_err_txt 
+endif
 
 #######################################################################
 #                              Re-Submit Job
@@ -641,5 +666,5 @@ set errfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXPID}.ldas_
 if ( $rc == 0 ) then
    cd   $HOMDIR
    #don't change below line(not even extra space)
-   if($capdate<$enddate) sbatch --output=$logfile --error=$errfile $HOMDIR/lenkf.j
+   if($capdate<$enddate) sbatch $HOMDIR/lenkf.j
 endif
