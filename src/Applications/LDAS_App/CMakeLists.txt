@@ -13,7 +13,7 @@ foreach (prog ${executables})
    ecbuild_add_executable (
       TARGET ${prog}.x 
       SOURCES ${prog}.F90
-      LIBS GEOSldas_GridComp)
+      LIBS GEOSldas_GridComp mk_restarts)
 endforeach ()
 
 install(
