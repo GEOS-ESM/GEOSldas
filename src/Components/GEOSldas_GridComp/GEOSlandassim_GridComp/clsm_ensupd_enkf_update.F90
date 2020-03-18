@@ -1380,7 +1380,7 @@ contains
   ! ********************************************************************
 
   subroutine output_ObsFcstAna(date_time, work_path, exp_id, &
-       N_obsl, Observations_l, N_obs_param, obs_param )
+       N_obsl, Observations_l, N_obs_param, obs_param, rf2f)
 
     ! obs space output: observations, obs space forecast, obs space analysis, and
     ! associated error variances
@@ -1399,6 +1399,7 @@ contains
     type(obs_type),       dimension(N_obsl),      intent(in) :: Observations_l
 
     type(obs_param_type), dimension(N_obs_param), intent(in) :: obs_param
+    integer, dimension(:), optional, intent(in) :: rf2f
 
     ! ---------------------
 
@@ -1410,6 +1411,7 @@ contains
     type(obs_type), dimension(:), allocatable :: Observations_f, Observations_tmp
 
     integer                                   :: n, N_obsf
+    integer, dimension(:), allocatable :: rf_tilenums, tilenums
 
     integer,        dimension(numprocs)       :: N_obsl_vec, tmp_low_ind
 
@@ -1541,10 +1543,18 @@ contains
 
        end do
 
+
        deallocate(Observations_tmp)
 
 #endif  ! LDAS_MPI
-
+       ! reorder tilenum, so it is consisten with the order in tile_coord.bin file
+       if(present(rf2f)) then
+          allocate(rf_tilenums(N_obsf), tilenums(N_obsf))
+          rf_tilenums = Observations_f(:)%tilenum
+          tilenums = rf2f(rf_tilenums)
+          Observations_f(:)%tilenum =tilenums
+          deallocate(rf_tilenums, tilenums)
+       endif
        ! write to file
 
        fname = get_io_filename( work_path, exp_id, file_tag, date_time=date_time, &
@@ -1701,7 +1711,7 @@ contains
        ! write out model, observations, and "OminusA" information
 
        call output_ObsFcstAna( date_time, work_path, exp_id, N_obsl, &
-            Observations_l(1:N_obsl), N_obs_param, obs_param )
+            Observations_l(1:N_obsl), N_obs_param, obs_param, rf2f=rf2f )
 
     end if
 
