@@ -850,7 +850,7 @@ class LDASsetup:
                     vegdynRstFile= rstpath+ens +'/'+self.rqdExeInp['RESTART_ID']+ '.vegdyn_internal_rst'
                     if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
                         vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
-                        _catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+ensid+'_internal_rst.'+YYYYMMDD
+                    _catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+ensid+'_internal_rst.'+YYYYMMDD
                     if (self.nens == 1) :
                         _catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'0000_internal_rst.'+YYYYMMDD
                     if os.path.isfile(_catchRstFile): # from LDASsa restart
