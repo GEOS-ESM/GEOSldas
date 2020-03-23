@@ -41,6 +41,12 @@ _These are additions put in development, that will be in the next stable tag_
 Overview of Git tags:
 ============================
 
+[v17.9.0-beta.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.3) - 2020-03-18
+------------------------------
+- Additional RESTART options, incl. from re-tiling MERRA-2, FP, or other restarts on different tile space or with different boundary conditions
+- Bug fixes
+
+------------------------------
 [v17.9.0-beta.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.2) - 2020-02-26
 ------------------------------
 - New/Updated Science Functionality:
