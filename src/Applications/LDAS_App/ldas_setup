@@ -1088,8 +1088,8 @@ class LDASsetup:
             if shortfile == 'LDAS.rc' :
                 ldasrcInp = OrderedDict()
                 # land default 
-                default_landrcInp = self._parseInputFile(etcdir+'/GEOS_LandGridComp.rc')
-                for key,val in default_landrcInp.iteritems() :
+                default_surfrcInp = self._parseInputFile(etcdir+'/GEOS_SurfaceGridComp.rc')
+                for key,val in default_surfrcInp.iteritems() :
                     ldasrcInp[key] = val
 
                 # ldas default, may overiwrite land default 
@@ -1535,7 +1535,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print
     print
 
-    _fn = '../etc/GEOS_LandGridComp.rc'   # run ldas_setup from /bin directory
+    _fn = '../etc/GEOS_SurfaceGridComp.rc'   # run ldas_setup from /bin directory
 
     _f = open(_fn)
     for line in _f:
