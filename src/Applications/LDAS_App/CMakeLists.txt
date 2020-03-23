@@ -17,7 +17,7 @@ foreach (prog ${executables})
 endforeach ()
 
 install(
-   PROGRAMS ldas_setup process_hist.csh process_rst.csh write_nightlytest_execfiles GEOSldas_nightlytest
+   PROGRAMS ldas_setup process_hist.csh process_rst.csh
    DESTINATION bin
    )
 
