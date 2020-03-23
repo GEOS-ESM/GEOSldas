@@ -150,6 +150,11 @@ LDAS_logit                     : YES
 # MONTHLY_OUTPUT               : 0
  
 
+# ---- Name of file containing Surface GridComp resource parameters 
+#
+SURFRC: LDAS.rc
+
+
 #--------------------------------------------------------#
 # Do not change the following parameters in GEOSldas     #
 #--------------------------------------------------------#
