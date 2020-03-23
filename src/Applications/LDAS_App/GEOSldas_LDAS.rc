@@ -68,14 +68,6 @@ LSM_CHOICE: 1
 MET_HINTERP                    : 1
 
 
-# ---- Surface layer turbulence scheme
-# 
-#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2/8.1)
-#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
-#
-CHOOSEMOSFC: 0
-
-
 # ---- Specify if running model only or data assimilation
 #
 #  NO  : model only (DEFAULT; with --runmodel option)
