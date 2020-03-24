@@ -560,6 +560,8 @@ class LDASsetup:
             # get "GEOSldas=>" defalut in GEOS_LandGrid.rc
             if 'GEOSldas=>' in line:
                line = line.split('GEOSldas=>')[1]
+               if ":" not in line:
+                  continue
             # handle comments
             position = line.find('#')
             if position==0: # comment line
@@ -1545,7 +1547,11 @@ def _printExeInputKeys(rqdExeInpKeys):
         if '"GEOSldas=>"' in line:
            sys.stdout.write(line)
         elif 'GEOSldas=>' in line:
-           sys.stdout.write(line.split("GEOSldas=>")[1])
+           line0 = line.split("GEOSldas=>")[1]
+           if ":" not in line0:
+              sys.stdout.write(line)
+           else :
+              sys.stdout.write(line0)
         elif not line.strip() or line.strip().startswith('#'):
            sys.stdout.write(line)
         sys.stdout.flush()
