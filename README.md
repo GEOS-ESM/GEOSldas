@@ -47,7 +47,6 @@ For science runs, you can also obtain a specific tag __only__, e.g.:
 git clone -b v17.9.0-beta.3 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 ```
 
----
 
 ### Step 3: Build the Model
 
@@ -57,9 +56,9 @@ To build the model in a single step, run
 
 from a head node. Doing so will checkout all the external repositories of the model and build it. When done, the resulting model build will be found in `build/` and the installation will be found in `install/`, with setup scripts like `ldas_setup` in `install/bin`. 
 
-To obtain a debug version, you can run `parallel_build.csh -debug` which will build with debugging flags. This will build in `build-Debug/` and install into `install-Debug/`.
+To obtain a build that is suitable for debugging, you can run `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.
 
-See below for how to build the model in multiples steps.
+See below for how to build the model in multiple steps.
 
 ---
 
@@ -120,7 +119,7 @@ For more information, see the README files and ppt tutorial in `./src/Applicatio
 
 ### How to Build the Model in Multiple Steps
 
-The steps detailed below are essentially those that `parallel_build.csh` performs in Step 3 above. Either method should yield identical builds.
+The steps detailed below are essentially those performed by `parallel_build.csh` in Step 3 above. Either method should yield identical builds.
 
 ##### Checkout externals
 ```
