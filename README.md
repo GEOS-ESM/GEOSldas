@@ -1,97 +1,132 @@
-# GEOS LDAS Fixture
+# GEOSldas Fixture
 
-## How to build GEOS LDAS
+This document explains how to build, set up, and run the GEOS land modeling and data assimilation system (`GEOSldas`).
 
-### Preliminary Steps
+## How to Build GEOSldas
 
-#### Load Build Modules
+### Step 1: Load the Build Modules  
 
-Make sure the correct module from the GMAO SI team is loaded:
-
-##### NCCS (SLES11 or SLES12)
+Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It contains the latest `git`, `CMake`, and `manage_externals` modules and must be loaded in any interactive window that is used to check out and build the model.
 
 ```
-module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES11
+module use -a (path)
+module load GEOSenv
 ```
-or
-```
-module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
-```
-or add the following to your `.cshrc`:
+
+where `(path)` depends on the computer and operating system: 
+
+| System        | Path                                              |
+| ------------- |---------------------------------------------------|
+| NCCS SLES11   | `/discover/swdev/gmao_SIteam/modulefiles-SLES11`  |
+| NCCS SLES12   | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
+| NAS           | `/nobackup/gmao_SIteam/modulefiles`               |
+| GMAO desktops | `/ford1/share/gmao_SIteam/modulefiles`            |
+
+
+For NCCS, you can add the following to your `.cshrc`:
 ```
 if ( ! -f /etc/os-release ) then
    module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES11
 else
    module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
 endif
-```
-
-##### NAS
-```
-module use -a /nobackup/gmao_SIteam/modulefiles
-```
-
-##### GMAO Desktops
-On the GMAO desktops, the SI Team modulefiles should automatically be
-part of running `module avail` but if not, they are in:
-
-```
-module use -a /ford1/share/gmao_SIteam/modulefiles
-```
-
-Also do this in any interactive window you have. This allows you to get module files needed to correctly checkout and build the model.
-
-Now load the `GEOSenv` module:
-```
 module load GEOSenv
 ```
-which obtains the latest `git`, `CMake`, and `manage_externals` modules.
 
-#### Obtain the Model
 
+### Step 2: Obtain the Model
+
+For development work, clone the _entire_ repository and use the `develop` branch as your starting point (equivalent to the `UNSTABLE` tag in the old CVS repository):
 ```
-git clone git@github.com:GEOS-ESM/GEOSldas.git
+git clone -b develop git@github.com:GEOS-ESM/GEOSldas.git
+```
+For science runs, you can also obtain a specific tag or branch _only_ (as opposed to the _entire_ repository), e.g.: 
+```
+git clone -b v17.9.0-beta.3 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 ```
 
----
 
-### Single Step Building of the Model
+### Step 3: Build the Model
 
-If all you wish is to build the model, you can run
-
-`parallel_build.csh` 
-
-from a head node. Doing so will checkout all the external repositories of the model and build it. When done, the resulting model build will be found in `build/` and the installation will be found in `install/` with setup scripts like `ldas_setup` in `install/bin`.
-
-#### Develop Version of LDAS
-
-By default, your clone will be one the `master` branch. To get the most recent
-development (not quite ready for prime time), the user should checkout the
-`develop` branch  before building.
-
+To build the model in a single step, do the following:
 ```
-git checkout develop
+cd ./GEOSldas
 parallel_build.csh
-```
-This is equivalent of the development `-UNSTABLE` tag in the CVS days.
+``` 
+from a head node. Doing so will checkout all the external repositories of the model and build it. When done, the resulting model build will be found in `build/` and the installation will be found in `install/`, with setup scripts like `ldas_setup` in `install/bin`. 
 
-#### Debug Version of LDAS
+To obtain a build that is suitable for debugging, you can run `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.
 
-To obtain a debug version, you can run `parallel_build.csh -debug` which will build with debugging flags. This will build in `build-Debug/` and install into `install-Debug/`.
+See below for how to build the model in multiple steps.
 
 ---
 
-### Multiple Steps for Building the Model
+## How to Set Up and Run GEOSldas
 
-The steps detailed below are essentially those that `parallel_build.csh` performs for you. Either method should yield identical builds.
+The GEOSldas setup script uses MPI.  If you are using SLES12 at NCCS, you **must** run setup on an interactive _compute_ node.  SLES12 _login_ nodes no longer allow running MPI.
+
+To set up a job, do the following:
+```
+cd ./install/bin
+source g5_modules
+./ldas_setup setup [-v] [--runmodel]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
+```  
+
+where
+
+| Parameter              | Description                                              |
+| -----------------------|----------------------------------------------------------|
+| `exp_path`             | path of desired experiment directory                     |
+| `"exe"_input_filename` | filename (with path) of "experiment" inputs              |
+| `"bat"_input_filename` | filename (with path) of "batch" (job scheduler) inputs   |
+
+must be ordered as above (positional arguments).
+
+The latter two files contain essential information about the experiment setup. 
+Sample files can be generated as follows:
+```        
+ldas_setup sample --exeinp > YOUR_exeinp.txt
+ldas_setup sample --batinp > YOUR_exeinp.txt
+```
+
+Edit these sample files following the examples and comments within the sample files.  
+
+The ldas_setup script creates a run directory and other directories at:
+`[exp_path]/[exp_name]`
+
+Configuration input files will be created at:
+`[exp_path]/[exp_name]/run`
+
+For more options and documentation, use any of the following:
+```
+ldas_setup        -h
+ldas_setup sample -h
+ldas_setup setup  -h
+```
+
+Configure the experiment output by editing the ```HISTORY.rc``` file.
+
+Finally, run the job:
+```
+cd [exp_path]/[exp_name]/run/
+sbatch lenkf.j
+```
+
+For more information, see the README files and ppt tutorial in `./src/Applications/LDAS_App/doc/`.
+
+-----------------------------------------------------------------------------------
+
+## Additional Information
+
+### How to Build the Model in Multiple Steps
+
+The steps detailed below are essentially those performed by `parallel_build.csh` in Step 3 above. Either method should yield identical builds.
 
 ##### Checkout externals
 ```
 cd GEOSldas
 checkout_externals
 ```
-
-#### Build the Model
 
 ##### Load Compiler, MPI Stack, and Baselibs
 On tcsh:
@@ -126,60 +161,4 @@ and CMake will install there.
 ```
 make -j6 install
 ```
-
----
-
-## Setup up a run
-If you are using SLES12 at NCCS, you **must** run setup on an interactive compute node.  SLES12 login nodes no longer allow running MPI.
-
-```
-cd ../(some_architecture)/bin
-source g5_modules
-./ldas_setup setup [-v] [--runmodel]  exp_path  "exe"_input_filename  "bat"_input_filename
-```  
-where
-
->exp_path             = path of desired experiment directory
-
->"exe"_input_filename = filename (with path) of "experiment" inputs
-
->"bat"_input_filename = filename (with path) of "batch" inputs
-
-must be ordered as above (positional arguments).
-
-The latter two files contain essential information about the experiment setup. 
-Sample files can be generated as follows:
-```        
-ldas_setup sample --exeinp > YOUR_exeinp.txt
-ldas_setup sample --batinp > YOUR_exeinp.txt
-```
-
-Edit these sample files (see comments within sample files).  See README files
-and ppt tutorial (in ./src/Applications/LDAS_App/doc/) for more information.
-
-The ldas_setup script creates a run directory and other directories at:
-```[exp_path]/[exp_name]```
-
-Configuration input files will be created at:
-
-```[exp_path]/[exp_name]/run```
-
-For more options and documentation run any of the following:
-```
-ldas_setup        -h
-ldas_setup sample -h
-ldas_setup setup  -h
-```
-
-Configure experiment output by editing the ```HISTORY.rc``` file.
-
----
-
-## Run a job:
-
-	cd [exp_path]/[exp_name]/run/
-
-	sbatch lenkf.j
-
-See ppt tutorial (in ./src/Applications/LDAS_App/doc/) for more information about how to run GEOSldas.
 
