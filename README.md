@@ -36,13 +36,11 @@ module load GEOSenv
 
 ### Step 2: Obtain the Model
 
-For development work, obtain the __entire__ repository and check out the `develop` branch  (equivalent to the `-UNSTABLE` tag in the old CVS repository):
+For development work, clone the _entire_ repository and use the `develop` branch as your starting point (equivalent to the `UNSTABLE` tag in the old CVS repository):
 ```
-git clone git@github.com:GEOS-ESM/GEOSldas.git
-cd GEOSldas
-git checkout develop
+git clone -b develop git@github.com:GEOS-ESM/GEOSldas.git
 ```
-For science runs, you can also obtain a specific tag __only__, e.g.: 
+For science runs, you can also obtain a specific tag or branch _only_ (as opposed to the _entire_ repository), e.g.: 
 ```
 git clone -b v17.9.0-beta.3 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 ```
@@ -50,10 +48,11 @@ git clone -b v17.9.0-beta.3 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 
 ### Step 3: Build the Model
 
-To build the model in a single step, run
-
-`parallel_build.csh` 
-
+To build the model in a single step, do the following:
+```
+cd ./GEOSldas
+parallel_build.csh
+``` 
 from a head node. Doing so will checkout all the external repositories of the model and build it. When done, the resulting model build will be found in `build/` and the installation will be found in `install/`, with setup scripts like `ldas_setup` in `install/bin`. 
 
 To obtain a build that is suitable for debugging, you can run `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.
@@ -66,9 +65,9 @@ See below for how to build the model in multiple steps.
 
 The GEOSldas setup script uses MPI.  If you are using SLES12 at NCCS, you **must** run setup on an interactive _compute_ node.  SLES12 _login_ nodes no longer allow running MPI.
 
-To set up a job, run
+To set up a job, do the following:
 ```
-cd ../(some_architecture)/bin
+cd ./install/bin
 source g5_modules
 ./ldas_setup setup [-v] [--runmodel]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
 ```  
@@ -90,7 +89,7 @@ ldas_setup sample --exeinp > YOUR_exeinp.txt
 ldas_setup sample --batinp > YOUR_exeinp.txt
 ```
 
-Edit these sample files following the comments within the sample files.  
+Edit these sample files following the examples and comments within the sample files.  
 
 The ldas_setup script creates a run directory and other directories at:
 `[exp_path]/[exp_name]`
@@ -98,7 +97,7 @@ The ldas_setup script creates a run directory and other directories at:
 Configuration input files will be created at:
 `[exp_path]/[exp_name]/run`
 
-For more options and documentation run any of the following:
+For more options and documentation, use any of the following:
 ```
 ldas_setup        -h
 ldas_setup sample -h
@@ -116,6 +115,8 @@ sbatch lenkf.j
 For more information, see the README files and ppt tutorial in `./src/Applications/LDAS_App/doc/`.
 
 -----------------------------------------------------------------------------------
+
+## Additional Information
 
 ### How to Build the Model in Multiple Steps
 
