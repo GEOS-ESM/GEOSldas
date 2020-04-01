@@ -130,11 +130,11 @@ make -j6 install
 ---
 
 ## Setup up a run
-If you are using SLES12 at NCCS, you **must** run setup on an interactive compute node and source g5_modules.sh under bash shell.  SLES12 login nodes no longer allow running MPI.
+If you are using SLES12 at NCCS, you **must** run setup on an interactive compute node, then `source g5_modules` (csh) or `source g5_modules.sh` (bash).  SLES12 login nodes no longer allow running MPI.
 
 ```
-cd ../(some_architecture)/bin
-source g5_modules
+cd [..]/install/bin
+source g5_modules[.sh]
 ./ldas_setup setup [-v] [--runmodel]  exp_path  "exe"_input_filename  "bat"_input_filename
 ```  
 where
