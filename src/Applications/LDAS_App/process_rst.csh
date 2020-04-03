@@ -162,13 +162,22 @@ case [1]:
         #echo 'setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0' >> this.file
         echo 'setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib' >> this.file
 
+        set mpi_mpmd = "${INSTDIR}/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k 0000 -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+        set j = 1
+        while ($j < $NUMENS)
+           set ENS = `printf '%04d' $j`
+           set mpi_mpmd = "${mpi_mpmd} : -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+           @ j++
+        end
+        echo $mpi_mpmd >> this.file
+
         set j = 0
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           echo  $INSTDIR/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}  >> this.file
-           echo  ncks -4  -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} >> this.file 
+           echo  "ncks -4  -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} &"  >> this.file
            @ j++
         end
+        echo 'wait' >> this.file
 
         chmod +x this.file
         ./this.file
