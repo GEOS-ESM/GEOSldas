@@ -570,7 +570,7 @@ while ( $counter <= ${NUM_SGMT} )
              set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
              if (! -e $THISDIR            ) mkdir -p $THISDIR
              /bin/mv $rfile ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
-             /usr/bin/gzip ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
+             /usr/bin/gzip ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4 &
           end
        endif
        
