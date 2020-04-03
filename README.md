@@ -12,18 +12,6 @@ Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It
 module use -a (path)
 module load GEOSenv
 ```
-or
-```
-module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
-```
-or add the following to your `.cshrc`:
-```
-if ( ! -f /etc/os-release ) then
-   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES11
-else
-   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
-endif
-```
 
 where `(path)` depends on the computer and operating system: 
 
@@ -173,5 +161,4 @@ and CMake will install there.
 ```
 make -j6 install
 ```
-
 
