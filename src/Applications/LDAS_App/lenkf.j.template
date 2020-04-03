@@ -335,12 +335,12 @@ while ( $counter <= ${NUM_SGMT} )
       else
          set binfile   = `echo $ofile | rev | cut -d'.' -f2- | rev`
          set decr_file = `echo $ofile | rev | cut -d'.' -f3- | rev`.ctl
-         $GEOSBIN/tile_bin2nc4.x $binfile $decr_file $TILECOORD
-         /bin/mv ${binfile}.nc4 $THISDIR/.
-         /bin/rm ${binfile}.bin
+         ($GEOSBIN/tile_bin2nc4.x $binfile $decr_file $TILECOORD ; \
+         /bin/mv ${binfile}.nc4 $THISDIR/. ; \
+         /bin/rm ${binfile}.bin) &
       endif
    end
-   
+   wait 
    #######################################################################
    #              Create HISTORY Collection Directories
    #######################################################################
