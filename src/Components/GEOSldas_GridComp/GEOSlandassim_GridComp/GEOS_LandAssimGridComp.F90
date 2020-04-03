@@ -99,7 +99,7 @@ integer :: N_obsbias_max
 integer,dimension(:),pointer :: N_catl_vec,low_ind
 integer :: N_catf
 !reordered tile_coord_rf and mapping l2rf
-integer,dimension(:),pointer :: l2rf, rf2l,rf2g
+integer,dimension(:),pointer :: l2rf, rf2l,rf2g, rf2f
 type(tile_coord_type), dimension(:), pointer :: tile_coord_rf => null()
 integer, allocatable :: Pert_rseed(:,:)
 real(kind=ESMF_KIND_R8), allocatable :: pert_rseed_r8(:,:)
@@ -940,7 +940,6 @@ subroutine Initialize(gc, import, export, clock, rc)
     integer :: land_nt_local,i,mpierr, ens
     ! mapping f to re-orderd f so it is continous for mpi_gather
     ! rf -- ordered by processors. Within the processor, ordered by MAPL grid
-    integer,allocatable :: rf2f(:) 
     integer,allocatable :: f2rf(:) ! mapping re-orderd rf to f for the LDASsa output
     type(grid_def_type) :: tile_grid_g
     type(grid_def_type) :: tile_grid_f
@@ -1752,7 +1751,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                 obs_param,                                                   &
                 met_force, lai,                     &
                 cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
-                Observations_l )
+                Observations_l, rf2f=rf2f )
 
 
               do i = 1, N_catl
