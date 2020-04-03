@@ -532,10 +532,8 @@ while ( $counter <= ${NUM_SGMT} )
        if (-f ${rstf}${ENSID}_internal_checkpoint ) then
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
           /bin/mv ${rstf}${ENSID}_internal_checkpoint $tmp_file
-          #set old_rst = `/usr/bin/readlink $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /bin/ln -s  $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
-          #/usr/bin/gzip $old_rst &
        endif
    
        set rstf = 'landpert'
@@ -559,7 +557,7 @@ while ( $counter <= ${NUM_SGMT} )
    # move intermediate check point files to  output/$EXPDOMAIN/rs/$ENSDIR/Yyyyy/Mmm/ directories
    # -------------------------------------------------------------------------------------------
    
-       set rstfiles1 = `ls ${MODEL}${ENSID}_internal_checkpointi.*`
+       set rstfiles1 = `ls ${MODEL}${ENSID}_internal_checkpoint.*`
        set rstfiles2 = `ls landpert${ENSID}_internal_checkpoint.*`
        set rstfiles3 = `ls landassim_obspertrseed${ENSID}_checkpoint.*`
    
@@ -584,9 +582,9 @@ while ( $counter <= ${NUM_SGMT} )
              set TM = `echo $ThisTime | cut -c5-6` 
              set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
              if (! -e $THISDIR            ) mkdir -p $THISDIR
-             ncks -4 -O -C -x -v lat,lon $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4
-             /usr/bin/gzip ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4 &
-             /bin/rm -f $rfile
+             (ncks -4 -O -C -x -v lat,lon $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4;\
+               /usr/bin/gzip ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4; \
+               /bin/rm -f $rfile) &
           end
        endif
    
