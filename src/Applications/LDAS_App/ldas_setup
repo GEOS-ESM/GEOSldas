@@ -554,7 +554,12 @@ class LDASsetup:
             line = line.strip()
             # blank line
             if not line:
-                continue
+               continue
+            if '"GEOSldas=>"' in line:
+               continue
+            # get "GEOSldas=>" defalut in GEOS_LandGrid.rc
+            if 'GEOSldas=>' in line:
+               line = line.split('GEOSldas=>')[1]
             # handle comments
             position = line.find('#')
             if position==0: # comment line
@@ -569,7 +574,9 @@ class LDASsetup:
             key = key.strip()
             val = val.strip()
             if not key or not val:
-                raise Exception(errstr % (linenum, inpfile))
+                print "WARNING: " + errstr % (linenum, inpfile)
+                continue
+                #raise Exception(errstr % (linenum, inpfile))
             if key in inpdict:
                 raise Exception('Duplicate key [%s] in [%s]' % (key, inpfile))
             inpdict[key] = val.strip()
@@ -1083,13 +1090,18 @@ class LDASsetup:
                     print line.rstrip().replace('END_DATE:',self.endDates[-1].strftime('END_DATE: %Y%m%d %H%M%S'))
                     
             if shortfile == 'LDAS.rc' :
-                default_ldasrcInp = self._parseInputFile(rcfile)
                 ldasrcInp = OrderedDict()
-                # default 
+                # land default 
+                default_surfrcInp = self._parseInputFile(etcdir+'/GEOS_SurfaceGridComp.rc')
+                for key,val in default_surfrcInp.iteritems() :
+                    ldasrcInp[key] = val
+
+                # ldas default, may overiwrite land default 
+                default_ldasrcInp = self._parseInputFile(rcfile)
                 for key,val in default_ldasrcInp.iteritems() :
                     ldasrcInp[key] = val
 
-                # overide by the exeinp
+                # exeinp, may overwrite ldas default
                 for key,val in self.rqdExeInp.iteritems():
                     if key not in self.NoneLDASrcKeys:
                         ldasrcInp[key]= val
@@ -1524,6 +1536,22 @@ def _printExeInputKeys(rqdExeInpKeys):
     for line in _f:
        sys.stdout.write(line)
        sys.stdout.flush()
+    _f.close()
+    print
+    print
+
+    _fn = '../etc/GEOS_SurfaceGridComp.rc'   # run ldas_setup from /bin directory
+
+    _f = open(_fn)
+    for line in _f:
+        if '"GEOSldas=>"' in line:
+           sys.stdout.write(line)
+        elif 'GEOSldas=>' in line:
+           line0 = line.split("GEOSldas=>")[1]
+           sys.stdout.write(line0)
+        elif not line.strip() or line.strip().startswith('#'):
+           sys.stdout.write(line)
+        sys.stdout.flush()
     _f.close()
     print
     print

@@ -1,61 +1,35 @@
-# 
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-#                                                          #
-# DEFAULT parameters in GEOSldas_LDAS.rc                   #
-#                                                          #
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+#                                                        #
+#            GEOSldas Resource Parameters                #
+#                                                        #
+#  Values below override the hardcoded default values    #
+#    in *.F90 calls to MAPL_GetResource().               #
+#                                                        #
+#  Users can further override the values below by        #
+#    editing the "exeinp" file during ldas setup.        #
+#                                                        #
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 
-#--------------------------------------------------------#
-# Rarely changed parameters in GEOSldas                  #
-#--------------------------------------------------------#
 
-# ---- Using offline?
+# ---- Using Catchment/CatchmentCN offline?
 #
-#    0: DEFAULT for GCM. (WW,CH,CM,CQ,FR) are required in catchment restart file 
-#    1: DEFAULT for GEOSldas (WW,CH,CM,CQ,FR) are optional
-#    2: (WW,CH,CM,CQ,FR) are optional for input restart but will be in output restart 
+#    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
+#    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
+#    2: Option  for GEOSldas, (WW,CH,CM,CQ,FR) are optional for input restart but will be in output
+#                               restart; select when using GEOSldas to create restarts for the GCM.
 #
-CATCHMENT_OFFLINE              : 1
+CATCHMENT_OFFLINE: 1
 
-# ---- No dycore for offline
+# ---- Choice of land surface model
 #
-DYCORE                         : none
-
-# ---- Only one surface level
+#    1 : Catchment model   (default)
+#    2 : CatchmentCN model
 #
-LM                             : 1
+LSM_CHOICE: 1
 
-# ---- First ensemble ID
+
+# ---- Domain definition
 #
-FIRST_ENS_ID                   : 0
-
-# ---- For MAPL_RestartOptional
-#
-MAPL_ENABLE_BOOTSTRAP          : YES
-
-
-# ---- SURFLAY
-#
-SURFLAY                        : 50.0
-
-#--------------------------------------------------------#
-# Optional parameters. Users can overwrite the defaults  #
-# through the user-generated exeinp file.                #
-#--------------------------------------------------------#
-
-# ---- Metforce time step
-#      Should be set in the exeinp file where MET_PATH is defined
-#      3600 = default
-#
-# FORCE_DTSTEP                   : 3600
-
-# ---- Choice of Land Surface Model:
-#    1 : Catchment Model   (Default)
-#    2 : CatchmentCN Model
-#
-LSM_CHOICE                     : 1
-
-# ---- Domain definition:
 #      The domain is determined by specifying a lat/lon rectangle in conjunction
 #      with blacklist and whitelist files.  The files contain the IDs of tiles to
 #      be excluded and included in the domain.
@@ -67,170 +41,132 @@ LSM_CHOICE                     : 1
 #      If only whitelist should be used, specify dummy valuessuch that:
 #         MINLON > MAXLON and MINLAT > MAXLAT.
 #
-# MINLON                         : -180.
-# MAXLON                         :  180.
-# MINLAT                         :  -90.
-# MAXLAT                         :   90.
+# MINLON                       : -180.
+# MAXLON                       :  180.
+# MINLAT                       :  -90.
+# MAXLAT                       :   90.
 #
 #      Specify path and filenames for blacklist and whitelist files:
 #      (May leave blank.)
 #
-# BLACK_FILE                     : '' 
-# WHITE_FILE                     : '' 
+# BLACK_FILE                   : '' 
+# WHITE_FILE                   : '' 
 
-# ---- Surface layer turbulence scheme:
-#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
-#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
+
+# ---- Surface meteorological forcing: Time step
 #
-CHOOSEMOSFC                    : 0
-
-# ---- Formulation for turbulent roughness length (Z0):
-#    0 : Fortuna,      SMAP NRv3
-#    1 : Ganymed-4_1,  SMAP NRv4/NRv4.1
-#    2 : Heracles-4_3, Icarus (AGCM default)
-#    3 :               SMAP NRv5/NRv7.2
-#    4 : f525land_fpp
+#        Should be set in the exeinp file where MET_PATH is defined
+#        3600 = default
 #
-Z0_FORMULATION                 : 4
+# FORCE_DTSTEP                 : 3600
 
-# ---- ASCAT-derived roughness length:
-#    0 : Default - do not use ASCAT information.
-#    1 : Replace model roughness length with ASCAT Z0 where climatological NDVI<0.2.
+# ---- Surface meteorological forcing: Horizonal interpolation 
 #
-USE_ASCATZ0                    : 0
-
-# ---- Aerosol deposition on snow (available only with MERRA-2 forcings):
-#    0 : DEFAULT, ALL GOCART Aerosol are NOT used
-#    1 : use all GOCART aerosol data 
-#    2 : GOCART DUST is NOT used
-#    3 : GOCART Black Carbon is NOT used
-#    4 : GOCART Organic Carbon is NOT used
+#    1 :  bilinear interpolation (default)
+#    0 :  nearest neighbor
 #
-AEROSOL_DEPOSITION             : 0
+MET_HINTERP                    : 1
 
-# ---- Run the irrigation model :
-#    0 : Default - NO Do not run the irrigation model
-#    1 : YES run the irrigation model
-RUN_IRRIG                     : 0
 
-# ---- irrigation model method :
-#    0 : Default - Sprinkler and Flood irrigation combined
-#    1 : sprinkler irrigation only
-#    2 : flood irrigation only
-IRRIG_METHOD                  : 0
-
-# ---- Number of constituents for GOSWIM (the GOddard SnoW Impurity Module)
-#    0 : Default, GOSWIM snow albedo scheme is turned OFF for land
-#    9 : GOSWIM snow albedo scheme is turned ON for land
+# ---- Specify if running model only or data assimilation
 #
-N_CONST_LAND4SNWALB            : 0
+#  NO  : model only (DEFAULT; with --runmodel option)
+#  YES : assimilation (without --runmodel option)
+#
+LAND_ASSIM                     : NO
 
-# ---- Perturbations (If num_ensemble > 1, PERTURBATIONS will automatically be set to 1): 
+
+# ---- Perturbations: On/off 
+#
+# If num_ensemble > 1, PERTURBATIONS will automatically be set to 1. 
+#
 #    0 : No perturbactions.
 #    1 : With perturbations.
 #
 PERTURBATIONS                  : 0
 
-# ---- Path to special namelist input files:
-#      This only applies for ensemble simulations. The variable values in special name list 
-#      overwrite the DEFAULT values . There may be three files: 
-#          LDASsa_SPECIAL_inputs_ensupd.nml, 
-#          LDASsa_SPECIAL_inputs_ensprop.nml, and 
+# ---- Perturbations: ID of first ensemble member
+#
+FIRST_ENS_ID                   : 0
+
+
+# ---- Path to special namelist input files
+#
+#      Applies only for ensemble simulations. The variable values in the special 
+#      namelist overwrite the DEFAULT values. There may be three files: 
+#          LDASsa_SPECIAL_inputs_ensupd.nml 
+#          LDASsa_SPECIAL_inputs_ensprop.nml 
 #          LDASsa_SPECIAL_inputs_catbias.nml 
 #
-# NML_INPUT_PATH                 : ''
+# NML_INPUT_PATH               : ''
 
-# ---- Write log file (YES/NO)?
+
+# ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format) used for Tb assimilation
 #
-LDAS_logit                     : YES
+#      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
+#      If empty or commented out, GEOSldas will search the restart directory.
+#
+# MWRTM_FILE                   : ''
 
-# ---- Job segment length:
+
+# ---- Job segments: Length
+#
 #      Specify period between output of restart files.  (GEOSldas.x shuts down and restarts.)
 #      Default is the entire simulation period (END_DATE minus BEG_DATE).
 #      Format:            yyyymmdd hhmmss
 #
-# JOB_SGMT                       : 00000100 000000
+# JOB_SGMT                     : 00000100 000000
 
-# ---- Number of segments:
+# ---- Job segments: Number
+#
 #      One lenkf.j job simulates NUM_SGMT*JOB_SGMT time, then re-submits itself,
 #      so (NUM_SGMT*JOB_SGMT) should be done within the 12 hour CPU time limit (at NCCS).
 #      Low values for NUM_SGMT are recommended for run-time and storage efficiency.
 #      Default is 1.
 #
-# NUM_SGMT                       : 1
+# NUM_SGMT                     : 1
 
-# ---- User defined Path and filename of output (HISTORY) specification file:
-#      If it is empty, ldas_setup will generate default HISTORY.rc.
+
+# ---- Output: Write log file (YES/NO)?
 #
-# HISTRC_FILE                    : ''
+LDAS_logit                     : YES
+
+# ---- Output: HISTORY definition of model diagnostics
+#
+#      User-defined path and filename of output (HISTORY) specification file.
+#      If empty, ldas_setup will generate a default HISTORY.rc file.
+#
+# HISTRC_FILE                  : ''
 
 # ---- Write only monthly output?
+#
 #      Monthly files can be created from daily files. 
-#      To have accurate monthly averages, the ref_time in HISTORY.rc should be 000000
+#      Accurate monthly averages require setting "ref_time" in HISTORY.rc to "000000"
 #
 #    0 : Output bundled into daily files per HISTORY specifications (default).
 #    1 : Monthly files will be created. Daily files will *not* be deleted.
 #    2 : Monthly files will be created and daily files will be deleted automatically.
 #
-# MONTHLY_OUTPUT                : 0
+# MONTHLY_OUTPUT               : 0
  
-# ---- Specify how to interpolate the forcing (Default is 1):
-#    1 :  bilinear interpolation
-#    0 :  nearest neighbor
-#
-MET_HINTERP                    : 1
 
-# ---- Specify if running model or assimilation:
-#    NO  : model only (DEFAULT; with --runmodel option)
-#    YES : assimilation (without --runmodel option)
+# ---- Name of file containing Surface GridComp resource parameters 
 #
-LAND_ASSIM                     : NO
+SURFRC: LDAS.rc
 
-# ---- Choose land model version
-#    Icarus  : Current DEFAULT for the Icarus AGCM (Scientifically close to MERRA-2)
-#    V24_C05 : DEFAULT for GEOSldas_m4-17_0
-#    NRv7.2  : Current DEFAULT beginning with GEOSldas_m4-17_6
-#
-LAND_PARAMS                    : NRv7.2
-
-# ---- File name for mwRTM parameter file (nc4 format) used in assimilation runs.
-#      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
-#      If empty or commented out, GEOSldas will search the restart directory.
-#
-# MWRTM_FILE                     : ''
 
 #--------------------------------------------------------#
-#             CatchCN Model specific parameters          #
+# Do not change the following parameters in GEOSldas     #
 #--------------------------------------------------------#
 
-# ---- Time step for carbon/nitrogen routines in CatchmentCN model (default 5400):
-#      (Time step for water/energy routines is controlled by HEARTBEAT_DT in CAP.rc)
+# ---- No dycore for offline
 #
-# DTCN                           : 5400
+DYCORE                         : none
 
-# ---- Atmospheric CO2
-#      Note that by default NOAA CT CO2 is scaled to the EEA global average
-#      CO2 linearly interpolated to the METFORCE year.
-#      For offline simulations : the default holds but with an optional
-#      parameter CO2_YEAR, which permits user to set the beginning year of the
-#      atmospheric CO2 concentration of the simulation if it's earlier than the METFORCE year.
+# ---- Only one surface level
 #
-#    0 : use a fix value as defined by CO2 (default=350.e-6) (Default)
-#    1 : NOAA CT tracker monthly mean diurnal cycle
-#    2 : NOAA CT tracker monthly mean diurnal cycle scaled to match EEA global average CO2
-#    3 : CMIP5 recommended annual average global mean concentrations from getco2.F90 (1765-2150)
-# ATM_CO2: 2
+LM                             : 1
 
-# ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation 
-#    0 : NO Run CN Model interactively (Default)
-#    1 : YES Prescribe interannually varying LAI and SAI
-#    2 : YES Prescribe climatological LAI and SAI
-#    3 : Estimated LAI/SAI using anomalies at the beginning of the foeecast and climatological LAI/SAI
-#    4 : Write LAI/SAI anomalies in catchcn_internal_rst for above option 3
-# PRESCRIBE_DVG: 0
-
-# ---- Scale CATCHCN ALBEDO and FPAR
-#    0 : NO (Default)
-#    1 : Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
-#    2 : Scale albedo to match interannually varying MODIS NIRDF and VISDF plus FPAR to match MODIS FPAR CDF 
-# SCALE_ALBFPAR: 0
+# ---- For MAPL_RestartOptional
+#
+MAPL_ENABLE_BOOTSTRAP          : YES
