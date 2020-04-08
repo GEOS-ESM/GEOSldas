@@ -161,5 +161,5 @@ and CMake will install there.
 ```
 make -j6 install
 ```
-If you are using SLES12 at NCCS, you **should** run `make` on an interactive _compute_ node.  
+If you are using SLES12 at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.  
 
