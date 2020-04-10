@@ -813,7 +813,7 @@ class LDASsetup:
            if os.path.isfile(landassim_seeds) and self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' :
                _seeds = self.rstdir + _ensdir + '/' + y4m2+'/' + exp_id + '.landassim_obspertrseed_rst.'+y4m2d2_h2m2 
                shutil.copy(landassim_seeds, _seeds)
-               os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ensid +'_rst')
+               os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ _ensid +'_rst')
                self.has_landassim_seed = True
  
         cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, exp_dir,
