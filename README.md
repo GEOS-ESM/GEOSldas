@@ -63,11 +63,19 @@ See below for how to build the model in multiple steps.
 
 ## How to Set Up and Run GEOSldas
 
-The GEOSldas setup script uses MPI.  If you are using SLES12 at NCCS, you **must** run setup on an interactive _compute_ node.  SLES12 _login_ nodes no longer allow running MPI.
+a) Obtain an interactive _compute_ node:
 
-To set up a job, do the following:
 ```
-cd ./install/bin
+xalloc --nodes=1
+```
+
+The GEOSldas setup script uses MPI and **must** be run on a compute node.  (For NCCS SLES11, a login node also works.)
+
+
+b) On the _compute_ node, set up the job as follows:
+
+```
+cd (build_path)/GEOSldas/install/bin
 source g5_modules
 ./ldas_setup setup [-v] [--runmodel]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
 ```  
@@ -76,11 +84,12 @@ where
 
 | Parameter              | Description                                              |
 | -----------------------|----------------------------------------------------------|
+| `build_path`           | path to build directory                                  |
 | `exp_path`             | path of desired experiment directory                     |
 | `"exe"_input_filename` | filename (with path) of "experiment" inputs              |
 | `"bat"_input_filename` | filename (with path) of "batch" (job scheduler) inputs   |
 
-must be ordered as above (positional arguments).
+The three arguments for `ldas_setup` are positional and must be ordered as indicated above.
 
 The latter two files contain essential information about the experiment setup. 
 Sample files can be generated as follows:
@@ -106,7 +115,7 @@ ldas_setup setup  -h
 
 Configure the experiment output by editing the ```HISTORY.rc``` file.
 
-Finally, run the job:
+c) Finally, run the job:
 ```
 cd [exp_path]/[exp_name]/run/
 sbatch lenkf.j
