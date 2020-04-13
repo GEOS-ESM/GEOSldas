@@ -439,22 +439,28 @@ while ( $counter <= ${NUM_SGMT} )
    
              set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}${DD}_* | rev | cut -d'.' -f2 | cut -d'.' -f1 | rev`
              set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
-   
-   cat << EOF > timestamp.cdl
-   netcdf timestamp {
-   dimensions:
-   time = UNLIMITED ; // (NT currently)
-   string_length = 14 ;
-   variables:
-   char time_stamp (time, string_length) ;
-   
-   data:
-   
-   time_stamp =
-   DATAVALUES;
-   }      
-   EOF
-   
+
+# ----------------------------------------------------------------------------
+#
+# WARNING: The following block MUST begin in column 1!!!  Do NOT indent!!!
+
+cat << EOF > timestamp.cdl
+netcdf timestamp {
+dimensions:
+time = UNLIMITED ; // (NT currently)
+string_length = 14 ;
+variables:
+char time_stamp (time, string_length) ;
+
+data:
+
+time_stamp =
+DATAVALUES;
+}      
+EOF
+
+# ----------------------------------------------------------------------------
+
              sed -i -e "s/NT/$LEN_SUB/g" timestamp.cdl
              sed -i -e "s/DATAVALUES/$tstep2/g" timestamp.cdl
              ncgen -k4 -o timestamp.nc4 timestamp.cdl
