@@ -148,12 +148,12 @@ contains
        work_path, exp_id, exp_domain,                                    &
        met_force, lai, cat_param, mwRTM_param,                           &
        tile_coord_l, tile_coord_f, tile_grid_f,                          &
-       pert_grid_f, pert_grid_l_NotUsed, tile_grid_g,                            &
+       pert_grid_f, pert_grid_l_NotUsed, tile_grid_g,                    &
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
        dtstep_assim, centered_update,                                    &
-       xcompact, ycompact,                                               &
+       xcompact, ycompact,cov_inflation_factor,                          &
        N_obs_param, obs_param, N_obsbias_max,                            &
        out_obslog, out_smapL4SMaup,                                      &
        cat_progn,                                                        &
@@ -214,7 +214,7 @@ contains
 
     logical, intent(in) :: centered_update
 
-    real,    intent(in) :: xcompact, ycompact
+    real,    intent(in) :: xcompact, ycompact, cov_inflation_factor
 
     integer, intent(in) :: N_obs_param
 
@@ -1037,7 +1037,7 @@ contains
                Obs_pred_ana,                              & ! size: (nObs_ana,N_ens)
                Obs_pert_tmp,                              &
                cat_param_ana,                             &
-               xcompact, ycompact,                        &
+               xcompact, ycompact, cov_inflation_factor,  &
                cat_progn_ana, cat_progn_incr_ana)
           call cpu_time(t_end)
 
@@ -1065,7 +1065,7 @@ contains
                Obs_pred_lH(1:N_obslH,1:N_ens),                          &
                Obs_pert_tmp,                                            &
                cat_param,                                               &
-               xcompact, ycompact,                                      &
+               xcompact, ycompact,cov_inflation_factor,                 &
                cat_progn, cat_progn_incr )
 #endif          
 

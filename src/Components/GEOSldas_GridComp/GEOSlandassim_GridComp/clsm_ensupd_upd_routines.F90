@@ -169,7 +169,7 @@ contains
        update_type,                             &
        dtstep_assim,                            &
        centered_update,                         &
-       xcompact, ycompact,                      &
+       xcompact, ycompact,cov_inflation_factor, &
        N_obs_param,                             &
        obs_param,                               &
        out_obslog,                              &
@@ -221,7 +221,7 @@ contains
     
     logical,              intent(out)   :: centered_update
     
-    real,                 intent(out)   :: xcompact, ycompact
+    real,                 intent(out)   :: xcompact, ycompact, cov_inflation_factor
 
     integer,              intent(out)   :: N_obs_param
     
@@ -281,6 +281,7 @@ contains
 !         out_incr_format,          & 
          out_smapL4SMaup,          &
          xcompact, ycompact,       &
+         cov_inflation_factor,     &
          obs_param_nml
         
     ! ------------------------------------------------------------------
@@ -1013,7 +1014,8 @@ contains
        N_catl_vec, low_ind, tile_grid_g,                         &
        obs_param,                                                &
        met_force, lai, cat_param, cat_progn, mwRTM_param,        &
-       N_obsl, Observations_l, Obs_pred_l, obsbias_ok )
+       N_obsl, Observations_l, Obs_pred_l, obsbias_ok,           &
+       cov_inflation_factor )
     
     ! Compute ensemble of measurement predictions from ensemble 
     !  of tile-space Catchment prognostics.
@@ -1066,6 +1068,7 @@ contains
     real,                   dimension(:,:),   pointer :: Obs_pred_l            ! output
     
     logical,                intent(in),    dimension(N_obsl), optional :: obsbias_ok       
+    real,                intent(in),    optional :: cov_inflation_factor      
     
     ! --------------------------------------------------------------------------------
     !
@@ -1987,7 +1990,13 @@ contains
              end if
              
              Observations_l(j)%fcst    = tmpmean(1)
-             Observations_l(j)%fcstvar = tmpvar(1)
+             !Observations_l(j)%fcstvar = tmpvar(1)
+
+             if (present(cov_inflation_factor)) then
+                 Observations_l(j)%fcstvar = tmpvar(1) * cov_inflation_factor ** 2
+             else
+                 Observations_l(j)%fcstvar = tmpvar(1)
+             end if
              
           end if
           
@@ -3457,7 +3466,7 @@ contains
        tile_grid_f, tile_coord, l2f,                            &
        Observations, Obs_pred, Obs_pert,                        &
        cat_param,                                               &
-       xcompact, ycompact,                                      &
+       xcompact, ycompact, cov_inflation_factor,                &
        cat_progn, cat_progn_incr )
     
     ! get increments for Catchment prognostic variables
@@ -3506,7 +3515,7 @@ contains
     
     type(cat_param_type), dimension(N_catd), intent(in) :: cat_param
     
-    real, intent(in) :: xcompact, ycompact
+    real, intent(in) :: xcompact, ycompact, cov_inflation_factor
     
     type(cat_progn_type), intent(in),  dimension(N_catd,N_ens) :: cat_progn
     
@@ -3836,7 +3845,8 @@ contains
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  &
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                   Obs_cov,                                                &
-                  State_incr, State_lon, State_lat, xcompact, ycompact )             
+                  State_incr, State_lon, State_lat, xcompact, ycompact,   &
+                  cov_inflation_factor )             
              
              deallocate(Obs_cov)
              

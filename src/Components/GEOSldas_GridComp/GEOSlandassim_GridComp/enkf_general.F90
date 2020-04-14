@@ -8,6 +8,7 @@
 ! reichle, 19 Jul 2005 - merged compact_support.f90 and enkf_general.f90
 ! reichle,  1 Aug 2005 - eliminated tile_coord
 ! reichle, 18 Oct 2005 - return increments instead of updated State
+! reichle+qliu, 29 Jul 2019 - added covariance inflation
 
 ! use intel mkl lapack when available
 #ifdef MKL_AVAILABLE
@@ -41,7 +42,7 @@ contains
        N_state, N_obs, N_ens, &
        Observations, Obs_pred, Obs_err, Obs_cov, &
        State_incr, &
-       State_lon, State_lat, xcompact, ycompact )
+       State_lon, State_lat, xcompact, ycompact, inflation_factor_in )
     
     ! perform EnKF update
     !
@@ -51,6 +52,11 @@ contains
     !
     ! if optional inputs State_lon, State_lat, xcompact, and ycompact
     ! are present, Hadamard product is applied to HPHt and PHt
+    !
+    ! if optional input inflation_factor_in is present, subroutine enkf_increments() 
+    ! returns the increment that should be applied
+    ! to the state vector *before* inflation
+    !
     
     implicit none
     
@@ -70,6 +76,7 @@ contains
     
     real, intent(in), optional :: xcompact       ! [deg] longitude
     real, intent(in), optional :: ycompact       ! [deg] latitude
+    real, intent(in), optional :: inflation_factor_in   ! model covariance inflation scaling factor 
 
     ! -----------------------------
     
@@ -80,6 +87,8 @@ contains
     integer :: n_e, i, ii, jj, kk, lapack_info
 
     real :: PHt_ij, dx, dy
+
+    real :: inflation_factor
     
     real, dimension(N_state,N_ens) :: State_prime
     real, dimension(N_state)       :: State_bar
@@ -98,6 +107,15 @@ contains
     logical :: apply_hadamard
     
     ! ------------------------------------------------------------------
+    if (present(inflation_factor_in)) then
+
+        inflation_factor = inflation_factor_in
+
+    else
+
+        inflation_factor = 1.
+
+    end if
 
     ! find out whether Hadamard product should be applied
     
@@ -122,7 +140,9 @@ contains
        State_prime(:,n_e) = State_incr(:,n_e) - State_bar
        
     end do
-        
+
+    if (inflation_factor > 1.001) State_prime = inflation_factor * State_prime        
+
     ! --------------------
     
     ! compute ensemble mean H*Ybar
@@ -136,6 +156,8 @@ contains
        Obs_pred_prime(:,n_e) = Obs_pred(:,n_e) - Obs_pred_bar
        
     end do
+
+    if (inflation_factor > 1.001) Obs_pred_prime = inflation_factor * Obs_pred_prime
 
     ! --------------------
 
@@ -179,11 +201,16 @@ contains
        
        ! use random measurement error field, get Zpert = Z + v,
        ! compute right hand side rhs = Zpert - H*y^f for system equation,
+       !
+       ! last term inflates "Obs_pred", which is intent(in) and was not inflated above
        
        do i=1,N_obs
-          
-          rhs(i) = Observations(i)%obs + Obs_err(i,n_e) - Obs_pred(i,n_e)
-          
+         
+          if (inflation_factor > 1.001) then 
+             rhs(i) = Observations(i)%obs + Obs_err(i,n_e) - Obs_pred(i,n_e) - (1.-inflation_factor)*Obs_pred_prime(i,n_e)
+          else
+             rhs(i) = Observations(i)%obs + Obs_err(i,n_e) - Obs_pred(i,n_e)
+          end if
        end do
        
        ! solve W*b = Zpert - H*y^f
@@ -253,9 +280,16 @@ contains
        
        ! finish computation of increment for ensemble member n_e
        ! (normalization is NOT ensemble average, see Eq above)
-       
-       State_incr(:,n_e) = State_incr(:,n_e)/real(N_ens-1)
-       
+       !
+       ! the second term corrects for the fact that the increment will be applied to 
+       ! the un-inflated state vector outside of this subroutine
+       ! (note also that State_prime here has been inflated!)
+
+       if (inflation_factor > 1.001) then 
+          State_incr(:,n_e) = State_incr(:,n_e)/real(N_ens-1) + (1.-1./inflation_factor)*State_prime(:,n_e)
+       else
+          State_incr(:,n_e) = State_incr(:,n_e)/real(N_ens-1)
+       end if
     end do
     
   end subroutine enkf_increments

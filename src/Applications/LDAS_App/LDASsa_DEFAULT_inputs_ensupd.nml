@@ -64,6 +64,13 @@ xcompact = 0.           ! [deg] longitude
 ycompact = 0.           ! [deg] latitude
 
 ! ---------------------------------------------------------------------
+!
+! model covariance inflaction factor - for update type 8,10 
+! expected values: 1 - 1.5
+
+cov_inflation_factor = 1.            
+
+! ---------------------------------------------------------------------
 !		
 ! Definition of measurement species and parameters
 !
