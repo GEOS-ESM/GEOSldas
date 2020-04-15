@@ -4156,7 +4156,8 @@ contains
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  &
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                   Obs_cov,                                                &
-                  State_incr, State_lon, State_lat, xcompact, ycompact )             
+                  State_incr, State_lon, State_lat, xcompact, ycompact,   &
+                  cov_inflation_factor )             
              
              deallocate(Obs_cov)
 
@@ -4281,7 +4282,8 @@ contains
                      Obs_pred(ind_obs(1:N_selected_obs),:),                  &
                      Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                      Obs_cov,                                                &
-                     State_incr, State_lon, State_lat, xcompact, ycompact )             
+                     State_incr, State_lon, State_lat, xcompact, ycompact,   &
+                     cov_inflation_factor )             
                 
                 deallocate(Obs_cov)
                 
