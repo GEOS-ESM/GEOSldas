@@ -335,12 +335,12 @@ while ( $counter <= ${NUM_SGMT} )
       else
          set binfile   = `echo $ofile | rev | cut -d'.' -f2- | rev`
          set decr_file = `echo $ofile | rev | cut -d'.' -f3- | rev`.ctl
-         $GEOSBIN/tile_bin2nc4.x $binfile $decr_file $TILECOORD
-         /bin/mv ${binfile}.nc4 $THISDIR/.
-         /bin/rm ${binfile}.bin
+         ($GEOSBIN/tile_bin2nc4.x $binfile $decr_file $TILECOORD ; \
+         /bin/mv ${binfile}.nc4 $THISDIR/. ; \
+         /bin/rm ${binfile}.bin) &
       endif
    end
-   
+   wait 
    #######################################################################
    #              Create HISTORY Collection Directories
    #######################################################################
@@ -439,22 +439,28 @@ while ( $counter <= ${NUM_SGMT} )
    
              set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}${DD}_* | rev | cut -d'.' -f2 | cut -d'.' -f1 | rev`
              set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
-   
-   cat << EOF > timestamp.cdl
-   netcdf timestamp {
-   dimensions:
-   time = UNLIMITED ; // (NT currently)
-   string_length = 14 ;
-   variables:
-   char time_stamp (time, string_length) ;
-   
-   data:
-   
-   time_stamp =
-   DATAVALUES;
-   }      
-   EOF
-   
+
+# ----------------------------------------------------------------------------
+#
+# WARNING: The following block MUST begin in column 1!!!  Do NOT indent!!!
+
+cat << EOF > timestamp.cdl
+netcdf timestamp {
+dimensions:
+time = UNLIMITED ; // (NT currently)
+string_length = 14 ;
+variables:
+char time_stamp (time, string_length) ;
+
+data:
+
+time_stamp =
+DATAVALUES;
+}      
+EOF
+
+# ----------------------------------------------------------------------------
+
              sed -i -e "s/NT/$LEN_SUB/g" timestamp.cdl
              sed -i -e "s/DATAVALUES/$tstep2/g" timestamp.cdl
              ncgen -k4 -o timestamp.nc4 timestamp.cdl
@@ -544,7 +550,7 @@ while ( $counter <= ${NUM_SGMT} )
           set old_rst = `/usr/bin/readlink -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /bin/ln -s $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
-          /usr/bin/gzip $old_rst
+          /usr/bin/gzip $old_rst &
        endif
    
        set rstf = 'landassim_obspertrseed'
@@ -557,9 +563,9 @@ while ( $counter <= ${NUM_SGMT} )
    # move intermediate check point files to  output/$EXPDOMAIN/rs/$ENSDIR/Yyyyy/Mmm/ directories
    # -------------------------------------------------------------------------------------------
    
-       set rstfiles1 = `ls ${MODEL}${ENSID}_internal_checkpoint*`
-       set rstfiles2 = `ls landpert${ENSID}_internal_checkpoint*`
-       set rstfiles3 = `ls landassim_obspertrseed${ENSID}_checkpoint*`
+       set rstfiles1 = `ls ${MODEL}${ENSID}_internal_checkpoint.*`
+       set rstfiles2 = `ls landpert${ENSID}_internal_checkpoint.*`
+       set rstfiles3 = `ls landassim_obspertrseed${ENSID}_checkpoint.*`
    
        set NFILES = `echo $#rstfiles1`
        if($NFILES > 0) then
@@ -570,6 +576,7 @@ while ( $counter <= ${NUM_SGMT} )
              set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
              if (! -e $THISDIR            ) mkdir -p $THISDIR
              /bin/mv $rfile ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
+             /usr/bin/gzip ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4 &
           end
        endif
        
@@ -581,9 +588,9 @@ while ( $counter <= ${NUM_SGMT} )
              set TM = `echo $ThisTime | cut -c5-6` 
              set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
              if (! -e $THISDIR            ) mkdir -p $THISDIR
-             ncks -4 -O -C -x -v lat,lon $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4
-             /usr/bin/gzip ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4
-             /bin/rm -f $rfile
+             (ncks -4 -O -C -x -v lat,lon $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4;\
+               /usr/bin/gzip ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4; \
+               /bin/rm -f $rfile) &
           end
        endif
    
@@ -601,7 +608,7 @@ while ( $counter <= ${NUM_SGMT} )
    
        @ inens ++
    end  ## end of while ($inens < $NENS)
-   
+   wait 
    #####################
    # update cap_restart
    # ##################
