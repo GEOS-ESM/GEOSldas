@@ -395,55 +395,23 @@ while ( $counter <= ${NUM_SGMT} )
    
           # if monthly exists, move on to the next collection
           if (-f $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4) continue
-   
-          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}* | rev | cut -d'.' -f2 | cut -d'.' -f1 | rev`
-          set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
-          set LEN = `echo $#time_steps`
-          # no file? move on  
-          if ($LEN == 0) continue
-    
-          set dayl = `echo $time_steps[$LEN] | cut -c1-8`
-          set day1 = `echo $time_steps[1] | cut -c1-8`
-          @ NAVAIL = ($dayl - $day1) + 1
-   
-          # not enough days? move on to the next collection
-          if($NAVAIL != $NDAYS) continue
-   
-          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}01* | rev | cut -d'.' -f2 | cut -d'.' -f1 | rev`
-          set LEN_SUB = `echo $#time_steps`
-          @ LEN_AVAIL = $LEN_SUB * $NDAYS
-   
-          # not enough sub-daylies? move on to the next collection
-          if ($LEN != $LEN_AVAIL) continue
-   
-          # create the monly average
-          #ncrcat -h $EXPID.$ThisCol.${YYYY}${MM}* ${EXPID}.${ThisCol}.$YYYY$MM.nc4
-          #ncra -h $EXPID.${ThisCol}.$YYYY$MM.nc4 $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4
-          
-          #/bin/rm $EXPID.${ThisCol}.$YYYY$MM.nc4
-          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??_*z.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
-          
-          # don't want a daily? delete the daily and sub-dailies and continue
-          #
-          if($NODAILIES == 2) then
-             /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}*
-             continue
-          endif
-   
+
           # create daily and remove the sub-daily
           # ------------------------------------------------------------------
           set day=1
           while ($day <= $NDAYS && $LEN_SUB > 1)
              if ( $day < 10  ) set DD=0${day}
              if ( $day >= 10 ) set DD=${day}
-   
+             @ day++    
              set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}${DD}_* | rev | cut -d'.' -f2 | cut -d'.' -f1 | rev`
+	     set LEN_SUB = `echo $#time_steps`
+	     if ($LEN_SUB <= 1) continue
              set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
 
 # ----------------------------------------------------------------------------
 #
 # WARNING: The following block MUST begin in column 1!!!  Do NOT indent!!!
-
+   
 cat << EOF > timestamp.cdl
 netcdf timestamp {
 dimensions:
@@ -458,9 +426,7 @@ time_stamp =
 DATAVALUES;
 }      
 EOF
-
-# ----------------------------------------------------------------------------
-
+   
              sed -i -e "s/NT/$LEN_SUB/g" timestamp.cdl
              sed -i -e "s/DATAVALUES/$tstep2/g" timestamp.cdl
              ncgen -k4 -o timestamp.nc4 timestamp.cdl
@@ -469,8 +435,43 @@ EOF
              /bin/rm timestamp.cdl
              /bin/rm timestamp.nc4
              /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4 
-             @ day++ 
+
           end # concatenate for each day 
+   
+          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}* | rev | cut -d'.' -f2 | cut -d'_' -f1 | rev`
+          set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
+          set LEN = `echo $#time_steps`
+          # no file? move on  
+          if ($LEN == 0) continue
+    
+          set dayl = `echo $time_steps[$LEN] | cut -c1-8`
+          set day1 = `echo $time_steps[1] | cut -c1-8`
+          @ NAVAIL = ($dayl - $day1) + 1
+   
+          # not enough days? move on to the next collection
+          if($NAVAIL != $NDAYS) continue
+   
+          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}01* | rev | cut -d'.' -f2 | cut -d'_' -f1 | rev`
+          set LEN_SUB = `echo $#time_steps`
+          @ LEN_AVAIL = $LEN_SUB * $NDAYS
+   
+          # not enough sub-daylies? move on to the next collection
+          if ($LEN != $LEN_AVAIL) continue
+   
+          # create the monly average
+          #ncrcat -h $EXPID.$ThisCol.${YYYY}${MM}* ${EXPID}.${ThisCol}.$YYYY$MM.nc4
+          #ncra -h $EXPID.${ThisCol}.$YYYY$MM.nc4 $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4
+          
+          #/bin/rm $EXPID.${ThisCol}.$YYYY$MM.nc4
+          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
+          
+          # don't want a daily? delete the daily and sub-dailies and continue
+          #
+          if($NODAILIES == 2) then
+             /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}*
+             continue
+          endif
+   
        end # each collection
      end # each month
      cd $PWD
