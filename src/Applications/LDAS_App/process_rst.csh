@@ -187,9 +187,6 @@ case [1]:
         echo 'wait' >> this.file
         echo 'echo DONE > done_rst_file' >> this.file
         sbatch this.file
-        #chmod +x this.file
-        #./this.file
-        #rm -f this.file
         cd $PWD
         sleep 1
      else
