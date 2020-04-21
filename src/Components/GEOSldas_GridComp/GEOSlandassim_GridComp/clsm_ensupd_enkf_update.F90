@@ -1614,7 +1614,7 @@ contains
        N_catl_vec, low_ind, f2l, N_catg, f2g,                                &
        obs_param,                                                            &
        met_force, lai, cat_param, cat_progn, cat_progn_incr, mwRTM_param,    &
-       Observations_l,rf2f )
+       Observations_l,rf2f,cov_inflation_factor )
 
     implicit none
 
@@ -1664,6 +1664,8 @@ contains
     type(obs_type),         dimension(:),     pointer :: Observations_l ! inout
     integer,                dimension(N_catf), optional, intent(in) :: rf2f ! re-ordered to LDASsa 
 
+    real,  optional,  intent(in) :: cov_inflation_factor
+
     ! local variables
 
     real,    dimension(:,:),   pointer :: Obs_pred_l            => null()
@@ -1702,7 +1704,8 @@ contains
             N_catl_vec, low_ind, tile_grid_g,                  &
             obs_param,                                         &
             met_force, lai, cat_param, cat_progn, mwRTM_param, &
-            N_obsl_tmp, Observations_l, Obs_pred_l )
+            N_obsl_tmp, Observations_l, Obs_pred_l,            &
+            cov_inflation_factor )
 
        ! clean up
 
