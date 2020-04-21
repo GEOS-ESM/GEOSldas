@@ -1752,7 +1752,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                 obs_param,                                                   &
                 met_force, lai,                     &
                 cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
-                Observations_l, rf2f=rf2f )
+                Observations_l, cov_inflation_factor, rf2f=rf2f )
 
 
               do i = 1, N_catl

@@ -527,7 +527,8 @@ contains
                N_catl_vec, low_ind, tile_grid_g,                  &
                obs_param,                                         &
                met_force, lai, cat_param, cat_progn, mwRTM_param, &
-               N_obsl, Observations_l, Obs_pred_l, obsbias_ok )
+               N_obsl, Observations_l, Obs_pred_l, obsbias_ok,    &
+               cov_inflation_factor )
 
           deallocate(obsbias_ok)
 
@@ -1614,7 +1615,7 @@ contains
        N_catl_vec, low_ind, f2l, N_catg, f2g,                                &
        obs_param,                                                            &
        met_force, lai, cat_param, cat_progn, cat_progn_incr, mwRTM_param,    &
-       Observations_l,rf2f,cov_inflation_factor )
+       Observations_l,cov_inflation_factor,rf2f )
 
     implicit none
 
@@ -1704,8 +1705,7 @@ contains
             N_catl_vec, low_ind, tile_grid_g,                  &
             obs_param,                                         &
             met_force, lai, cat_param, cat_progn, mwRTM_param, &
-            N_obsl_tmp, Observations_l, Obs_pred_l,            &
-            cov_inflation_factor )
+            N_obsl_tmp, Observations_l, Obs_pred_l )
 
        ! clean up
 
