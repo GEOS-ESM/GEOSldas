@@ -1180,7 +1180,7 @@ class LDASsetup:
                 valn = self.catch+ensid+'_internal_checkpoint'
                 ldasrcInp[keyn]= valn
 
-                if((self.has_ldassa_pert or self.has_geos_pert) and _perturb == 1):
+                if('-CF' not in self.rqdExeInp['GRIDNAME'] and _perturb == 1):
                     keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
                     valn = 'landpert'+ensid+'_internal_checkpoint'
                     ldasrcInp[keyn]= valn
