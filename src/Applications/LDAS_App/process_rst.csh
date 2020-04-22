@@ -153,13 +153,20 @@ case [1]:
 
         cd $EXPDIR/$EXPID/mk_restarts/
         echo '#\!/bin/csh -f ' > this.file
+
+        echo "#SBATCH --account=${SPONSORID}">> this.file   
+        echo "#SBATCH --time=1:00:00"        >> this.file  
+        echo "#SBATCH --ntasks=$NUMENS"      >> this.file     
+        echo "#SBATCH --job-name=mkRst"     >> this.file    
+        echo "#SBATCH --qos=debug"           >> this.file    
+        echo "#SBATCH --output=mkRst.o"     >> this.file 
+        echo "#SBATCH --error=mkRst.e"      >> this.file  
         echo 'source $INSTDIR/bin/g5_modules' >> this.file
         echo 'if ( -e /etc/os-release ) then' >> this.file
         echo '    module load nco/4.8.1'      >> this.file
         echo 'else'                           >> this.file
         echo '    module load other/nco-4.6.8-gcc-5.3-sp3 ' >> this.file
         echo 'endif' >> this.file
-        #echo 'setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0' >> this.file
         echo 'setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib' >> this.file
 
         set mpi_mpmd = "${INSTDIR}/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k 0000 -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
@@ -178,11 +185,8 @@ case [1]:
            @ j++
         end
         echo 'wait' >> this.file
-
-        chmod +x this.file
-        ./this.file
-        rm -f this.file
-        echo DONE > done_rst_file
+        echo 'echo DONE > done_rst_file' >> this.file
+        sbatch this.file
         cd $PWD
         sleep 1
      else
