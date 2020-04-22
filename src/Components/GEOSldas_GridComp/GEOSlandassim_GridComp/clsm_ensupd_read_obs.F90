@@ -524,7 +524,7 @@ contains
 
     cmd = '/bin/rm -f ' // tmpfname 
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     ! identify all files within current assimilation interval
     ! (list all files within hourly intervals)
@@ -554,7 +554,7 @@ contains
        
        cmd = trim(cmd) // ' >> ' // trim(tmpfname)
        
-       call system(trim(cmd))
+       call Execute_command_line(trim(cmd))
        
        call augment_date_time( 3600, date_time_tmp )
        
@@ -566,7 +566,7 @@ contains
     
     cmd = 'wc -w ' // trim(tmpfname) // ' > ' // trim(tmpfname2)
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     open(10, file=tmpfname2, form='formatted', action='read')
     
@@ -1037,7 +1037,7 @@ contains
 
     cmd = '/bin/rm -f ' // tmpfname 
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     ! identify all files within current assimilation interval
     ! (list all files within hourly intervals)
@@ -1070,7 +1070,7 @@ contains
        
        cmd = trim(cmd) // ' >> ' // trim(tmpfname)
        
-       call system(trim(cmd))
+       call Execute_command_line(trim(cmd))
        
        call augment_date_time( 3600, date_time_tmp )
        
@@ -1082,7 +1082,7 @@ contains
     
     cmd = 'wc -w ' // trim(tmpfname) // ' > ' // trim(tmpfname2)
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     open(10, file=tmpfname2, form='formatted', action='read')
     
@@ -1348,7 +1348,7 @@ contains
 
     cmd = '/bin/rm -f ' // tmpfname 
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     ! identify all files within current assimilation interval
     ! (list all files within hourly intervals)
@@ -1379,7 +1379,7 @@ contains
 
        cmd = trim(cmd) // ' >> ' // trim(tmpfname)
        
-       call system(trim(cmd))
+       call Execute_command_line(trim(cmd))
        
        
        call augment_date_time( 3600, date_time_tmp )
@@ -1392,7 +1392,7 @@ contains
     
     cmd = 'wc -w ' // trim(tmpfname) // ' > ' // trim(tmpfname2)
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     open(10, file=tmpfname2, form='formatted', action='read')
     
