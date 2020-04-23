@@ -389,6 +389,8 @@ class LDASsetup:
         assert self.rqdRmInp['rm_name'].upper() == 'SLURM'
         ## account and walltime should exist
         assert self.rqdRmInp['account']
+        if cmdLineArgs['account'] != 'None':
+           self.rqdRmInp['account'] = cmdLineArgs['account']
         assert self.rqdRmInp['walltime']
         ## ntasks is a +ve integer
         _ntasks = int(self.rqdRmInp['ntasks'])
@@ -1644,6 +1646,11 @@ def parseCmdLine():
         '--runmodel',
         help='model run (no assimilation)',
         action='store_true',
+        )
+    p_setup.add_argument(
+        '--account',
+        help='replace the account in batinpfile)',
+        type=str, default='None'
         )
     #p_setup.add_argument(
     #    '--ForceReuseDir',
