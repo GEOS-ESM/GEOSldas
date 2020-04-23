@@ -1416,7 +1416,7 @@ contains
     integer,        dimension(numprocs)       :: N_obsl_vec, tmp_low_ind
 
     character(300)                            :: fname
-
+    integer                                   :: i
 #ifdef LDAS_MPI
 
     integer                                   :: this_species, ind_tmp, j
@@ -1559,7 +1559,10 @@ contains
 
        fname = get_io_filename( work_path, exp_id, file_tag, date_time=date_time, &
             dir_name=dir_name, ens_id=-1 )
+       i = index(fname, '/', .true.) 
 
+       if( i >0) call Execute_command_line('mkdir -p '//fname(1:i))
+         
        open( 10, file=fname, form='unformatted', action='write')
 
        ! write header
