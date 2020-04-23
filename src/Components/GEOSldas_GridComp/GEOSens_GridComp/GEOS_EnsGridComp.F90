@@ -3549,8 +3549,8 @@ end subroutine GET_CATCH_PARAM
     VERIFY_(status)
     Iam = trim(comp_name) // "::Finalize"
 
-    ! Get MAPL obj
-    call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
+   ! Call Finalize for every child
+    call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
     VERIFY_(status)
 
     ! End
