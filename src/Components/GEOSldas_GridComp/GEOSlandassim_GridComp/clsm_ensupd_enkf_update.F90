@@ -1561,7 +1561,7 @@ contains
             dir_name=dir_name, ens_id=-1 )
        i = index(fname, '/', .true.) 
 
-       if( i >0) call Execute_command_line('mkdir -p '//fname(1:i))
+       if( i >0) call Execute_command_line('/bin/mkdir -p '//fname(1:i))
          
        open( 10, file=fname, form='unformatted', action='write')
 
