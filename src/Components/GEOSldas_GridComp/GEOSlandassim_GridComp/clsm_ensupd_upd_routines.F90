@@ -1992,7 +1992,7 @@ contains
              Observations_l(j)%fcst    = tmpmean(1)
              !Observations_l(j)%fcstvar = tmpvar(1)
 
-             if (present(cov_inflation_factor)) then
+             if (present(cov_inflation_factor) .and. cov_inflation_factor > 1.001) then
                  Observations_l(j)%fcstvar = tmpvar(1) * cov_inflation_factor ** 2
              else
                  Observations_l(j)%fcstvar = tmpvar(1)
