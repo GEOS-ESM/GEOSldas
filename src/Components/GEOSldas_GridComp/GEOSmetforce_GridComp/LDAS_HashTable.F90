@@ -3,6 +3,7 @@ MODULE LDAS_HashTable
   IMPLICIT NONE ! Use strong typing
   private
   INTEGER, PARAMETER :: tbl_size = 50
+  integer, parameter :: keylen   = 512
 
   TYPE nodelist
      TYPE(nodelist), POINTER :: child => NULL()
@@ -35,11 +36,16 @@ CONTAINS
     CHARACTER(len=*), INTENT(in)    :: key
     integer, INTENT(in)             :: fid
     ! local
-    INTEGER                         :: keylen
+    INTEGER                         :: klen
 
-    keylen = LEN(key)
+    klen = LEN(key)
+    if ( klen > keylen) then
+       print*, key 
+       stop (' key loo long')
+    endif
+
     IF (ALLOCATED(list%key)) THEN
-       IF (list%key /= key) THEN
+       IF (trim(list%key) /= trim(key)) THEN
           IF ( .NOT. ASSOCIATED(list%child) ) then
              ALLOCATE(list%child)
           ENDIF
@@ -60,28 +66,34 @@ CONTAINS
     CHARACTER(len=*),          INTENT(in)    :: key
     integer,                   INTENT(out)   :: fid
 
-    IF (ALLOCATED(list%key) .AND. (list%key == key)) THEN
-       fid = list%fid
-    ELSE IF(ASSOCIATED(list%child)) THEN ! keep going
-       CALL get_nodeinfo(list%child,key,fid)
-    ELSE ! At the end of the list, no key found
-       fid = -9999
-       RETURN
-    END IF
+    if (ALLOCATED(list%key)) then
+      if (trim(list%key) == trim(key)) THEN
+         fid = list%fid
+         return
+      endif
+   endif
+
+   IF(ASSOCIATED(list%child)) THEN ! keep going
+      CALL get_nodeinfo(list%child,key,fid)
+   ELSE ! At the end of the list, no key found
+      fid = -9999
+   END IF
+
   END SUBROUTINE get_nodeinfo
 
   RECURSIVE SUBROUTINE free_nodeinfo(list,closefile)
     CLASS(nodelist), INTENT(inout) :: list
     external :: closefile
     integer  :: rc
+
     IF (ASSOCIATED(list%child)) THEN
        CALL free_nodeinfo(list%child, closefile )
        DEALLOCATE(list%child)
     END IF
-    list%child => NULL()
-    if (list%fid > 0) call closefile(list%fid)
+
     IF (ALLOCATED(list%key)) then
-        DEALLOCATE(list%key)
+       call closefile(list%fid)
+       DEALLOCATE(list%key)
     ENDIF
 
   END SUBROUTINE free_nodeinfo
@@ -119,10 +131,10 @@ CONTAINS
 
   SUBROUTINE put_hash_table(tbl,key,fid)
     CLASS(hash_table), INTENT(inout) :: tbl
-    CHARACTER(len=*),    INTENT(in)    :: key
-    integer, INTENT(in)             :: fid
+    CHARACTER(len=*),    INTENT(in)  :: key
+    integer, INTENT(in)              :: fid
     !local
-    INTEGER                            :: hash
+    INTEGER                          :: hash
 
     hash = MOD(sum_string(key),tbl%vec_len)
     CALL tbl%vec(hash)%put(key,fid)

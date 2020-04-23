@@ -4584,8 +4584,9 @@ contains
       call FileOpenedHash%get(fname_full,fid)
 
       if( fid == -9999 ) then ! not open yet
-         ierr=nf90_open(fname_full,IOR(NF90_NOWRITE, NF90_MPIIO), fid, &
-           comm = comm,info = MPI_INFO_NULL)
+         !ierr=nf90_open(fname_full,IOR(NF90_NOWRITE, NF90_MPIIO), fid, &
+         !  comm = comm,info = MPI_INFO_NULL)
+         ierr=nf90_open(fname_full,NF90_NOWRITE, fid)
 
          if(master_logit) then
            write(logunit,*) "opening file: "//trim(fname_full)
@@ -4746,14 +4747,14 @@ contains
   subroutine GEOS_closefile(fid)
      use netcdf
      implicit none
-     integer,intent (inout) :: fid
+     integer,intent (in) :: fid
      integer :: ierr
+
      ierr = nf90_close(fid)
      if(ierr /= nf90_noerr) then
         print *, " error GEOS_closefile"
         stop 2
      endif
-     fid = -9999
      
   endsubroutine 
 ! ****************************************************************

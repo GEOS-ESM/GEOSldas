@@ -389,6 +389,8 @@ class LDASsetup:
         assert self.rqdRmInp['rm_name'].upper() == 'SLURM'
         ## account and walltime should exist
         assert self.rqdRmInp['account']
+        if cmdLineArgs['account'] != 'None':
+           self.rqdRmInp['account'] = cmdLineArgs['account']
         assert self.rqdRmInp['walltime']
         ## ntasks is a +ve integer
         _ntasks = int(self.rqdRmInp['ntasks'])
@@ -1180,7 +1182,9 @@ class LDASsetup:
                 valn = self.catch+ensid+'_internal_checkpoint'
                 ldasrcInp[keyn]= valn
 
-                if((self.has_ldassa_pert or self.has_geos_pert) and _perturb == 1):
+                # for lat/lon and EASE tile space, specify LANDPERT checkpoint file here (via MAPL);
+                # for cube-sphere tile space, Landpert GC will set up LANDPERT checkpoint file 
+                if('-CF' not in self.rqdExeInp['GRIDNAME'] and _perturb == 1):
                     keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
                     valn = 'landpert'+ensid+'_internal_checkpoint'
                     ldasrcInp[keyn]= valn
@@ -1642,6 +1646,11 @@ def parseCmdLine():
         '--runmodel',
         help='model run (no assimilation)',
         action='store_true',
+        )
+    p_setup.add_argument(
+        '--account',
+        help='replace the account in batinpfile)',
+        type=str, default='None'
         )
     #p_setup.add_argument(
     #    '--ForceReuseDir',
