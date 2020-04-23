@@ -5282,6 +5282,9 @@ contains
     ! reichle, 23 Jan 2018: removed stats check for L1C fore-minus-aft Tb differences;
     !                       use avg fore/aft timestamp so that fore and aft Tbs for same 
     !                         location are never used in different assimilation windows
+    ! reichle, 22 Apr 2020: resurrected check for L1C fore-minus-aft Tb differences
+    !                         after antenna-scan-angle (ASA) issues continued and the
+    !                         SMAP Project declined to address these issues in L1 ops
 
     implicit none
         
@@ -5338,6 +5341,8 @@ contains
     real,      parameter :: Tb_min       = 100.0  ! min allowed Tb
     real,      parameter :: Tb_max       = 320.0  ! max allowed Tb
 
+    real,      parameter :: max_std_tb_fore_minus_aft = 20.  ! max std-dev L1C[E] fore-minus-aft Tb diffs
+
     integer,   parameter :: L1CE_spacing = 3  ! thinning of L1C_TB_E in units of 9-km indices ("3" => 27 km)
     
     ! temporarily shift lat/lon of obs for computation of nearest tile to
@@ -5369,7 +5374,7 @@ contains
     type(date_time_type) :: date_time_low,       date_time_upp
     type(date_time_type) :: date_time_low_fname, date_time_tmp
 
-    integer              :: ii, jj, kk, nn
+    integer              :: ii, jj, kk, nn, mm
     integer              :: N_fnames, N_fnames_tmp, N_obs_tmp
     integer              :: dset_rank
     integer              :: ind_tile, ind_start, ind_end
@@ -5377,6 +5382,7 @@ contains
     real                 :: M36_col_ind_tile, M36_row_ind_tile  
     real                 :: M36_col_ind_obs,  M36_row_ind_obs
     real                 :: tmpreal
+    real                 :: tmp_tb_diff, tmp_tb_diff_Sum, tmp_tb_diff_SumOfSq, tmp_var
 
     real*8               :: J2000_seconds_low, J2000_seconds_upp
 
@@ -5957,6 +5963,13 @@ contains
 
           if (L1C_files .or. L1CE_files) then
 
+             ! initialize stats check for fore-minus-aft Tb diffs
+
+             mm = 0
+             
+             tmp_tb_diff_Sum     = 0.
+             tmp_tb_diff_SumOfSq = 0.
+
              do nn=1,N_obs_tmp
 
                 ! QC
@@ -5995,6 +6008,19 @@ contains
                       tmp_tb_1(  nn) = 0.5  *( tmp_tb_1(  nn) + tmp_tb_2(  nn) )
                       tmp_time_1(nn) = 0.5D0*( tmp_time_1(nn) + tmp_time_2(nn) ) 
                       
+                      ! Compute stats for fore-minus-aft Tb differences.
+                      ! Excessive diffs are found in bad L1C_TB files, which occur 
+                      ! occasionally due to bad ANT_AZ files in L1B processing.
+                      ! Includes ALL SURFACES!!!
+                      ! - reichle, 22 Apr 2020 (resurrected)
+
+                      mm=mm+1
+
+                      tmp_tb_diff         = tmp_tb_1(nn) - tmp_tb_2(nn) 
+                      
+                      tmp_tb_diff_Sum     = tmp_tb_diff_Sum     + tmp_tb_diff
+                      tmp_tb_diff_SumOfSq = tmp_tb_diff_SumOfSq + tmp_tb_diff**2
+                                       
                    elseif (keep_data_1)                   then
                       
                       tmp_tb_1(  nn) = tmp_tb_1(  nn)
@@ -6028,6 +6054,29 @@ contains
                 
              end do
              
+             ! finalize stats check for fore-minus-aft differences (ALL SURFACES!!!)
+             ! - reichle, 22 Apr 2020 (resurrected)
+             
+             if (mm>1) then
+                
+                tmp_var = ( tmp_tb_diff_SumOfSq - (tmp_tb_diff_Sum**2)/real(mm) )/(real(mm-1))
+                
+                if ( tmp_var > max_std_tb_fore_minus_aft**2 ) then
+                   
+                   write(err_msg, '(e12.5)') sqrt(tmp_var) 
+                   
+                   err_msg =                                                                                      &
+                        'Ignoring ALL obs in halforbit file b/c of excessive std-dev in fore-minus-aft Tbs. ' //  &
+                        'std-dev( tb_fore - tb_aft ) = ' // trim(err_msg)
+                   
+                   call ldas_warn(LDAS_GENERIC_WARNING, Iam, err_msg)
+                   
+                   jj = 0  ! results in N_obs_kept=0 below
+                   
+                end if
+
+             end if
+
           else  ! L2_SM_AP
              
              do nn=1,N_obs_tmp
