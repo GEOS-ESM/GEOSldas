@@ -395,8 +395,50 @@ while ( $counter <= ${NUM_SGMT} )
    
           # if monthly exists, move on to the next collection
           if (-f $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4) continue
+
+          # create daily and remove the sub-daily
+          # ------------------------------------------------------------------
+          set day=1
+          while ($day <= $NDAYS && $LEN_SUB > 1)
+             if ( $day < 10  ) set DD=0${day}
+             if ( $day >= 10 ) set DD=${day}
+             @ day++    
+             set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}${DD}_* | rev | cut -d'.' -f2 | rev`
+             set LEN_SUB = `echo $#time_steps`
+             if ($LEN_SUB <= 1) continue
+             set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
+
+# ----------------------------------------------------------------------------
+#
+# WARNING: The following block MUST begin in column 1!!!  Do NOT indent!!!
    
-          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}* | rev | cut -d'.' -f2 | cut -d'.' -f1 | rev`
+cat << EOF > timestamp.cdl
+netcdf timestamp {
+dimensions:
+time = UNLIMITED ; // (NT currently)
+string_length = 14 ;
+variables:
+char time_stamp (time, string_length) ;
+
+data:
+
+time_stamp =
+DATAVALUES;
+}      
+EOF
+   
+             sed -i -e "s/NT/$LEN_SUB/g" timestamp.cdl
+             sed -i -e "s/DATAVALUES/$tstep2/g" timestamp.cdl
+             ncgen -k4 -o timestamp.nc4 timestamp.cdl
+             ncrcat -h $EXPID.$ThisCol.${YYYY}${MM}${DD}_* ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
+             ncks -4 -h -v time_stamp timestamp.nc4 -A ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
+             /bin/rm timestamp.cdl
+             /bin/rm timestamp.nc4
+             /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4 
+
+          end # concatenate for each day 
+   
+          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}* | rev | cut -d'.' -f2 | rev`
           set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
           set LEN = `echo $#time_steps`
           # no file? move on  
@@ -409,7 +451,7 @@ while ( $counter <= ${NUM_SGMT} )
           # not enough days? move on to the next collection
           if($NAVAIL != $NDAYS) continue
    
-          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}01* | rev | cut -d'.' -f2 | cut -d'.' -f1 | rev`
+          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}01* | rev | cut -d'.' -f2 | rev`
           set LEN_SUB = `echo $#time_steps`
           @ LEN_AVAIL = $LEN_SUB * $NDAYS
    
@@ -421,7 +463,7 @@ while ( $counter <= ${NUM_SGMT} )
           #ncra -h $EXPID.${ThisCol}.$YYYY$MM.nc4 $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4
           
           #/bin/rm $EXPID.${ThisCol}.$YYYY$MM.nc4
-          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??_*z.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
+          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
           
           # don't want a daily? delete the daily and sub-dailies and continue
           #
@@ -430,41 +472,6 @@ while ( $counter <= ${NUM_SGMT} )
              continue
           endif
    
-          # create daily and remove the sub-daily
-          # ------------------------------------------------------------------
-          set day=1
-          while ($day <= $NDAYS && $LEN_SUB > 1)
-             if ( $day < 10  ) set DD=0${day}
-             if ( $day >= 10 ) set DD=${day}
-   
-             set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}${DD}_* | rev | cut -d'.' -f2 | cut -d'.' -f1 | rev`
-             set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
-   
-   cat << EOF > timestamp.cdl
-   netcdf timestamp {
-   dimensions:
-   time = UNLIMITED ; // (NT currently)
-   string_length = 14 ;
-   variables:
-   char time_stamp (time, string_length) ;
-   
-   data:
-   
-   time_stamp =
-   DATAVALUES;
-   }      
-   EOF
-   
-             sed -i -e "s/NT/$LEN_SUB/g" timestamp.cdl
-             sed -i -e "s/DATAVALUES/$tstep2/g" timestamp.cdl
-             ncgen -k4 -o timestamp.nc4 timestamp.cdl
-             ncrcat -h $EXPID.$ThisCol.${YYYY}${MM}${DD}_* ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
-             ncks -4 -h -v time_stamp timestamp.nc4 -A ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
-             /bin/rm timestamp.cdl
-             /bin/rm timestamp.nc4
-             /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4 
-             @ day++ 
-          end # concatenate for each day 
        end # each collection
      end # each month
      cd $PWD

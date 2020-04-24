@@ -475,7 +475,7 @@ contains
 
        i=index(catch_file,'/clsm/')
        fname = catch_file(1:i)//'topo_DYN_ave_*.data'
-       call system('ls '//trim(fname) // ' >topo_DYN_ave.file')
+       call Execute_command_line('ls '//trim(fname) // ' >topo_DYN_ave.file')
        open(10,file='topo_DYN_ave.file', action='read')
        fname= ''
        read(10,'(A)') fname
