@@ -399,7 +399,7 @@ while ( $counter <= ${NUM_SGMT} )
           # create daily and remove the sub-daily
           # ------------------------------------------------------------------
           set day=1
-          while ($day <= $NDAYS && $LEN_SUB > 1)
+          while ($day <= $NDAYS)
              if ( $day < 10  ) set DD=0${day}
              if ( $day >= 10 ) set DD=${day}
              @ day++    
