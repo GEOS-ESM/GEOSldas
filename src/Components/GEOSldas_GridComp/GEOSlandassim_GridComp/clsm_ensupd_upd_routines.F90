@@ -169,7 +169,8 @@ contains
        update_type,                             &
        dtstep_assim,                            &
        centered_update,                         &
-       xcompact, ycompact,cov_inflation_factor, &
+       xcompact, ycompact,                      &
+       cov_inflation_factor,                    &
        N_obs_param,                             &
        obs_param,                               &
        out_obslog,                              &
@@ -219,7 +220,8 @@ contains
     
     logical,              intent(out)   :: centered_update
     
-    real,                 intent(out)   :: xcompact, ycompact, cov_inflation_factor
+    real,                 intent(out)   :: xcompact, ycompact
+    real,                 intent(out)   :: cov_inflation_factor
 
     integer,              intent(out)   :: N_obs_param
     
@@ -1061,7 +1063,8 @@ contains
     real,                   dimension(:,:),   pointer :: Obs_pred_l            ! output
     
     logical,                intent(in),    dimension(N_obsl), optional :: obsbias_ok       
-    real,                intent(in),    optional :: cov_inflation_factor      
+
+    real,                   intent(in),                       optional :: cov_inflation_factor      
     
     ! --------------------------------------------------------------------------------
     !
@@ -1160,13 +1163,15 @@ contains
     
     logical, dimension(N_obsl) :: obsbias_ok_tmp
 
+    real                       :: inflation_factor
+
     character(len=*), parameter :: Iam = 'get_obs_pred'
     character(len=400) :: err_msg
     character(len= 10) :: tmpstring10
     
     ! --------------------------------------------------------------
     !
-    ! deal with optional argument
+    ! deal with optional arguments
 
     if (present(obsbias_ok)) then
        
@@ -1177,7 +1182,18 @@ contains
        obsbias_ok_tmp = .false.
 
     end if
-    
+        
+    if (present(cov_inflation_factor) .and. beforeEnKFupdate) then
+
+       ! ONLY inflate *before* EnKF update
+
+       inflation_factor = cov_inflation_factor
+       
+    else
+       
+       inflation_factor = -9999.
+       
+    end if
 
     ! --------------------------------------------------------------
     !
@@ -1974,6 +1990,10 @@ contains
                 
                 call row_variance( 1, N_ens, Obs_pred_l(j,1:N_ens), tmpvar, tmpmean )
                 
+                ! inflate fcstvar
+                
+                if (inflation_factor > 0.)  tmpvar(1) = tmpvar(1) * cov_inflation_factor**2
+                             
              else
                 
                 tmpmean(1) = Obs_pred_l(j,1)
@@ -1983,13 +2003,7 @@ contains
              end if
              
              Observations_l(j)%fcst    = tmpmean(1)
-             !Observations_l(j)%fcstvar = tmpvar(1)
-
-             if (present(cov_inflation_factor) .and. cov_inflation_factor > 1.001) then
-                 Observations_l(j)%fcstvar = tmpvar(1) * cov_inflation_factor ** 2
-             else
-                 Observations_l(j)%fcstvar = tmpvar(1)
-             end if
+             Observations_l(j)%fcstvar = tmpvar(1)
              
           end if
           
@@ -2019,6 +2033,9 @@ contains
                 
                 call row_variance( 1, N_ens, Obs_pred_l(i,1:N_ens), tmpvar, tmpmean )
                 
+                ! no need to inflate analysis Obs_pred because state increments already included
+                !  impact of inflation
+
              end if
              
           else
@@ -3750,14 +3767,15 @@ contains
              
              ! EnKF update
              
-             call enkf_increments(                                         &
+             call enkf_increments(                                        &
                   N_state, N_selected_obs, N_ens,                         &
                   Observations(ind_obs(1:N_selected_obs)),                &
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
-                  State_incr )
+                  State_incr,                                             &
+                  cov_inflation_factor=cov_inflation_factor )
              
              ! assemble cat_progn increments
              
@@ -3904,14 +3922,15 @@ contains
              
              ! EnKF update
              
-             call enkf_increments(                                         &
+             call enkf_increments(                                        &
                   N_state, N_selected_obs, N_ens,                         &
                   Observations(ind_obs(1:N_selected_obs)),                &
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
-                  State_incr )
+                  State_incr,                                             &
+                  cov_inflation_factor=cov_inflation_factor )
              
              ! assemble cat_progn increments
                           
@@ -3976,14 +3995,15 @@ contains
              
              ! EnKF update
              
-             call enkf_increments(                                         &
+             call enkf_increments(                                        &
                   N_state, N_selected_obs, N_ens,                         &
                   Observations(ind_obs(1:N_selected_obs)),                &
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
-                  State_incr )
+                  State_incr,                                             &
+                  cov_inflation_factor=cov_inflation_factor )
              
              ! assemble cat_progn increments
                           
@@ -4050,14 +4070,15 @@ contains
 
              ! EnKF update
              
-             call enkf_increments(                                         &
+             call enkf_increments(                                        &
                   N_state, N_selected_obs, N_ens,                         &
                   Observations(ind_obs(1:N_selected_obs)),                &
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  &
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
-                  State_incr )
+                  State_incr,                                             &
+                  cov_inflation_factor=cov_inflation_factor )
 
              ! assemble cat_progn increments
 

@@ -88,7 +88,8 @@ type(obs_param_type),pointer :: obs_param(:)=>null()
 logical :: need_mwRTM_param
 integer :: update_type, dtstep_assim
 logical :: centered_update
-real    :: xcompact, ycompact, cov_inflation_factor
+real    :: xcompact, ycompact
+real    :: cov_inflation_factor
 integer :: N_obs_param
 logical :: out_obslog
 logical :: out_ObsFcstAna
@@ -1106,7 +1107,8 @@ subroutine Initialize(gc, import, export, clock, rc)
        update_type,                             &
        dtstep_assim,                            &
        centered_update,                         &
-       xcompact, ycompact, cov_inflation_factor,&
+       xcompact, ycompact,                      &
+       cov_inflation_factor,                    &
        N_obs_param,                             &
        obs_param,                               &
        out_obslog,                              &
@@ -1699,7 +1701,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
           update_type,                                                      &
           dtstep_assim, centered_update,                                    &
-          xcompact, ycompact,cov_inflation_factor,                          &
+          xcompact, ycompact, cov_inflation_factor,                         &
           N_obs_param, obs_param, N_obsbias_max,                            &
           out_obslog, out_smapL4SMaup,                                      &
           cat_progn,                                                        &
@@ -1747,7 +1749,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
                 obs_param,                                                   &
                 met_force, lai,                     &
                 cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
-                Observations_l, cov_inflation_factor, rf2f=rf2f )
+                Observations_l, rf2f=rf2f )
 
 
               do i = 1, N_catl

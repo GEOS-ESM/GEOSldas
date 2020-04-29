@@ -153,7 +153,7 @@ contains
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
        dtstep_assim, centered_update,                                    &
-       xcompact, ycompact,cov_inflation_factor,                          &
+       xcompact, ycompact, cov_inflation_factor,                         &
        N_obs_param, obs_param, N_obsbias_max,                            &
        out_obslog, out_smapL4SMaup,                                      &
        cat_progn,                                                        &
@@ -1066,7 +1066,7 @@ contains
                Obs_pred_lH(1:N_obslH,1:N_ens),                          &
                Obs_pert_tmp,                                            &
                cat_param,                                               &
-               xcompact, ycompact,cov_inflation_factor,                 &
+               xcompact, ycompact, cov_inflation_factor,                &
                cat_progn, cat_progn_incr )
 #endif          
 
@@ -1618,7 +1618,7 @@ contains
        N_catl_vec, low_ind, f2l, N_catg, f2g,                                &
        obs_param,                                                            &
        met_force, lai, cat_param, cat_progn, cat_progn_incr, mwRTM_param,    &
-       Observations_l,cov_inflation_factor,rf2f )
+       Observations_l, rf2f )
 
     implicit none
 
@@ -1666,9 +1666,8 @@ contains
 
 
     type(obs_type),         dimension(:),     pointer :: Observations_l ! inout
-    integer,                dimension(N_catf), optional, intent(in) :: rf2f ! re-ordered to LDASsa 
 
-    real,  optional,  intent(in) :: cov_inflation_factor
+    integer,                dimension(N_catf), optional, intent(in) :: rf2f ! re-ordered to LDASsa 
 
     ! local variables
 

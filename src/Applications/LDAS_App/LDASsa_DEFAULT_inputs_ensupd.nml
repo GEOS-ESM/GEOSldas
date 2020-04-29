@@ -4,6 +4,7 @@
 ! reichle, 28 Jan 2005
 ! reichle, 13 Jun 2011 - updated for SMOS angles and downscaling ("FOV")
 ! reichle,  8 Jun 2017 - added "%flistpath" and "%flistname"; updated comments
+! qliu+reichle, 29 Apr 2020 - added covariance inflation factor
 !
 ! --------------------------------------------------------------------
 
@@ -42,16 +43,7 @@ centered_update = .false.
 
 out_obslog      = .true.
 out_ObsFcstAna  = .false.
-!out_incr        = .false.
 out_smapL4SMaup = .false.
-
-! select format of increments output	
-!  0: standard LDASsa 
-!     (output in LDASsa domain and LDASsa tile order)
-!  1: suitable for land incremental analysis update (LIAU) in GEOS-5 GCM
-!     (output on global domain in GEOS-5 global tile order)
-
-!out_incr_format = 0       
 
 ! ---------------------------------------------------------------------
 !
@@ -65,10 +57,14 @@ ycompact = 0.           ! [deg] latitude
 
 ! ---------------------------------------------------------------------
 !
-! model covariance inflaction factor - for update type 8,10 
-! expected values: 1 - 1.5
+! model error covariance inflaction factor 
+!
+! - assigns more weight to observations in analysis by inflating model error covariance 
+! - works on std-dev, i.e.,  var_inflated = var * cov_inflation_factor**2   
+! - typical values: 1 <= cov_inflation_factor <= 1.5
+! - to turn off, set to any negative real number 
 
-cov_inflation_factor = 1.            
+cov_inflation_factor = -9999.
 
 ! ---------------------------------------------------------------------
 !		
