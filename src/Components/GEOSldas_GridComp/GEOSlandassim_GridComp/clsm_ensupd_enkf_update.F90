@@ -103,8 +103,8 @@ module clsm_ensupd_enkf_update
   use clsm_ensupd_read_obs,             ONLY:     &
        collect_obs
 
-  use LDAS_ensdrv_init_routines,        ONLY:     &
-       io_rstrt
+!!  use LDAS_ensdrv_init_routines,        ONLY:     &
+!!       io_rstrt
 
   use clsm_bias_routines,               ONLY:     &
        obs_bias_upd_tcount,                       &

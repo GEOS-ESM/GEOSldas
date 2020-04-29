@@ -33,7 +33,6 @@ module GEOS_LandAssimGridCompMod
   use LDAS_DateTimeMod,ONLY: date_time_type 
   use LDAS_ensdrv_functions,            ONLY:     &
        get_io_filename 
-  use LDAS_ensdrv_init_routines, only : GEOS_read_catparam
   use LDAS_ensdrv_Globals, only: logunit
 
   use LDAS_ConvertMod, ONLY: esmf2ldas
