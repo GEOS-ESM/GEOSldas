@@ -399,7 +399,7 @@ while ( $counter <= ${NUM_SGMT} )
           # create daily and remove the sub-daily
           # ------------------------------------------------------------------
           set day=1
-          while ($day <= $NDAYS && $LEN_SUB > 1)
+          while ($day <= $NDAYS)
              if ( $day < 10  ) set DD=0${day}
              if ( $day >= 10 ) set DD=${day}
              @ day++    
@@ -450,19 +450,9 @@ EOF
    
           # not enough days? move on to the next collection
           if($NAVAIL != $NDAYS) continue
-   
-          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}01* | rev | cut -d'.' -f2 | rev`
-          set LEN_SUB = `echo $#time_steps`
-          @ LEN_AVAIL = $LEN_SUB * $NDAYS
-   
-          # not enough sub-daylies? move on to the next collection
-          if ($LEN != $LEN_AVAIL) continue
-   
+      
           # create the monly average
-          #ncrcat -h $EXPID.$ThisCol.${YYYY}${MM}* ${EXPID}.${ThisCol}.$YYYY$MM.nc4
-          #ncra -h $EXPID.${ThisCol}.$YYYY$MM.nc4 $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4
-          
-          #/bin/rm $EXPID.${ThisCol}.$YYYY$MM.nc4
+
           ncra -h $EXPID.$ThisCol.${YYYY}${MM}??.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
           
           # don't want a daily? delete the daily and sub-dailies and continue
