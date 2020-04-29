@@ -2,13 +2,13 @@
 ! this file contains a collection of general Ensemble Kalman filter
 ! subroutines and compact support subroutines
 !
-! reichle, 20 Apr 2001
-! reichle, 18 Mar 2004 - optional arguments
-! reichle, 27 Jan 2005 - eliminated use of module select_kinds
-! reichle, 19 Jul 2005 - merged compact_support.f90 and enkf_general.f90
-! reichle,  1 Aug 2005 - eliminated tile_coord
-! reichle, 18 Oct 2005 - return increments instead of updated State
-! reichle+qliu, 29 Jul 2019 - added model error covariance inflation
+! reichle,      20 Apr 2001
+! reichle,      18 Mar 2004 - optional arguments
+! reichle,      27 Jan 2005 - eliminated use of module select_kinds
+! reichle,      19 Jul 2005 - merged compact_support.f90 and enkf_general.f90
+! reichle,       1 Aug 2005 - eliminated tile_coord
+! reichle,      18 Oct 2005 - return increments instead of updated State
+! reichle+qliu, 29 Apr 2020 - added forecast error covariance inflation
 
 ! use intel mkl lapack when available
 #ifdef MKL_AVAILABLE
@@ -24,7 +24,7 @@ module enkf_general
   use enkf_types,                      ONLY:      &
        obs_type
 
-  use LDAS_ExceptionsMod,                 ONLY:      &
+  use LDAS_ExceptionsMod,              ONLY:      &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
     
@@ -42,7 +42,7 @@ contains
        N_state, N_obs, N_ens, &
        Observations, Obs_pred, Obs_err, Obs_cov, &
        State_incr, &
-       State_lon, State_lat, xcompact, ycompact, cov_inflation_factor )
+       State_lon, State_lat, xcompact, ycompact, fcsterr_inflation_fac )
     
     ! perform EnKF update
     !
@@ -53,8 +53,9 @@ contains
     ! if optional inputs State_lon, State_lat, xcompact, and ycompact
     ! are present, Hadamard product is applied to HPHt and PHt
     !
-    ! if optional input cov_inflation_factor is present, this subroutine returns
-    ! the increment that should be applied to the state vector *before* inflation
+    ! if optional input fcsterr_inflation_fac is present, this subroutine inflates
+    ! the forecast error covariance and returns increments that must be applied to 
+    ! the state vector *before* inflation
     ! (i.e., do not inflate the state vector outside of this subroutine)
     
     implicit none
@@ -73,9 +74,9 @@ contains
 
     real, dimension(N_state), intent(in), optional :: State_lon, State_lat 
     
-    real, intent(in), optional :: xcompact              ! [deg] longitude
-    real, intent(in), optional :: ycompact              ! [deg] latitude
-    real, intent(in), optional :: cov_inflation_factor  ! model error covariance inflation factor 
+    real, intent(in), optional :: xcompact               ! [deg] longitude
+    real, intent(in), optional :: ycompact               ! [deg] latitude
+    real, intent(in), optional :: fcsterr_inflation_fac  ! forecast error covariance inflation 
 
     ! -----------------------------
     
@@ -109,9 +110,9 @@ contains
 
     ! deal with optional argument
     
-    if (present(cov_inflation_factor)) then
+    if (present(fcsterr_inflation_fac)) then
 
-       inflation_factor = cov_inflation_factor
+       inflation_factor = fcsterr_inflation_fac
 
     else
 

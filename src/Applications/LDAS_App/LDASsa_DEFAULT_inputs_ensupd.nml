@@ -1,10 +1,10 @@
 ! 
 ! namelist of EnKF inputs for land EnKF update
 !
-! reichle, 28 Jan 2005
-! reichle, 13 Jun 2011 - updated for SMOS angles and downscaling ("FOV")
-! reichle,  8 Jun 2017 - added "%flistpath" and "%flistname"; updated comments
-! qliu+reichle, 29 Apr 2020 - added covariance inflation factor
+! reichle,      28 Jan 2005
+! reichle,      13 Jun 2011 - updated for SMOS angles and downscaling ("FOV")
+! reichle,       8 Jun 2017 - added "%flistpath" and "%flistname"; updated comments
+! qliu+reichle, 29 Apr 2020 - added forecast error covariance inflation 
 !
 ! --------------------------------------------------------------------
 
@@ -57,14 +57,14 @@ ycompact = 0.           ! [deg] latitude
 
 ! ---------------------------------------------------------------------
 !
-! model error covariance inflaction factor 
+! forecast error covariance inflaction factor 
 !
-! - assigns more weight to observations in analysis by inflating model error covariance 
-! - works on std-dev, i.e.,  var_inflated = var * cov_inflation_factor**2   
-! - typical values: 1 <= cov_inflation_factor <= 1.5
+! - assigns more weight to observations in analysis by inflating forecast error covariance 
+! - works on std-dev, i.e.,  var_inflated = var * inflation_fac**2   
+! - typical values: 1 <= inflation_fac <= 1.5
 ! - to turn off, set to any negative real number 
 
-cov_inflation_factor = -9999.
+fcsterr_inflation_fac = -9999.
 
 ! ---------------------------------------------------------------------
 !		

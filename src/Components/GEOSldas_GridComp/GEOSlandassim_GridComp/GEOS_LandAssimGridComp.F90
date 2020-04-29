@@ -89,7 +89,7 @@ logical :: need_mwRTM_param
 integer :: update_type, dtstep_assim
 logical :: centered_update
 real    :: xcompact, ycompact
-real    :: cov_inflation_factor
+real    :: fcsterr_inflation_fac
 integer :: N_obs_param
 logical :: out_obslog
 logical :: out_ObsFcstAna
@@ -1108,7 +1108,7 @@ subroutine Initialize(gc, import, export, clock, rc)
        dtstep_assim,                            &
        centered_update,                         &
        xcompact, ycompact,                      &
-       cov_inflation_factor,                    &
+       fcsterr_inflation_fac,                   &
        N_obs_param,                             &
        obs_param,                               &
        out_obslog,                              &
@@ -1127,7 +1127,7 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MPI_BCAST(centered_update,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(xcompact,              1, MPI_REAL,           0,MPICOMM,mpierr)
     call MPI_BCAST(ycompact,              1, MPI_REAL,           0,MPICOMM,mpierr)
-    call MPI_BCAST(cov_inflation_factor,  1, MPI_REAL,           0,MPICOMM,mpierr)
+    call MPI_BCAST(fcsterr_inflation_fac, 1, MPI_REAL,           0,MPICOMM,mpierr)
     call MPI_BCAST(N_obs_param,           1, MPI_INTEGER,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_obslog,            1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_ObsFcstAna,        1, MPI_LOGICAL,        0,MPICOMM,mpierr)
@@ -1701,7 +1701,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
           N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
           update_type,                                                      &
           dtstep_assim, centered_update,                                    &
-          xcompact, ycompact, cov_inflation_factor,                         &
+          xcompact, ycompact, fcsterr_inflation_fac,                        &
           N_obs_param, obs_param, N_obsbias_max,                            &
           out_obslog, out_smapL4SMaup,                                      &
           cat_progn,                                                        &

@@ -14,7 +14,7 @@ module clsm_ensupd_upd_routines
        MAPL_RADIUS,                               &
        MAPL_PI
   
-  use LDAS_ensdrv_Globals,           ONLY:     &
+  use LDAS_ensdrv_Globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
@@ -44,7 +44,7 @@ module clsm_ensupd_upd_routines
   use LDAS_ensdrv_init_routines,        ONLY:     &
        clsm_ensdrv_get_command_line
   
-  use LDAS_DateTimeMod,                   ONLY:     &
+  use LDAS_DateTimeMod,                 ONLY:     &
        date_time_type
   
   use catch_types,                      ONLY:     &
@@ -63,22 +63,22 @@ module clsm_ensupd_upd_routines
        write_obs_param,                           &
        N_obs_ang_max
 
-  use LDAS_DriverTypes,                     ONLY:     &
+  use LDAS_DriverTypes,                 ONLY:     &
        met_force_type
 
   use mwRTM_types,                      ONLY:     &
        mwRTM_param_type
 
-  use LDAS_PertTypes,                  ONLY:     &
+  use LDAS_PertTypes,                   ONLY:     &
        pert_param_type,                           &
        allocate_pert_param,                       &
        deallocate_pert_param
   
-  use LDAS_TileCoordType,                 ONLY:     &
+  use LDAS_TileCoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type
 
-  use LDAS_TilecoordRoutines,              ONLY:     &
+  use LDAS_TilecoordRoutines,           ONLY:     &
        get_tile_num_in_ellipse,                   &
        get_number_of_tiles_in_cell_ij,            &
        get_tile_num_in_cell_ij,                   &
@@ -96,7 +96,7 @@ module clsm_ensupd_upd_routines
        catch_calc_tsurf,                          &
        catch_calc_tsurf_excl_snow
   
-  use lsm_routines,                  ONLY:     &
+  use lsm_routines,                     ONLY:     &
        catch_calc_soil_moist,                     &
        catch_calc_tp,                             &
        catch_calc_ght,                            &
@@ -117,7 +117,7 @@ module clsm_ensupd_upd_routines
        mpistatus,                                 &
        mpierr
 
-  use LDAS_ExceptionsMod,                  ONLY:     &
+  use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
   
@@ -170,7 +170,7 @@ contains
        dtstep_assim,                            &
        centered_update,                         &
        xcompact, ycompact,                      &
-       cov_inflation_factor,                    &
+       fcsterr_inflation_fac,                   &
        N_obs_param,                             &
        obs_param,                               &
        out_obslog,                              &
@@ -200,8 +200,8 @@ contains
 
     implicit none
     
-    character(*),       intent(in)    :: work_path
-    character(*),        intent(in)    :: exp_id
+    character(*),         intent(in)    :: work_path
+    character(*),         intent(in)    :: exp_id
 
     type(date_time_type), intent(in)    :: date_time
     
@@ -221,7 +221,7 @@ contains
     logical,              intent(out)   :: centered_update
     
     real,                 intent(out)   :: xcompact, ycompact
-    real,                 intent(out)   :: cov_inflation_factor
+    real,                 intent(out)   :: fcsterr_inflation_fac
 
     integer,              intent(out)   :: N_obs_param
     
@@ -276,7 +276,7 @@ contains
          out_ObsFcstAna,           &
          out_smapL4SMaup,          &
          xcompact, ycompact,       &
-         cov_inflation_factor,     &
+         fcsterr_inflation_fac,    &
          obs_param_nml
         
     ! ------------------------------------------------------------------
@@ -1010,7 +1010,7 @@ contains
        obs_param,                                                &
        met_force, lai, cat_param, cat_progn, mwRTM_param,        &
        N_obsl, Observations_l, Obs_pred_l, obsbias_ok,           &
-       cov_inflation_factor )
+       fcsterr_inflation_fac )
     
     ! Compute ensemble of measurement predictions from ensemble 
     !  of tile-space Catchment prognostics.
@@ -1064,7 +1064,7 @@ contains
     
     logical,                intent(in),    dimension(N_obsl), optional :: obsbias_ok       
 
-    real,                   intent(in),                       optional :: cov_inflation_factor      
+    real,                   intent(in),                       optional :: fcsterr_inflation_fac      
     
     ! --------------------------------------------------------------------------------
     !
@@ -1183,11 +1183,11 @@ contains
 
     end if
         
-    if (present(cov_inflation_factor) .and. beforeEnKFupdate) then
+    if (present(fcsterr_inflation_fac) .and. beforeEnKFupdate) then
 
-       ! ONLY inflate *before* EnKF update
+       ! ONLY inflate *before* EnKF update!!!
 
-       inflation_factor = cov_inflation_factor
+       inflation_factor = fcsterr_inflation_fac
        
     else
        
@@ -1992,7 +1992,7 @@ contains
                 
                 ! inflate fcstvar
                 
-                if (inflation_factor > 0.)  tmpvar(1) = tmpvar(1) * cov_inflation_factor**2
+                if (inflation_factor > 0.)  tmpvar(1) = tmpvar(1) * inflation_factor**2
                              
              else
                 
@@ -3476,7 +3476,7 @@ contains
        tile_grid_f, tile_coord, l2f,                            &
        Observations, Obs_pred, Obs_pert,                        &
        cat_param,                                               &
-       xcompact, ycompact, cov_inflation_factor,                &
+       xcompact, ycompact, fcsterr_inflation_fac,               &
        cat_progn, cat_progn_incr )
     
     ! get increments for Catchment prognostic variables
@@ -3525,7 +3525,7 @@ contains
     
     type(cat_param_type), dimension(N_catd), intent(in) :: cat_param
     
-    real, intent(in) :: xcompact, ycompact, cov_inflation_factor
+    real, intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
     
     type(cat_progn_type), intent(in),  dimension(N_catd,N_ens) :: cat_progn
     
@@ -3775,7 +3775,7 @@ contains
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
                   State_incr,                                             &
-                  cov_inflation_factor=cov_inflation_factor )
+                  fcsterr_inflation_fac=fcsterr_inflation_fac )
              
              ! assemble cat_progn increments
              
@@ -3857,7 +3857,7 @@ contains
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                   Obs_cov,                                                &
                   State_incr, State_lon, State_lat, xcompact, ycompact,   &
-                  cov_inflation_factor )             
+                  fcsterr_inflation_fac )             
              
              deallocate(Obs_cov)
              
@@ -3930,7 +3930,7 @@ contains
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
                   State_incr,                                             &
-                  cov_inflation_factor=cov_inflation_factor )
+                  fcsterr_inflation_fac=fcsterr_inflation_fac )
              
              ! assemble cat_progn increments
                           
@@ -4003,7 +4003,7 @@ contains
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
                   State_incr,                                             &
-                  cov_inflation_factor=cov_inflation_factor )
+                  fcsterr_inflation_fac=fcsterr_inflation_fac )
              
              ! assemble cat_progn increments
                           
@@ -4078,7 +4078,7 @@ contains
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
                   State_incr,                                             &
-                  cov_inflation_factor=cov_inflation_factor )
+                  fcsterr_inflation_fac=fcsterr_inflation_fac )
 
              ! assemble cat_progn increments
 
@@ -4171,7 +4171,7 @@ contains
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                   Obs_cov,                                                &
                   State_incr, State_lon, State_lat, xcompact, ycompact,   &
-                  cov_inflation_factor )             
+                  fcsterr_inflation_fac )             
              
              deallocate(Obs_cov)
 
@@ -4297,7 +4297,7 @@ contains
                      Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                      Obs_cov,                                                &
                      State_incr, State_lon, State_lat, xcompact, ycompact,   &
-                     cov_inflation_factor )             
+                     fcsterr_inflation_fac )             
                 
                 deallocate(Obs_cov)
                 

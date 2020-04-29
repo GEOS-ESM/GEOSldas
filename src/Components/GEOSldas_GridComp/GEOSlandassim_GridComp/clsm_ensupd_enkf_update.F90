@@ -25,7 +25,7 @@ module clsm_ensupd_enkf_update
        catch_calc_soil_moist,                     &
        catch_calc_tp
   
-  use LDAS_ensdrv_globals,           ONLY:     &
+  use LDAS_ensdrv_globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
@@ -39,7 +39,7 @@ module clsm_ensupd_enkf_update
        obs_param_type,                            &
        obs_type
 
-  use LDAS_DriverTypes,                     ONLY:     &
+  use LDAS_DriverTypes,                 ONLY:     &
        met_force_type
        
   use catch_types,                      ONLY:     &
@@ -55,10 +55,10 @@ module clsm_ensupd_enkf_update
   use mwRTM_types,                      ONLY:     &
        mwRTM_param_type
   
-  use LDAS_PertTypes,                  ONLY:     &
+  use LDAS_PertTypes,                   ONLY:     &
        pert_param_type
   
-  use LDAS_TilecoordType,                 ONLY:     &
+  use LDAS_TilecoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type
   
@@ -74,7 +74,7 @@ module clsm_ensupd_enkf_update
   use nr_ran2_gasdev,                   ONLY:     &
        NRANDSEED
 
-  use LDAS_ease_conv,                    ONLY:     &
+  use LDAS_ease_conv,                   ONLY:     &
        easeV1_convert,                            &
        easeV2_convert
 
@@ -103,9 +103,6 @@ module clsm_ensupd_enkf_update
   use clsm_ensupd_read_obs,             ONLY:     &
        collect_obs
 
-!!  use LDAS_ensdrv_init_routines,        ONLY:     &
-!!       io_rstrt
-
   use clsm_bias_routines,               ONLY:     &
        obs_bias_upd_tcount,                       &
        obs_bias_corr_obs,                         &
@@ -121,7 +118,7 @@ module clsm_ensupd_enkf_update
        numprocs,                                  &
        myid,                                      &
        mpierr,                                    &
-       mpicomm,                            &
+       mpicomm,                                   &
        MPI_obs_type,                              &
        mpistatus
 
@@ -153,7 +150,7 @@ contains
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
        dtstep_assim, centered_update,                                    &
-       xcompact, ycompact, cov_inflation_factor,                         &
+       xcompact, ycompact, fcsterr_inflation_fac,                        &
        N_obs_param, obs_param, N_obsbias_max,                            &
        out_obslog, out_smapL4SMaup,                                      &
        cat_progn,                                                        &
@@ -214,7 +211,7 @@ contains
 
     logical, intent(in) :: centered_update
 
-    real,    intent(in) :: xcompact, ycompact, cov_inflation_factor
+    real,    intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
 
     integer, intent(in) :: N_obs_param
 
@@ -528,7 +525,7 @@ contains
                obs_param,                                         &
                met_force, lai, cat_param, cat_progn, mwRTM_param, &
                N_obsl, Observations_l, Obs_pred_l, obsbias_ok,    &
-               cov_inflation_factor )
+               fcsterr_inflation_fac )
 
           deallocate(obsbias_ok)
 
@@ -1038,7 +1035,7 @@ contains
                Obs_pred_ana,                              & ! size: (nObs_ana,N_ens)
                Obs_pert_tmp,                              &
                cat_param_ana,                             &
-               xcompact, ycompact, cov_inflation_factor,  &
+               xcompact, ycompact, fcsterr_inflation_fac, &
                cat_progn_ana, cat_progn_incr_ana)
           call cpu_time(t_end)
 
@@ -1066,7 +1063,7 @@ contains
                Obs_pred_lH(1:N_obslH,1:N_ens),                          &
                Obs_pert_tmp,                                            &
                cat_param,                                               &
-               xcompact, ycompact, cov_inflation_factor,                &
+               xcompact, ycompact, fcsterr_inflation_fac,               &
                cat_progn, cat_progn_incr )
 #endif          
 
