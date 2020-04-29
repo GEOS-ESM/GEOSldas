@@ -1112,8 +1112,6 @@ subroutine Initialize(gc, import, export, clock, rc)
        obs_param,                               &
        out_obslog,                              &
        out_ObsFcstAna,                          &
-!       out_incr,                                &
-!       out_incr_format,                         &
        out_smapL4SMaup,                         &
        N_obsbias_max                            &
        )
@@ -1132,8 +1130,6 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MPI_BCAST(N_obs_param,           1, MPI_INTEGER,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_obslog,            1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_ObsFcstAna,        1, MPI_LOGICAL,        0,MPICOMM,mpierr)
-!    call MPI_BCAST(out_incr,              1, MPI_LOGICAL,        0,MPICOMM,mpierr)
-!    call MPI_BCAST(out_incr_format,       1, MPI_INTEGER,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_smapL4SMaup,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
 
