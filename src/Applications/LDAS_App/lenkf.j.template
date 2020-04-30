@@ -438,7 +438,7 @@ EOF
 
           end # concatenate for each day 
    
-          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}* | rev | cut -d'.' -f2 | rev`
+          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}* | rev | cut -d'.' -f2 | cut -d'_' -f2 | rev`
           set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
           set LEN = `echo $#time_steps`
           # no file? move on  
@@ -450,10 +450,10 @@ EOF
    
           # not enough days? move on to the next collection
           if($NAVAIL != $NDAYS) continue
-      
+   
           # create the monly average
 
-          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
+          ncra -h $EXPID.$ThisCol.${YYYY}${MM}*.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
           
           # don't want a daily? delete the daily and sub-dailies and continue
           #
