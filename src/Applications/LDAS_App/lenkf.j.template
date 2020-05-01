@@ -410,7 +410,7 @@ while ( $counter <= ${NUM_SGMT} )
              # no file or just one file? nothing to concatenate, move on to the next collection
              if ($LEN_SUB <= 1) continue
 
-	     # check if day is complete (get HISTORY time step from first two files)
+             # check if day is complete (get HISTORY time step from first two files)
              set hour1   = `echo $time_steps[1] | cut -c10-11`
              set min1    = `echo $time_steps[1] | cut -c12-13`
              set hour2   = `echo $time_steps[2] | cut -c10-11`
