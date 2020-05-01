@@ -43,7 +43,7 @@ class LDASsetup:
             'BEG_DATE', 'END_DATE','RESTART','RESTART_PATH',
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
-            'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','MONTHLY_OUTPUT',
+            'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
             'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE']
 
 
@@ -283,12 +283,8 @@ class LDASsetup:
         else :
             self.catch = 'catchcn'
 
-        if 'MONTHLY_OUTPUT' not in self.rqdExeInp:
-            self.rqdExeInp['MONTHLY_OUTPUT'] = 0
-
-        #if int(self.rqdExeInp['MONTHLY_OUTPUT']) > 0:
-        #    assert self.begDates[0].day == 1 and self.begDates[0].hour == 0 and self.begDates[0].minute == 0 and self.begDates[0].second == 0, "monthly output should start from day 1 and 0Z"
-        #    assert self.endDates[0].day == 1 and self.endDates[0].hour == 0 and self.endDates[0].minute == 0 and self.endDates[0].second == 0, "monthly output should end at day 1 and 0Z"
+        if 'POSTPROC_HIST' not in self.rqdExeInp:
+            self.rqdExeInp['POSTPROC_HIST'] = 0
 
         if 'RUN_IRRIG' not in self.rqdExeInp:
             self.rqdExeInp['RUN_IRRIG'] = 0  
@@ -1388,8 +1384,8 @@ class LDASsetup:
                         fout.write(line.replace('MY_ERRFILE',my_errfile))
                     elif 'MY_MODEL' in line :
                         fout.write(line.replace('MY_MODEL',self.catch))
-                    elif 'MY_MONTHLY' in line :
-                        fout.write(line.replace('MY_MONTHLY',str(self.rqdExeInp['MONTHLY_OUTPUT'])))                        
+                    elif 'MY_POSTPROC_HIST' in line :
+                        fout.write(line.replace('MY_POSTPROC_HIST',str(self.rqdExeInp['POSTPROC_HIST'])))                        
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
                      

@@ -138,17 +138,20 @@ LDAS_logit                     : YES
 #
 # HISTRC_FILE                  : ''
 
-# ---- Write only monthly output?
+# ---- Concatenate sub-daily nc4 files into daily nc4 files and write monthly-mean output?
 #
-#      Monthly files can be created from daily files. 
-#      Accurate monthly averages require setting "ref_time" in HISTORY.rc to "000000"
+#      Optional post-processing of model diagnostics output into bundled daily files and monthly means.
+#      Reduces the file count and (optionally) the output volume.
 #
-#    0 : Output bundled into daily files per HISTORY specifications (default).
-#    1 : Monthly files will be created. Daily files will *not* be deleted.
-#    2 : Monthly files will be created and daily files will be deleted automatically.
+#      Accurate monthly averages require setting "ref_time" to "000000" in HISTRC_FILE!
 #
-# MONTHLY_OUTPUT               : 0
- 
+#    0 : No post-processing (default).
+#    1 : For complete days, concatenate (bundle) sub-daily nc4 files, if any, into daily nc4 files.  
+#        For complete months, write monthly-mean nc4 files.  
+#    2 : As in 1, but delete daily nc4 files.
+#
+# POSTPROC_HIST                : 0
+
 
 # ---- Name of file containing Surface GridComp resource parameters 
 #

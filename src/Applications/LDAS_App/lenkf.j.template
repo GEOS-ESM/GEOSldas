@@ -41,12 +41,12 @@ setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 #             Experiment Specific Environment Variables
 #######################################################################
 
-setenv    HOMDIR     $EXPDIR/run/
-setenv    SCRDIR     $EXPDIR/scratch
-setenv    MODEL      MY_MODEL
-@         NENS  =    MY_ENSEMBLE
-setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`
-setenv    NODAILIES  MY_MONTHLY
+setenv    HOMDIR         $EXPDIR/run/
+setenv    SCRDIR         $EXPDIR/scratch
+setenv    MODEL          MY_MODEL
+@         NENS  =        MY_ENSEMBLE
+setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
+setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 
 #
 # DEBUGGER : 0 -- no debugger
@@ -308,7 +308,7 @@ while ( $counter <= ${NUM_SGMT} )
     
    
    #######################################################################
-   #               Move HISTORY Files to cat/ens Directory
+   #              Move HISTORY Files to cat/ens Directory
    #######################################################################
    
    set outfiles = `ls $EXPID.*[bin,nc4]`
@@ -367,11 +367,12 @@ while ( $counter <= ${NUM_SGMT} )
    done:
    
    #######################################################################
-   #            (1) Concatenating Sub-daily Files to Daily Files
-   #            (2) Write monthly means  
+   #              Post-Process model diagnostic output
+   #              (1) Concatenate sub-daily files to daily files
+   #              (2) Write monthly means  
    #######################################################################
    
-   if ($NODAILIES > 0) then
+   if ($POSTPROC_HIST > 0) then
    
      set PWD = `pwd`
    
@@ -405,7 +406,20 @@ while ( $counter <= ${NUM_SGMT} )
              @ day++    
              set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}${DD}_* | rev | cut -d'.' -f2 | rev`
              set LEN_SUB = `echo $#time_steps`
+
+             # no file or just one file? nothing to concatenate, move on to the next collection
              if ($LEN_SUB <= 1) continue
+
+	     # check if day is complete (get HISTORY time step from first two files)
+             set hour1   = `echo $time_steps[1] | cut -c10-11`
+             set min1    = `echo $time_steps[1] | cut -c12-13`
+             set hour2   = `echo $time_steps[2] | cut -c10-11`
+             set min2    = `echo $time_steps[2] | cut -c12-13`
+             @ dt_hist   = ($hour2 - $hour1) * 60 + ($min2 - $min1)
+	     @ N_per_day = (24 * 60) / $dt_hist		
+             # not enough sub-daily files? move on to the next collection
+             if($LEN_SUB < $N_per_day) continue
+
              set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
 
 # ----------------------------------------------------------------------------
@@ -434,9 +448,13 @@ EOF
              ncks -4 -h -v time_stamp timestamp.nc4 -A ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
              /bin/rm timestamp.cdl
              /bin/rm timestamp.nc4
+             # delete sub-daily files
              /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4 
 
           end # concatenate for each day 
+
+          # write monthly mean file and (optionally) remove daily files
+          # ------------------------------------------------------------------
    
           set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}* | rev | cut -d'.' -f2 | cut -d'_' -f2 | rev`
           set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
@@ -448,16 +466,15 @@ EOF
           set day1 = `echo $time_steps[1] | cut -c1-8`
           @ NAVAIL = ($dayl - $day1) + 1
    
-          # not enough days? move on to the next collection
+          # not enough days for monthly mean? move on to the next collection
           if($NAVAIL != $NDAYS) continue
    
-          # create the monly average
+          # create the monthly average
 
           ncra -h $EXPID.$ThisCol.${YYYY}${MM}*.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
           
-          # don't want a daily? delete the daily and sub-dailies and continue
-          #
-          if($NODAILIES == 2) then
+          if($POSTPROC_HIST == 2) then
+             # delete daily files
              /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}*
              continue
           endif
@@ -465,7 +482,7 @@ EOF
        end # each collection
      end # each month
      cd $PWD
-   endif # dailies > 0
+   endif # POSTPROC_HIST > 0
    
    #######################################################################
    #   Rename Final Checkpoints => Restarts for Next Segment and Archive
@@ -625,7 +642,7 @@ EOF
    /bin/cp cap_restart $HOMDIR/cap_restart
    
    #######################################################################
-   #                         Update Iteration Counter
+   #              Update Iteration Counter
    #######################################################################
    
    set enddate = `echo  $END_DATE | cut -c1-8`
@@ -641,7 +658,7 @@ EOF
 end
 
 #######################################################################
-#            set next log and error file 
+#                 Set Next Log and Error Files 
 #######################################################################
 
 set logfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${logYEAR}/M${logMON}/${EXPID}.ldas_log.${logYEAR}${logMON}${logDAY}_${logHour}${logMin}z.txt
@@ -658,7 +675,7 @@ if(-f GEOSldas_err_txt) then
 endif
 
 #######################################################################
-#                              Re-Submit Job
+#                 Re-Submit Job
 #######################################################################
 
 if ( $rc == 0 ) then
