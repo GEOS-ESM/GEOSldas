@@ -416,7 +416,7 @@ while ( $counter <= ${NUM_SGMT} )
              set hour2   = `echo $time_steps[2] | cut -c10-11`
              set min2    = `echo $time_steps[2] | cut -c12-13`
              @ dt_hist   = ($hour2 - $hour1) * 60 + ($min2 - $min1)
-	     @ N_per_day = (24 * 60) / $dt_hist		
+             @ N_per_day = (24 * 60) / $dt_hist		
              # not enough sub-daily files? move on to the next collection
              if($LEN_SUB < $N_per_day) continue
 
@@ -471,7 +471,7 @@ EOF
    
           # create the monthly average
 
-          ncra -h $EXPID.$ThisCol.${YYYY}${MM}*.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
+          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
           
           if($POSTPROC_HIST == 2) then
              # delete daily files
