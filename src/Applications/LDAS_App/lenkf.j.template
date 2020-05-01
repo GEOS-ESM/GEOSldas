@@ -469,9 +469,11 @@ EOF
           # not enough days for monthly mean? move on to the next collection
           if($NAVAIL != $NDAYS) continue
    
-          # create the monthly average
+          # create monthly-mean nc4 file
+          #   input time stamps:  *.YYYYMMDD_HHMM.*  daily avg written directly by HISTORY.rc
+          #                       *.YYYYMMDD.*       daily file from concatenation of sub-daily files
 
-          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
+          ncra -h $EXPID.$ThisCol.${YYYY}${MM}*.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
           
           if($POSTPROC_HIST == 2) then
              # delete daily files
