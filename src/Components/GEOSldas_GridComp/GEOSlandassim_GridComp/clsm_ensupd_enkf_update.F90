@@ -25,7 +25,7 @@ module clsm_ensupd_enkf_update
        catch_calc_soil_moist,                     &
        catch_calc_tp
   
-  use LDAS_ensdrv_globals,           ONLY:     &
+  use LDAS_ensdrv_globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
@@ -39,7 +39,7 @@ module clsm_ensupd_enkf_update
        obs_param_type,                            &
        obs_type
 
-  use LDAS_DriverTypes,                     ONLY:     &
+  use LDAS_DriverTypes,                 ONLY:     &
        met_force_type
        
   use catch_types,                      ONLY:     &
@@ -55,10 +55,10 @@ module clsm_ensupd_enkf_update
   use mwRTM_types,                      ONLY:     &
        mwRTM_param_type
   
-  use LDAS_PertTypes,                  ONLY:     &
+  use LDAS_PertTypes,                   ONLY:     &
        pert_param_type
   
-  use LDAS_TilecoordType,                 ONLY:     &
+  use LDAS_TilecoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type
   
@@ -74,7 +74,7 @@ module clsm_ensupd_enkf_update
   use nr_ran2_gasdev,                   ONLY:     &
        NRANDSEED
 
-  use LDAS_ease_conv,                    ONLY:     &
+  use LDAS_ease_conv,                   ONLY:     &
        easeV1_convert,                            &
        easeV2_convert
 
@@ -103,9 +103,6 @@ module clsm_ensupd_enkf_update
   use clsm_ensupd_read_obs,             ONLY:     &
        collect_obs
 
-!!  use LDAS_ensdrv_init_routines,        ONLY:     &
-!!       io_rstrt
-
   use clsm_bias_routines,               ONLY:     &
        obs_bias_upd_tcount,                       &
        obs_bias_corr_obs,                         &
@@ -121,7 +118,7 @@ module clsm_ensupd_enkf_update
        numprocs,                                  &
        myid,                                      &
        mpierr,                                    &
-       mpicomm,                            &
+       mpicomm,                                   &
        MPI_obs_type,                              &
        mpistatus
 
@@ -148,12 +145,12 @@ contains
        work_path, exp_id, exp_domain,                                    &
        met_force, lai, cat_param, mwRTM_param,                           &
        tile_coord_l, tile_coord_f, tile_grid_f,                          &
-       pert_grid_f, pert_grid_l_NotUsed, tile_grid_g,                            &
+       pert_grid_f, pert_grid_l_NotUsed, tile_grid_g,                    &
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
        dtstep_assim, centered_update,                                    &
-       xcompact, ycompact,                                               &
+       xcompact, ycompact, fcsterr_inflation_fac,                        &
        N_obs_param, obs_param, N_obsbias_max,                            &
        out_obslog, out_smapL4SMaup,                                      &
        cat_progn,                                                        &
@@ -214,7 +211,7 @@ contains
 
     logical, intent(in) :: centered_update
 
-    real,    intent(in) :: xcompact, ycompact
+    real,    intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
 
     integer, intent(in) :: N_obs_param
 
@@ -527,7 +524,8 @@ contains
                N_catl_vec, low_ind, tile_grid_g,                  &
                obs_param,                                         &
                met_force, lai, cat_param, cat_progn, mwRTM_param, &
-               N_obsl, Observations_l, Obs_pred_l, obsbias_ok )
+               N_obsl, Observations_l, Obs_pred_l, obsbias_ok,    &
+               fcsterr_inflation_fac )
 
           deallocate(obsbias_ok)
 
@@ -1037,7 +1035,7 @@ contains
                Obs_pred_ana,                              & ! size: (nObs_ana,N_ens)
                Obs_pert_tmp,                              &
                cat_param_ana,                             &
-               xcompact, ycompact,                        &
+               xcompact, ycompact, fcsterr_inflation_fac, &
                cat_progn_ana, cat_progn_incr_ana)
           call cpu_time(t_end)
 
@@ -1065,7 +1063,7 @@ contains
                Obs_pred_lH(1:N_obslH,1:N_ens),                          &
                Obs_pert_tmp,                                            &
                cat_param,                                               &
-               xcompact, ycompact,                                      &
+               xcompact, ycompact, fcsterr_inflation_fac,               &
                cat_progn, cat_progn_incr )
 #endif          
 
@@ -1617,7 +1615,7 @@ contains
        N_catl_vec, low_ind, f2l, N_catg, f2g,                                &
        obs_param,                                                            &
        met_force, lai, cat_param, cat_progn, cat_progn_incr, mwRTM_param,    &
-       Observations_l,rf2f )
+       Observations_l, rf2f )
 
     implicit none
 
@@ -1665,6 +1663,7 @@ contains
 
 
     type(obs_type),         dimension(:),     pointer :: Observations_l ! inout
+
     integer,                dimension(N_catf), optional, intent(in) :: rf2f ! re-ordered to LDASsa 
 
     ! local variables
