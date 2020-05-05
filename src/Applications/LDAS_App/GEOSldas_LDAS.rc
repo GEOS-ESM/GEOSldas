@@ -143,7 +143,7 @@ LDAS_logit                     : YES
 #      Optional post-processing of model diagnostics output into bundled daily files and monthly means.
 #      Reduces the file count and (optionally) the output volume.
 #
-#      Accurate monthly averages require setting "ref_time" to "000000" in HISTRC_FILE!
+#      Accurate monthly-means of time-average Collections require setting "ref_time" to "000000" in HISTRC_FILE!
 #
 #    0 : No post-processing (default).
 #    1 : For complete days, concatenate (bundle) sub-daily nc4 files, if any, into daily nc4 files.  
