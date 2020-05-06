@@ -308,6 +308,39 @@ while ( $counter <= ${NUM_SGMT} )
     
    
    #######################################################################
+   #              Move Legacy LDASsa Files to ana/ens_avg Directory
+   #######################################################################
+
+   # must be done before moving HISTORY files
+
+   # target directory is always 'ens_avg'
+   
+   set ENSDIR = `ens_avg`
+
+   set ObsFcses = `ls *.ldas_ObsFcstAna.*.bin` 
+   foreach obsfcs ( $ObsFcses ) 
+      set ThisTime = `echo $obsfcs | rev | cut -d'.' -f2 | rev`
+      set TY = `echo $ThisTime | cut -c1-4`
+      set TM = `echo $ThisTime | cut -c5-6` 
+      set THISDIR = $EXPDIR/output/$EXPDOMAIN/ana/$ENSDIR/Y${TY}/M${TM}/
+      if (! -e $THISDIR            ) mkdir -p $THISDIR
+      /bin/mv $obsfcs ${THISDIR}$obsfcs
+   end
+
+   set smapL4s = `ls *.ldas_tile_inst_smapL4SMaup.*.bin` 
+   foreach smapl4 ( $smapL4s ) 
+      set ThisTime = `echo $smapl4 | rev | cut -d'.' -f2 | rev`
+      set TY = `echo $ThisTime | cut -c1-4`
+      set TM = `echo $ThisTime | cut -c5-6` 
+      set THISDIR = $EXPDIR/output/$EXPDOMAIN/ana/$ENSDIR/Y${TY}/M${TM}/
+      if (! -e $THISDIR            ) mkdir -p $THISDIR
+      /bin/mv $smapl4 ${THISDIR}$smapl4
+   end
+
+   wait
+   
+
+   #######################################################################
    #              Move HISTORY Files to cat/ens Directory
    #######################################################################
    
@@ -448,7 +481,7 @@ EOF
              ncks -4 -h -v time_stamp timestamp.nc4 -A ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
              /bin/rm timestamp.cdl
              /bin/rm timestamp.nc4
-             # delete sub-daily files
+             # rudimentary check for desired nc4 file;  if ok, delete sub-daily files
              if ( -f ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4 ) then
                 if ( ! -z ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4 ) then
                    /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4
@@ -458,13 +491,19 @@ EOF
 
           # write monthly mean file and (optionally) remove daily files
           # ------------------------------------------------------------------
+
+          # NOTE: Collections written with daily frequency ("tavg24" and "inst24") have not
+	  #       been concatenated into daily files.  There are two possibilities  for the
+	  #       time stamps of files to be averaged:
+          #         *.YYYYMMDD.*       daily files from concatenation of sub-daily files
+          #         *.YYYYMMDD_HHMM.*  daily (avg or inst) files written directly by HISTORY.rc
    
           set time_steps  = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}??.* | rev | cut -d'.' -f2 | rev`
           set time_steps_ = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}??_* | rev | cut -d'.' -f2 | cut -d'_' -f2 | rev`
           set LEN  = `echo $#time_steps`
           set LEN_ = `echo $#time_steps_`
 
-          # no file? move on  
+          # check if month is complete 
           if ($LEN != 0) then 
             set dayl = `echo $time_steps[$LEN] | cut -c1-8`
             set day1 = `echo $time_steps[1] | cut -c1-8`
@@ -474,20 +513,17 @@ EOF
             set day1 = `echo $time_steps_[1] | cut -c1-8`
             @ NAVAIL = ($dayl - $day1) + 1
           else
-            continue
+            @ NAVAIL = 0
           endif
             
           # not enough days for monthly mean? move on to the next collection
           if($NAVAIL != $NDAYS) continue
    
           # create monthly-mean nc4 file
-          #   input time stamps:  *.YYYYMMDD_HHMM.*  daily avg written directly by HISTORY.rc
-          #                       *.YYYYMMDD.*       daily file from concatenation of sub-daily files
-
           ncra -h $EXPID.$ThisCol.${YYYY}${MM}*.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
           
           if($POSTPROC_HIST == 2) then
-             # delete daily files
+             # rudimentary check for desired nc4 file;  if ok, delete daily files
              if ( -f ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4 ) then
                 if ( ! -z ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4 ) then
                    /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}*
@@ -621,27 +657,7 @@ EOF
           if (! -e $THISDIR            ) mkdir -p $THISDIR
              /bin/mv $rfile ${THISDIR}${EXPID}.landassim_obspertrseed_rst.${ThisTime}.nc4
        end
- 
-       set ObsFcses = `ls *.ldas_ObsFcstAna.*.bin` 
-       foreach obsfcs ( $ObsFcses ) 
-          set ThisTime = `echo $obsfcs | rev | cut -d'.' -f2 | rev`
-          set TY = `echo $ThisTime | cut -c1-4`
-          set TM = `echo $ThisTime | cut -c5-6` 
-          set THISDIR = $EXPDIR/output/$EXPDOMAIN/ana/$ENSDIR/Y${TY}/M${TM}/
-          if (! -e $THISDIR            ) mkdir -p $THISDIR
-          /bin/mv $obsfcs ${THISDIR}$obsfcs
-       end
-
-       set smapL4s = `ls *.ldas_tile_inst_smapL4SMaup.*.bin` 
-       foreach smapl4 ( $smapL4s ) 
-          set ThisTime = `echo $smapl4 | rev | cut -d'.' -f2 | rev`
-          set TY = `echo $ThisTime | cut -c1-4`
-          set TM = `echo $ThisTime | cut -c5-6` 
-          set THISDIR = $EXPDIR/output/$EXPDOMAIN/ana/$ENSDIR/Y${TY}/M${TM}/
-          if (! -e $THISDIR            ) mkdir -p $THISDIR
-          /bin/mv $smapl4 ${THISDIR}$smapl4
-       end
- 
+  
        @ inens ++
    end  ## end of while ($inens < $NENS)
    wait 
