@@ -449,23 +449,34 @@ EOF
              /bin/rm timestamp.cdl
              /bin/rm timestamp.nc4
              # delete sub-daily files
-             /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4 
-
+             if ( -f ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4 ) then
+                if ( ! -z ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4 ) then
+                   /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4
+                endif
+             endif 
           end # concatenate for each day 
 
           # write monthly mean file and (optionally) remove daily files
           # ------------------------------------------------------------------
    
-          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}* | rev | cut -d'.' -f2 | cut -d'_' -f2 | rev`
-          set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
-          set LEN = `echo $#time_steps`
+          set time_steps  = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}??.* | rev | cut -d'.' -f2 | rev`
+          set time_steps_ = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}??_* | rev | cut -d'.' -f2 | cut -d'_' -f2 | rev`
+          set LEN  = `echo $#time_steps`
+          set LEN_ = `echo $#time_steps_`
+
           # no file? move on  
-          if ($LEN == 0) continue
-    
-          set dayl = `echo $time_steps[$LEN] | cut -c1-8`
-          set day1 = `echo $time_steps[1] | cut -c1-8`
-          @ NAVAIL = ($dayl - $day1) + 1
-   
+          if ($LEN != 0) then 
+            set dayl = `echo $time_steps[$LEN] | cut -c1-8`
+            set day1 = `echo $time_steps[1] | cut -c1-8`
+            @ NAVAIL = ($dayl - $day1) + 1
+          else if( $LEN_ !=0 ) then
+            set dayl = `echo $time_steps_[$LEN] | cut -c1-8`
+            set day1 = `echo $time_steps_[1] | cut -c1-8`
+            @ NAVAIL = ($dayl - $day1) + 1
+          else
+            continue
+          endif
+            
           # not enough days for monthly mean? move on to the next collection
           if($NAVAIL != $NDAYS) continue
    
@@ -477,7 +488,11 @@ EOF
           
           if($POSTPROC_HIST == 2) then
              # delete daily files
-             /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}*
+             if ( -f ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4 ) then
+                if ( ! -z ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4 ) then
+                   /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}*
+                endif
+             endif
              continue
           endif
    
@@ -577,45 +592,56 @@ EOF
        set rstfiles2 = `ls landpert${ENSID}_internal_checkpoint.*`
        set rstfiles3 = `ls landassim_obspertrseed${ENSID}_checkpoint.*`
    
-       set NFILES = `echo $#rstfiles1`
-       if($NFILES > 0) then
-          foreach rfile ( $rstfiles1 ) 
-             set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
-             set TY = `echo $ThisTime | cut -c1-4`
-             set TM = `echo $ThisTime | cut -c5-6` 
-             set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
-             if (! -e $THISDIR            ) mkdir -p $THISDIR
-             /bin/mv $rfile ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
-             /usr/bin/gzip ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4 &
-          end
-       endif
+       foreach rfile ( $rstfiles1 ) 
+          set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
+          set TY = `echo $ThisTime | cut -c1-4`
+          set TM = `echo $ThisTime | cut -c5-6` 
+          set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
+          if (! -e $THISDIR            ) mkdir -p $THISDIR
+          /bin/mv $rfile ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
+          /usr/bin/gzip ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4 &
+       end
        
-       set NFILES = `echo $#rstfiles2`
-       if($NFILES > 0) then
-          foreach rfile ( $rstfiles2 ) 
-             set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
-             set TY = `echo $ThisTime | cut -c1-4`
-             set TM = `echo $ThisTime | cut -c5-6` 
-             set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
-             if (! -e $THISDIR            ) mkdir -p $THISDIR
+       foreach rfile ( $rstfiles2 ) 
+          set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
+          set TY = `echo $ThisTime | cut -c1-4`
+          set TM = `echo $ThisTime | cut -c5-6` 
+          set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
+          if (! -e $THISDIR            ) mkdir -p $THISDIR
              (ncks -4 -O -C -x -v lat,lon $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4;\
                /usr/bin/gzip ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4; \
                /bin/rm -f $rfile) &
-          end
-       endif
+       end
    
-       set NFILES = `echo $#rstfiles3`
-       if($NFILES > 0) then
-          foreach rfile ( $rstfiles3 ) 
-             set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
-             set TY = `echo $ThisTime | cut -c1-4`
-             set TM = `echo $ThisTime | cut -c5-6` 
-             set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
-             if (! -e $THISDIR            ) mkdir -p $THISDIR
+       foreach rfile ( $rstfiles3 ) 
+          set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
+          set TY = `echo $ThisTime | cut -c1-4`
+          set TM = `echo $ThisTime | cut -c5-6` 
+          set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
+          if (! -e $THISDIR            ) mkdir -p $THISDIR
              /bin/mv $rfile ${THISDIR}${EXPID}.landassim_obspertrseed_rst.${ThisTime}.nc4
-          end
-       endif
-   
+       end
+ 
+       set ObsFcses = `ls *.ldas_ObsFcstAna.*.bin` 
+       foreach obsfcs ( $ObsFcses ) 
+          set ThisTime = `echo $obsfcs | rev | cut -d'.' -f2 | rev`
+          set TY = `echo $ThisTime | cut -c1-4`
+          set TM = `echo $ThisTime | cut -c5-6` 
+          set THISDIR = $EXPDIR/output/$EXPDOMAIN/ana/$ENSDIR/Y${TY}/M${TM}/
+          if (! -e $THISDIR            ) mkdir -p $THISDIR
+          /bin/mv $obsfcs ${THISDIR}$obsfcs
+       end
+
+       set smapL4s = `ls *.ldas_tile_inst_smapL4SMaup.*.bin` 
+       foreach smapl4 ( $smapL4s ) 
+          set ThisTime = `echo $smapl4 | rev | cut -d'.' -f2 | rev`
+          set TY = `echo $ThisTime | cut -c1-4`
+          set TM = `echo $ThisTime | cut -c5-6` 
+          set THISDIR = $EXPDIR/output/$EXPDOMAIN/ana/$ENSDIR/Y${TY}/M${TM}/
+          if (! -e $THISDIR            ) mkdir -p $THISDIR
+          /bin/mv $smapl4 ${THISDIR}$smapl4
+       end
+ 
        @ inens ++
    end  ## end of while ($inens < $NENS)
    wait 
