@@ -493,8 +493,8 @@ EOF
           # ------------------------------------------------------------------
 
           # NOTE: Collections written with daily frequency ("tavg24" and "inst24") have not
-	  #       been concatenated into daily files.  There are two possibilities  for the
-	  #       time stamps of files to be averaged:
+          #       been concatenated into daily files.  There are two possibilities  for the
+          #       time stamps of files to be averaged:
           #         *.YYYYMMDD.*       daily files from concatenation of sub-daily files
           #         *.YYYYMMDD_HHMM.*  daily (avg or inst) files written directly by HISTORY.rc
    
