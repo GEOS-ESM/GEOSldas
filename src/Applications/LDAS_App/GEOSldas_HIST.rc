@@ -17,6 +17,7 @@ COLLECTIONS:
 #CUBE            'tavg24_2d_lnd_Nx'
 #ASSIM           'SMAP_L4_SM_gph'
 #                'catch_progn_incr'
+#                'catch_diag_aup'
            ::
 
 #CUBE GRID_LABELS: PC720x361-DC
@@ -358,4 +359,28 @@ COLLECTIONS:
                                'SNDZN2_INCR'    , 'LANDASSIM'      ,
                                'SNDZN3_INCR'    , 'LANDASSIM'      ,
                          ::
+
+  catch_diag_aup.descr:       '3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land diag fcst and ana ',
+  catch_diag_aup.template:    '%y4%m2%d2_%h2%n2z.nc4',
+  catch_diag_aup.archive:     '%c/Y%y4',
+  catch_diag_aup.mode:        'instantaneous',
+  catch_diag_aup.frequency:   030000,
+  catch_diag_aup.ref_time:    000000,
+  catch_diag_aup.format:      'CFIO',
+  catch_diag_aup.regrid_exch: '../input/tile.data',
+  catch_diag_aup.regrid_name: 'GRIDNAME', 
+  catch_diag_aup.grid_label:  PC720x361-DC,
+  catch_diag_aup.deflate:     2,
+  catch_diag_aup.fields:     'SFSM_ANA'    , 'LANDASSIM'      ,
+                              'RZSM_ANA'    , 'LANDASSIM'      ,
+                              'PFSM_ANA'    , 'LANDASSIM'      ,
+                              'TPSURF_ANA'    , 'LANDASSIM'      ,
+                              'TSOIL1_ANA'    , 'LANDASSIM'      ,
+                              'SFSM_FCST'    , 'LANDASSIM'      ,
+                              'RZSM_FCST'     , 'LANDASSIM'      ,
+                              'PFSM_FCST'    , 'LANDASSIM'      ,
+                              'TPSURF_FCST'    , 'LANDASSIM'      ,
+                              'TSOIL1_FCST'    , 'LANDASSIM'      ,
+                        ::
+
 

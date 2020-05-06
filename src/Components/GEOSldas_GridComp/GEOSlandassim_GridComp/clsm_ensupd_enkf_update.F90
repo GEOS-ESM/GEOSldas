@@ -138,7 +138,10 @@ module clsm_ensupd_enkf_update
   public :: get_enkf_increments
   public :: apply_enkf_increments
   public :: output_incr_etc
-  public :: write_smapL4SMaup
+  public :: write_smapL4SMaup 
+!sqz 2020 ---
+  public :: get_diagaup
+!----
 
 contains
 
@@ -1980,7 +1983,7 @@ contains
     !                         - sm_profile_forecast
     !                         - surface_temp_forecast
     !                         - soil_temp_layer1_forecast
-    !
+    
     ! option = 'analysis' : append select analysis fields into output file
     !
     !                         - sm_surface_analysis
@@ -2931,6 +2934,114 @@ contains
   end subroutine write_smapL4SMaup
 
   ! -----------------------------------------------------------------
+
+!sqz 2020 -----
+  ! **********************************************************
+
+ subroutine get_diagaup (option, N_ens, N_catl, cat_param, cat_progn, diagaup) 
+    !   
+    !       option "forecast"  diagfcst <- cat_progn - cat_progn_incr
+    !                         - sm_surface_forecast
+    !                         - sm_rootzone_forecast
+    !                         - sm_profile_forecast
+    !                         - surface_temp_forecast
+    !                         - soil_temp_layer1_forecast 
+    !      option "analysis" diagana <- cat_progn ( already updated by anal )
+    !                         - sm_surface_analysis
+    !                         - sm_rootzone_analysis
+    !                         - sm_profile_analysis
+    !                         - surface_temp_analysis
+    !                         - soil_temp_layer1_analysis
+
+    implicit none
+    
+    character(*),          intent(in) :: option
+    integer,                intent(in) ::  N_ens, N_catl 
+    type(cat_param_type),   dimension(N_catl),        intent(in)    :: cat_param
+    type(cat_progn_type),   dimension(N_catl,N_ens),  intent(in)    :: cat_progn
+    type(cat_progn_type),   dimension(N_catl),        intent(inout)    :: diagaup
+
+    real, dimension(      N_catl, 5)     :: tile_mean_l   !out diagaup(:, 5)=tile_mean_l(:,5) 
+    real, dimension(      N_catl, 5)     :: tile_std_l
+
+    real, dimension(      N_catl)        :: srfexc, rzexc, catdef
+    real, dimension(      N_catl)        :: ar1,    ar2,   ar4
+    real, dimension(N_gt, N_catl)        :: tp
+    real, dimension(      N_catl, N_ens) :: sfmc,   rzmc,  prmc, tsurf, tp1
+    integer   :: n_e, j, n 
+    character(len=*), parameter :: Iam = 'get_diagaup'
+    character(len=400) :: err_msg
+
+!----------------------
+
+        do n_e=1,N_ens
+
+          srfexc = cat_progn(:,n_e)%srfexc 
+          rzexc  = cat_progn(:,n_e)%rzexc 
+          catdef = cat_progn(:,n_e)%catdef  
+
+          call catch_calc_soil_moist(                                             &
+               N_catl,                                                            &
+               cat_param%vegcls, cat_param%dzsf,   cat_param%vgwmax,              &
+               cat_param%cdcr1,  cat_param%cdcr2,  cat_param%psis,                &
+               cat_param%bee,    cat_param%poros,  cat_param%wpwet,               &
+               cat_param%ars1,   cat_param%ars2,   cat_param%ars3,                &
+               cat_param%ara1,   cat_param%ara2,   cat_param%ara3,                &
+               cat_param%ara4,   cat_param%arw1,   cat_param%arw2,                &
+               cat_param%arw3,   cat_param%arw4,                                  &
+               srfexc,           rzexc,            catdef,                        &
+               ar1,  ar2,  ar4, sfmc(:,n_e), rzmc(:,n_e), prmc(:,n_e) ) 
+
+          call catch_calc_tsurf( N_catl,                                          &
+               cat_progn(:,n_e)%tc1, cat_progn(:,n_e)%tc2, cat_progn(:,n_e)%tc4,  &
+               catprogn2wesn(N_catl,cat_progn(:,n_e)),                            &
+               catprogn2htsn(N_catl,cat_progn(:,n_e)),                            &
+               ar1,  ar2,  ar4,                                                   &
+               tsurf(:,n_e) )
+
+          call catch_calc_tp( N_catl, cat_param%poros,                            &
+               catprogn2ghtcnt(N_catl,cat_progn(:,n_e)), tp )
+
+          tp1(:,n_e) = tp(1,:) + MAPL_TICE
+
+       end do  !n_e N_ens 
+
+       ! compute ensemble mean values and std-dev
+       call row_std( N_catl, N_ens, sfmc,  tile_std_l(:,1), tile_mean_l(:,1) )
+       call row_std( N_catl, N_ens, rzmc,  tile_std_l(:,2), tile_mean_l(:,2) )
+       call row_std( N_catl, N_ens, prmc,  tile_std_l(:,3), tile_mean_l(:,3) )
+       call row_std( N_catl, N_ens, tsurf, tile_std_l(:,4), tile_mean_l(:,4) )
+       call row_std( N_catl, N_ens, tp1,   tile_std_l(:,5), tile_mean_l(:,5) )
+
+       ! make sure mean *mc values are between 0. and porosity
+
+       do j=1,N_catl
+          tile_mean_l(j,1) = max( min( tile_mean_l(j,1), cat_param(j)%poros), 0.)
+          tile_mean_l(j,2) = max( min( tile_mean_l(j,2), cat_param(j)%poros), 0.)
+          tile_mean_l(j,3) = max( min( tile_mean_l(j,3), cat_param(j)%poros), 0.)
+       end do
+
+         do j=1,N_catl
+         if(option == 'analysis' ) then
+          diagaup(j)%srfexc = tile_mean_l(j,1)  !borrowed type name
+          diagaup(j)%rzexc = tile_mean_l(j,2)   ! ..
+          diagaup(j)%catdef = tile_mean_l(j,3)  ! ..
+          diagaup(j)%tc1 = tile_mean_l(j,4)     ! ..
+          diagaup(j)%tc2 = tile_mean_l(j,5)     ! ..
+         else 
+          diagaup(j)%wesn(1) = tile_mean_l(j,1)   ! ..
+          diagaup(j)%wesn(2) = tile_mean_l(j,2)   ! ..
+          diagaup(j)%wesn(3) = tile_mean_l(j,3)   ! ..
+          diagaup(j)%ght(1) = tile_mean_l(j,4)    ! ..
+          diagaup(j)%ght(2) = tile_mean_l(j,5)    ! ..
+          endif
+        enddo  
+
+       end subroutine  get_diagaup 
+!-------------------------------------------
+!sqz 2020 ------
+
+
 
 end module clsm_ensupd_enkf_update
 
