@@ -1555,7 +1555,7 @@ contains
        endif
        ! write to file
 
-       fname = get_io_filename( work_path, exp_id, file_tag, date_time=date_time, &
+       fname = get_io_filename( './', exp_id, file_tag, date_time=date_time, &
             dir_name=dir_name, ens_id=-1, no_subdirs=.true. )
          
        open( 10, file=fname, form='unformatted', action='write')
@@ -2098,7 +2098,7 @@ contains
 
     if (master_proc) then
 
-       fname = get_io_filename( work_path, exp_id, file_tag,                      &
+       fname = get_io_filename( './', exp_id, file_tag,                      &
             date_time=date_time, dir_name=dir_name, ens_id=-1, no_subdirs=.true.)
 
        if     (option=='orig_obs')                         then

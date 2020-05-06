@@ -542,7 +542,6 @@ EOF
    #        Note: cap_restart contains the current NYMD and NHMS
    #######################################################################
    
-   set edate  = e`cat cap_restart | cut -c1-8`_`cat cap_restart | cut -c10-11`z
    set eYEAR = `cat cap_restart | cut -c1-4`
    set eMON  = `cat cap_restart | cut -c5-6`
    set eDAY  = `cat cap_restart | cut -c7-8`
