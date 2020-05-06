@@ -333,8 +333,6 @@ while ( $counter <= ${NUM_SGMT} )
       /bin/mv $smapl4 ${THISDIR}$smapl4
    end
 
-   wait
-   
 
    #######################################################################
    #              Move HISTORY Files to cat/ens Directory
