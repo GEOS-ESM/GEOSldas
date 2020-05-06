@@ -1327,11 +1327,11 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '############################################################'
     print
-    print 'EXP_ID                  :'
-    print 'EXP_DOMAIN              :'
-    print 'NUM_LDAS_ENSEMBLE       :'
-    print 'BEG_DATE                :'
-    print 'END_DATE                :'
+    print 'EXP_ID:'
+    print 'EXP_DOMAIN:'
+    print 'NUM_LDAS_ENSEMBLE:'
+    print 'BEG_DATE:'
+    print 'END_DATE:'
     
     print
     print '############################################################'
@@ -1400,10 +1400,10 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '############################################################'
 
     print
-    print 'RESTART                  :'
-    print '#RESTART_ID              :'
-    print '#RESTART_PATH            :'
-    print '#RESTART_DOMAIN          :'
+    print 'RESTART:'
+    print '#RESTART_ID:'
+    print '#RESTART_PATH:'
+    print '#RESTART_DOMAIN:'
 
     print
     print '############################################################'
@@ -1415,9 +1415,9 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '############################################################'
 
     print
-    print 'MET_TAG                 :'
-    print 'MET_PATH                :'
-    print 'FORCE_DTSTEP            :'
+    print 'MET_TAG:'
+    print 'MET_PATH:'
+    print 'FORCE_DTSTEP:'
 
     print
     print '############################################################'
@@ -1428,7 +1428,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '############################################################'
     print
-    print 'BCS_PATH                :'
+    print 'BCS_PATH:'
     print
 
     _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from /bin directory
