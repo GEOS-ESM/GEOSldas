@@ -32,18 +32,18 @@ class LDASsetup:
         # Required exe input fields
         # These fields are needed to pre-compute exp dir structure
         # ------
-        rqdExeInpKeys = ['EXP_ID', 'EXP_DOMAIN', 'NUM_ENSEMBLE', 
+        rqdExeInpKeys = ['EXP_ID', 'EXP_DOMAIN', 'NUM_LDAS_ENSEMBLE', 
             'BEG_DATE', 'END_DATE','RESTART_PATH',
             'RESTART_DOMAIN','RESTART_ID','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
-        rqdExeInpKeys_rst = ['EXP_ID', 'EXP_DOMAIN', 'NUM_ENSEMBLE', 
+        rqdExeInpKeys_rst = ['EXP_ID', 'EXP_DOMAIN', 'NUM_LDAS_ENSEMBLE', 
             'BEG_DATE', 'END_DATE','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
 
-        # These keywords are excluded from LDAS.rc
+        # These keywords are excluded from LDAS.rc (i.e., only needed in pre- or post-processing)
         self.NoneLDASrcKeys=['EXP_ID', 'EXP_DOMAIN',
             'BEG_DATE', 'END_DATE','RESTART','RESTART_PATH',
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
-            'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','MONTHLY_OUTPUT',
+            'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
             'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE']
 
 
@@ -62,7 +62,7 @@ class LDASsetup:
         if 'exeinp' in cmdLineArgs:
             # sample sub-command
             # by construction, we can have
-            # either: {'exeinp': False, 'batinp': 'lasgh'}
+            # either: {'exeinp': False, 'batinp': 'lasgh'}    <-- 'lasgh'???
             # or:     {'exeinp': True, 'batinp': None}
             if cmdLineArgs['exeinp']:
                 _printExeInputKeys(rqdExeInpKeys)
@@ -84,7 +84,6 @@ class LDASsetup:
         self.runmodel = cmdLineArgs['runmodel']
         self.daysperjob = cmdLineArgs['daysperjob']
         self.monthsperjob = cmdLineArgs['monthsperjob']
-        #self.ForceReuseDir = cmdLineArgs['ForceReuseDir']
         self.rqdExeInp = OrderedDict()
         self.rqdRmInp = OrderedDict()
         self.optRmInp = OrderedDict()
@@ -103,7 +102,7 @@ class LDASsetup:
         self.has_ldassa_pert = False
         self.nSegments = 1
         # ------
-        # Read exe input file which is required to setup the dir
+        # Read exe input file which is required to set up the dir
         # ------
         self.rqdExeInp = self._parseInputFile(cmdLineArgs['exeinpfile'])
         # verifing the required input
@@ -134,8 +133,8 @@ class LDASsetup:
             _printdict(self.rqdExeInp)
 
         # nens is an integer and =1 for model run
-        self.nens         =    int(self.rqdExeInp['NUM_ENSEMBLE']) # fail if Nens's val is not int
-        assert self.nens>0, 'NUM_ENSEMBLE [%d] <= 0' % self.nens
+        self.nens         =    int(self.rqdExeInp['NUM_LDAS_ENSEMBLE']) # fail if Nens's val is not int
+        assert self.nens>0, 'NUM_LDAS_ENSEMBLE [%d] <= 0' % self.nens
         _mydir = self.exphome + '/' + self.rqdExeInp['EXP_ID']
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None
@@ -167,7 +166,7 @@ class LDASsetup:
                 )
         if self.rqdExeInp['RESTART'].isdigit() :
             if int(self.rqdExeInp['RESTART']) == 0 :
-                # print "Starting date is forced to January 1st if there is no restart file"
+                print "No restart file (cold restart): Forcing start date to January 1, 0z"
                 year = self.begDates[0].year
                 self.begDates[0]=datetime(year =year,month=1,day =1,hour =0, minute= 0,second= 0)
 
@@ -283,12 +282,8 @@ class LDASsetup:
         else :
             self.catch = 'catchcn'
 
-        if 'MONTHLY_OUTPUT' not in self.rqdExeInp:
-            self.rqdExeInp['MONTHLY_OUTPUT'] = 0
-
-        #if int(self.rqdExeInp['MONTHLY_OUTPUT']) > 0:
-        #    assert self.begDates[0].day == 1 and self.begDates[0].hour == 0 and self.begDates[0].minute == 0 and self.begDates[0].second == 0, "monthly output should start from day 1 and 0Z"
-        #    assert self.endDates[0].day == 1 and self.endDates[0].hour == 0 and self.endDates[0].minute == 0 and self.endDates[0].second == 0, "monthly output should end at day 1 and 0Z"
+        if 'POSTPROC_HIST' not in self.rqdExeInp:
+            self.rqdExeInp['POSTPROC_HIST'] = 0
 
         if 'RUN_IRRIG' not in self.rqdExeInp:
             self.rqdExeInp['RUN_IRRIG'] = 0  
@@ -443,101 +438,6 @@ class LDASsetup:
         tmp_expid = None
         tmp_expdir = None
 
-        # ------
-        # If daysperjob>0, split duration of 
-        # start/end_times are now lists of len > 1
-        # ------
-        # wj notes: disable daysperjob
-#        self.daysperjob = 0 
-#        if self.daysperjob:
-#            # shorthands
-#            _dpj = self.daysperjob
-#            _start = self.begDates[0]
-#            _end = self.endDates[0]
-#            assert _dpj>0, 'daysperjob = %d' % _dpj
-#            # total number of days for the given job
-#            nDays = (_end - _start).days
-#            assert nDays>_dpj, \
-#                'Days per job [%d] >= Duration [%d days]' %\
-#                (_dpj, nDays)
-#            # number of job segments
-#            q = nDays/_dpj
-#            r = nDays%_dpj
-#            if r>0:
-#                nSegments = q+1
-#            else:
-#                nSegments = q
-#            # lists of start times, end times
-#            _start_list = list()
-#            _end_list = list()
-#            for iseg in xrange(nSegments):
-#                _start_list.append(_start+timedelta(days=iseg*_dpj))
-#            for iseg in xrange(nSegments-1):
-#                _end_list.append(_start_list[iseg+1])
-#            _end_list.append(_end)
-#
-#            #update beg dates and end dates
-#            self.begDates = _start_list
-#            self.endDates = _end_list
-#            self.job_sgmt = list()
-#            for iseg in xrange(nSegments):
-#                self.job_sgmt.append("JOB_SGMT: 000000%02d 000000"%(self.endDates[iseg]-self.begDates[iseg]).days)
-# 
-#            # print, if requested
-#            if self.verbose:
-#                print '\nn          start                  end'
-#                for iseg in xrange(nSegments):
-#                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
-#
-#        # wj notes: disable monthsperjob
-#        self.monthsperjob = 0
-#        if self.monthsperjob:
-#            # shorthands
-#            _mpj = self.monthsperjob
-#            assert _mpj>0, 'monthsperjob = %d' % _mpj
-#            _start = self.begDates[0]
-#            _end = self.endDates[0]
-#            # for this option the start/end dates have to be
-#            # 0z on the first of the month
-#            assert (_start.day==1 and _start.hour==0 and 
-#                    _start.minute==0 and _start.second==0
-#                    ), 'invalid start_time: %s for --monthsperjob' % \
-#                    _start.strftime('%Y-%m-%d-%H-%M-%S')
-#            assert (_end.day==1 and _end.hour==0 and 
-#                    _end.minute==0 and _end.second==0
-#                    ), 'invalid end_time: %s for --monthsperjob' % \
-#                    _end.strftime('%Y-%m-%d-%H-%M-%S')
-#            _start_list = list()
-#            _end_list = list()
-#            for dt in rrule.rrule(rrule.MONTHLY, interval=_mpj, dtstart=_start, until=_end):
-#                seg_start = dt
-#                seg_end = dt+relativedelta(months=_mpj)
-#                if seg_end>_end:
-#                    seg_end = _end
-#                if(seg_start>=seg_end) :
-#                    break
-#                _start_list.append(seg_start)
-#                _end_list.append(seg_end)
-#
-#            #update beg dates and end dates
-#
-#            self.begDates = _start_list
-#            self.endDates = _end_list
-#            self.job_sgmt =list()
-#            for iseg in xrange(len(_start_list)):
-#                months = 0
-#                dt = relativedelta(months=+1)
-#                d = self.begDates[iseg]
-#                while d <self.endDates[iseg]:
-#                    d +=dt
-#                    months+=1
-#                self.job_sgmt.append("JOB_SGMT: 0000%02d00 000000"% months)
-#
-#            if self.verbose:
-#                print '\nn          start                  end'
-#                for iseg in xrange(len(_start_list)):
-#                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
-
 
     def _parseInputFile(self, inpfile):
         """
@@ -559,7 +459,7 @@ class LDASsetup:
                continue
             if '"GEOSldas=>"' in line:
                continue
-            # get "GEOSldas=>" defalut in GEOS_LandGrid.rc
+            # get "GEOSldas=>" default in GEOS_LandGrid.rc
             if 'GEOSldas=>' in line:
                line = line.split('GEOSldas=>')[1]
             # handle comments
@@ -713,7 +613,7 @@ class LDASsetup:
         if 'SURFLAY' in self.rqdExeInp :
            dzsf = self.rqdExeInp['SURFLAY']
 
-        # These are dummy values for cold restart:
+        # These are dummy values for *cold* restart:
         wemin_in  = '13'  #  WEmin input/output for scale_catch(cn),
         wemin_out = '13'  #             
         if 'WEMIN_IN' in self.rqdExeInp :
@@ -807,7 +707,7 @@ class LDASsetup:
         rstdomain = self.rqdExeInp['RESTART_DOMAIN']
         rstpath0  = self.rqdExeInp['RESTART_PATH']
      
-        # just copy the landassim pert seed if it exist
+        # just copy the landassim pert seed if it exists
         for iens in xrange(self.nens) :
            _ensdir = self.ensdirs[iens]
            _ensid  = self.ensids[iens]
@@ -1072,7 +972,7 @@ class LDASsetup:
                     #sp.call(cmd)       
                 for line in fileinput.input(tmprcfile,inplace=True):
                     print line.rstrip().replace('GEOSldas_expid',self.rqdExeInp['EXP_ID'])
-            # just copy en emty ExtData.rc
+            # just copy an empty ExtData.rc
             if shortfile=='ExtData.rc' :
                 shutil.copy2(rcfile, self.rundir+'/'+shortfile)
                 
@@ -1098,7 +998,7 @@ class LDASsetup:
                 for key,val in default_surfrcInp.iteritems() :
                     ldasrcInp[key] = val
 
-                # ldas default, may overiwrite land default 
+                # ldas default, may overwrite land default 
                 default_ldasrcInp = self._parseInputFile(rcfile)
                 for key,val in default_ldasrcInp.iteritems() :
                     ldasrcInp[key] = val
@@ -1192,7 +1092,7 @@ class LDASsetup:
     
                 # write LDAS.rc
                 fout =open(self.rundir+'/'+shortfile,'w')
-                ldasrcInp['NUM_LDAS_ENSEMBLE']=ldasrcInp.pop('NUM_ENSEMBLE')
+                # ldasrcInp['NUM_LDAS_ENSEMBLE']=ldasrcInp.pop('NUM_ENSEMBLE')
                 for key,val in optinxny.iteritems():
                     keyn=(key+":").ljust(36)
                     fout.write(keyn+str(val)+'\n')
@@ -1216,7 +1116,6 @@ class LDASsetup:
 
         _rm_name = self.rqdRmInp['rm_name']
         expid = self.rqdExeInp['EXP_ID']
-        #expdomain = self.rqdExeInp['EXP_DOMAIN']
         if _rm_name=='SLURM':
             directives = ''
             # REQUIRED directives account/time/ntasks
@@ -1378,18 +1277,16 @@ class LDASsetup:
                         fout.write(line.replace('MY_EXPID',self.rqdExeInp['EXP_ID']))
                     elif 'MY_EXPDOMAIN' in line :
                         fout.write(line.replace('MY_EXPDOMAIN',self.rqdExeInp['EXP_DOMAIN']))
-                    #elif 'MY_ESMADIR' in line :
-                    #    fout.write(line.replace('MY_ESMADIR',self.blddir))
                     elif 'MY_ENSEMBLE' in line :
-                        fout.write(line.replace('MY_ENSEMBLE',str(self.rqdExeInp['NUM_ENSEMBLE'])))
+                        fout.write(line.replace('MY_ENSEMBLE',str(self.rqdExeInp['NUM_LDAS_ENSEMBLE'])))
                     elif 'MY_LOGFILE' in line :
                         fout.write(line.replace('MY_LOGFILE',my_logfile))
                     elif 'MY_ERRFILE' in line :
                         fout.write(line.replace('MY_ERRFILE',my_errfile))
                     elif 'MY_MODEL' in line :
                         fout.write(line.replace('MY_MODEL',self.catch))
-                    elif 'MY_MONTHLY' in line :
-                        fout.write(line.replace('MY_MONTHLY',str(self.rqdExeInp['MONTHLY_OUTPUT'])))                        
+                    elif 'MY_POSTPROC_HIST' in line :
+                        fout.write(line.replace('MY_POSTPROC_HIST',str(self.rqdExeInp['POSTPROC_HIST'])))                        
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
                      
@@ -1430,11 +1327,11 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '############################################################'
     print
-    print 'EXP_ID                  :'
-    print 'EXP_DOMAIN              :'
-    print 'NUM_ENSEMBLE            :'
-    print 'BEG_DATE                :'
-    print 'END_DATE                :'
+    print 'EXP_ID:'
+    print 'EXP_DOMAIN:'
+    print 'NUM_LDAS_ENSEMBLE:'
+    print 'BEG_DATE:'
+    print 'END_DATE:'
     
     print
     print '############################################################'
@@ -1503,10 +1400,10 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '############################################################'
 
     print
-    print 'RESTART                  :'
-    print '#RESTART_ID              :'
-    print '#RESTART_PATH            :'
-    print '#RESTART_DOMAIN          :'
+    print 'RESTART:'
+    print '#RESTART_ID:'
+    print '#RESTART_PATH:'
+    print '#RESTART_DOMAIN:'
 
     print
     print '############################################################'
@@ -1518,9 +1415,9 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '############################################################'
 
     print
-    print 'MET_TAG                 :'
-    print 'MET_PATH                :'
-    print 'FORCE_DTSTEP            :'
+    print 'MET_TAG:'
+    print 'MET_PATH:'
+    print 'FORCE_DTSTEP:'
 
     print
     print '############################################################'
@@ -1531,7 +1428,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '############################################################'
     print
-    print 'BCS_PATH                :'
+    print 'BCS_PATH:'
     print
 
     _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from /bin directory
@@ -1652,11 +1549,6 @@ def parseCmdLine():
         help='replace the account in batinpfile)',
         type=str, default='None'
         )
-    #p_setup.add_argument(
-    #    '--ForceReuseDir',
-    #    help='force re-use existing exp dir',
-    #    action='store_true',
-    #    )
     spltgrp = p_setup.add_mutually_exclusive_group()
     spltgrp.add_argument(
         '--daysperjob',

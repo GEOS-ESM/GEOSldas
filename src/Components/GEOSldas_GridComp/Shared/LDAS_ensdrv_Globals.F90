@@ -20,7 +20,6 @@ module LDAS_ensdrv_Globals
   public :: nodata_generic
   public :: nodata_tolfrac_generic
   public :: nodata_tol_generic
-  public :: N_bits_shaved
   public :: logunit
   public :: logit
   public :: master_logit
@@ -38,16 +37,6 @@ module LDAS_ensdrv_Globals
   
   real :: nodata_tol_generic = abs(nodata_generic*nodata_tolfrac_generic)
   
-  ! ----------------------------------------------------------------------
-  !
-  ! bit shaving for better gzip compression of output files:
-  ! - degrade least significant digits in floating point output
-  !   in return for better gzip compression rates;
-  ! - real*4 reserves 24 bits for Mantissa, the N_bits_shaved 
-  !   least significant of these 24 bits will be altered)
-
-  integer, parameter :: N_bits_shaved = 12  ! useful range: 0-12  (0=no shaving)
-
   ! ----------------------------------------------------------------
   !
   ! log file
@@ -87,8 +76,6 @@ contains
     write (logunit,*) 'nodata_tolfrac_generic  = ',   nodata_tolfrac_generic
     write (logunit,*)
     write (logunit,*) 'nodata_tol_generic      = ',   nodata_tol_generic
-    write (logunit,*)
-    write (logunit,*) 'N_bits_shaved           = ',   N_bits_shaved
     write (logunit,*)
     write (logunit,*) 'logunit                 = ',   logunit
     write (logunit,*)

@@ -1555,11 +1555,8 @@ contains
        endif
        ! write to file
 
-       fname = get_io_filename( work_path, exp_id, file_tag, date_time=date_time, &
-            dir_name=dir_name, ens_id=-1 )
-       i = index(fname, '/', .true.) 
-
-       if( i >0) call Execute_command_line('/bin/mkdir -p '//fname(1:i))
+       fname = get_io_filename( './', exp_id, file_tag, date_time=date_time, &
+            dir_name=dir_name, ens_id=-1, no_subdirs=.true. )
          
        open( 10, file=fname, form='unformatted', action='write')
 
@@ -2101,8 +2098,8 @@ contains
 
     if (master_proc) then
 
-       fname = get_io_filename( work_path, exp_id, file_tag,                      &
-            date_time=date_time, dir_name=dir_name, ens_id=-1)
+       fname = get_io_filename( './', exp_id, file_tag,                      &
+            date_time=date_time, dir_name=dir_name, ens_id=-1, no_subdirs=.true.)
 
        if     (option=='orig_obs')                         then
 
