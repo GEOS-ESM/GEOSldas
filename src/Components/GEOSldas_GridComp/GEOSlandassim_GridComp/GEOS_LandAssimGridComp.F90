@@ -31,8 +31,6 @@ module GEOS_LandAssimGridCompMod
   use LDAS_ensdrv_mpi, only: MPI_obs_param_type 
   
   use LDAS_DateTimeMod,ONLY: date_time_type 
-  use LDAS_ensdrv_functions,            ONLY:     &
-       get_io_filename 
   use LDAS_ensdrv_Globals, only: logunit
 
   use LDAS_ConvertMod, ONLY: esmf2ldas

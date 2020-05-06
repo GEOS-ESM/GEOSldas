@@ -33,9 +33,9 @@ contains
   ! ********************************************************************
   
   character(300) function get_io_filename( io_path, exp_id, file_tag,   &
-       date_time, dir_name, ens_id, option, file_ext )
+       date_time, dir_name, ens_id, option, file_ext, no_subdirs )
     
-    ! compose file name for input/output, create dir if needed
+    ! compose file name for input/output 
     !
     ! file name = io_path/dir_name/[ensXXXX]/Yyyyy/Mmm/
     !             "exp_id"."file_tag".[ensXXXX.]YYYYMMDD_HHMMz"file_ext"
@@ -56,37 +56,41 @@ contains
     !
     ! optional arguments:
     ! 
-    !  date_time                     date and time info (must be present unless option=1) 
-    !  option      default=5         controls date/time directories and string
-    !  dir_name    default='cat'     what type of output (eg "rs/", "rc_out/", "ana/")
-    !  ens_id      default=''        (see note above)
-    !  file_ext    default='.bin'    file name extension
+    !  date_time                      date and time info (must be present unless option=1) 
+    !  option       default=5         controls date/time directories and string
+    !  dir_name     default='cat'     what type of output (eg "rs/", "rc_out/", "ana/")
+    !  ens_id       default=''        (see note above)
+    !  file_ext     default='.bin'    file name extension
+    !  no_subdirs   default=.false.   if .true., omit all sub-directories after "io_path"
     !
     ! reichle,  2 Sep 2008 - overhaul for new dir and file name conventions
-    
+    ! reichle, 28 Apr 2020 - added optional "no_subdirs" to facilitate writing to ./scratch
+
     implicit none
     
-    character(*) :: io_path
-    character(*)  :: exp_id, file_tag       ! (eg "catch_ldas_rst")
+    character(*)                   :: io_path
+    character(*)                   :: exp_id, file_tag       ! (eg "catch_ldas_rst")
     
     type(date_time_type), optional :: date_time
     
-    integer,              optional  :: ens_id       
-    integer,              optional  :: option
+    integer,              optional :: ens_id       
+    integer,              optional :: option
     
-    character(*),        optional  :: dir_name     ! default = 'cat'
-    character(*),        optional  :: file_ext     ! default = '.bin'
+    character(*),         optional :: dir_name      ! default = 'cat'
+    character(*),         optional :: file_ext      ! default = '.bin'
+
+    logical,              optional :: no_subdirs    ! default = .false.  
     
     ! locals
     
     integer        :: tmp_option
 
     character(300) :: tmp_string
-    character(300) :: tmp_string2
     character( 40) :: tmp_dir_name, tmp_file_ext, date_time_string
     character(  8) :: ens_id_string
     character(  4) :: YYYY, MMDD, HHMM, tmpstring4
     character(  2) :: PP
+    logical        :: tmp_no_subdirs
     
     ! --------------------------------------------------------
     !
@@ -108,6 +112,12 @@ contains
        tmp_file_ext = file_ext
     else
        tmp_file_ext = '.bin'
+    end if
+
+    if (present(no_subdirs)) then
+       tmp_no_subdirs = no_subdirs
+    else
+       tmp_no_subdirs = .false.
     end if
     
     ! create date/time strings
@@ -179,12 +189,19 @@ contains
     end if
     
     ! compose output path
-    tmp_string = trim(io_path) // '/' // trim(tmp_dir_name) // '/' //  & 
-                 trim(ens_id_string(2:8)) // '/' 
     
-    if (tmp_option>1)  &
-         tmp_string = trim(tmp_string) // '/Y'// YYYY // '/M'//MMDD(1:2) // '/' 
+    tmp_string = trim(io_path) // '/'
     
+    if (.not. tmp_no_subdirs) then
+       
+       tmp_string = trim(tmp_string) // trim(tmp_dir_name) // '/' //  & 
+            trim(ens_id_string(2:8)) // '/' 
+       
+       if (tmp_option>1)  &
+            tmp_string = trim(tmp_string) // '/Y'// YYYY // '/M'//MMDD(1:2) // '/' 
+       
+    end if
+       
     ! append file name to path
 
     get_io_filename = trim(tmp_string) // trim(exp_id) //        &
