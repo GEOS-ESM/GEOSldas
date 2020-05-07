@@ -4450,7 +4450,7 @@ contains
     ! local variables
     
     character(300) :: fname, fname_full_tmp
-    character( 13) :: time_stamp
+    character( 14) :: time_stamp
     character(  4) :: YYYY,  HHMM
     character(  2) :: MM,    DD  
 
@@ -4482,7 +4482,7 @@ contains
        
     else
        
-       time_stamp      = YYYY // MM // DD // '_' // trim(HHMM)
+       time_stamp      = YYYY // MM // DD // '_' // trim(HHMM) // 'z'
        
     end if
     
@@ -4495,14 +4495,15 @@ contains
        ! e.g.: GEOS.fp.asm.inst1_2d_lfo_Nx.20200507_0000.V01.nc4
 
        fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '.' // &
-            trim(time_stamp) // '.V01.' // file_ext
+            trim(time_stamp(1:13)) // '.V01.' // file_ext
        
     else
 
        ! e.g.: f525_p5_fp.inst1_2d_lfo_Nx.20200507_0000z.nc4
-
+       ! e.g.: MERRA2_400.inst1_2d_lfo_Nx.20200507.nc4
+       
        fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '.' // &
-            trim(time_stamp) // 'z.' // file_ext
+            trim(time_stamp) // '.' // file_ext
        
     end if
     
