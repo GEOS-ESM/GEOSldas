@@ -1436,7 +1436,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     with open(_fn) as _f:
        i_ = 1
        for line in _f:
-          if ( i_ < 5 or i_ >10):
+          if ( i_ < 5 or i_ >10):     # ignore lines 5-10 - may need to change if GEOSldas_LDAS.rc is edited
              sys.stdout.write(line)
              sys.stdout.flush()
           i_ += 1
@@ -1448,7 +1448,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     with open(_fn) as _f :
        i_ = 1
        for line in _f:
-         if ( 5<=i_ and i_<=21) :
+         if ( 5<=i_ and i_<=21) :     # ignore lines 5-21 - may need to change if GEOS_SurfaceGridComp.rc is edited
             i_ +=1
             continue
          if '"GEOSldas=>"' in line:
