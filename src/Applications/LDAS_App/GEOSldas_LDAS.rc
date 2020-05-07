@@ -53,13 +53,6 @@ LSM_CHOICE: 1
 # WHITE_FILE: '' 
 
 
-# ---- Surface meteorological forcing: Time step
-#
-#        Should be set in the exeinp file where MET_PATH is defined
-#        3600 = default
-#
-# FORCE_DTSTEP: 3600
-
 # ---- Surface meteorological forcing: Horizonal interpolation 
 #
 #    1 :  bilinear interpolation (default)
