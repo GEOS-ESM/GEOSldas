@@ -4554,9 +4554,11 @@ contains
        
        tmpindend = len_trim(fname_full)
        tmpind    = len_trim(file_ext)
-           
-       fname_full( tmpindend - tmpind - 1 ) = '2'      ! --> *.V02.nc4
        
+       tmpind    = tmpindend - tmpind - 3
+       
+       fname_full( tmpind:tmpind+2 ) = 'V02'           ! --> *.V02.nc4
+              
        inquire(file=fname_full, exist=file_exists)
     
     end if
@@ -4889,8 +4891,10 @@ contains
        
        tmpindend = len_trim(fname_full)
        tmpind    = len_trim(file_ext)
-           
-       fname_full( tmpindend - tmpind - 1 ) = '2'      ! --> *.V02.nc4
+       
+       tmpind    = tmpindend - tmpind - 3
+
+       fname_full( tmpind:tmpind+2 ) = 'V02'           ! --> *.V02.nc4
        
        inquire(file=fname_full, exist=file_exists)
     
