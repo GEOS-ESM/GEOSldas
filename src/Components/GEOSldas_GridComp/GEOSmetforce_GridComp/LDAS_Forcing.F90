@@ -2980,13 +2980,9 @@ contains
           YYYYMMDD = date_time_tmp%year*10000+date_time_tmp%month*100+date_time_tmp%day
           HHMMSS   = date_time_tmp%hour*10000+date_time_tmp%min*100  +date_time_tmp%sec
           
-          ! use gfio to open standard MERRA or G5DAS files, 
-          ! use netcdf to open corrected precip files
-          
+          ! determine forcing file name (with path) 
 
           if ( (use_prec_corr) .and. (GEOSgcm_defs(GEOSgcm_var,1)(1:4)=='PREC') ) then
-             
-             if (j==1) GEOSgcm_defs(GEOSgcm_var,3) = trim(GEOSgcm_defs(GEOSgcm_var,3)) // '_corr'
              
              call get_GEOS_corr_prec_filename(fname_full,file_exists,date_time_tmp,        &
                   prec_path_tmp, met_tag_tmp, GEOSgcm_defs(GEOSgcm_var,:), precip_corr_file_ext )
@@ -3045,7 +3041,7 @@ contains
 
        ! ----------------------------------------------    
        !
-       ! for first variable, read and process grid dimensions
+       ! for first variable, process grid dimensions
        
        if (GEOSgcm_var==1) then
           
@@ -3220,10 +3216,8 @@ contains
 
     call FileOpenedHash%free( GEOS_closefile,.false. )
 
-    !if(allocated(tmp_grid)) deallocate(tmp_grid)
     deallocate(GEOSgcm_defs)
-    !call MAPL_SyncSharedMemory(rc=status) 
-    !call MAPL_DeallocNodeArray(ptrShForce,rc=status) 
+
     ! --------------------------------------------------------------------
     
     ! convert variables and units of force_array to match met_force_type, 
@@ -4438,27 +4432,25 @@ contains
 
     implicit none
     
-    character(*),intent(inout)       :: fname_full
-    logical,intent(out)              :: file_exists
-    type(date_time_type),               intent(in)  :: date_time
-    logical,                            intent(in)  :: daily_file
-    character(*),                     intent(in)  :: met_path
-    character(*),                     intent(in)  :: met_tag
-    character( 40),       dimension(5), intent(in)  :: GEOSgcm_defs
-    character(*),                     intent(in)  :: file_ext
+    character(*),                     intent(inout) :: fname_full
+    logical,                          intent(out)   :: file_exists
+    type(date_time_type),             intent(in)    :: date_time
+    logical,                          intent(in)    :: daily_file
+    character(*),                     intent(in)    :: met_path
+    character(*),                     intent(in)    :: met_tag
+    character( 40),     dimension(5), intent(in)    :: GEOSgcm_defs
+    character(*),                     intent(in)    :: file_ext
     
     ! local variables
     
-    character(300) :: fname, fname_full_tmp
+    character(300) :: fname, fname_full_tmp1, fname_full_tmp2
     character( 14) :: time_stamp
-    character(  4) :: YYYY,  HHMM
+    character(  4) :: YYYY,  HHMM, day_dir
     character(  2) :: MM,    DD  
 
-    integer        :: i, rc
-    
+    integer        :: tmpind, tmpindend
 
     character(len=*), parameter :: Iam = 'get_GEOS_forcing_filename'
-    character :: err_msg
     
     ! assemble date/time strings
     
@@ -4486,62 +4478,101 @@ contains
        
     end if
     
-    if (trim(met_tag(1:12))=='GEOS.fp.asm') then
+    if (trim(met_tag(1:11))=='GEOS.fp.asm') then
 
+       ! GEOS FP with generic file names, e.g., 
+       !
+       !    GEOS.fp.asm.inst1_2d_lfo_Nx.20200507_0000.V01.nc4
+       !
        ! for now, always use product counter V01 
        !  (as of 7 May 2020, no V02 or higher was issued for GEOS FP "lfo" products 
        !   going back to Jun 2013)
 
-       ! e.g.: GEOS.fp.asm.inst1_2d_lfo_Nx.20200507_0000.V01.nc4
-
        fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '.' // &
-            trim(time_stamp(1:13)) // '.V01.' // file_ext
+            trim(time_stamp(1:13)) // '.V01.' // trim(file_ext)
        
+       ! archived files are stored in daily directories 
+
+       day_dir = 'D' // DD // '/'
+
     else
-
-       ! e.g.: f525_p5_fp.inst1_2d_lfo_Nx.20200507_0000z.nc4
-       ! e.g.: MERRA2_400.inst1_2d_lfo_Nx.20200507.nc4
+       
+       ! GEOS FP with experiment-specific file names and MERRA-2, e.g.,
+       !
+       !    f525_p5_fp.inst1_2d_lfo_Nx.20200507_0000z.nc4
+       !    MERRA2_400.inst1_2d_lfo_Nx.20200507.nc4
        
        fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '.' // &
-            trim(time_stamp) // '.' // file_ext
+            trim(time_stamp) // '.' // trim(file_ext)
+
+       ! archived files are stored in monthly directories
+       !   (per LDAS legacy convention for GEOS FP with experiment-specific file names)
+       
+       day_dir = repeat(' ', len(day_dir))
        
     end if
     
     ! ----------------------------------------------
-    !
-    ! Try getting the files directly inside directory "met_path/" first (because in 
-    ! coupled DAS mode met_path=workdir, and the files are simply sitting there).
-    ! If this fails, try reading the files in "met_path/met_tag/*/Yyyyy/Mmm/"
-    ! as in the archived directory structure.
-    file_exists = .false.
+    ! 
+    ! find suitable file in a couple of places
 
-    do i=1,2
+    file_exists = .false.                              ! initialize
+    
+          
+    ! first try: year/month[/day] directory
+          
+    fname_full = trim(met_path) // '/' // trim(met_tag) // '/' //         &
+         trim(GEOSgcm_defs(4)) // '/Y' // YYYY  // '/M' // MM // '/' //   &
+         trim(day_dir) // trim(fname)
+    
+    inquire(file=fname_full, exist=file_exists)
+    
+    if (file_exists) return                            ! done
+
+    fname_full_tmp1 = trim(fname_full)                 ! remember for error log below
+          
+        
+    ! second try: ./met_path (coupled land-atm DAS)          
+    
+    fname_full = trim(met_path) // '/' // trim(fname)
+    
+    inquire(file=fname_full, exist=file_exists)
+    
+    if (file_exists) return                            ! done
+      
+    fname_full_tmp2 = trim(fname_full)                 ! remember for error log below
+
+
+    ! last try: for GEOS FP with generic file names, try product counter '.V02.' in year/month/day dir
+ 
+    if (trim(met_tag(1:11))=='GEOS.fp.asm') then
+
+       fname_full = fname_full_tmp1                    ! from first try
+
+       ! GEOS.fp.asm.inst1_2d_lfo_Nx.20200507_0000.V01.nc4
+       !                                           1234567
        
-       if     (i==1) then
-          
-          fname_full = trim(met_path) // '/' // trim(fname)
-          
-          fname_full_tmp = fname_full  ! remember for error log below
-          
-       elseif (i==2) then
-          
-          fname_full = trim(met_path) // '/' // trim(met_tag) // '/' //         &
-               trim(GEOSgcm_defs(4)) // '/Y' // YYYY  // '/M' // MM // '/' // trim(fname)
-       end if
+       tmpindend = len_trim(fname_full)
+       tmpind    = len_trim(file_ext)
+           
+       fname_full( tmpindend - tmpind - 1 ) = '2'      ! --> *.V02.nc4
        
        inquire(file=fname_full, exist=file_exists)
     
-       if (file_exists) return
-       
-    end do
+    end if
+   
 
+    ! if no file was found, report file names that were tried
+    
     if (.not. file_exists) then
        if(master_logit) then
-          print*, Iam // ': Could not find either of the following two files:'
-          print*, fname_full
-          print*, fname_full_tmp
+          print*, trim(Iam) // ': Could not find any of the following files:'
+          print*, trim(fname_full_tmp1)
+          print*, trim(fname_full_tmp2)
+          print*, trim(fname_full)
        endif
     endif    
+
   end subroutine get_GEOS_forcing_filename
 
   !**********************************************************
@@ -4773,13 +4804,17 @@ contains
     character(*),                 intent(in)    :: file_ext
         
     ! local variables
+
     character(100) :: fname
     character(200) :: fdir
-    character(300) :: fname_full_tmp
+    character(300) :: fname_full_tmp1, fname_full_tmp2
     character(  4) :: YYYY,  HHMM
     character(  2) :: MM,    DD
+
+    integer        :: tmpind, tmpindend
+
     character(len=*), parameter :: Iam = 'get_GEOS_corr_prec_filename'
-    !
+
     ! assemble date/time strings
     
     write (YYYY,'(i4.4)') date_time%year
@@ -4789,55 +4824,87 @@ contains
     
     ! assemble file name
 
-    if (trim(met_tag(1:12))=='GEOS.fp.asm') then
+    if (trim(met_tag(1:11))=='GEOS.fp.asm') then
        
        ! for now, always use product counter V01 
        !  (as of 7 May 2020, no V02 or higher was issued for GEOS FP "lfo" products 
        !   going back to Jun 2013)
 
-       fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) //                &
-            '.' // YYYY // MM // DD // '_' // trim(HHMM) //                    &
-            '.V01.' // file_ext
+       fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+            YYYY // MM // DD // '_' // trim(HHMM) // '.V01.' // trim(file_ext)
        
     else
        
-       fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) //                &
-            '.' // YYYY // MM // DD // '_' // trim(HHMM) // 'z.' //            &
-            trim(file_ext)
+       fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+            YYYY // MM // DD // '_' // trim(HHMM) // 'z.'    // trim(file_ext)
        
     end if
 
-    ! assemble dir name without "/Mmm" (month) dir
+    ! assemble dir name with "/Yyy" (year) dir but without "/Mmm" (month) dir
 
-    fdir = trim(met_path) // '/' // trim(met_tag)   // '/' //               &
+    fdir = trim(met_path) // '/' // trim(met_tag)   // '/' //                       &
          trim(GEOSgcm_defs(4)) // '/' // 'Y' // YYYY // '/'
     
     ! -----------------------------------------------------------------------
     
-    ! try opening file with "/Mmm" (month) dir
-    ! (standard for corrected G5DAS precip)
+    file_exists = .false.                              ! initialize
+    
 
+    ! first try:  look for file in year/month dir
+    !  (LDAS standard for corrected G5DAS precip)
+    
     fname_full = trim(fdir) // 'M' // MM // '/' // trim(fname)
-
-    file_exists = .false.  
- 
+    
     inquire(file=fname_full, exist=file_exists)
+    
+    if (file_exists) return                            ! done
+    
+    fname_full_tmp1 = trim(fname_full)                 ! remember for error log below
+    
 
-    if(file_exists) return
+    ! second try: *without* "/Mmm" (month) dir 
 
-    ! try one more time *without* "/Mmm" (month) dir
- 
-    fname_full_tmp = fname_full  ! remember for error log below
+    ! THIS TRY IS PROBABLY OBSOLETE BUT COULD EASILY BE TWEAKED TO LOOK 
+    ! IN year/month/day DIRECTORY (WHICH POSSIBLY APPLIES TO CORRECTED
+    ! PRECIP FROM GMAO OPS THAT IS INPUT INTO MERRA-2)
+    ! - reichle 10 May 2020
 
     fname_full = trim(fdir) // trim(fname)
 
     inquire(file=fname_full, exist=file_exists)
 
+    if (file_exists) return                            ! done
+    
+    fname_full_tmp2 = trim(fname_full)                 ! remember for error log below
+
+
+    ! last try: for GEOS FP with generic file names, try product counter '.V02.' in year/month dir
+ 
+    if (trim(met_tag(1:11))=='GEOS.fp.asm') then
+
+       fname_full = fname_full_tmp1                    ! from first try
+
+       ! GEOS.fp.asm.inst1_2d_lfo_Nx.20200507_0000.V01.nc4
+       !                                           1234567
+       
+       tmpindend = len_trim(fname_full)
+       tmpind    = len_trim(file_ext)
+           
+       fname_full( tmpindend - tmpind - 1 ) = '2'      ! --> *.V02.nc4
+       
+       inquire(file=fname_full, exist=file_exists)
+    
+    end if
+    
+    
+    ! if no file was found, report file names that were tried
+    
     if( .not. file_exists ) then
        if(master_logit) then 
-          print*, Iam // ': Could not find either of the following two files:'
-          print*, fname_full
-          print*, fname_full_tmp
+          print*, trim(Iam) // ': Could not find any of the following files:'
+          print*, trim(fname_full_tmp1)
+          print*, trim(fname_full_tmp2)
+          print*, trim(fname_full)
        endif
     endif
     
