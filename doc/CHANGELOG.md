@@ -30,17 +30,69 @@ In 2019, GEOS LDAS version control transferred from CVS to Git.
 This README file contains the history of stable GEOSldas versions ("tags") in Git, followed by older, CVS LDASsa and GEOSldas versions and change logs.
 
 
-[Unreleased] Features:
---------------------
-_These are additions put in development, that will be in the next stable tag_
-
-
-
-
-
-Overview of Git tags:
+Overview of Git Releases:
 ============================
 
+[v17.9.0-beta.5](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.5) - 2020-05-11
+------------------------------
+- Pre-release meant for use under SLES12 at NCCS.  Still works for SLES11.
+
+- New/Updated Science Functionality:
+
+  - Forecast error covariance inflation with scalar (globally constant) factor.
+
+- New/Updated Infrastructure:
+
+  - Support for GEOS FP forcing with generic ("seamless") file names.
+  - Resource parameter changes:
+    - Renamed NUM_ENSEMBLE to NUM_LDAS_ENSEMBLE in "exeinp" file to be consistent with LDAS.rc.
+    - Renamed MONTHLY_OUTPUT to POSTPROC_HIST.
+  - Updated utilities to MAPL v2.1.3, ESMA_env v2.1.3+intel19.1.0.
+  
+- Bug Fixes and Other Minor Changes:
+
+  - Added basic protections for concatenation of sub-daily into daily nc4 files and for generation of monthly-mean nc4 files.
+  - Write ObsFcstAna and smapL4SMaup files into ./scratch, then move to ana/ens_avg/year/month dir in postprocessing.
+  - Some cleanup of obsolete LDASsa code.
+
+------------------------------
+[v17.9.0-beta.4-SLES12](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.4-SLES12) - 2020-04-24
+------------------------------
+- Pre-release meant for use under SLES12 at NCCS, otherwise identical to v17.9.0-beta.4-SLES11.
+- Works under SLES12 using the Intel-19 compiler.
+- Also works under SLES11 using the Intel-18 compiler but is not zero-diff across compilers/operating systems.
+
+------------------------------
+[v17.9.0-beta.4-SLES11](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.4-SLES11) - 2020-04-23
+------------------------------
+- Pre-release meant for use under SLES11 at NCCS. Under SLES12, use v17.9.0-beta.4-SLES12 (or newer).
+- Uses the Intel-18 compiler and also appears to work under SLES12. However, LDASsa with Intel-18 under SLES12 was found to create bad Fortran sequential binary files out of a subroutine that is very similar in LDASsa and GEOSldas.
+- Zero-diff vs. v17.9.0-beta.3 for Catchment only (except SMAP L1C Tb fore-minus-aft check).
+- Not zero-diff for CatchCN (via v1.8.3 of GEOS_GCMGridComp).
+
+- New/Updated Science Functionality:
+
+  - Resurrected SMAP L1C Tb fore-minus-aft check.
+
+- New/Updated Infrastructure:
+
+  - Updated utilities to MAPL v2.1.1, ESMA_env v2.1.1., ESMA_cmake v3.0.1.
+  - New GEOS_SurfaceGridComp.rc file (via v1.8.3 of GEOS_GCMGridComp).
+  - Parallel post-processing.
+  - Cross-stream support for FP f525_p5 forcing.
+  - ~sbatch~ submission for pre-processing of restarts to comply with SLES12 requirements.
+  - Subdaily-to-daily concatenation processes before month is complete.
+  - Temporary solution to create directories for ObsFcstAna files to enable extending an existing GEOSldas run without going through setup.
+
+- Bug Fixes and Other Minor Changes:
+
+  - Updated README.md.
+  - ~obspertrseed~ restart file name when restarting from existing run.
+  - Subdaily-to-daily nc4 concatenation (indent error).
+  - Fixes for GNU compiler in debug mode.
+  - Fixed ~landpert~ checkpoint output when on cube-sphere tiles.
+
+------------------------------
 [v17.9.0-beta.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.3) - 2020-03-18
 ------------------------------
 - Additional RESTART options, incl. from re-tiling MERRA-2, FP, or other restarts on different tile space or with different boundary conditions
@@ -239,6 +291,15 @@ reichle-LDASsa_m3-16_6_p1                9 Jul 2018  Added GEOS-5.21 FP function
                                                      (patch targeted for NRv7.2 and SMAP L4_SM ops)
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 reichle-LDASsa_m3-16_6_p2                7 Mar 2019  Added GEOS-5.22 FP functionality
+                                                     (patch targeted for NRv7.2 and SMAP L4_SM ops)
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+reichle-LDASsa_m3-16_6_p3               30 Jan 2020  Added GEOS-5.25 FP functionality
+                                                     (patch targeted for NRv7.2 and SMAP L4_SM ops)
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+reichle-LDASsa_m3-16_6_p4                3 Apr 2020  Added GEOS-5.25_p5 FP functionality
+                                                     (patch targeted for NRv7.2 and SMAP L4_SM ops)
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+reichle-LDASsa_m3-16_6_p4_SLES12        14 Apr 2020  SLES12 version of *_p4 tag -- NOT zero-diff!!
                                                      (patch targeted for NRv7.2 and SMAP L4_SM ops)
 
 -------------------------------------------------------------------------------------
