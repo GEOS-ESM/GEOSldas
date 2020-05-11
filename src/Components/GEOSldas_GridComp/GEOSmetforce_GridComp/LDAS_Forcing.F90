@@ -3006,15 +3006,16 @@ contains
           elseif (                                                               &
                (j==1)                                       .and.                &
                (tmp_init)                                   .and.                &
-               (trim(GEOSgcm_defs(GEOSgcm_var,2))=='tavg')             ) then
+               (trim(GEOSgcm_defs(GEOSgcm_var,2))=='tavg')  .and.                &
+               (master_logit)                                       ) then
              
-             if ((.not. MERRA_file_specs) ) write (logunit,'(400A)')  &
+             if (.not. MERRA_file_specs)  write (logunit,'(400A)')               &
                   'NOTE: Initialization. Data from tavg file are not used '  //  &
                   'with lfo inst/tavg forcing, but dummy values must be '    //  &
                   'read from some file for backward compatibility with '     //  &
                   'MERRA forcing.'
              
-             if(master_logit) write (logunit,*) 'try again with different file...'
+             write (logunit,*) 'try again with different file...'
              
           else
              
