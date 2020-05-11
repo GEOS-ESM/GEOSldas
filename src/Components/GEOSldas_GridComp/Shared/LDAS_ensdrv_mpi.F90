@@ -66,7 +66,7 @@ module LDAS_ensdrv_mpi
   integer, public  :: MPI_cat_diagS_type,  MPI_cat_diagF_type
   integer, public  :: MPI_met_force_type,  MPI_veg_param_type
   integer, public  :: MPI_bal_diagn_type,  MPI_alb_param_type  
-  integer, public  :: MPI_date_time_type,  MPI_out_dtstep_type, MPI_out_choice_type
+  integer, public  :: MPI_date_time_type
   integer, public  :: MPI_mwRTM_param_type,MPI_obs_type,        MPI_obs_param_type
   integer, public  :: MPI_cat_progn_int_type,                   MPI_cat_bias_param_type
   integer, public  :: MPI_obs_bias_type
@@ -121,76 +121,6 @@ contains
     deallocate(idisp)
     deallocate(itype)
 
-    ! ---------------------------------------------------------------
-    !
-    ! type output time steps
-    !
-    ! type :: out_dtstep_type
-    !   integer :: rstrt
-    !   integer :: inst
-    !   integer :: xhourly
-    ! end type out_dtstep_type
-    
-    icount = 1
-
-    allocate(iblock(icount))
-    allocate(idisp( icount))
-    allocate(itype( icount))
-    
-    itype(1)  = MPI_INTEGER
-    
-    iblock(1) = 3
-    
-    idisp(1)  = 0
-    
-    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
-         MPI_out_dtstep_type, mpierr )
-    
-    call MPI_TYPE_COMMIT(MPI_out_dtstep_type, mpierr)
-    
-    deallocate(iblock)
-    deallocate(idisp)
-    deallocate(itype)
-
-    ! ---------------------------------------------------------------
-    !
-    ! type for output choices *after* processing in read_driver_inputs()
-    !    
-    ! type :: out_choice_space_type
-    !   logical :: tile
-    !   logical :: grid
-    !   logical :: any
-    ! end type out_choice_space_type
-    !
-    ! type :: out_choice_type
-    !   type(out_choice_space_type) :: inst
-    !   type(out_choice_space_type) :: xhourly
-    !   type(out_choice_space_type) :: daily
-    !   type(out_choice_space_type) :: pentad
-    !   type(out_choice_space_type) :: monthly
-    !   type(out_choice_space_type) :: any
-    ! end type out_choice_type
-    
-    icount = 1
-
-    allocate(iblock(icount))
-    allocate(idisp( icount))
-    allocate(itype( icount))
-    
-    itype(1)  = MPI_LOGICAL
-    
-    iblock(1) = 18
-    
-    idisp(1)  = 0
-    
-    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
-         MPI_out_choice_type, mpierr )
-    
-    call MPI_TYPE_COMMIT(MPI_out_choice_type, mpierr)
-    
-    deallocate(iblock)
-    deallocate(idisp)
-    deallocate(itype)
 
     ! --------------------------------------------------------------------------------
     !
