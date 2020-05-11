@@ -31,9 +31,6 @@ module LDAS_DriverTypes
   private
   
   public :: met_force_type, veg_param_type, bal_diagn_type
-  public :: out_dtstep_type
-  public :: out_select_type, out_select_sub_type
-  public :: out_choice_type, out_choice_time_type
   public :: alb_param_type
   public :: assignment (=), operator (/), operator (+), operator (*)
   
@@ -169,79 +166,6 @@ module LDAS_DriverTypes
      real :: wincr                ! water analysis increment per unit time   [kg/m2/s]
   end type bal_diagn_type
   
-  ! ---------------------------------------------------------------
-  !
-  ! type output time steps
-
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ! WARNING: When modifying this derived type make sure that the corresponding
-  !          MPI STRUCTURE in module CLSM_ENSDRV_MPI is also updated, as are
-  !          any subroutines or operators defined herein
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  
-  type :: out_dtstep_type
-     integer :: rstrt
-     integer :: inst
-     integer :: xhourly
-  end type out_dtstep_type
-  
-  ! ---------------------------------------------------------------
-  !
-  ! type for reading in output choices from namelist file
-
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ! WARNING: When modifying this derived type make sure that the corresponding
-  !          MPI STRUCTURE in module CLSM_ENSDRV_MPI is also updated, as are
-  !          any subroutines or operators defined herein
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-  type :: out_select_sub_type
-     logical :: inst
-     logical :: xhourly
-     logical :: daily
-     logical :: pentad
-     logical :: monthly
-  end type out_select_sub_type
-  
-  type :: out_select_type
-     type(out_select_sub_type) :: tile
-     type(out_select_sub_type) :: grid
-  end type out_select_type
-
-  ! ---------------------------------------------------------------
-  !
-  ! type for output choices *after* processing in read_driver_inputs()
-
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ! WARNING: When modifying this derived type make sure that the corresponding
-  !          MPI STRUCTURE in module CLSM_ENSDRV_MPI is also updated, as are
-  !          any subroutines or operators defined herein
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
-
-  type :: out_choice_space_type
-     logical :: tile
-     logical :: grid
-     logical :: any
-  end type out_choice_space_type
-  
-  type :: out_choice_type
-     type(out_choice_space_type) :: inst
-     type(out_choice_space_type) :: xhourly
-     type(out_choice_space_type) :: daily
-     type(out_choice_space_type) :: pentad
-     type(out_choice_space_type) :: monthly
-     type(out_choice_space_type) :: any
-  end type out_choice_type
-      
-  type :: out_choice_time_type
-     logical :: rstrt
-     logical :: inst
-     logical :: xhourly
-     logical :: daily
-     logical :: pentad
-     logical :: monthly
-     logical :: any_non_rstrt
-  end type out_choice_time_type
   
   ! ---------------------------------------------------------------
   !

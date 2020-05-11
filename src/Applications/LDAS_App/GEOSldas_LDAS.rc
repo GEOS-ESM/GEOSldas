@@ -41,31 +41,24 @@ LSM_CHOICE: 1
 #      If only whitelist should be used, specify dummy valuessuch that:
 #         MINLON > MAXLON and MINLAT > MAXLAT.
 #
-# MINLON                       : -180.
-# MAXLON                       :  180.
-# MINLAT                       :  -90.
-# MAXLAT                       :   90.
+# MINLON: -180.
+# MAXLON:  180.
+# MINLAT:  -90.
+# MAXLAT:   90.
 #
 #      Specify path and filenames for blacklist and whitelist files:
 #      (May leave blank.)
 #
-# BLACK_FILE                   : '' 
-# WHITE_FILE                   : '' 
+# BLACK_FILE: '' 
+# WHITE_FILE: '' 
 
-
-# ---- Surface meteorological forcing: Time step
-#
-#        Should be set in the exeinp file where MET_PATH is defined
-#        3600 = default
-#
-# FORCE_DTSTEP                 : 3600
 
 # ---- Surface meteorological forcing: Horizonal interpolation 
 #
 #    1 :  bilinear interpolation (default)
 #    0 :  nearest neighbor
 #
-MET_HINTERP                    : 1
+MET_HINTERP: 1
 
 
 # ---- Specify if running model only or data assimilation
@@ -73,7 +66,7 @@ MET_HINTERP                    : 1
 #  NO  : model only (DEFAULT; with --runmodel option)
 #  YES : assimilation (without --runmodel option)
 #
-LAND_ASSIM                     : NO
+LAND_ASSIM: NO
 
 
 # ---- Perturbations: On/off 
@@ -83,11 +76,11 @@ LAND_ASSIM                     : NO
 #    0 : No perturbactions.
 #    1 : With perturbations.
 #
-PERTURBATIONS                  : 0
+PERTURBATIONS: 0
 
 # ---- Perturbations: ID of first ensemble member
 #
-FIRST_ENS_ID                   : 0
+FIRST_ENS_ID: 0
 
 
 # ---- Path to special namelist input files
@@ -98,7 +91,7 @@ FIRST_ENS_ID                   : 0
 #          LDASsa_SPECIAL_inputs_ensprop.nml 
 #          LDASsa_SPECIAL_inputs_catbias.nml 
 #
-# NML_INPUT_PATH               : ''
+# NML_INPUT_PATH: ''
 
 
 # ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format) used for Tb assimilation
@@ -106,7 +99,7 @@ FIRST_ENS_ID                   : 0
 #      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
 #      If empty or commented out, GEOSldas will search the restart directory.
 #
-# MWRTM_FILE                   : ''
+# MWRTM_FILE: ''
 
 
 # ---- Job segments: Length
@@ -115,7 +108,7 @@ FIRST_ENS_ID                   : 0
 #      Default is the entire simulation period (END_DATE minus BEG_DATE).
 #      Format:            yyyymmdd hhmmss
 #
-# JOB_SGMT                     : 00000100 000000
+# JOB_SGMT: 00000100 000000
 
 # ---- Job segments: Number
 #
@@ -124,31 +117,34 @@ FIRST_ENS_ID                   : 0
 #      Low values for NUM_SGMT are recommended for run-time and storage efficiency.
 #      Default is 1.
 #
-# NUM_SGMT                     : 1
+# NUM_SGMT: 1
 
 
 # ---- Output: Write log file (YES/NO)?
 #
-LDAS_logit                     : YES
+LDAS_logit: YES
 
 # ---- Output: HISTORY definition of model diagnostics
 #
 #      User-defined path and filename of output (HISTORY) specification file.
 #      If empty, ldas_setup will generate a default HISTORY.rc file.
 #
-# HISTRC_FILE                  : ''
+# HISTRC_FILE: ''
 
-# ---- Write only monthly output?
+# ---- Concatenate sub-daily nc4 files into daily nc4 files and write monthly-mean output?
 #
-#      Monthly files can be created from daily files. 
-#      Accurate monthly averages require setting "ref_time" in HISTORY.rc to "000000"
+#      Optional post-processing of model diagnostics output into bundled daily files and monthly means.
+#      Reduces the file count and (optionally) the output volume.
 #
-#    0 : Output bundled into daily files per HISTORY specifications (default).
-#    1 : Monthly files will be created. Daily files will *not* be deleted.
-#    2 : Monthly files will be created and daily files will be deleted automatically.
+#      Accurate monthly-means of time-average Collections require setting "ref_time" to "000000" in HISTRC_FILE!
 #
-# MONTHLY_OUTPUT               : 0
- 
+#    0 : No post-processing (default).
+#    1 : For complete days, concatenate (bundle) sub-daily nc4 files, if any, into daily nc4 files.  
+#        For complete months, write monthly-mean nc4 files.  
+#    2 : As in 1, but delete daily nc4 files.
+#
+# POSTPROC_HIST: 0
+
 
 # ---- Name of file containing Surface GridComp resource parameters 
 #
@@ -161,12 +157,12 @@ SURFRC: LDAS.rc
 
 # ---- No dycore for offline
 #
-DYCORE                         : none
+DYCORE: none
 
 # ---- Only one surface level
 #
-LM                             : 1
+LM: 1
 
 # ---- For MAPL_RestartOptional
 #
-MAPL_ENABLE_BOOTSTRAP          : YES
+MAPL_ENABLE_BOOTSTRAP: YES
