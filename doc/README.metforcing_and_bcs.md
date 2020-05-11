@@ -182,7 +182,7 @@ COMMONLY USED values for `MET_TAG`:
 
   MET_TAG  : cross_FP      ! stitch FP experiment names across years 
 
-  MET_TAG  : GEOS.fp.asm   ! "seamless" FP files (published/uniform file names, ~same result as cross_FP)
+  MET_TAG  : GEOS.fp.asm   ! "seamless" FP files (published/generic file names, ~same result as cross_FP)
 ```
 
 #### FP with precip corrections as in pre-beta SMAP L4_SM products
