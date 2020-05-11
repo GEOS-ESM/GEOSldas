@@ -4569,10 +4569,10 @@ contains
     
     if (.not. file_exists) then
        if(master_logit) then
-          print*, trim(Iam) // ': Could not find any of the following files:'
-          print*, trim(fname_full_tmp1)
-          print*, trim(fname_full_tmp2)
-          print*, trim(fname_full)
+          print '(400A)',  trim(Iam) // ': Could not find any of the following files:'
+          print '(400A)',  trim(fname_full_tmp1)
+          print '(400A)',  trim(fname_full_tmp2)
+          print '(400A)',  trim(fname_full)
        endif
     endif    
 
@@ -4623,7 +4623,7 @@ contains
          ierr=nf90_open(fname_full,NF90_NOWRITE, fid)
 
          if(master_logit) then
-           write(logunit,*) "opening file: "//trim(fname_full)
+           write(logunit,'(400A)') "opening file: "//trim(fname_full)
          endif
          ASSERT_( ierr == nf90_noerr)
          call FileOpenedHash%put(fname_full,fid)
@@ -4906,10 +4906,10 @@ contains
     
     if( .not. file_exists ) then
        if(master_logit) then 
-          print*, trim(Iam) // ': Could not find any of the following files:'
-          print*, trim(fname_full_tmp1)
-          print*, trim(fname_full_tmp2)
-          print*, trim(fname_full)
+          print '(400A)',  trim(Iam) // ': Could not find any of the following files:'
+          print '(400A)',  trim(fname_full_tmp1)
+          print '(400A)',  trim(fname_full_tmp2)
+          print '(400A)',  trim(fname_full)
        endif
     endif
     
