@@ -84,6 +84,9 @@ type(met_force_type), allocatable :: mfPert_ensavg(:)
 
 type(obs_param_type),pointer :: obs_param(:)=>null()
 logical :: need_mwRTM_param
+! RRTBHISTORY: I DID NOT SEE WHERE need_mwRTM_param WAS INITIALIZED.  SHOULD BE INITIALIZED TO .false. ??
+!              CAN WE CHECK IF HISTORY REQUESTS Tb OUTPUT AND CHANGE need_mwRTM_param TO .true. ACCODINGLY ??
+!              THIS MIGHT REQUIRE MORE DISCUSSION
 integer :: update_type, dtstep_assim
 logical :: centered_update
 real    :: xcompact, ycompact
@@ -168,6 +171,13 @@ subroutine SetServices ( GC, RC )
          rc=status                                                              &
          )
     VERIFY_(status)
+
+    ! RRTBHISTORY
+    !
+    ! add new "phase" for calculation of L-band Tb_h and Tb_v for each ensemble member
+    !
+    ! not sure where the loop through members should go
+    
 
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
@@ -464,9 +474,31 @@ subroutine SetServices ( GC, RC )
      RC=STATUS  )
   VERIFY_(STATUS)
 
-!
-! Export for incr
-!
+
+  ! RRTBHISTORY
+  !
+  ! Exports for brightness temperature
+  
+  call MAPL_AddExportSpec(GC                                                  ,&
+       LONG_NAME          = 'brightness_temperature_land_1410MHz_40deg_Hpol'  ,&
+       UNITS              = 'K'                                               ,&
+       SHORT_NAME         = 'TB_LAND_1410MHZ_40DEG_HPOL'                      ,&
+       DIMS               = MAPL_DimsTileOnly                                 ,&
+       VLOCATION          = MAPL_VLocationNone                                ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                                                  ,&
+       LONG_NAME          = 'brightness_temperature_land_1410MHz_40deg_Vpol'  ,&
+       UNITS              = 'K'                                               ,&
+       SHORT_NAME         = 'TB_LAND_1410MHZ_40DEG_VPOL'                      ,&
+       DIMS               = MAPL_DimsTileOnly                                 ,&
+       VLOCATION          = MAPL_VLocationNone                                ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+  
+  ! Export for incr
+  !
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_canopy_temperature_saturated_zone'  ,&
@@ -1101,7 +1133,7 @@ subroutine Initialize(gc, import, export, clock, rc)
        N_catf,             tile_coord_rf,       &
        N_progn_pert,       progn_pert_param,    &
        N_force_pert,       force_pert_param,    &
-       need_mwRTM_param,                        &
+       need_mwRTM_param,                        &      ! RRTBHISTORY: need_mwRTM_param=.true. WHEN Tb OBS ARE ASSIMILATED
        update_type,                             &
        dtstep_assim,                            &
        centered_update,                         &
@@ -1974,6 +2006,83 @@ subroutine UPDATE_ASSIM(gc, import, export, clock, rc)
     RETURN_(ESMF_SUCCESS)
 
 end subroutine UPDATE_ASSIM
+
+
+! RRTBHISTORY
+!
+! new subroutine to calculate Tb
+
+subroutine CALC_LAND_TB(gc, import, export, clock, rc)
+
+  ! TO GET GOOD TB VALUES WE *MUST* HAVE "mwRTM_param"
+  !
+  ! THIS NEEDS TO WORK EVEN IF WE DO NOT HAVE "mwRTM_param"
+  !
+  ! NOT SURE IF WE ALWAYS HAVE "mwRTM_param" WHEN THE LandAssim GC IS RUNNING
+  !
+  ! IT IS OK TO FILL TB WITH NO-DATA-VALUES IF "mwRTM_param" IS NOT AVAILABLE 
+
+
+  ! not sure where the loop through members should go -- maybe write subroutine
+  ! to operate on each member separately and create another subroutine that loops
+  ! through the members ? 
+  
+  
+  ! TO CALCULATE TB, THE FOLLOWING TWO SUBROUTINES NEED TO BE RUN (IN ORDER):
+  !   call catch2mwRTM_vars()
+  !   call mwRTM_get_Tb()
+
+  
+  ! local parameters
+  
+  real,    parameter :: freq           = 1.41e9     ! microwave frequency [Hz]
+  
+  real,    parameter :: inc_angle      = 40.        ! incidence angle [deg]
+  
+  logical, parameter :: incl_atm_terms = .false.    ! no atmospheric correction, ie, get Tb at top-of-vegetation
+  
+  ! convert Catchment model variables into inputs suitable for the mwRTM 
+  ! NOTE: input tp must be in degree Celsius!
+
+  call catch2mwRTM_vars( &
+       Nt, &                                 ! intent(in),  number of tiles (local?)
+       cat_param%vegcls, &                   ! intent(in),  'ITY' from imports (*cat_param* vegcls)      --- not used anymore but keep for now
+       cat_param%poros,    &                 ! intent(in),  'POROS' from imports (*cat_param* poros)
+       mwRTM_param%poros, &                  ! intent(in),  'MWRTM_POROS' = mw_poros
+       cat_diagS_avg%sfmc, &                 ! intent(in),  'WCSRF'  need to import from "land"
+       cat_diagS_avg%tsurf,     &            ! intent(in),  'TPSURF' need to import from "land"          --- not used anymore but keep for now
+       cat_diagS_avg%tp(1)-MAPL_TICE??, &    ! intent(in),  'TP1'    need to import from "land" -- units deg C !!!
+       sfmc_mwRTM, &                         ! intent(out), local variable
+       tsoil_mwRTM )                         ! intent(out), local variable
+
+  ! calculate brightness temperatures
+  ! (tau-omega model as in De Lannoy et al. 2013 [doi:10.1175/JHM-D-12-092.1]
+  !  but without Pellarin atmospheric corrections)
+
+  ! IF NEEDED, USE DUMMY VARIABLES FOR tile_coord%elev AND Tair ALONG WITH AN IF STATEMENT AS FOLLOWS:
+
+  if (.not. incl_atm_terms) then
+     
+     call mwRTM_get_Tb(&
+          Nt, freq, inc_angle, mwRTM_param, &   ! intent(in)
+          tile_coord%elev,      &               ! intent(in), elevation of tile, ignore if not readily available, NOT NEEDED AS LONG AS "incl_atm_terms=.false."
+          veg_param_avg%lai, &                  ! intent(in)  'LAI'
+          sfmc_mwRTM, tsoil_mwRTM, &            ! intent(in), output from catch2mwRTM_var()
+          SWE, &                                ! intent(in), 'SNOMASS' need to import from "land"
+          met_force_avg%Tair, &                 ! intent(in), 'TAIR'    could be imported from MetForce GC, NOT NEEDED AS LONG AS "incl_atm_terms=.false." 
+          incl_atm_terms,     &                 ! intent(in)
+          Tb_h, Tb_v )                          ! intent(out) -->  'TB_LAND_1410MHZ_40DEG_HPOL',  'TB_LAND_1410MHZ_40DEG_VPOL'
+     
+  else
+
+
+     ! ADD CALL TO LDAS_ERROR, STOP PROGRAM IF ENDING UP HERE
+     
+  end if
+  
+  
+end subroutine CALC_LAND_TB
+
 
 subroutine read_pert_rseed(seed_fname,pert_rseed_r8)
      use netcdf
