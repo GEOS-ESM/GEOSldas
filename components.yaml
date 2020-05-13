@@ -1,17 +1,17 @@
 env:
   local: ./@env
   remote: git@github.com:GEOS-ESM/ESMA_env.git
-  tag: v2.0.1
+  tag: v2.1.3+intel19.1.0 
 
 cmake:
   local: ./@cmake
   remote: git@github.com:GEOS-ESM/ESMA_cmake.git
-  tag: v2.1.2
+  tag: v3.0.1
 
 ecbuild:
   local: ./@cmake/@ecbuild
   remote: git@github.com:GEOS-ESM/ecbuild.git
-  tag: geos/v1.0.0
+  tag: geos/v1.0.1
 
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
@@ -22,7 +22,7 @@ GMAO_Shared:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: git@github.com:GEOS-ESM/MAPL.git
-  tag: v2.0.0
+  tag: v2.1.3
 
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
