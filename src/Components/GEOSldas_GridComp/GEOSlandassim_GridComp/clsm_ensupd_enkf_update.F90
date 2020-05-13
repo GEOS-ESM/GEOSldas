@@ -25,7 +25,7 @@ module clsm_ensupd_enkf_update
        catch_calc_soil_moist,                     &
        catch_calc_tp
   
-  use LDAS_ensdrv_globals,           ONLY:     &
+  use LDAS_ensdrv_globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
@@ -39,7 +39,7 @@ module clsm_ensupd_enkf_update
        obs_param_type,                            &
        obs_type
 
-  use LDAS_DriverTypes,                     ONLY:     &
+  use LDAS_DriverTypes,                 ONLY:     &
        met_force_type
        
   use catch_types,                      ONLY:     &
@@ -55,10 +55,10 @@ module clsm_ensupd_enkf_update
   use mwRTM_types,                      ONLY:     &
        mwRTM_param_type
   
-  use LDAS_PertTypes,                  ONLY:     &
+  use LDAS_PertTypes,                   ONLY:     &
        pert_param_type
   
-  use LDAS_TilecoordType,                 ONLY:     &
+  use LDAS_TilecoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type
   
@@ -74,7 +74,7 @@ module clsm_ensupd_enkf_update
   use nr_ran2_gasdev,                   ONLY:     &
        NRANDSEED
 
-  use LDAS_ease_conv,                    ONLY:     &
+  use LDAS_ease_conv,                   ONLY:     &
        easeV1_convert,                            &
        easeV2_convert
 
@@ -103,9 +103,6 @@ module clsm_ensupd_enkf_update
   use clsm_ensupd_read_obs,             ONLY:     &
        collect_obs
 
-  use LDAS_ensdrv_init_routines,        ONLY:     &
-       io_rstrt
-
   use clsm_bias_routines,               ONLY:     &
        obs_bias_upd_tcount,                       &
        obs_bias_corr_obs,                         &
@@ -121,7 +118,7 @@ module clsm_ensupd_enkf_update
        numprocs,                                  &
        myid,                                      &
        mpierr,                                    &
-       mpicomm,                            &
+       mpicomm,                                   &
        MPI_obs_type,                              &
        mpistatus
 
@@ -148,12 +145,12 @@ contains
        work_path, exp_id, exp_domain,                                    &
        met_force, lai, cat_param, mwRTM_param,                           &
        tile_coord_l, tile_coord_f, tile_grid_f,                          &
-       pert_grid_f, pert_grid_l_NotUsed, tile_grid_g,                            &
+       pert_grid_f, pert_grid_l_NotUsed, tile_grid_g,                    &
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
        dtstep_assim, centered_update,                                    &
-       xcompact, ycompact,                                               &
+       xcompact, ycompact, fcsterr_inflation_fac,                        &
        N_obs_param, obs_param, N_obsbias_max,                            &
        out_obslog, out_smapL4SMaup,                                      &
        cat_progn,                                                        &
@@ -214,7 +211,7 @@ contains
 
     logical, intent(in) :: centered_update
 
-    real,    intent(in) :: xcompact, ycompact
+    real,    intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
 
     integer, intent(in) :: N_obs_param
 
@@ -527,7 +524,8 @@ contains
                N_catl_vec, low_ind, tile_grid_g,                  &
                obs_param,                                         &
                met_force, lai, cat_param, cat_progn, mwRTM_param, &
-               N_obsl, Observations_l, Obs_pred_l, obsbias_ok )
+               N_obsl, Observations_l, Obs_pred_l, obsbias_ok,    &
+               fcsterr_inflation_fac )
 
           deallocate(obsbias_ok)
 
@@ -1037,7 +1035,7 @@ contains
                Obs_pred_ana,                              & ! size: (nObs_ana,N_ens)
                Obs_pert_tmp,                              &
                cat_param_ana,                             &
-               xcompact, ycompact,                        &
+               xcompact, ycompact, fcsterr_inflation_fac, &
                cat_progn_ana, cat_progn_incr_ana)
           call cpu_time(t_end)
 
@@ -1065,7 +1063,7 @@ contains
                Obs_pred_lH(1:N_obslH,1:N_ens),                          &
                Obs_pert_tmp,                                            &
                cat_param,                                               &
-               xcompact, ycompact,                                      &
+               xcompact, ycompact, fcsterr_inflation_fac,               &
                cat_progn, cat_progn_incr )
 #endif          
 
@@ -1380,7 +1378,7 @@ contains
   ! ********************************************************************
 
   subroutine output_ObsFcstAna(date_time, work_path, exp_id, &
-       N_obsl, Observations_l, N_obs_param, obs_param )
+       N_obsl, Observations_l, N_obs_param, obs_param, rf2f)
 
     ! obs space output: observations, obs space forecast, obs space analysis, and
     ! associated error variances
@@ -1399,6 +1397,7 @@ contains
     type(obs_type),       dimension(N_obsl),      intent(in) :: Observations_l
 
     type(obs_param_type), dimension(N_obs_param), intent(in) :: obs_param
+    integer, dimension(:), optional, intent(in) :: rf2f
 
     ! ---------------------
 
@@ -1410,11 +1409,12 @@ contains
     type(obs_type), dimension(:), allocatable :: Observations_f, Observations_tmp
 
     integer                                   :: n, N_obsf
+    integer, dimension(:), allocatable :: rf_tilenums, tilenums
 
     integer,        dimension(numprocs)       :: N_obsl_vec, tmp_low_ind
 
     character(300)                            :: fname
-
+    integer                                   :: i
 #ifdef LDAS_MPI
 
     integer                                   :: this_species, ind_tmp, j
@@ -1541,15 +1541,23 @@ contains
 
        end do
 
+
        deallocate(Observations_tmp)
 
 #endif  ! LDAS_MPI
-
+       ! reorder tilenum, so it is consisten with the order in tile_coord.bin file
+       if(present(rf2f)) then
+          allocate(rf_tilenums(N_obsf), tilenums(N_obsf))
+          rf_tilenums = Observations_f(:)%tilenum
+          tilenums = rf2f(rf_tilenums)
+          Observations_f(:)%tilenum =tilenums
+          deallocate(rf_tilenums, tilenums)
+       endif
        ! write to file
 
-       fname = get_io_filename( work_path, exp_id, file_tag, date_time=date_time, &
-            dir_name=dir_name, ens_id=-1 )
-
+       fname = get_io_filename( './', exp_id, file_tag, date_time=date_time, &
+            dir_name=dir_name, ens_id=-1, no_subdirs=.true. )
+         
        open( 10, file=fname, form='unformatted', action='write')
 
        ! write header
@@ -1596,15 +1604,15 @@ contains
 
   ! **********************************************************************
 
-  subroutine output_incr_etc( out_ObsFcstAna, out_incr,                      &
-       out_incr_format, date_time, work_path, exp_id,                        &
+  subroutine output_incr_etc( out_ObsFcstAna,               &
+       date_time, work_path, exp_id,                        &
        N_obsl, N_obs_param, N_ens,                                           &
        N_catl, tile_coord_l,                                                 &
        N_catf, tile_coord_f, tile_grid_f, tile_grid_g,                       &
        N_catl_vec, low_ind, f2l, N_catg, f2g,                                &
        obs_param,                                                            &
        met_force, lai, cat_param, cat_progn, cat_progn_incr, mwRTM_param,    &
-       Observations_l,rf2f )
+       Observations_l, rf2f )
 
     implicit none
 
@@ -1615,9 +1623,8 @@ contains
 
     ! major revisions for new obs handling and MPI
 
-    logical,                intent(in) :: out_ObsFcstAna, out_incr
+    logical,                intent(in) :: out_ObsFcstAna
 
-    integer,                intent(in) :: out_incr_format
 
     type(date_time_type),   intent(in) :: date_time
 
@@ -1653,6 +1660,7 @@ contains
 
 
     type(obs_type),         dimension(:),     pointer :: Observations_l ! inout
+
     integer,                dimension(N_catf), optional, intent(in) :: rf2f ! re-ordered to LDASsa 
 
     ! local variables
@@ -1702,7 +1710,7 @@ contains
        ! write out model, observations, and "OminusA" information
 
        call output_ObsFcstAna( date_time, work_path, exp_id, N_obsl, &
-            Observations_l(1:N_obsl), N_obs_param, obs_param )
+            Observations_l(1:N_obsl), N_obs_param, obs_param, rf2f=rf2f )
 
     end if
 
@@ -1710,94 +1718,94 @@ contains
 
     ! output ens avg increments
 
-    if (out_incr) then
-
-       ! compute increments for local domain
-
-       do i=1,N_catl
-          cat_progn_incr_ensavg(i) = 0.
-          do n_e=1,N_ens
-             cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
-                  + cat_progn_incr(i,n_e)
-          end do
-          cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(N_ens)
-       end do
-
-
-       ! gather and write to file
-
-       file_tag = 'ldas_incr'
-       dir_name = 'ana'
-
-       if (master_proc)  allocate(cat_progn_incr_f(N_catf))
-
-#ifdef LDAS_MPI
-
-       call MPI_GATHERV( &
-            cat_progn_incr_ensavg, N_catl,                MPI_cat_progn_type, &
-            cat_progn_incr_f,      N_catl_vec, low_ind-1, MPI_cat_progn_type, &
-            0, mpicomm, mpierr )
-
-#else
-       cat_progn_incr_f = cat_progn_incr_ensavg
-#endif
-       if (master_proc) then
-
-
-          select case (out_incr_format)
-
-          case (0)
-
-             ! output increments in LDASsa domain and in LDASsa tile order (standard LDASsa)
-             if(present(rf2f)) then
-                allocate(cat_progn_incr_tmp(N_catf))
-                cat_progn_incr_tmp(:) = cat_progn_incr_f(rf2f(:))
-                cat_progn_incr_f = cat_progn_incr_tmp
-                deallocate(cat_progn_incr_tmp)
-             endif
-
-             call io_rstrt( 'w', work_path, exp_id, -1, date_time,       &
-                  N_catf, cat_progn_incr_f, file_tag, dir_name=dir_name)
-
-          case (1)
-
-             ! output increments on global domain in GEOS-5 global tile order
-             ! suitable for reading into GEOS-5 GCM as land incremental analysis
-             ! update (LIAU)
-
-             allocate(cat_progn_incr_g(N_catg))
-
-             ! initialize
-
-             do i=1,N_catg
-                cat_progn_incr_g(i) = 0.0
-             end do
-
-             ! reorder increments to GEOS-5 gcm global tile order
-
-             do i=1,N_catf
-                cat_progn_incr_g(f2g(i)) = cat_progn_incr_f(i)
-             end do
-
-             file_tag = trim(file_tag) // 'LIAU'
-
-             call io_rstrt( 'w', work_path, exp_id, -1, date_time,       &
-                  N_catg, cat_progn_incr_g, file_tag, dir_name=dir_name, &
-                  is_little_endian=.true. )
-
-             deallocate(cat_progn_incr_g)
-
-          case default
-
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown out_incr_format')
-
-          end select
-
-          deallocate(cat_progn_incr_f)
-
-       end if  ! masterproc
-
-    end if     ! out_incr
+!!    if (out_incr) then
+!!
+!!       ! compute increments for local domain
+!!
+!!       do i=1,N_catl
+!!          cat_progn_incr_ensavg(i) = 0.
+!!          do n_e=1,N_ens
+!!             cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
+!!                  + cat_progn_incr(i,n_e)
+!!          end do
+!!          cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(N_ens)
+!!       end do
+!!
+!!
+!!       ! gather and write to file
+!!
+!!       file_tag = 'ldas_incr'
+!!       dir_name = 'ana'
+!!
+!!       if (master_proc)  allocate(cat_progn_incr_f(N_catf))
+!!
+!!#ifdef LDAS_MPI
+!!
+!!       call MPI_GATHERV( &
+!!            cat_progn_incr_ensavg, N_catl,                MPI_cat_progn_type, &
+!!            cat_progn_incr_f,      N_catl_vec, low_ind-1, MPI_cat_progn_type, &
+!!            0, mpicomm, mpierr )
+!!
+!!#else
+!!       cat_progn_incr_f = cat_progn_incr_ensavg
+!!#endif
+!!       if (master_proc) then
+!!
+!!
+!!          select case (out_incr_format)
+!!
+!!          case (0)
+!!
+!!             ! output increments in LDASsa domain and in LDASsa tile order (standard LDASsa)
+!!             if(present(rf2f)) then
+!!                allocate(cat_progn_incr_tmp(N_catf))
+!!                cat_progn_incr_tmp(:) = cat_progn_incr_f(rf2f(:))
+!!                cat_progn_incr_f = cat_progn_incr_tmp
+!!                deallocate(cat_progn_incr_tmp)
+!!             endif
+!!
+!!             call io_rstrt( 'w', work_path, exp_id, -1, date_time,       &
+!!                  N_catf, cat_progn_incr_f, file_tag, dir_name=dir_name)
+!!
+!!          case (1)
+!!
+!!             ! output increments on global domain in GEOS-5 global tile order
+!!             ! suitable for reading into GEOS-5 GCM as land incremental analysis
+!!             ! update (LIAU)
+!!
+!!             allocate(cat_progn_incr_g(N_catg))
+!!
+!!             ! initialize
+!!
+!!             do i=1,N_catg
+!!                cat_progn_incr_g(i) = 0.0
+!!             end do
+!!
+!!             ! reorder increments to GEOS-5 gcm global tile order
+!!
+!!             do i=1,N_catf
+!!                cat_progn_incr_g(f2g(i)) = cat_progn_incr_f(i)
+!!             end do
+!!
+!!             file_tag = trim(file_tag) // 'LIAU'
+!!
+!!             call io_rstrt( 'w', work_path, exp_id, -1, date_time,       &
+!!                  N_catg, cat_progn_incr_g, file_tag, dir_name=dir_name, &
+!!                  is_little_endian=.true. )
+!!
+!!             deallocate(cat_progn_incr_g)
+!!
+!!          case default
+!!
+!!             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown out_incr_format')
+!!
+!!          end select
+!!
+!!          deallocate(cat_progn_incr_f)
+!!
+!!       end if  ! masterproc
+!!
+!!    end if     ! out_incr
 
   end subroutine output_incr_etc
 
@@ -2090,8 +2098,8 @@ contains
 
     if (master_proc) then
 
-       fname = get_io_filename( work_path, exp_id, file_tag,                      &
-            date_time=date_time, dir_name=dir_name, ens_id=-1)
+       fname = get_io_filename( './', exp_id, file_tag,                      &
+            date_time=date_time, dir_name=dir_name, ens_id=-1, no_subdirs=.true.)
 
        if     (option=='orig_obs')                         then
 

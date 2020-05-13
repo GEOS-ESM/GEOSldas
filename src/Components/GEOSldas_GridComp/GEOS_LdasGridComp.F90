@@ -599,19 +599,19 @@ contains
             !1) save original index
             tile_coord_f%cs_i_indg = tile_coord_f%i_indg 
             tile_coord_f%cs_j_indg = tile_coord_f%j_indg 
-            if( PERTURBATIONS /= 0) then
-               !2) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
-               call get_pert_grid(tile_grid_g, latlon_tmp_g)
-               tile_grid_g = latlon_tmp_g
-               !3) change the index
-               !   need to chang min_lon, max_lon, min_lat , max_lat? 
-               do i = 1, N_catf
-                  call get_ij_ind_from_latlon(latlon_tmp_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
-                    tile_coord_f(i)%i_indg,tile_coord_f(i)%j_indg)
-               enddo
-               !3) re-generate tile_grid_f in Lat-Lon
-               call get_tile_grid(N_catf, tile_coord_f, tile_grid_g, tile_grid_f)
-             endif
+            
+            !2) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
+            call get_pert_grid(tile_grid_g, latlon_tmp_g)
+            tile_grid_g = latlon_tmp_g
+            !3) change the index
+            !   need to chang min_lon, max_lon, min_lat , max_lat? 
+            do i = 1, N_catf
+               call get_ij_ind_from_latlon(latlon_tmp_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
+                 tile_coord_f(i)%i_indg,tile_coord_f(i)%j_indg)
+            enddo
+            !3) re-generate tile_grid_f in Lat-Lon
+            call get_tile_grid(N_catf, tile_coord_f, tile_grid_g, tile_grid_f)
+            
           endif
        end block 
 

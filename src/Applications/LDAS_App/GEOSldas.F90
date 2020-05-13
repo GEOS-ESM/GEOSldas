@@ -6,7 +6,7 @@ program LDAS_Main
 
   
    ! !USES:
-   use MAPL_Mod
+   use MAPL
    use GEOS_LDASGridCompMod, only:  ROOT_SetServices => SetServices
 
    implicit none
