@@ -62,6 +62,8 @@ module GEOS_LandAssimGridCompMod
   use clsm_ensupd_enkf_update, only: output_incr_etc
   use clsm_ensupd_enkf_update, only: write_smapL4SMaup 
   use clsm_ensdrv_out_routines, only: init_log, GEOS_output_smapL4SMlmc 
+  use mwRTM_routines, only : mwRTM_get_Tb, catch2mwRTM_vars
+
   use, intrinsic :: ieee_arithmetic    
 
 implicit none
@@ -173,11 +175,14 @@ subroutine SetServices ( GC, RC )
     VERIFY_(status)
 
     ! RRTBHISTORY
-    !
-    ! add new "phase" for calculation of L-band Tb_h and Tb_v for each ensemble member
-    !
-    ! not sure where the loop through members should go
-    
+    !phase 3: calculation of L-band Tb_h and Tb_v for each ensemble membe  
+    call MAPL_GridCompSetEntryPoint(                                            &
+         gc,                                                                    &
+         ESMF_METHOD_RUN,                                                       &
+         CALC_LAND_TB,                                                          &
+         rc=status                                                              &
+         )
+    VERIFY_(status)
 
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
@@ -2013,8 +2018,165 @@ end subroutine UPDATE_ASSIM
 ! new subroutine to calculate Tb
 
 subroutine CALC_LAND_TB(gc, import, export, clock, rc)
+    type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
+    type(ESMF_State),    intent(inout) :: import ! Import state
+    ! this import is from land grid come
+    type(ESMF_State),    intent(inout) :: export ! Export state
+    type(ESMF_Clock),    intent(inout) :: clock  ! The clock
+    integer, optional,   intent(  out) :: rc     ! Error code
+ 
+    real,    parameter :: freq           = 1.41e9     ! microwave frequency [Hz]
+    real,    parameter :: inc_angle      = 40.        ! incidence angle [deg]
+    logical, parameter :: incl_atm_terms = .false.    ! no atmospheric correction, ie, get Tb at top-of-vegetation
 
-  ! TO GET GOOD TB VALUES WE *MUST* HAVE "mwRTM_param"
+    integer :: status
+    character(len=ESMF_MAXSTR) :: Iam='CALC_LAND_TB'
+    character(len=ESMF_MAXSTR) :: comp_name
+ ! MAPL variables
+    type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
+    type(ESMF_State) :: INTERNAL
+    type(mwRTM_param_type),dimension(:),allocatable ::  mwRTM_param
+
+    real, dimension(:),pointer :: LAI
+    real, dimension(:),pointer :: TP1
+    real, dimension(:),pointer :: TPSURF
+    real, dimension(:),pointer :: WCSF
+    real, dimension(:),pointer :: WESNN1
+    real, dimension(:),pointer :: WESNN2
+    real, dimension(:),pointer :: WESNN3
+
+    real, dimension(:), pointer :: VEGCLS
+    real, dimension(:), pointer :: SOILCLS
+    real, dimension(:), pointer :: SAND
+    real, dimension(:), pointer :: CLAY
+    real, dimension(:), pointer :: mw_POROS
+    real, dimension(:), pointer :: WANGWT
+    real, dimension(:), pointer :: WANGWP
+    real, dimension(:), pointer :: RGHHMIN
+    real, dimension(:), pointer :: RGHHMAX
+    real, dimension(:), pointer :: RGHWMAX
+    real, dimension(:), pointer :: RGHWMIN
+    real, dimension(:), pointer :: RGHNRH
+    real, dimension(:), pointer :: RGHNRV
+    real, dimension(:), pointer :: RGHPOLMIX
+    real, dimension(:), pointer :: OMEGA
+    real, dimension(:), pointer :: BH
+    real, dimension(:), pointer :: BV
+    real, dimension(:), pointer :: LEWT
+    ! export
+    real, dimension(:), pointer :: TB_H
+    real, dimension(:), pointer :: TB_V
+
+    real, allocatable, dimension(:) :: SWE
+    real, allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
+    real, allocatable, dimension(:) :: Tair_not_used, elev_not_used
+    real, allocatable, dimension(:) :: Tb_v_tmp, TB_h_tmp
+
+  
+
+    integer :: N_catl
+    type(MAPL_LocStream) :: locstream
+    integer , save :: ens_id = 0
+
+    call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+    VERIFY_(STATUS)
+    Iam=trim(COMP_NAME)//"::RUN"
+
+    call MAPL_GetPointer(export, TB_H,  'TB_LAND_1410MHZ_40DEG_HPOL' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, TB_V,  'TB_LAND_1410MHZ_40DEG_VPOL' ,rc=status)
+    VERIFY_(STATUS)
+
+    !if HISTORY doesnot ask for these varaibles, no calculation necessary
+    if (.not. associated(TB_H) .or. .not. associated(TB_V)) then
+      _RETURN(_SUCCESS)
+    endif
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
+    VERIFY_(status)
+    call MAPL_Get(MAPL, LocStream=locstream,rc=status)
+    VERIFY_(status)
+    call MAPL_LocStreamGet(locstream, NT_LOCAL=N_catl,rc=status)
+    VERIFY_(status)
+
+! Pointers to internals
+!----------------------
+    call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
+    VERIFY_(status)
+
+    call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL,SOILCLS   , 'MWRTM_SOILCLS'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, VEGCLS   , 'MWRTM_VEGCLS'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, CLAY     , 'MWRTM_CLAY'     ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS' ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, WANGWT   , 'MWRTM_WANGWT'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, WANGWP   , 'MWRTM_WANGWP'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, RGHHMIN  , 'MWRTM_RGHHMIN'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, RGHHMAX  , 'MWRTM_RGHHMAX'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, RGHWMIN  , 'MWRTM_RGHWMIN'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, RGHWMAX  , 'MWRTM_RGHWMAX'  ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, RGHNRH   , 'MWRTM_RGHNRH'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, RGHNRV   , 'MWRTM_RGHNRV'   ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, RGHPOLMIX, 'MWRTM_RGHPOLMIX',    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, OMEGA  , 'MWRTM_OMEGA'      ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, BH     , 'MWRTM_BH'         ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, BV     , 'MWRTM_BV'         ,    RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, LEWT   , 'MWRTM_LEWT'       ,    RC=STATUS)
+    VERIFY_(STATUS)
+
+    allocate(mwRTM_param(N_catl))
+    mwRTM_param(:)%sand      = SAND(:)
+    mwRTM_param(:)%vegcls    = nint(VEGCLS(:))
+    mwRTM_param(:)%soilcls   = nint(SOILCLS(:))
+    mwRTM_param(:)%clay      = CLAY(:)
+    mwRTM_param(:)%poros     = mw_POROS(:)
+    mwRTM_param(:)%wang_wt   = WANGWT(:)
+    mwRTM_param(:)%wang_wp   = WANGWP(:)
+    mwRTM_param(:)%rgh_hmin  = RGHHMIN(:)
+    mwRTM_param(:)%rgh_hmax  = RGHHMAX(:)
+    mwRTM_param(:)%rgh_wmin  = RGHWMIN(:)
+    mwRTM_param(:)%rgh_wmax  = RGHWMAX(:)
+    mwRTM_param(:)%rgh_Nrh   = RGHNRH(:)
+    mwRTM_param(:)%rgh_Nrv   = RGHNRV(:)
+    mwRTM_param(:)%rgh_polmix= RGHPOLMIX(:)
+    mwRTM_param(:)%omega     = OMEGA(:)
+    mwRTM_param(:)%bh        = BH(:)
+    mwRTM_param(:)%bv        = bv(:)
+    mwRTM_param(:)%lewt      = LEWT(:)
+
+    call MAPL_GetPointer(import, LAI,  'LAI' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(import, TP1,  'TP1' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(import, WCSF,  'WCSF' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(import, TPSURF,  'TPSURF' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(import, WESNN1,  'WESNN1' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(import, WESNN2,  'WESNN2' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(import, WESNN3,  'WESNN3' ,rc=status)
+    VERIFY_(STATUS)
+ 
+
   !
   ! THIS NEEDS TO WORK EVEN IF WE DO NOT HAVE "mwRTM_param"
   !
@@ -2022,38 +2184,22 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
   !
   ! IT IS OK TO FILL TB WITH NO-DATA-VALUES IF "mwRTM_param" IS NOT AVAILABLE 
 
-
-  ! not sure where the loop through members should go -- maybe write subroutine
-  ! to operate on each member separately and create another subroutine that loops
-  ! through the members ? 
-  
-  
   ! TO CALCULATE TB, THE FOLLOWING TWO SUBROUTINES NEED TO BE RUN (IN ORDER):
   !   call catch2mwRTM_vars()
   !   call mwRTM_get_Tb()
-
-  
-  ! local parameters
-  
-  real,    parameter :: freq           = 1.41e9     ! microwave frequency [Hz]
-  
-  real,    parameter :: inc_angle      = 40.        ! incidence angle [deg]
-  
-  logical, parameter :: incl_atm_terms = .false.    ! no atmospheric correction, ie, get Tb at top-of-vegetation
-  
   ! convert Catchment model variables into inputs suitable for the mwRTM 
   ! NOTE: input tp must be in degree Celsius!
-
+  allocate(sfmc_mwRTM(N_catl), tsoil_mwRTM (N_catl))
   call catch2mwRTM_vars( &
-       Nt, &                                 ! intent(in),  number of tiles (local?)
-       cat_param%vegcls, &                   ! intent(in),  'ITY' from imports (*cat_param* vegcls)      --- not used anymore but keep for now
-       cat_param%poros,    &                 ! intent(in),  'POROS' from imports (*cat_param* poros)
-       mwRTM_param%poros, &                  ! intent(in),  'MWRTM_POROS' = mw_poros
-       cat_diagS_avg%sfmc, &                 ! intent(in),  'WCSRF'  need to import from "land"
-       cat_diagS_avg%tsurf,     &            ! intent(in),  'TPSURF' need to import from "land"          --- not used anymore but keep for now
-       cat_diagS_avg%tp(1)-MAPL_TICE??, &    ! intent(in),  'TP1'    need to import from "land" -- units deg C !!!
-       sfmc_mwRTM, &                         ! intent(out), local variable
-       tsoil_mwRTM )                         ! intent(out), local variable
+       N_catl, &              ! intent(in),  number of tiles (local?)
+       cat_param%vegcls, &    ! intent(in),  'ITY' from imports (*cat_param* vegcls)      --- not used anymore but keep for now
+       cat_param%poros,  &    ! intent(in),  'POROS' from imports (*cat_param* poros)
+       mwRTM_param%poros,&    ! intent(in),  'MWRTM_POROS' = mw_poros
+       WCSF,    &       ! cat_diagS_avg%sfmc, &  ! intent(in),  'WCSRF'  need to import from "land"
+       TPSURF,  &       !cat_diagS_avg%tsurf, &  ! intent(in),  'TPSURF' need to import from "land"  --- not used anymore but keep for now
+       TP1-MAPL_TICE, & !cat_diagS_avg%tp(1)-MAPL_TICE??, & ! intent(in),  'TP1'    need to import from "land" -- units deg C !!!
+       sfmc_mwRTM, &    ! intent(out), local variable
+       tsoil_mwRTM )    ! intent(out), local variable
 
   ! calculate brightness temperatures
   ! (tau-omega model as in De Lannoy et al. 2013 [doi:10.1175/JHM-D-12-092.1]
@@ -2061,28 +2207,46 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
 
   ! IF NEEDED, USE DUMMY VARIABLES FOR tile_coord%elev AND Tair ALONG WITH AN IF STATEMENT AS FOLLOWS:
 
+  allocate(TB_h_tmp(N_catl), TB_v_tmp(N_catl))
+  allocate(SWE(N_catl))
+  SWE(:) = WESNN1(:) + WESNN2(:) + WESNN2(:) 
   if (.not. incl_atm_terms) then
-     
+     allocate(Tair_Not_used(N_catl), elev_not_used(N_catl))
      call mwRTM_get_Tb(&
-          Nt, freq, inc_angle, mwRTM_param, &   ! intent(in)
-          tile_coord%elev,      &               ! intent(in), elevation of tile, ignore if not readily available, NOT NEEDED AS LONG AS "incl_atm_terms=.false."
-          veg_param_avg%lai, &                  ! intent(in)  'LAI'
-          sfmc_mwRTM, tsoil_mwRTM, &            ! intent(in), output from catch2mwRTM_var()
-          SWE, &                                ! intent(in), 'SNOMASS' need to import from "land"
-          met_force_avg%Tair, &                 ! intent(in), 'TAIR'    could be imported from MetForce GC, NOT NEEDED AS LONG AS "incl_atm_terms=.false." 
-          incl_atm_terms,     &                 ! intent(in)
-          Tb_h, Tb_v )                          ! intent(out) -->  'TB_LAND_1410MHZ_40DEG_HPOL',  'TB_LAND_1410MHZ_40DEG_VPOL'
-     
+          N_catl, freq, inc_angle, mwRTM_param, &   ! intent(in)
+          elev_Not_used,   &      ! intent(in), NOT NEEDED AS LONG AS "incl_atm_terms=.false."
+          LAI, &                  ! intent(in),  'LAI'
+          sfmc_mwRTM,  &       ! intent(in), output from catch2mwRTM_var()
+          tsoil_mwRTM, &       ! intent(in), output from catch2mwRTM_var()
+          SWE, &               ! intent(in), 'SNOMASS' , sum of wesnn
+          Tair_Not_used, &     ! intent(in), NOT NEEDED AS LONG AS "incl_atm_terms=.false." 
+          incl_atm_terms, &    ! intent(in), .false.
+          Tb_h_tmp, Tb_v_tmp )         ! intent(out) 'TB_LAND_1410MHZ_40DEG_HPOL',  'TB_LAND_1410MHZ_40DEG_VPOL'
+     deallocate(Tair_Not_used, elev_not_used) 
   else
-
-
-     ! ADD CALL TO LDAS_ERROR, STOP PROGRAM IF ENDING UP HERE
-     
+     _ASSERT(.false., "incl_atm_terms should be .false.")
   end if
-  
-  
-end subroutine CALC_LAND_TB
 
+  if (ens_id == 0) then
+    TB_V = 0.
+    TB_H = 0.
+  endif
+
+  TB_V(:) = TB_V(:) + Tb_v_tmp(:)
+  TB_H(:) = TB_H(:) + Tb_h_tmp(:)
+  
+  if(ens_id == NUM_ENSEMBLE-1) then
+    TB_V(:) = TB_V(:)/NUM_ENSEMBLE
+    TB_H(:) = TB_H(:)/NUM_ENSEMBLE
+    ens_id = 0
+  else
+    ens_id = ens_id + 1
+  endif
+
+  deallocate(SWE, Tb_h_tmp, Tb_v_tmp)
+
+  RETURN_(_SUCCESS)
+end subroutine CALC_LAND_TB
 
 subroutine read_pert_rseed(seed_fname,pert_rseed_r8)
      use netcdf

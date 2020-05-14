@@ -870,13 +870,6 @@ contains
        VERIFY_(status)
        call MAPL_TimerOff(MAPL, gcnames(igc))
 
-       ! RRTBHISTORY
-       ! 
-       ! run new "phase=3" of LandAssim GC here to calculate L-band Tb for each member
-       !
-       ! must be done before ApplyPrognPert for consistency with "land" exports
-
-       
        ! Use land's output as the input to calculate the ensemble average
        if (LSM_CHOICE == 1) then
           ! collect cat_param 
@@ -885,10 +878,12 @@ contains
           call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
           VERIFY_(status)
 
-          ! RRTBHISTORY
-          ! 
-          ! run new "phase=4" of Ens GC here to calculate L-band Tb ens avg
-          
+          if(assim) then
+           ! calculate L-band Tb and accumulate among ensemble 
+           ! average when i == num_ensemble
+             call ESMF_GridCompRun(gcs(LANDASSIM), importState=gex(igc), exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
+             VERIFY_(status)
+          endif
        endif
 
        ! Should this be moved to the beginning of the loop to avoid the pollution ?
