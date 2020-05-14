@@ -66,6 +66,8 @@ module GEOS_LandAssimGridCompMod
 
   use, intrinsic :: ieee_arithmetic    
 
+  integer :: collect_tb_counter
+  
 implicit none
 
 include 'mpif.h'
@@ -174,8 +176,7 @@ subroutine SetServices ( GC, RC )
          )
     VERIFY_(status)
 
-    ! RRTBHISTORY
-    !phase 3: calculation of L-band Tb_h and Tb_v for each ensemble membe  
+    !phase 3: calculation of L-band Tb_h and Tb_v for each ensemble member  
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
@@ -480,8 +481,6 @@ subroutine SetServices ( GC, RC )
   VERIFY_(STATUS)
 
 
-  ! RRTBHISTORY
-  !
   ! Exports for brightness temperature
   
   call MAPL_AddExportSpec(GC                                                  ,&
@@ -502,8 +501,7 @@ subroutine SetServices ( GC, RC )
        RC=STATUS  )
   VERIFY_(STATUS)
   
-  ! Export for incr
-  !
+  ! Exports for incr
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_canopy_temperature_saturated_zone'  ,&
@@ -1008,6 +1006,8 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
+    collect_tb_counter = 0
+
     call init_log( myid, numprocs, master_proc )
 
     ! Get current time
@@ -1385,13 +1385,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if (need_mwRTM_param) then
        call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL,SOILCLS   , 'MWRTM_SOILCLS'  ,    RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, SOILCLS  , 'MWRTM_SOILCLS'  ,    RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, VEGCLS   , 'MWRTM_VEGCLS'   ,    RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, CLAY     , 'MWRTM_CLAY'     ,    RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS' ,    RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS'    ,    RC=STATUS)
        VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, WANGWT   , 'MWRTM_WANGWT'   ,    RC=STATUS)
        VERIFY_(STATUS)
@@ -1411,13 +1411,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        VERIFY_(STATUS)
        call MAPL_GetPointer(INTERNAL, RGHPOLMIX, 'MWRTM_RGHPOLMIX',    RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, OMEGA  , 'MWRTM_OMEGA'      ,    RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, OMEGA    , 'MWRTM_OMEGA'    ,    RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, BH     , 'MWRTM_BH'         ,    RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, BH       , 'MWRTM_BH'       ,    RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, BV     , 'MWRTM_BV'         ,    RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, BV       , 'MWRTM_BV'       ,    RC=STATUS)
        VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, LEWT   , 'MWRTM_LEWT'       ,    RC=STATUS)
+       call MAPL_GetPointer(INTERNAL, LEWT     , 'MWRTM_LEWT'     ,    RC=STATUS)
        VERIFY_(STATUS)
  
        allocate(mwRTM_param(N_catl))
@@ -2013,14 +2013,12 @@ subroutine UPDATE_ASSIM(gc, import, export, clock, rc)
 end subroutine UPDATE_ASSIM
 
 
-! RRTBHISTORY
-!
-! new subroutine to calculate Tb
+! subroutine to calculate Tb
 
 subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
     type(ESMF_State),    intent(inout) :: import ! Import state
-    ! this import is from land grid come
+    ! this import is from land grid component
     type(ESMF_State),    intent(inout) :: export ! Export state
     type(ESMF_Clock),    intent(inout) :: clock  ! The clock
     integer, optional,   intent(  out) :: rc     ! Error code
@@ -2037,13 +2035,13 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     type(ESMF_State) :: INTERNAL
     type(mwRTM_param_type),dimension(:),allocatable ::  mwRTM_param
 
-    real, dimension(:),pointer :: LAI
-    real, dimension(:),pointer :: TP1
-    real, dimension(:),pointer :: TPSURF
-    real, dimension(:),pointer :: WCSF
-    real, dimension(:),pointer :: WESNN1
-    real, dimension(:),pointer :: WESNN2
-    real, dimension(:),pointer :: WESNN3
+    real, dimension(:), pointer :: LAI
+    real, dimension(:), pointer :: TP1
+    real, dimension(:), pointer :: TPSURF
+    real, dimension(:), pointer :: WCSF
+    real, dimension(:), pointer :: WESNN1
+    real, dimension(:), pointer :: WESNN2
+    real, dimension(:), pointer :: WESNN3
 
     real, dimension(:), pointer :: VEGCLS
     real, dimension(:), pointer :: SOILCLS
@@ -2064,31 +2062,31 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
     ! export
-    real, dimension(:), pointer :: TB_H
-    real, dimension(:), pointer :: TB_V
+    real, dimension(:), pointer :: TB_H_enavg
+    real, dimension(:), pointer :: TB_V_enavg
 
     real, allocatable, dimension(:) :: SWE
     real, allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
-    real, allocatable, dimension(:) :: Tair_not_used, elev_not_used
+    real, allocatable, dimension(:) :: dummy_real
     real, allocatable, dimension(:) :: Tb_v_tmp, TB_h_tmp
 
   
 
     integer :: N_catl
     type(MAPL_LocStream) :: locstream
-    integer , save :: ens_id = 0
+    !integer , save :: ens_id = 0
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
     VERIFY_(STATUS)
     Iam=trim(COMP_NAME)//"::RUN"
 
-    call MAPL_GetPointer(export, TB_H,  'TB_LAND_1410MHZ_40DEG_HPOL' ,rc=status)
+    call MAPL_GetPointer(export, TB_H_enavg,  'TB_LAND_1410MHZ_40DEG_HPOL' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, TB_V,  'TB_LAND_1410MHZ_40DEG_VPOL' ,rc=status)
+    call MAPL_GetPointer(export, TB_V_enavg,  'TB_LAND_1410MHZ_40DEG_VPOL' ,rc=status)
     VERIFY_(STATUS)
 
-    !if HISTORY doesnot ask for these varaibles, no calculation necessary
-    if (.not. associated(TB_H) .or. .not. associated(TB_V)) then
+    !if HISTORY does not ask for these varaibles, no calculation necessary
+    if (.not. associated(TB_H_enavg) .or. .not. associated(TB_V_enavg)) then
       _RETURN(_SUCCESS)
     endif
 
@@ -2104,6 +2102,8 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
     VERIFY_(status)
 
+    ! RRTBHISTORY - do we need to fill "mwRTM_param" this here and in RUN?  Can this be moved to Initialize?
+
     call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL,SOILCLS   , 'MWRTM_SOILCLS'  ,    RC=STATUS)
@@ -2112,7 +2112,7 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, CLAY     , 'MWRTM_CLAY'     ,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS' ,    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS'    ,    RC=STATUS)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, WANGWT   , 'MWRTM_WANGWT'   ,    RC=STATUS)
     VERIFY_(STATUS)
@@ -2132,13 +2132,13 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     VERIFY_(STATUS)
     call MAPL_GetPointer(INTERNAL, RGHPOLMIX, 'MWRTM_RGHPOLMIX',    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, OMEGA  , 'MWRTM_OMEGA'      ,    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, OMEGA    , 'MWRTM_OMEGA'    ,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, BH     , 'MWRTM_BH'         ,    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, BH       , 'MWRTM_BH'       ,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, BV     , 'MWRTM_BV'         ,    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, BV       , 'MWRTM_BV'       ,    RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, LEWT   , 'MWRTM_LEWT'       ,    RC=STATUS)
+    call MAPL_GetPointer(INTERNAL, LEWT     , 'MWRTM_LEWT'     ,    RC=STATUS)
     VERIFY_(STATUS)
 
     allocate(mwRTM_param(N_catl))
@@ -2161,11 +2161,11 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     mwRTM_param(:)%bv        = bv(:)
     mwRTM_param(:)%lewt      = LEWT(:)
 
-    call MAPL_GetPointer(import, LAI,  'LAI' ,rc=status)
+    call MAPL_GetPointer(import, LAI,     'LAI'    ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(import, TP1,  'TP1' ,rc=status)
+    call MAPL_GetPointer(import, TP1,     'TP1'    ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(import, WCSF,  'WCSF' ,rc=status)
+    call MAPL_GetPointer(import, WCSF,    'WCSF'   ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(import, TPSURF,  'TPSURF' ,rc=status)
     VERIFY_(status)
@@ -2184,67 +2184,65 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
   !
   ! IT IS OK TO FILL TB WITH NO-DATA-VALUES IF "mwRTM_param" IS NOT AVAILABLE 
 
-  ! TO CALCULATE TB, THE FOLLOWING TWO SUBROUTINES NEED TO BE RUN (IN ORDER):
-  !   call catch2mwRTM_vars()
-  !   call mwRTM_get_Tb()
   ! convert Catchment model variables into inputs suitable for the mwRTM 
   ! NOTE: input tp must be in degree Celsius!
   allocate(sfmc_mwRTM(N_catl), tsoil_mwRTM (N_catl))
   call catch2mwRTM_vars( &
-       N_catl, &              ! intent(in),  number of tiles (local?)
+       N_catl,           &
        cat_param%vegcls, &    ! intent(in),  'ITY' from imports (*cat_param* vegcls)      --- not used anymore but keep for now
        cat_param%poros,  &    ! intent(in),  'POROS' from imports (*cat_param* poros)
        mwRTM_param%poros,&    ! intent(in),  'MWRTM_POROS' = mw_poros
-       WCSF,    &       ! cat_diagS_avg%sfmc, &  ! intent(in),  'WCSRF'  need to import from "land"
-       TPSURF,  &       !cat_diagS_avg%tsurf, &  ! intent(in),  'TPSURF' need to import from "land"  --- not used anymore but keep for now
-       TP1-MAPL_TICE, & !cat_diagS_avg%tp(1)-MAPL_TICE??, & ! intent(in),  'TP1'    need to import from "land" -- units deg C !!!
-       sfmc_mwRTM, &    ! intent(out), local variable
-       tsoil_mwRTM )    ! intent(out), local variable
-
+       WCSF,             & 
+       TPSURF,           & 
+       TP1-MAPL_TICE,    &    ! units deg C !!!
+       sfmc_mwRTM,       &    ! intent(out), local variable
+       tsoil_mwRTM )          ! intent(out), local variable
+  
   ! calculate brightness temperatures
   ! (tau-omega model as in De Lannoy et al. 2013 [doi:10.1175/JHM-D-12-092.1]
   !  but without Pellarin atmospheric corrections)
-
+  
   ! IF NEEDED, USE DUMMY VARIABLES FOR tile_coord%elev AND Tair ALONG WITH AN IF STATEMENT AS FOLLOWS:
-
+  
   allocate(TB_h_tmp(N_catl), TB_v_tmp(N_catl))
   allocate(SWE(N_catl))
-  SWE(:) = WESNN1(:) + WESNN2(:) + WESNN2(:) 
+  SWE(:) = WESNN1(:) + WESNN2(:) + WESNN2(:)       ! WHY NOT IMPORT SNOMASS?
   if (.not. incl_atm_terms) then
-     allocate(Tair_Not_used(N_catl), elev_not_used(N_catl))
-     call mwRTM_get_Tb(&
-          N_catl, freq, inc_angle, mwRTM_param, &   ! intent(in)
-          elev_Not_used,   &      ! intent(in), NOT NEEDED AS LONG AS "incl_atm_terms=.false."
-          LAI, &                  ! intent(in),  'LAI'
-          sfmc_mwRTM,  &       ! intent(in), output from catch2mwRTM_var()
-          tsoil_mwRTM, &       ! intent(in), output from catch2mwRTM_var()
-          SWE, &               ! intent(in), 'SNOMASS' , sum of wesnn
-          Tair_Not_used, &     ! intent(in), NOT NEEDED AS LONG AS "incl_atm_terms=.false." 
-          incl_atm_terms, &    ! intent(in), .false.
-          Tb_h_tmp, Tb_v_tmp )         ! intent(out) 'TB_LAND_1410MHZ_40DEG_HPOL',  'TB_LAND_1410MHZ_40DEG_VPOL'
+     allocate(dummy_real(N_catl))                  ! DO WE EVEN NEED TO ALLOCATE?
+     call mwRTM_get_Tb(                         &
+          N_catl, freq, inc_angle, mwRTM_param, &   
+          dummy_real,                           &   ! intent(in), "elev", not used as long as "incl_atm_terms=.false."
+          LAI,                                  &   
+          sfmc_mwRTM,                           &   
+          tsoil_mwRTM,                          &   
+          SWE,                                  &   
+          dummy_real,                           &   ! intent(in), "Tair", not used as long as "incl_atm_terms=.false." 
+          incl_atm_terms,                       &   
+          Tb_h_tmp, Tb_v_tmp )                      ! intent(out) 'TB_LAND_1410MHZ_40DEG_HPOL',  'TB_LAND_1410MHZ_40DEG_VPOL'
      deallocate(Tair_Not_used, elev_not_used) 
   else
      _ASSERT(.false., "incl_atm_terms should be .false.")
   end if
-
-  if (ens_id == 0) then
-    TB_V = 0.
-    TB_H = 0.
-  endif
-
-  TB_V(:) = TB_V(:) + Tb_v_tmp(:)
-  TB_H(:) = TB_H(:) + Tb_h_tmp(:)
   
-  if(ens_id == NUM_ENSEMBLE-1) then
-    TB_V(:) = TB_V(:)/NUM_ENSEMBLE
-    TB_H(:) = TB_H(:)/NUM_ENSEMBLE
-    ens_id = 0
-  else
-    ens_id = ens_id + 1
+  if (collect_tb_counter == 0) then
+     TB_V_enavg = 0.
+     TB_H_enavg = 0.
   endif
 
-  deallocate(SWE, Tb_h_tmp, Tb_v_tmp)
+  ! This counter is relative to ens_id
+  collect_tb_counter = collect_tb_counter + 1
 
+  TB_V_enavg(:) = TB_V_enavg(:) + Tb_v_tmp(:)
+  TB_H_enavg(:) = TB_H_enavg(:) + Tb_h_tmp(:)
+  
+  if (collect_tb_counter == NUM_ENSEMBLE) then
+     collect_tb_counter = 0
+     TB_V_enavg(:)      = TB_V_enavg(:)/NUM_ENSEMBLE
+     TB_H_enavg(:)      = TB_H_enavg(:)/NUM_ENSEMBLE
+  endif
+  
+  deallocate(SWE, Tb_h_tmp, Tb_v_tmp)
+  
   RETURN_(_SUCCESS)
 end subroutine CALC_LAND_TB
 

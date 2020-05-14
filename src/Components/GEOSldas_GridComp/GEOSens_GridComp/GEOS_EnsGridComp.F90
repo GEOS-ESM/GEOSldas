@@ -98,11 +98,6 @@ contains
          )
     VERIFY_(status)
 
-    ! RRTBHISTORY
-    !
-    ! add new phase that collects L-band Tb_h and Tb_v
-    
-    
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_FINALIZE,                                                  &

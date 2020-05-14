@@ -879,14 +879,15 @@ contains
           VERIFY_(status)
 
           if(assim) then
-           ! calculate L-band Tb and accumulate among ensemble 
-           ! average when i == num_ensemble
+             ! calculate ensemble-average L-band Tb (add up and normalize after last member has been added)
              call ESMF_GridCompRun(gcs(LANDASSIM), importState=gex(igc), exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
              VERIFY_(status)
           endif
        endif
 
        ! Should this be moved to the beginning of the loop to avoid the pollution ?
+       ! THIS MUST BE MOVED AT LEAST TO BEFORE THE "ENSAVG/phase=3" CALL IF ENSEMBLE STATS OTHER THAN THE AVERAGE
+       ! ARE COMPUTED - reichle, 14 May 2020
        ! ApplyPrognPert
        igc = LANDPERT(i)
        call MAPL_TimerOn(MAPL, gcnames(igc))
