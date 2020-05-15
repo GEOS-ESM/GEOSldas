@@ -58,7 +58,8 @@ module GEOS_LdasGridCompMod
   integer,allocatable :: LANDPERT(:)
   integer :: ENSAVG, LANDASSIM
   integer :: NUM_ENSEMBLE
-  integer :: land_assim
+  logical :: land_assim
+  logical :: mwRTM
 contains
 
   !BOP
@@ -141,7 +142,9 @@ contains
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, land_assim, Label="LAND_ASSIM:", DEFAULT= 0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, land_assim, Label="LAND_ASSIM:", DEFAULT = .false., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, mwRTM, Label="mwRTM:", DEFAULT = .false., RC=STATUS)
     VERIFY_(STATUS)
 
     allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
@@ -189,7 +192,7 @@ contains
     ENSAVG    = MAPL_AddChild(gc, name='ENSAVG', ss=EnsSetServices, rc=status)
     VERIFY_(status)
     
-    if(land_assim > 0 ) then
+    if(land_assim .or. mwRTM ) then
        LANDASSIM = MAPL_AddChild(gc, name='LANDASSIM', ss=LandAssimSetServices, rc=status)
        VERIFY_(status)
     endif
@@ -260,7 +263,7 @@ contains
        VERIFY_(status)
     enddo
 
-    if(land_assim > 0) then
+    if(land_assim .or. mwRTM) then
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
             SHORT_NAME = ['POROS ', 'COND  ','PSIS  ','BEE   ','WPWET ','GNU   ','VGWMAX',    &
@@ -688,7 +691,7 @@ contains
        VERIFY_(status)
     enddo
 
-    if (land_assim > 0) then
+    if (land_assim .or. mwRTM) then
        call MAPL_GetObjectFromGC(gcs(LANDASSIM), CHILD_MAPL, rc=status)
        VERIFY_(status) 
        call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
@@ -873,7 +876,7 @@ contains
           call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
           VERIFY_(status)
 
-          if(land_assim > 0) then
+          if( mwRTM ) then
              ! calculate ensemble-average L-band Tb (add up and normalize after last member has been added)
              call ESMF_GridCompRun(gcs(LANDASSIM), importState=gex(igc), exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
              VERIFY_(status)
@@ -893,7 +896,7 @@ contains
     enddo
 
     !run land assim
-    if (land_assim == 1) then 
+    if (land_assim) then 
        igc = LANDASSIM
        call MAPL_TimerOn(MAPL, gcnames(igc))
        !import state is the export from ens_GridComp, assimilation run

@@ -110,7 +110,8 @@ integer, allocatable :: Pert_rseed(:,:)
 real(kind=ESMF_KIND_R8), allocatable :: pert_rseed_r8(:,:)
 type(mwRTM_param_type),dimension(:),allocatable ::  mwRTM_param
 logical :: all_nodata   ! no data for mwRTM_param
-
+logical :: land_assim
+logical :: mwRTM
 contains
 
 !BOP
@@ -150,6 +151,11 @@ subroutine SetServices ( GC, RC )
 
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     _VERIFY(status)
+
+    call MAPL_GetResource ( MAPL, land_assim, Label="LAND_ASSIM:", DEFAULT = .false., RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, mwRTM, Label="mwRTM:", DEFAULT = .false., RC=STATUS)
+    VERIFY_(STATUS)
 
   ! Register services for this component
     call MAPL_GridCompSetEntryPoint(                                            &
