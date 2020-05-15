@@ -94,7 +94,12 @@ FIRST_ENS_ID: 0
 # NML_INPUT_PATH: ''
 
 
-# ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format) used for Tb assimilation
+# ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format)
+#
+#      Must be provided for
+#          - output of Tb through HISTORY or
+#          - Tb assimilation.
+#      Otherwise, leave unspecified (i.e., use default empty string).
 #
 #      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
 #      If empty or commented out, GEOSldas will search the restart directory.
