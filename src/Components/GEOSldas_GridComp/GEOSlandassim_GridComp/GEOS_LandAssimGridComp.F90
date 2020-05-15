@@ -2198,73 +2198,6 @@ subroutine write_pert_rseed(chk_fname, pert_rseed_r8)
        end subroutine check
 end subroutine write_pert_rseed
 
-!BOP
-! !IROTUINE: Finalize -- finalize method for LDAS GC
-! !INTERFACE:
-subroutine Finalize(gc, import, export, clock, rc)
-
-    ! !ARGUMENTS:
-
-    type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
-    type(ESMF_State),    intent(inout) :: import ! Import state
-    type(ESMF_State),    intent(inout) :: export ! Export state
-    type(ESMF_Clock),    intent(inout) :: clock  ! The clock
-    integer, optional,   intent(  out) :: rc     ! Error code
-
-    !EOP
-
-    ! ErrLog variables
-    integer :: status
-    character(len=ESMF_MAXSTR) :: Iam
-    character(len=ESMF_MAXSTR) :: comp_name
-    type(MAPL_MetaComp), pointer :: MAPL=>null()
-    character(len=300) :: seed_fname
-    character(len=300) :: fname_tpl
-    character(len=300) :: out_path
-    character(len=ESMF_MAXSTR) :: exp_id
-    character(len=4) :: id_string
-    character(len=14):: datestamp
-    integer :: ens, nymd, nhms
-    ! Get component's name and setup traceback handle
-    call ESMF_GridCompget(gc, name=comp_name, rc=status)
-    _VERIFY(status)
-    Iam = trim(comp_name) // "::Finalize"
-
-    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    _VERIFY(STATUS)
-    call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
-    _VERIFY(STATUS)
-
-    if (master_proc) then
-       call finalize_obslog()
-       Pert_rseed_r8 = Pert_rseed
-       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
-       _VERIFY(STATUS)
-       call MAPL_DateStampGet( clock, datestamp, rc=status)
-       _VERIFY(STATUS)
-
-       read(datestamp(1:8),*)   nymd
-       read(datestamp(10:13),*) nhms
-       nhms = nhms*100
-       do ens = 0, NUM_ENSEMBLE-1
-          write(id_string,'(I4.4)') ens + FIRST_ENS_ID
-          seed_fname = ""
-          call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
-          _VERIFY(STATUS)
-          call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
-       enddo
-    endif
-
-    ! Call Finalize for every child
-    call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
-    _VERIFY(status)
-
-    ! End
-    RETURN_(ESMF_SUCCESS)
-
-end subroutine Finalize
 
 subroutine get_mwrtm_param(internal,N_catl, rc)
    type(ESMF_State), intent(inout) :: INTERNAL
@@ -2368,4 +2301,74 @@ subroutine get_mwrtm_param(internal,N_catl, rc)
    _RETURN(_SUCCESS)
 end subroutine
 
+!BOP
+! !IROTUINE: Finalize -- finalize method for LDAS GC
+! !INTERFACE:
+subroutine Finalize(gc, import, export, clock, rc)
+
+    ! !ARGUMENTS:
+
+    type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
+    type(ESMF_State),    intent(inout) :: import ! Import state
+    type(ESMF_State),    intent(inout) :: export ! Export state
+    type(ESMF_Clock),    intent(inout) :: clock  ! The clock
+    integer, optional,   intent(  out) :: rc     ! Error code
+
+    !EOP
+
+    ! ErrLog variables
+    integer :: status
+    character(len=ESMF_MAXSTR) :: Iam
+    character(len=ESMF_MAXSTR) :: comp_name
+    type(MAPL_MetaComp), pointer :: MAPL=>null()
+    character(len=300) :: seed_fname
+    character(len=300) :: fname_tpl
+    character(len=300) :: out_path
+    character(len=ESMF_MAXSTR) :: exp_id
+    character(len=4) :: id_string
+    character(len=14):: datestamp
+    integer :: ens, nymd, nhms
+    ! Get component's name and setup traceback handle
+    call ESMF_GridCompget(gc, name=comp_name, rc=status)
+    _VERIFY(status)
+    Iam = trim(comp_name) // "::Finalize"
+
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
+    _VERIFY(STATUS)
+
+    if( land_assim) then
+       call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
+       _VERIFY(STATUS)
+
+       if (master_proc) then
+          call finalize_obslog()
+          Pert_rseed_r8 = Pert_rseed
+          call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", &
+                                  DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
+          _VERIFY(STATUS)
+          call MAPL_DateStampGet( clock, datestamp, rc=status)
+          _VERIFY(STATUS)
+
+          read(datestamp(1:8),*)   nymd
+          read(datestamp(10:13),*) nhms
+          nhms = nhms*100
+          do ens = 0, NUM_ENSEMBLE-1
+             write(id_string,'(I4.4)') ens + FIRST_ENS_ID
+             seed_fname = ""
+             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
+             _VERIFY(STATUS)
+             call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
+          enddo
+       endif
+    endif ! land_assim
+
+    ! Call Finalize for every child
+    call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
+    _VERIFY(status)
+
+    RETURN_(ESMF_SUCCESS)
+
+end subroutine Finalize
 end module GEOS_LandAssimGridCompMod
