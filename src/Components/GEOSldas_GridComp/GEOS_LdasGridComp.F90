@@ -172,6 +172,10 @@ contains
     !
     ! ^^^^^^^^^^^^^^^^^^^^ CLEAN UP THE ABOVE COMMENTS WHEN WE ARE DONE WITH THE EDITS HERE.
 
+
+    ! ADD STOP HERE IF (LSM_CHOICE/=1) .and.  (mwRTM .or. land_assim) ??
+    ! ==> avoid users trying to run LandAssim GC with CatchCN
+    
     allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
 
     ! one METFORCE provides all the (unperturbed) forcing data
