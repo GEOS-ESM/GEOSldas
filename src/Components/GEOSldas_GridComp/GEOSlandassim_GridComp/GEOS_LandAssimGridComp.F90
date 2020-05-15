@@ -1008,17 +1008,26 @@ subroutine Initialize(gc, import, export, clock, rc)
     call MAPL_TimerOn(MAPL, "Initialize")
 
     collect_tb_counter = 0
-    
-    call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
-    _VERIFY(STATUS)
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     _VERIFY(STATUS)
     call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     _VERIFY(STATUS)
-
     call init_log( myid, numprocs, master_proc )
+    
+    if ( .not. land_assim) then
+      ! to arrive here, mwRTM must be .true. 
+      call MAPL_GenericInitialize(gc, import, export, clock, rc=status)
+      _VERIFY(status)
+
+      call MAPL_TimerOff(MAPL, "Initialize")
+      call MAPL_TimerOff(MAPL, "TOTAL")
+      RETURN_(ESMF_SUCCESS)
+    endif
+
+    call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
+    _VERIFY(STATUS)
+    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
+    _VERIFY(STATUS)
 
     ! Get current time
     call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
@@ -1370,7 +1379,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 ! Pointers to internals
 !----------------------
     if (need_mwRTM_param) then
-       call get_mwrtm_param(INTERNAL, rc=STATUS)
+       call get_mwrtm_param(INTERNAL, N_catl, rc=STATUS)
        _VERIFY(STATUS)
     endif
 
@@ -1966,7 +1975,6 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
  ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
     type(ESMF_State) :: INTERNAL
-    type(mwRTM_param_type),dimension(:),allocatable ::  mwRTM_param
 
     real, dimension(:), pointer :: LAI
     real, dimension(:), pointer :: TP1
@@ -2004,7 +2012,7 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
 
     integer :: N_catl, n, mpierr
     type(MAPL_LocStream) :: locstream
-    logical :: is_nodata, all_nodata_l, all_nodata
+    logical :: is_nodata, all_nodata_l
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
     _VERIFY(STATUS)
@@ -2032,7 +2040,7 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
     _VERIFY(status)
 
-    call get_mwrtm_param(INTERNAL, rc=status)
+    call get_mwrtm_param(INTERNAL, N_catl, rc=status)
     _VERIFY(STATUS)
     !WE DO NOT HAVE "mwRTM_param", but ask for TB from HISTORY, report error
     if (all_nodata) then
@@ -2106,7 +2114,7 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
      TB_H_enavg(:)      = TB_H_enavg(:)/NUM_ENSEMBLE
   endif
   
-  deallocate(Tb_h_tmp, Tb_v_tmp)
+  deallocate(Tb_h_tmp, Tb_v_tmp, sfmc_mwRTM, tsoil_mwRTM)
   
   RETURN_(_SUCCESS)
 end subroutine CALC_LAND_TB
@@ -2258,8 +2266,9 @@ subroutine Finalize(gc, import, export, clock, rc)
 
 end subroutine Finalize
 
-subroutine get_mwrtm_param(internal, rc)
+subroutine get_mwrtm_param(internal,N_catl, rc)
    type(ESMF_State), intent(inout) :: INTERNAL
+   integer, intent(in)  :: N_catl
    integer, optional, intent(out)  :: rc
 
    real, dimension(:), pointer :: VEGCLS
@@ -2281,7 +2290,7 @@ subroutine get_mwrtm_param(internal, rc)
    real, dimension(:), pointer :: BV
    real, dimension(:), pointer :: LEWT
   
-   integer :: N_catl, n, mpierr, status
+   integer :: N_catl_tmp, n, mpierr, status
    logical :: is_nodata, all_nodata_l
  
    if(allocated(mwRTM_param)) then
@@ -2325,7 +2334,9 @@ subroutine get_mwrtm_param(internal, rc)
    call MAPL_GetPointer(INTERNAL, LEWT     , 'MWRTM_LEWT'     ,    RC=STATUS)
    _VERIFY(STATUS) 
 
-   N_catl = size(sand,1)
+   N_catl_tmp = size(sand,1)
+   _ASSERT(N_catl_tmp == N_catl, "sanity check: N_catl should be consisten")
+
    allocate(mwRTM_param(N_catl))
    mwRTM_param(:)%sand      = SAND(:)
    mwRTM_param(:)%vegcls    = nint(VEGCLS(:))
