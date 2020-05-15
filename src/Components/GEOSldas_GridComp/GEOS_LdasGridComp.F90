@@ -58,7 +58,7 @@ module GEOS_LdasGridCompMod
   integer,allocatable :: LANDPERT(:)
   integer :: ENSAVG, LANDASSIM
   integer :: NUM_ENSEMBLE
-  logical :: assim
+  integer :: land_assim
 contains
 
   !BOP
@@ -86,7 +86,6 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: id_string,childname, fmt_str
-    character(len=ESMF_MAXSTR) :: LAND_ASSIM
     integer                    :: ens_id_width
     ! Local variables
     type(T_TILECOORD_STATE), pointer :: tcinternal
@@ -142,11 +141,8 @@ contains
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, LAND_ASSIM, Label="LAND_ASSIM:", DEFAULT="NO", RC=STATUS)
+    call MAPL_GetResource ( MAPL, land_assim, Label="LAND_ASSIM:", DEFAULT= 0, RC=STATUS)
     VERIFY_(STATUS)
-    LAND_ASSIM =  ESMF_UtilStringUpperCase(LAND_ASSIM, rc=STATUS)
-    VERIFY_(STATUS)
-    assim = (LAND_ASSIM /= 'NO')
 
     allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
     allocate(DATAATM(1))
@@ -193,7 +189,7 @@ contains
     ENSAVG    = MAPL_AddChild(gc, name='ENSAVG', ss=EnsSetServices, rc=status)
     VERIFY_(status)
     
-    if(assim) then
+    if(land_assim > 0 ) then
        LANDASSIM = MAPL_AddChild(gc, name='LANDASSIM', ss=LandAssimSetServices, rc=status)
        VERIFY_(status)
     endif
@@ -264,7 +260,7 @@ contains
        VERIFY_(status)
     enddo
 
-    if(assim) then
+    if(land_assim > 0) then
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
             SHORT_NAME = ['POROS ', 'COND  ','PSIS  ','BEE   ','WPWET ','GNU   ','VGWMAX',    &
@@ -417,7 +413,6 @@ contains
     VERIFY_(status)
     call esmf2ldas(CurrentTime, start_time, rc=status)
     VERIFY_(status)
-
 
     call MAPL_GetResource(MAPL,LDAS_logit,'LDAS_logit:',default = "NO",rc = status)
     VERIFY_(status)
@@ -693,7 +688,7 @@ contains
        VERIFY_(status)
     enddo
 
-    if (assim) then
+    if (land_assim > 0) then
        call MAPL_GetObjectFromGC(gcs(LANDASSIM), CHILD_MAPL, rc=status)
        VERIFY_(status) 
        call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
@@ -878,7 +873,7 @@ contains
           call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
           VERIFY_(status)
 
-          if(assim) then
+          if(land_assim > 0) then
              ! calculate ensemble-average L-band Tb (add up and normalize after last member has been added)
              call ESMF_GridCompRun(gcs(LANDASSIM), importState=gex(igc), exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
              VERIFY_(status)
@@ -898,7 +893,7 @@ contains
     enddo
 
     !run land assim
-    if (assim) then 
+    if (land_assim == 1) then 
        igc = LANDASSIM
        call MAPL_TimerOn(MAPL, gcnames(igc))
        !import state is the export from ens_GridComp, assimilation run

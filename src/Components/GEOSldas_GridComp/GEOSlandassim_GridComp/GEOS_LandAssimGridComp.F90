@@ -31,7 +31,7 @@ module GEOS_LandAssimGridCompMod
   use LDAS_ensdrv_mpi, only: MPI_obs_param_type 
   
   use LDAS_DateTimeMod,ONLY: date_time_type 
-  use LDAS_ensdrv_Globals, only: logunit
+  use LDAS_ensdrv_Globals, only: logunit, nodata_generic
 
   use LDAS_ConvertMod, ONLY: esmf2ldas
   use LDAS_DriverTypes,                     ONLY:     &
@@ -45,7 +45,7 @@ module GEOS_LandAssimGridCompMod
   use lsm_routines, only: DZGT
   use GEOS_EnsGridCompMod,      only: cat_progn=>catch_progn
   use GEOS_EnsGridCompMod,      only: cat_param=>catch_param
-  use mwRTM_types, only: mwRTM_param_type
+  use mwRTM_types, only: mwRTM_param_type, mwRTM_param_nodata_check
   use catch_bias_types, only: obs_bias_type
   use catch_bias_types, only: cat_bias_param_type
   use catch_types, only: cat_progn_type
@@ -66,7 +66,6 @@ module GEOS_LandAssimGridCompMod
 
   use, intrinsic :: ieee_arithmetic    
 
-  integer :: collect_tb_counter
   
 implicit none
 
@@ -83,6 +82,7 @@ public :: SetServices
 integer, parameter :: NUM_SUBTILES = 4
 integer           :: NUM_ENSEMBLE
 integer           :: FIRST_ENS_ID
+integer           :: collect_tb_counter
 
 type(met_force_type), allocatable :: mfPert_ensavg(:)
 
@@ -108,6 +108,8 @@ integer,dimension(:),pointer :: l2rf, rf2l,rf2g, rf2f
 type(tile_coord_type), dimension(:), pointer :: tile_coord_rf => null()
 integer, allocatable :: Pert_rseed(:,:)
 real(kind=ESMF_KIND_R8), allocatable :: pert_rseed_r8(:,:)
+type(mwRTM_param_type),dimension(:),allocatable ::  mwRTM_param
+logical :: all_nodata   ! no data for mwRTM_param
 
 contains
 
@@ -143,11 +145,11 @@ subroutine SetServices ( GC, RC )
 
     Iam='SetServices'
     call ESMF_GridCompGet ( GC, NAME=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam=trim(COMP_NAME)//trim(Iam)
 
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
   ! Register services for this component
     call MAPL_GridCompSetEntryPoint(                                            &
@@ -156,7 +158,7 @@ subroutine SetServices ( GC, RC )
          Initialize,                                                            &
          rc=status                                                              &
          )
-    VERIFY_(status)
+    _VERIFY(status)
 
     !phase 1: assimilation run
     call MAPL_GridCompSetEntryPoint(                                            &
@@ -165,7 +167,7 @@ subroutine SetServices ( GC, RC )
          RUN,                                                                   &
          rc=status                                                              &
          )
-    VERIFY_(status)
+    _VERIFY(status)
 
     !phase 2: feed back to change catch_progn  
     call MAPL_GridCompSetEntryPoint(                                            &
@@ -174,7 +176,7 @@ subroutine SetServices ( GC, RC )
          UPDATE_ASSIM,                                                          &
          rc=status                                                              &
          )
-    VERIFY_(status)
+    _VERIFY(status)
 
     !phase 3: calculation of L-band Tb_h and Tb_v for each ensemble member  
     call MAPL_GridCompSetEntryPoint(                                            &
@@ -183,7 +185,7 @@ subroutine SetServices ( GC, RC )
          CALC_LAND_TB,                                                          &
          rc=status                                                              &
          )
-    VERIFY_(status)
+    _VERIFY(status)
 
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
@@ -191,7 +193,7 @@ subroutine SetServices ( GC, RC )
          Finalize,                                                              &
          rc=status                                                              &
          )
-    VERIFY_(status)
+    _VERIFY(status)
 
 
 
@@ -210,7 +212,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'sfc_sat_hydraulic_conduct' ,&
     UNITS              = 'm s-1'                     ,&
@@ -218,7 +220,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'saturated_matric_potential',&
@@ -227,7 +229,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'clapp_hornberger_b'        ,&
@@ -236,7 +238,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'wetness_at_wilting_point'  ,&
     UNITS              = '1'                         ,&
@@ -244,7 +246,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddImportSpec(GC                  ,&
@@ -254,7 +256,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'max_rootzone_water_content',&
@@ -263,7 +265,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'topo_baseflow_param_1'     ,&
@@ -272,7 +274,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'topo_baseflow_param_2'     ,&
@@ -281,7 +283,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'topo_baseflow_param_3'     ,&
@@ -290,7 +292,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddImportSpec(GC                  ,&
@@ -300,7 +302,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'max_water_content'         ,&
@@ -309,7 +311,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'wetness_param_1'           ,&
@@ -318,7 +320,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'wetness_param_2'           ,&
@@ -327,7 +329,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'wetness_param_3'           ,&
@@ -336,7 +338,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'shape_param_1'             ,&
@@ -345,7 +347,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'shape_param_2'             ,&
@@ -354,7 +356,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'shape_param_3'             ,&
@@ -363,7 +365,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'shape_param_4'             ,&
@@ -372,7 +374,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'min_theta_param_1'         ,&
@@ -381,7 +383,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'min_theta_param_2'         ,&
     UNITS              = 'm+2 kg-1'                  ,&
@@ -389,7 +391,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'min_theta_param_3'          ,&
@@ -398,7 +400,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'min_theta_param_4'         ,&
@@ -407,7 +409,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_1'    ,&
@@ -416,7 +418,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_2'    ,&
     UNITS              = '1'                         ,&
@@ -424,7 +426,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_3'    ,&
@@ -433,7 +435,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_4'    ,&
@@ -442,7 +444,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_5'    ,&
@@ -451,7 +453,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddImportSpec(GC                  ,&
     LONG_NAME          = 'water_transfer_param_6'    ,&
@@ -460,7 +462,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
  call MAPL_AddImportSpec(GC                     ,&
      SHORT_NAME = 'ITY'                              ,&
@@ -469,7 +471,7 @@ subroutine SetServices ( GC, RC )
      DIMS       = MAPL_DimsTileOnly                  ,&
      VLOCATION  = MAPL_VLocationNone                 ,&
      RC=STATUS  )
- VERIFY_(STATUS)
+ _VERIFY(STATUS)
 
  call MAPL_AddImportSpec(GC                     ,&
      SHORT_NAME = 'Z2CH'                             ,&
@@ -478,7 +480,7 @@ subroutine SetServices ( GC, RC )
      DIMS       = MAPL_DimsTileOnly                  ,&
      VLOCATION  = MAPL_VLocationNone                 ,&
      RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   ! Exports for brightness temperature
@@ -490,7 +492,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly                                 ,&
        VLOCATION          = MAPL_VLocationNone                                ,&
        RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                                                  ,&
        LONG_NAME          = 'brightness_temperature_land_1410MHz_40deg_Vpol'  ,&
@@ -499,7 +501,7 @@ subroutine SetServices ( GC, RC )
        DIMS               = MAPL_DimsTileOnly                                 ,&
        VLOCATION          = MAPL_VLocationNone                                ,&
        RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   
   ! Exports for incr
 
@@ -511,7 +513,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_canopy_temperature_transition_zone'   ,&
@@ -521,7 +523,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_canopy_temperature_wilting_zone'    ,&
     UNITS              = 'K'                         ,&
@@ -530,7 +532,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_canopy_specific_humidity_saturated_zone'  ,&
@@ -540,7 +542,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_canopy_specific_humidity_transition_zone'  ,&
@@ -550,7 +552,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_canopy_specific_humidity_wilting_zone'  ,&
     UNITS              = 'kg kg-1'                   ,&
@@ -559,7 +561,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_interception_reservoir_capac',&
@@ -569,7 +571,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_catchment_deficit'         ,&
@@ -579,7 +581,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_root_zone_excess'          ,&
@@ -589,7 +591,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 
   call MAPL_AddExportSpec(GC                  ,&
@@ -600,7 +602,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_soil_heat_content_layer_1' ,&
@@ -610,7 +612,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_soil_heat_content_layer_2' ,&
@@ -620,7 +622,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_soil_heat_content_layer_3' ,&
@@ -630,7 +632,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_soil_heat_content_layer_4' ,&
@@ -640,7 +642,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_soil_heat_content_layer_5' ,&
     UNITS              = 'J m-2'                     ,&
@@ -649,7 +651,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_soil_heat_content_layer_6' ,&
@@ -659,7 +661,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_snow_mass_layer_1'         ,&
@@ -669,7 +671,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_snow_mass_layer_2'         ,&
@@ -679,7 +681,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_snow_mass_layer_3'         ,&
@@ -689,7 +691,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_heat_content_snow_layer_1' ,&
@@ -699,7 +701,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_heat_content_snow_layer_2' ,&
@@ -709,7 +711,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_heat_content_snow_layer_3' ,&
@@ -719,7 +721,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_snow_depth_layer_1'        ,&
@@ -729,7 +731,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_snow_depth_layer_2'        ,&
@@ -739,7 +741,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
   call MAPL_AddExportSpec(GC                  ,&
     LONG_NAME          = 'increment_snow_depth_layer_3'        ,&
     UNITS              = 'm'                         ,&
@@ -748,7 +750,7 @@ subroutine SetServices ( GC, RC )
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
-  VERIFY_(STATUS)
+  _VERIFY(STATUS)
 
 !
 ! INTERNAL STATE
@@ -760,7 +762,7 @@ subroutine SetServices ( GC, RC )
       DIMS        = MAPL_DimsTileOnly          ,&
       VLOCATION   = MAPL_VLocationNone         ,&
       FRIENDLYTO  = trim(COMP_NAME)             ,&
-      DEFAULT     = MAPL_UNDEF                , &
+      DEFAULT     = nodata_generic                , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                  ,&
@@ -769,7 +771,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_SOILCLS'             ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                 , &
+      DEFAULT     = nodata_generic                 , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                  ,&
@@ -778,7 +780,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_SAND'                ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                 , &
+      DEFAULT     = nodata_generic                 , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                  ,&
@@ -787,7 +789,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_CLAY'                ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                 , &
+      DEFAULT     = nodata_generic                 , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -796,7 +798,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_POROS'               ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                 , &
+      DEFAULT     = nodata_generic                 , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -805,7 +807,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_WANGWT'              ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                 , &
+      DEFAULT     = nodata_generic                 , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -814,7 +816,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_WANGWP'              ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                 , &
+      DEFAULT     = nodata_generic                 , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -823,7 +825,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_RGHHMIN'             ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                 , &
+      DEFAULT     = nodata_generic                 , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -832,7 +834,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_RGHHMAX'             ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                 , &
+      DEFAULT     = nodata_generic                 , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                  ,&
@@ -841,7 +843,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_RGHWMIN'             ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                 , &
+      DEFAULT     = nodata_generic                 , &
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                  ,&
@@ -850,7 +852,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_RGHWMAX'             ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                  ,&
+      DEFAULT     = nodata_generic                  ,&
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -859,7 +861,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_RGHNRH'              ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                  ,&
+      DEFAULT     = nodata_generic                  ,&
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -868,7 +870,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_RGHNRV'              ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                  ,&
+      DEFAULT     = nodata_generic                  ,&
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -877,7 +879,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_RGHPOLMIX'           ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                  ,&
+      DEFAULT     = nodata_generic                  ,&
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -886,7 +888,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_OMEGA'               ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                  ,&
+      DEFAULT     = nodata_generic                  ,&
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -895,7 +897,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_BH'                  ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                  ,&
+      DEFAULT     = nodata_generic                  ,&
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -904,7 +906,7 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_BV'                  ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                  ,&
+      DEFAULT     = nodata_generic                  ,&
       RC=STATUS)
 
    call MAPL_AddInternalSpec(GC                 ,&
@@ -913,16 +915,16 @@ subroutine SetServices ( GC, RC )
       SHORT_NAME  = 'MWRTM_LEWT'                ,&
       DIMS        = MAPL_DimsTileOnly           ,&
       VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = MAPL_UNDEF                  ,&
+      DEFAULT     = nodata_generic                  ,&
       RC=STATUS)
 
     call MAPL_TimerAdd(GC, name="Initialize"    ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call MAPL_GenericSetServices ( GC, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     RETURN_(ESMF_SUCCESS)
 
@@ -981,45 +983,47 @@ subroutine Initialize(gc, import, export, clock, rc)
     character(len=14) :: datestamp
     character(len=4)  :: id_string
     integer :: nymd, nhms
+
+
 !! from LDASsa
 
     ! Begin...
 
     ! Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     Iam = trim(comp_name) // "::Initialize"
     ! Get MAPL obj
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     ! Turn timers on
     call MAPL_TimerOn(MAPL, "TOTAL")
     call MAPL_TimerOn(MAPL, "Initialize")
-    
-    call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
-    VERIFY_(STATUS)
 
     collect_tb_counter = 0
+    
+    call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
+    _VERIFY(STATUS)
+    call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
+    _VERIFY(STATUS)
+    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+    _VERIFY(STATUS)
+    call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+    _VERIFY(STATUS)
 
     call init_log( myid, numprocs, master_proc )
 
     ! Get current time
     call ESMF_ClockGet(clock, currTime=CurrentTime, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call esmf2ldas(CurrentTime, start_time, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     call ESMF_ClockGet(clock, timeStep=ModelTimeStep,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call ESMF_TimeIntervalGet(ModelTimeStep, s=model_dtstep,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     ! Create alarm for Land assimilation
     ! -create-nonsticky-alarm-
@@ -1031,10 +1035,10 @@ subroutine Initialize(gc, import, export, clock, rc)
          default=10800,                                                          &
          rc=status                                                              &
          )
-    VERIFY_(status)
+    _VERIFY(status)
 
     call ESMF_TimeIntervalSet(LandAssim_DT, s=LandAssimDtStep, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     LandAssimAlarm = ESMF_AlarmCreate(                                          &
          clock,                                                                 &
@@ -1045,17 +1049,17 @@ subroutine Initialize(gc, import, export, clock, rc)
          sticky=.false.,                                                        &
          rc=status                                                              &
          )
-    VERIFY_(status)
+    _VERIFY(status)
 
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
-    VERIFY_(status)
+    _VERIFY(status)
     tcinternal   =>tcwrap%ptr
     tile_coord_l =>tcinternal%tile_coord
   ! Get number of land tiles
     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_LocStreamGet(locstream, NT_LOCAL=land_nt_local,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     allocate(Pert_rseed(NRANDSEED, NUM_ENSEMBLE), source = 0)
     allocate(Pert_rseed_r8(NRANDSEED, NUM_ENSEMBLE), source = 0.0d0)
@@ -1063,9 +1067,9 @@ subroutine Initialize(gc, import, export, clock, rc)
     if (master_proc) then
 
        call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../intput/restart/landassim_obspertrseed%s_rst", RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call MAPL_DateStampGet( clock, datestamp, rc=status)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        read(datestamp(1:8),*)   nymd
        read(datestamp(10:13),*) nhms
        nhms = nhms*100
@@ -1152,7 +1156,7 @@ subroutine Initialize(gc, import, export, clock, rc)
        N_obsbias_max                            &
        )
       call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
-      VERIFY_(STATUS)
+      _VERIFY(STATUS)
       if (index(GridName,"-CF") /=0) out_smapL4SMaup = .false. ! no out_smap for now if it is cs frid
     endif
 
@@ -1176,7 +1180,7 @@ subroutine Initialize(gc, import, export, clock, rc)
     if (master_proc) call echo_clsm_ensupd_glob_param(logunit) 
 
     call MAPL_GenericInitialize(gc, import, export, clock, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     call MAPL_TimerOff(MAPL, "Initialize")
     call MAPL_TimerOff(MAPL, "TOTAL")
@@ -1216,7 +1220,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     type(TILECOORD_WRAP)           :: tcwrap
     type(tile_coord_type), pointer :: tile_coord_l(:)=>null()
     type(T_TILECOORD_STATE), pointer :: tcinternal
-    type(mwRTM_param_type),dimension(:),allocatable ::  mwRTM_param
 
     type(ESMF_State) :: INTERNAL
     type(date_time_type) :: start_time
@@ -1244,28 +1247,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     logical  :: fresh_incr
     integer  :: N_obsf,N_obsl
     integer  :: secs_in_day
-! -----------------------------------------------------
-! INTERNAL Pointers
-! -----------------------------------------------------
-
-    real, dimension(:), pointer :: VEGCLS
-    real, dimension(:), pointer :: SOILCLS
-    real, dimension(:), pointer :: SAND
-    real, dimension(:), pointer :: CLAY
-    real, dimension(:), pointer :: mw_POROS
-    real, dimension(:), pointer :: WANGWT
-    real, dimension(:), pointer :: WANGWP
-    real, dimension(:), pointer :: RGHHMIN
-    real, dimension(:), pointer :: RGHHMAX
-    real, dimension(:), pointer :: RGHWMAX
-    real, dimension(:), pointer :: RGHWMIN
-    real, dimension(:), pointer :: RGHNRH
-    real, dimension(:), pointer :: RGHNRV
-    real, dimension(:), pointer :: RGHPOLMIX
-    real, dimension(:), pointer :: OMEGA
-    real, dimension(:), pointer :: BH
-    real, dimension(:), pointer :: BV
-    real, dimension(:), pointer :: LEWT
 
 !! import ensemble forcing
 
@@ -1339,106 +1320,52 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam=trim(COMP_NAME)//"::RUN"
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 ! Start timers
 ! ------------
     call MAPL_TimerOn(MAPL,"TOTAL")
     call MAPL_TimerOn(MAPL,"RUN")
     call ESMF_ClockGetAlarm(clock, 'LandAssim', LandAssimAlarm, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
     call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
 
    ! Get component's internal variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
-    VERIFY_(status)
+    _VERIFY(status)
     tcinternal => tcwrap%ptr
     tile_coord_l => tcwrap%ptr%tile_coord
 
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     ! Get current time
     call ESMF_ClockGet(clock, timeStep=ModelTimeStep,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call ESMF_ClockGet(clock, currTime=ModelTimeCur, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call esmf2ldas(ModelTimeCur+ModelTimeStep, date_time_new, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     call esmf2ldas(ModelTimeCur, start_time, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     ! Get number of land tiles
     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_LocStreamGet(locstream, NT_LOCAL=N_catl,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
 ! Pointers to internals
 !----------------------
     if (need_mwRTM_param) then
-       call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, SOILCLS  , 'MWRTM_SOILCLS'  ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, VEGCLS   , 'MWRTM_VEGCLS'   ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, CLAY     , 'MWRTM_CLAY'     ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS'    ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, WANGWT   , 'MWRTM_WANGWT'   ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, WANGWP   , 'MWRTM_WANGWP'   ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, RGHHMIN  , 'MWRTM_RGHHMIN'  ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, RGHHMAX  , 'MWRTM_RGHHMAX'  ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, RGHWMIN  , 'MWRTM_RGHWMIN'  ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, RGHWMAX  , 'MWRTM_RGHWMAX'  ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, RGHNRH   , 'MWRTM_RGHNRH'   ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, RGHNRV   , 'MWRTM_RGHNRV'   ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, RGHPOLMIX, 'MWRTM_RGHPOLMIX',    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, OMEGA    , 'MWRTM_OMEGA'    ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, BH       , 'MWRTM_BH'       ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, BV       , 'MWRTM_BV'       ,    RC=STATUS)
-       VERIFY_(STATUS)
-       call MAPL_GetPointer(INTERNAL, LEWT     , 'MWRTM_LEWT'     ,    RC=STATUS)
-       VERIFY_(STATUS)
- 
-       allocate(mwRTM_param(N_catl))
-       mwRTM_param(:)%sand      = SAND(:)
-       mwRTM_param(:)%vegcls    = nint(VEGCLS(:))
-       mwRTM_param(:)%soilcls   = nint(SOILCLS(:))
-       mwRTM_param(:)%clay      = CLAY(:)
-       mwRTM_param(:)%poros     = mw_POROS(:)
-       mwRTM_param(:)%wang_wt   = WANGWT(:)
-       mwRTM_param(:)%wang_wp   = WANGWP(:)
-       mwRTM_param(:)%rgh_hmin  = RGHHMIN(:)
-       mwRTM_param(:)%rgh_hmax  = RGHHMAX(:)
-       mwRTM_param(:)%rgh_wmin  = RGHWMIN(:)
-       mwRTM_param(:)%rgh_wmax  = RGHWMAX(:)
-       mwRTM_param(:)%rgh_Nrh   = RGHNRH(:)
-       mwRTM_param(:)%rgh_Nrv   = RGHNRV(:)
-       mwRTM_param(:)%rgh_polmix= RGHPOLMIX(:)
-       mwRTM_param(:)%omega     = OMEGA(:)
-       mwRTM_param(:)%bh        = BH(:)
-       mwRTM_param(:)%bv        = bv(:)
-       mwRTM_param(:)%lewt      = LEWT(:)
+       call get_mwrtm_param(INTERNAL, rc=STATUS)
+       _VERIFY(STATUS)
     endif
 
     if (firsttime) then
@@ -1458,10 +1385,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
        if (master_proc) then
           Pert_rseed_r8 = Pert_rseed
           call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
-          VERIFY_(STATUS)
+          _VERIFY(STATUS)
           fname_tpl = trim(fname_tpl) //".%y4%m2%d2_%h2%n2z.nc4"
           call MAPL_DateStampGet( clock, datestamp, rc=status)
-          VERIFY_(STATUS)
+          _VERIFY(STATUS)
           read(datestamp(1:8),*)   nymd
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
@@ -1469,7 +1396,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
              write(id_string,'(I4.4)') ens + FIRST_ENS_ID
              seed_fname = ""
              call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
-             VERIFY_(STATUS)
+             _VERIFY(STATUS)
              call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
           enddo
         endif 
@@ -1487,92 +1414,92 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 !! get import from ens to get ensemble average forcing
 
     call MAPL_GetPointer(import, TA_enavg, 'TA', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, QA_enavg, 'QA', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, PS_enavg, 'PS', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, UU_enavg, 'UU', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, PCU_enavg, 'PCU', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, PLS_enavg, 'PLS', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, SNO_enavg, 'SNO', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, DRPAR_enavg, 'DRPAR', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, DFPAR_enavg, 'DFPAR', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, DRNIR_enavg, 'DRNIR', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, DFNIR_enavg, 'DFNIR', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, DRUVR_enavg, 'DRUVR', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, DFUVR_enavg, 'DFUVR', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, LWDNSRF_enavg, 'LWDNSRF', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, DZ_enavg, 'DZ', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, SWLAND, 'SWLAND', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, LAI, 'LAI', rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 !
 ! export for incr
 !
     call MAPL_GetPointer(export, TC1_incr,  'TCFSAT_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, TC2_incr,  'TCFTRN_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, TC4_incr,  'TCFWLT_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, QC1_incr,  'QCFSAT_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, QC2_incr,  'QCFTRN_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, QC4_incr,  'QCFWLT_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, CAPAC_incr,  'CAPAC_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, CATDEF_incr,  'CATDEF_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, RZEXC_incr,  'RZEXC_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, SRFEXC_incr,  'SRFEXC_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT1_incr,  'GHTCNT1_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT2_incr,  'GHTCNT2_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT3_incr,  'GHTCNT3_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT4_incr,  'GHTCNT4_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT5_incr,  'GHTCNT5_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT6_incr,  'GHTCNT6_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, WESNN1_incr,  'WESNN1_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, WESNN2_incr,  'WESNN2_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, WESNN3_incr,  'WESNN3_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, HTSNNN1_incr,  'HTSNNN1_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, HTSNNN2_incr,  'HTSNNN2_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, HTSNNN3_incr,  'HTSNNN3_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, SNDZN1_incr,  'SNDZN1_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, SNDZN2_incr,  'SNDZN2_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, SNDZN3_incr,  'SNDZN3_INCR' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     allocate(met_force(N_catl))
     met_force(:)%Tair    = TA_enavg(:)
@@ -1614,10 +1541,10 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     if (firsttime) then
         firsttime = .false.
         call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 
         allocate(metTair(N_catf),metTair_l(N_catl))
         allocate(ids(N_catf))
@@ -1639,85 +1566,85 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
         endif
 
         unit = GETFILE( "landassim_force_inputs.bin", form="unformatted", RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
 ! Inputs
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Tair, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Qair, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Psurf, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Rainf_c, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Tair, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Qair, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Psurf, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Rainf_c, mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Rainf,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Snowf,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%LWdown, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%SWdown, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%SWnet,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%PARdrct,mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%PARdffs, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%wind, mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, met_force(:)%RefH, mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Rainf,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Snowf,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%LWdown, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%SWdown, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%SWnet,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%PARdrct,mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%PARdffs, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%wind, mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, met_force(:)%RefH, mask=mask, rc=status); _VERIFY(STATUS)
 
         unit = GETFILE( "landassim_catprogn_inputs.bin", form="unformatted", RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
        
         ens_id = 1
 
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%tc1,     mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%tc2,     mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%tc4,     mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%tc1,     mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%tc2,     mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%tc4,     mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%qa1,     mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%qa2,     mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%qa4,     mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%qa1,     mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%qa2,     mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%qa4,     mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%capac,   mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%catdef,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%rzexc,   mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%srfexc,  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%capac,   mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%catdef,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%rzexc,   mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%srfexc,  mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(1),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(2),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(3),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(4),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(5),  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(6),  mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(1),  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(2),  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(3),  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(4),  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(5),  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(6),  mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%wesn(1), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%wesn(2), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%wesn(3), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%wesn(1), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%wesn(2), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%wesn(3), mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%htsn(1), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%htsn(2), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%htsn(3), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%htsn(1), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%htsn(2), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%htsn(3), mask=mask, rc=status); _VERIFY(STATUS)
 
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%sndz(1), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%sndz(2), mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%sndz(3), mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%sndz(1), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%sndz(2), mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%sndz(3), mask=mask, rc=status); _VERIFY(STATUS)
 
 
         unit = GETFILE( "landassim_mwrtm_inputs.bin", form="unformatted", RC=STATUS )
-        VERIFY_(STATUS)
+        _VERIFY(STATUS)
        
-        call MAPL_VarWrite(unit, tilegrid,real(mwRTM_param(:)%vegcls),    mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,real(mwRTM_param(:)%soilcls),   mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%sand,      mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%clay,      mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%poros,     mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%wang_wt,   mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%wang_wp,   mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_hmin,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_hmax,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_wmin,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_wmax,  mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_Nrh,   mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_Nrv,   mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_polmix,mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%omega,     mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bh,        mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bv,        mask=mask, rc=status); VERIFY_(STATUS)
-        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%lewt,      mask=mask, rc=status); VERIFY_(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,real(mwRTM_param(:)%vegcls),    mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,real(mwRTM_param(:)%soilcls),   mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%sand,      mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%clay,      mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%poros,     mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%wang_wt,   mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%wang_wp,   mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_hmin,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_hmax,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_wmin,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_wmax,  mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_Nrh,   mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_Nrv,   mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%rgh_polmix,mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%omega,     mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bh,        mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bv,        mask=mask, rc=status); _VERIFY(STATUS)
+        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%lewt,      mask=mask, rc=status); _VERIFY(STATUS)
 
         !unit = GETFILE( "landassim_catparam_inputs.bin", form="unformatted", RC=STATUS )
-        !VERIFY_(STATUS)
+        !_VERIFY(STATUS)
        
      endif
 
@@ -1915,60 +1842,60 @@ subroutine UPDATE_ASSIM(gc, import, export, clock, rc)
   !BOP
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam=trim(COMP_NAME)//"::RUN"
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     call ESMF_ClockGetAlarm(clock, 'LandAssim', LandAssimAlarm, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     if ( .not. ESMF_AlarmIsRinging(LandAssimAlarm)) then
        RETURN_(ESMF_SUCCESS)
     endif
 
     call MAPL_GetPointer(export, TC,  'TC' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, QC,  'QC' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, CAPAC,  'CAPAC' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, CATDEF,  'CATDEF' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, RZEXC,  'RZEXC' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, SRFEXC,  'SRFEXC' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT1,  'GHTCNT1' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT2,  'GHTCNT2' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT3,  'GHTCNT3' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT4,  'GHTCNT4' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT5,  'GHTCNT5' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, GHTCNT6,  'GHTCNT6' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, WESNN1,  'WESNN1' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, WESNN2,  'WESNN2' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, WESNN3,  'WESNN3' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, HTSNNN1,  'HTSNNN1' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, HTSNNN2,  'HTSNNN2' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, HTSNNN3,  'HTSNNN3' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, SNDZN1,  'SNDZN1' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, SNDZN2,  'SNDZN2' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, SNDZN3,  'SNDZN3' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     ! This counter is relative to ens_id
     ens_id = ens_id + 1
@@ -2039,9 +1966,7 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     real, dimension(:), pointer :: TP1
     real, dimension(:), pointer :: TPSURF
     real, dimension(:), pointer :: WCSF
-    real, dimension(:), pointer :: WESNN1
-    real, dimension(:), pointer :: WESNN2
-    real, dimension(:), pointer :: WESNN3
+    real, dimension(:), pointer :: SWE
 
     real, dimension(:), pointer :: VEGCLS
     real, dimension(:), pointer :: SOILCLS
@@ -2065,25 +1990,24 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     real, dimension(:), pointer :: TB_H_enavg
     real, dimension(:), pointer :: TB_V_enavg
 
-    real, allocatable, dimension(:) :: SWE
     real, allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
     real, allocatable, dimension(:) :: dummy_real
     real, allocatable, dimension(:) :: Tb_v_tmp, TB_h_tmp
 
   
 
-    integer :: N_catl
+    integer :: N_catl, n, mpierr
     type(MAPL_LocStream) :: locstream
-    !integer , save :: ens_id = 0
+    logical :: is_nodata, all_nodata_l, all_nodata
 
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     Iam=trim(COMP_NAME)//"::RUN"
 
     call MAPL_GetPointer(export, TB_H_enavg,  'TB_LAND_1410MHZ_40DEG_HPOL' ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(export, TB_V_enavg,  'TB_LAND_1410MHZ_40DEG_VPOL' ,rc=status)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     !if HISTORY does not ask for these varaibles, no calculation necessary
     if (.not. associated(TB_H_enavg) .or. .not. associated(TB_V_enavg)) then
@@ -2091,103 +2015,39 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     endif
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_LocStreamGet(locstream, NT_LOCAL=N_catl,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
 ! Pointers to internals
 !----------------------
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
-    ! RRTBHISTORY - do we need to fill "mwRTM_param" this here and in RUN?  Can this be moved to Initialize?
-
-    call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL,SOILCLS   , 'MWRTM_SOILCLS'  ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, VEGCLS   , 'MWRTM_VEGCLS'   ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, CLAY     , 'MWRTM_CLAY'     ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS'    ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, WANGWT   , 'MWRTM_WANGWT'   ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, WANGWP   , 'MWRTM_WANGWP'   ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHHMIN  , 'MWRTM_RGHHMIN'  ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHHMAX  , 'MWRTM_RGHHMAX'  ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHWMIN  , 'MWRTM_RGHWMIN'  ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHWMAX  , 'MWRTM_RGHWMAX'  ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHNRH   , 'MWRTM_RGHNRH'   ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHNRV   , 'MWRTM_RGHNRV'   ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHPOLMIX, 'MWRTM_RGHPOLMIX',    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, OMEGA    , 'MWRTM_OMEGA'    ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, BH       , 'MWRTM_BH'       ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, BV       , 'MWRTM_BV'       ,    RC=STATUS)
-    VERIFY_(STATUS)
-    call MAPL_GetPointer(INTERNAL, LEWT     , 'MWRTM_LEWT'     ,    RC=STATUS)
-    VERIFY_(STATUS)
-
-    allocate(mwRTM_param(N_catl))
-    mwRTM_param(:)%sand      = SAND(:)
-    mwRTM_param(:)%vegcls    = nint(VEGCLS(:))
-    mwRTM_param(:)%soilcls   = nint(SOILCLS(:))
-    mwRTM_param(:)%clay      = CLAY(:)
-    mwRTM_param(:)%poros     = mw_POROS(:)
-    mwRTM_param(:)%wang_wt   = WANGWT(:)
-    mwRTM_param(:)%wang_wp   = WANGWP(:)
-    mwRTM_param(:)%rgh_hmin  = RGHHMIN(:)
-    mwRTM_param(:)%rgh_hmax  = RGHHMAX(:)
-    mwRTM_param(:)%rgh_wmin  = RGHWMIN(:)
-    mwRTM_param(:)%rgh_wmax  = RGHWMAX(:)
-    mwRTM_param(:)%rgh_Nrh   = RGHNRH(:)
-    mwRTM_param(:)%rgh_Nrv   = RGHNRV(:)
-    mwRTM_param(:)%rgh_polmix= RGHPOLMIX(:)
-    mwRTM_param(:)%omega     = OMEGA(:)
-    mwRTM_param(:)%bh        = BH(:)
-    mwRTM_param(:)%bv        = bv(:)
-    mwRTM_param(:)%lewt      = LEWT(:)
+    call get_mwrtm_param(INTERNAL, rc=status)
+    _VERIFY(STATUS)
+    !WE DO NOT HAVE "mwRTM_param", but ask for TB from HISTORY, report error
+    if (all_nodata) then
+      _ASSERT(.false., "no mwRTM data, do not ask for TB ensemble average")
+    endif
 
     call MAPL_GetPointer(import, LAI,     'LAI'    ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, TP1,     'TP1'    ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, WCSF,    'WCSF'   ,rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     call MAPL_GetPointer(import, TPSURF,  'TPSURF' ,rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(import, WESNN1,  'WESNN1' ,rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(import, WESNN2,  'WESNN2' ,rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(import, WESNN3,  'WESNN3' ,rc=status)
-    VERIFY_(STATUS)
- 
-
-  !
-  ! THIS NEEDS TO WORK EVEN IF WE DO NOT HAVE "mwRTM_param"
-  !
-  ! NOT SURE IF WE ALWAYS HAVE "mwRTM_param" WHEN THE LandAssim GC IS RUNNING
-  !
-  ! IT IS OK TO FILL TB WITH NO-DATA-VALUES IF "mwRTM_param" IS NOT AVAILABLE 
+    _VERIFY(status)
+    call MAPL_GetPointer(import, SWE,  'SNOWMASS' ,rc=status)
+    _VERIFY(status)
 
   ! convert Catchment model variables into inputs suitable for the mwRTM 
   ! NOTE: input tp must be in degree Celsius!
-  allocate(sfmc_mwRTM(N_catl), tsoil_mwRTM (N_catl))
-  call catch2mwRTM_vars( &
+   allocate(sfmc_mwRTM(N_catl), tsoil_mwRTM (N_catl))
+   call catch2mwRTM_vars( &
        N_catl,           &
        cat_param%vegcls, &    ! intent(in),  'ITY' from imports (*cat_param* vegcls)      --- not used anymore but keep for now
        cat_param%poros,  &    ! intent(in),  'POROS' from imports (*cat_param* poros)
@@ -2205,8 +2065,7 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
   ! IF NEEDED, USE DUMMY VARIABLES FOR tile_coord%elev AND Tair ALONG WITH AN IF STATEMENT AS FOLLOWS:
   
   allocate(TB_h_tmp(N_catl), TB_v_tmp(N_catl))
-  allocate(SWE(N_catl))
-  SWE(:) = WESNN1(:) + WESNN2(:) + WESNN2(:)       ! WHY NOT IMPORT SNOMASS?
+
   if (.not. incl_atm_terms) then
      allocate(dummy_real(N_catl))                  ! DO WE EVEN NEED TO ALLOCATE?
      call mwRTM_get_Tb(                         &
@@ -2219,7 +2078,7 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
           dummy_real,                           &   ! intent(in), "Tair", not used as long as "incl_atm_terms=.false." 
           incl_atm_terms,                       &   
           Tb_h_tmp, Tb_v_tmp )                      ! intent(out) 'TB_LAND_1410MHZ_40DEG_HPOL',  'TB_LAND_1410MHZ_40DEG_VPOL'
-     deallocate(Tair_Not_used, elev_not_used) 
+     deallocate(dummy_real) 
   else
      _ASSERT(.false., "incl_atm_terms should be .false.")
   end if
@@ -2241,7 +2100,7 @@ subroutine CALC_LAND_TB(gc, import, export, clock, rc)
      TB_H_enavg(:)      = TB_H_enavg(:)/NUM_ENSEMBLE
   endif
   
-  deallocate(SWE, Tb_h_tmp, Tb_v_tmp)
+  deallocate(Tb_h_tmp, Tb_v_tmp)
   
   RETURN_(_SUCCESS)
 end subroutine CALC_LAND_TB
@@ -2354,23 +2213,23 @@ subroutine Finalize(gc, import, export, clock, rc)
     integer :: ens, nymd, nhms
     ! Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
     Iam = trim(comp_name) // "::Finalize"
 
     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
     if (master_proc) then
        call finalize_obslog()
        Pert_rseed_r8 = Pert_rseed
        call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
        call MAPL_DateStampGet( clock, datestamp, rc=status)
-       VERIFY_(STATUS)
+       _VERIFY(STATUS)
 
        read(datestamp(1:8),*)   nymd
        read(datestamp(10:13),*) nhms
@@ -2379,18 +2238,117 @@ subroutine Finalize(gc, import, export, clock, rc)
           write(id_string,'(I4.4)') ens + FIRST_ENS_ID
           seed_fname = ""
           call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
-          VERIFY_(STATUS)
+          _VERIFY(STATUS)
           call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
        enddo
     endif
 
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
-    VERIFY_(status)
+    _VERIFY(status)
 
     ! End
     RETURN_(ESMF_SUCCESS)
 
 end subroutine Finalize
+
+subroutine get_mwrtm_param(internal, rc)
+   type(ESMF_State), intent(inout) :: INTERNAL
+   integer, optional, intent(out)  :: rc
+
+   real, dimension(:), pointer :: VEGCLS
+   real, dimension(:), pointer :: SOILCLS
+   real, dimension(:), pointer :: SAND
+   real, dimension(:), pointer :: CLAY
+   real, dimension(:), pointer :: mw_POROS
+   real, dimension(:), pointer :: WANGWT
+   real, dimension(:), pointer :: WANGWP
+   real, dimension(:), pointer :: RGHHMIN
+   real, dimension(:), pointer :: RGHHMAX
+   real, dimension(:), pointer :: RGHWMAX
+   real, dimension(:), pointer :: RGHWMIN
+   real, dimension(:), pointer :: RGHNRH
+   real, dimension(:), pointer :: RGHNRV
+   real, dimension(:), pointer :: RGHPOLMIX
+   real, dimension(:), pointer :: OMEGA
+   real, dimension(:), pointer :: BH
+   real, dimension(:), pointer :: BV
+   real, dimension(:), pointer :: LEWT
+  
+   integer :: N_catl, n, mpierr, status
+   logical :: is_nodata, all_nodata_l
+ 
+   if(allocated(mwRTM_param)) then
+     _RETURN(_SUCCESS)
+   endif
+
+   call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL,SOILCLS   , 'MWRTM_SOILCLS'  ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, VEGCLS   , 'MWRTM_VEGCLS'   ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, CLAY     , 'MWRTM_CLAY'     ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS'    ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, WANGWT   , 'MWRTM_WANGWT'   ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, WANGWP   , 'MWRTM_WANGWP'   ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, RGHHMIN  , 'MWRTM_RGHHMIN'  ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, RGHHMAX  , 'MWRTM_RGHHMAX'  ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, RGHWMIN  , 'MWRTM_RGHWMIN'  ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, RGHWMAX  , 'MWRTM_RGHWMAX'  ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, RGHNRH   , 'MWRTM_RGHNRH'   ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, RGHNRV   , 'MWRTM_RGHNRV'   ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, RGHPOLMIX, 'MWRTM_RGHPOLMIX',    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, OMEGA    , 'MWRTM_OMEGA'    ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, BH       , 'MWRTM_BH'       ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, BV       , 'MWRTM_BV'       ,    RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetPointer(INTERNAL, LEWT     , 'MWRTM_LEWT'     ,    RC=STATUS)
+   _VERIFY(STATUS) 
+
+   N_catl = size(sand,1)
+   allocate(mwRTM_param(N_catl))
+   mwRTM_param(:)%sand      = SAND(:)
+   mwRTM_param(:)%vegcls    = nint(VEGCLS(:))
+   mwRTM_param(:)%soilcls   = nint(SOILCLS(:))
+   mwRTM_param(:)%clay      = CLAY(:)
+   mwRTM_param(:)%poros     = mw_POROS(:)
+   mwRTM_param(:)%wang_wt   = WANGWT(:)
+   mwRTM_param(:)%wang_wp   = WANGWP(:)
+   mwRTM_param(:)%rgh_hmin  = RGHHMIN(:)
+   mwRTM_param(:)%rgh_hmax  = RGHHMAX(:)
+   mwRTM_param(:)%rgh_wmin  = RGHWMIN(:)
+   mwRTM_param(:)%rgh_wmax  = RGHWMAX(:)
+   mwRTM_param(:)%rgh_Nrh   = RGHNRH(:)
+   mwRTM_param(:)%rgh_Nrv   = RGHNRV(:)
+   mwRTM_param(:)%rgh_polmix= RGHPOLMIX(:)
+   mwRTM_param(:)%omega     = OMEGA(:)
+   mwRTM_param(:)%bh        = BH(:)
+   mwRTM_param(:)%bv        = bv(:)
+   mwRTM_param(:)%lewt      = LEWT(:)
+
+   all_nodata_l = .true.
+   do n=1,N_catl
+      call mwRTM_param_nodata_check(mwRTM_param(n), is_nodata )
+      if (.not. is_nodata) all_nodata_l = .false.
+   end do
+
+   call MPI_AllReduce(all_nodata_l, all_nodata, 1, MPI_LOGICAL, &
+                   MPI_LOR, mpicomm, mpierr)
+   _RETURN(_SUCCESS)
+end subroutine
 
 end module GEOS_LandAssimGridCompMod
