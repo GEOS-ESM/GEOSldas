@@ -1836,7 +1836,7 @@ contains
     real, dimension(:),  pointer :: SNDZN2
     real, dimension(:),  pointer :: SNDZN3
 
-    integer, save :: end_counter = 0
+    integer, save :: ens_counter = 0
     
     !BOP
     
@@ -1897,43 +1897,43 @@ contains
     _VERIFY(status)
 
     ! This counter is relative to ens_id
-    end_counter = ens_counter + 1
+    ens_counter = ens_counter + 1
     
     !distribute catch_progn
-    TC(:,1)     = cat_progn(:,end_counter)%tc1
-    TC(:,2)     = cat_progn(:,end_counter)%tc2
-    TC(:,3)     = cat_progn(:,end_counter)%tc4
+    TC(:,1)     = cat_progn(:,ens_counter)%tc1
+    TC(:,2)     = cat_progn(:,ens_counter)%tc2
+    TC(:,3)     = cat_progn(:,ens_counter)%tc4
     
-    QC(:,1)     = cat_progn(:,end_counter)%qa1
-    QC(:,2)     = cat_progn(:,end_counter)%qa2
-    QC(:,3)     = cat_progn(:,end_counter)%qa4
+    QC(:,1)     = cat_progn(:,ens_counter)%qa1
+    QC(:,2)     = cat_progn(:,ens_counter)%qa2
+    QC(:,3)     = cat_progn(:,ens_counter)%qa4
     
-    CAPAC(:)    = cat_progn(:,end_counter)%capac
+    CAPAC(:)    = cat_progn(:,ens_counter)%capac
 
-    CATDEF(:)   = cat_progn(:,end_counter)%catdef
-    RZEXC(:)    = cat_progn(:,end_counter)%rzexc
-    SRFEXC(:)   = cat_progn(:,end_counter)%srfexc
+    CATDEF(:)   = cat_progn(:,ens_counter)%catdef
+    RZEXC(:)    = cat_progn(:,ens_counter)%rzexc
+    SRFEXC(:)   = cat_progn(:,ens_counter)%srfexc
     
-    GHTCNT1(:)  = cat_progn(:,end_counter)%ght(1)
-    GHTCNT2(:)  = cat_progn(:,end_counter)%ght(2)
-    GHTCNT3(:)  = cat_progn(:,end_counter)%ght(3)
-    GHTCNT4(:)  = cat_progn(:,end_counter)%ght(4)
-    GHTCNT5(:)  = cat_progn(:,end_counter)%ght(5)
-    GHTCNT6(:)  = cat_progn(:,end_counter)%ght(6)
+    GHTCNT1(:)  = cat_progn(:,ens_counter)%ght(1)
+    GHTCNT2(:)  = cat_progn(:,ens_counter)%ght(2)
+    GHTCNT3(:)  = cat_progn(:,ens_counter)%ght(3)
+    GHTCNT4(:)  = cat_progn(:,ens_counter)%ght(4)
+    GHTCNT5(:)  = cat_progn(:,ens_counter)%ght(5)
+    GHTCNT6(:)  = cat_progn(:,ens_counter)%ght(6)
     
-    WESNN1(:)   = cat_progn(:,end_counter)%wesn(1)
-    WESNN2(:)   = cat_progn(:,end_counter)%wesn(2)
-    WESNN3(:)   = cat_progn(:,end_counter)%wesn(3)
+    WESNN1(:)   = cat_progn(:,ens_counter)%wesn(1)
+    WESNN2(:)   = cat_progn(:,ens_counter)%wesn(2)
+    WESNN3(:)   = cat_progn(:,ens_counter)%wesn(3)
 
-    HTSNNN1(:)  = cat_progn(:,end_counter)%htsn(1)
-    HTSNNN2(:)  = cat_progn(:,end_counter)%htsn(2)
-    HTSNNN3(:)  = cat_progn(:,end_counter)%htsn(3)
+    HTSNNN1(:)  = cat_progn(:,ens_counter)%htsn(1)
+    HTSNNN2(:)  = cat_progn(:,ens_counter)%htsn(2)
+    HTSNNN3(:)  = cat_progn(:,ens_counter)%htsn(3)
     
-    SNDZN1(:)   = cat_progn(:,end_counter)%sndz(1)
-    SNDZN2(:)   = cat_progn(:,end_counter)%sndz(2)
-    SNDZN3(:)   = cat_progn(:,end_counter)%sndz(3)
+    SNDZN1(:)   = cat_progn(:,ens_counter)%sndz(1)
+    SNDZN2(:)   = cat_progn(:,ens_counter)%sndz(2)
+    SNDZN3(:)   = cat_progn(:,ens_counter)%sndz(3)
     
-    if(end_counter == NUM_ENSEMBLE ) ens_counter = 0
+    if(ens_counter == NUM_ENSEMBLE ) ens_counter = 0
     
     ! End
     RETURN_(ESMF_SUCCESS)
