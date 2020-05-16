@@ -835,11 +835,11 @@ class LDASsetup:
 
         # mwRTM restart file
         mwRTMRstFile = ""      
-        _assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
+        #_assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
         if 'MWRTM_FILE' in self.rqdExeInp :
             mwRTMRstFile = self.rqdExeInp['MWRTM_FILE']
-        elif _assim ==1 :
-            mwRTMRstFile= rcoutpath +'/' + y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
+        #elif _assim ==1 :
+        #    mwRTMRstFile= rcoutpath +'/' + y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
  
         if os.path.isfile(mwRTMRstFile) :
             self.has_mwrtm = True
@@ -1050,7 +1050,7 @@ class LDASsetup:
                    rstval=[self.catch,'vegdyn','landpert']
 
                 _assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
-                if self.has_mwrtm and _assim ==1 :
+                if self.has_mwrtm : # and _assim ==1 :
                    keyn='LANDASSIM_INTERNAL_RESTART_FILE'
                    valn='../input/restart/mwrtm_param_rst'
                    ldasrcInp[keyn]= valn

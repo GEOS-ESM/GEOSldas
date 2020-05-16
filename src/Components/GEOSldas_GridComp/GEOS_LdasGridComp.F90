@@ -8,10 +8,6 @@ module GEOS_LdasGridCompMod
 
   use ESMF
   use MAPL_Mod
-  !use MAPL_GridManagerMod, only: grid_manager
-  !use MAPL_RegridderManagerMod
-  !use MAPL_AbstractRegridderMod
-  !use MAPL_RegridderSpecMod
 
   use GEOS_MetforceGridCompMod, only: MetforceSetServices => SetServices
   use GEOS_LandGridCompMod, only: LandSetServices => SetServices
@@ -97,7 +93,7 @@ contains
     type(TILECOORD_WRAP) :: tcwrap
 
     type(ESMF_Config) :: CF
-
+    integer :: LSM_CHOICE
 
     
     ! Begin...
@@ -169,17 +165,15 @@ contains
     call MAPL_GetResource ( MAPL, mwRTM_file, Label="MWRTM_FILE:", DEFAULT='', RC=STATUS)
     VERIFY_(STATUS)
     mwRTM = ( len_trim(mwRTM_file) /= 0 )
-    !
-    ! ^^^^^^^^^^^^^^^^^^^^ CLEAN UP THE ABOVE COMMENTS WHEN WE ARE DONE WITH THE EDITS HERE.
 
-
-    ! ADD STOP HERE IF (LSM_CHOICE/=1) .and.  (mwRTM .or. land_assim) ??
-    ! ==> avoid users trying to run LandAssim GC with CatchCN
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
+    if (LSM_CHOICE /=1 ) then
+      _ASSERT( .not. (mwRTM .or. land_assim), "CATCHCN is Not Ready for assimilation or mwRTM")
+    endif
     
     allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
 
-    ! one METFORCE provides all the (unperturbed) forcing data
-    ens_id(1)=0 ! id start form 0  <== ?? IS THIS INCONSISTENT WITH "FIRST_ENS_ID" USED IN GEOS_LandAssimGridComp.F90?
+    ens_id(1)=0
     if(NUM_ENSEMBLE ==1 ) then
        id_string=''
     else
@@ -188,8 +182,7 @@ contains
        write(id_string, fmt_str) ens_id(1)
     endif
     id_string=trim(id_string)
-    childname='METFORCE'//trim(id_string)  ! <== ?? DO WE NEED TO APPEND id_string?  CAN THIS (AND THE PRECEDING LINES) BE REMOVED?
-    METFORCE = MAPL_AddChild(gc, name=childname, ss=MetforceSetServices, rc=status)
+    METFORCE = MAPL_AddChild(gc, name='METFORCE', ss=MetforceSetServices, rc=status)
     VERIFY_(status)
 
     do i=1,NUM_ENSEMBLE

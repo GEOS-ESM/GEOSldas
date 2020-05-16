@@ -135,6 +135,7 @@ contains
     ! Local Variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     type(ESMF_Config)            :: CF
+    character(len=ESMF_MAXSTR)   :: LAND_ASSIM_STR, mwRTM_file
 
     ! Begin...
     ! --------
@@ -149,11 +150,16 @@ contains
     
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     _VERIFY(status)
-    
-    call MAPL_GetResource ( MAPL, land_assim, Label="LAND_ASSIM:", DEFAULT = .false., RC=STATUS)
+
+    call MAPL_GetResource ( MAPL, LAND_ASSIM_STR, Label="LAND_ASSIM:", DEFAULT="NO", RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, mwRTM, Label="mwRTM:", DEFAULT = .false., RC=STATUS)
+    LAND_ASSIM_STR =  ESMF_UtilStringUpperCase(LAND_ASSIM_STR, rc=STATUS)
     VERIFY_(STATUS)
+    land_assim = (trim(LAND_ASSIM_STR) /= 'NO')
+
+    call MAPL_GetResource ( MAPL, mwRTM_file, Label="MWRTM_FILE:", DEFAULT='', RC=STATUS)
+    VERIFY_(STATUS)
+    mwRTM = ( len_trim(mwRTM_file) /= 0 )
     
     ! Register services for this component
     call MAPL_GridCompSetEntryPoint(                                            &
@@ -991,10 +997,8 @@ contains
     call init_log( myid, numprocs, master_proc )
     
     if ( .not. land_assim) then   ! to arrive here, mwRTM must be .true.
-       
        ! only need to calculate Tb for HISTORY; no processing of assimilation obs necessary;
        ! generic initialization is sufficient
-       
        call MAPL_GenericInitialize(gc, import, export, clock, rc=status)
        _VERIFY(status)
        
@@ -2328,7 +2332,7 @@ contains
        _VERIFY(STATUS)
        
        if (master_proc) then
-          call finalize_obslog()
+          if (out_obslog) call finalize_obslog()
           Pert_rseed_r8 = Pert_rseed
           call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", &
                DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
