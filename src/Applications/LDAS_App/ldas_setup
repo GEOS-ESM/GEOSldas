@@ -138,7 +138,7 @@ class LDASsetup:
         _mydir = self.exphome + '/' + self.rqdExeInp['EXP_ID']
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None
-        _first_ens_id = self.rqdExeInp.get('FIRST_ENS_ID',0)
+        _first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
         self.ensdirs      = ['ens%04d'%iens for iens in xrange( _first_ens_id, self.nens + _first_ens_id)]
         self.ensids       = ['%04d'%iens for iens in xrange(_first_ens_id, self.nens + _first_ens_id)]
         if (self.nens == 1) :
