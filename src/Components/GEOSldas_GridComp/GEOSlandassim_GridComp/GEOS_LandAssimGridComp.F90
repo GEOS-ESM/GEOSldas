@@ -1312,7 +1312,7 @@ contains
     ! vars for debugging purposes
     type(ESMF_Grid)                 :: TILEGRID
     integer, pointer                :: mask(:)
-    integer                         :: nt,ens_id
+    integer                         :: nt, ens_counter
     integer, save                   :: unit_i=0
     integer                         :: unit
     integer                         :: NT_GLOBAL,mpierr,i
@@ -1590,39 +1590,39 @@ contains
        unit = GETFILE( "landassim_catprogn_inputs.bin", form="unformatted", RC=STATUS )
        _VERIFY(STATUS)
        
-       ens_id = 1
+       ens_counter = 1
        
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%tc1,     mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%tc2,     mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%tc4,     mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%tc1,     mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%tc2,     mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%tc4,     mask=mask, rc=status); _VERIFY(STATUS)
        
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%qa1,     mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%qa2,     mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%qa4,     mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%qa1,     mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%qa2,     mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%qa4,     mask=mask, rc=status); _VERIFY(STATUS)
        
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%capac,   mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%catdef,  mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%rzexc,   mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%srfexc,  mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%capac,   mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%catdef,  mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%rzexc,   mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%srfexc,  mask=mask, rc=status); _VERIFY(STATUS)
        
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(1),  mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(2),  mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(3),  mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(4),  mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(5),  mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%ght(6),  mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%ght(1),  mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%ght(2),  mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%ght(3),  mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%ght(4),  mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%ght(5),  mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%ght(6),  mask=mask, rc=status); _VERIFY(STATUS)
        
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%wesn(1), mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%wesn(2), mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%wesn(3), mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%wesn(1), mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%wesn(2), mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%wesn(3), mask=mask, rc=status); _VERIFY(STATUS)
        
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%htsn(1), mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%htsn(2), mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%htsn(3), mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%htsn(1), mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%htsn(2), mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%htsn(3), mask=mask, rc=status); _VERIFY(STATUS)
        
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%sndz(1), mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%sndz(2), mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_id)%sndz(3), mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%sndz(1), mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%sndz(2), mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid, cat_progn(:,ens_counter)%sndz(3), mask=mask, rc=status); _VERIFY(STATUS)
        
        
        unit = GETFILE( "landassim_mwrtm_inputs.bin", form="unformatted", RC=STATUS )
@@ -1836,7 +1836,7 @@ contains
     real, dimension(:),  pointer :: SNDZN2
     real, dimension(:),  pointer :: SNDZN3
 
-    integer, save :: ens_id = 0
+    integer, save :: end_counter = 0
     
     !BOP
     
@@ -1897,43 +1897,43 @@ contains
     _VERIFY(status)
 
     ! This counter is relative to ens_id
-    ens_id = ens_id + 1
+    end_counter = ens_counter + 1
     
     !distribute catch_progn
-    TC(:,1)     = cat_progn(:,ens_id)%tc1
-    TC(:,2)     = cat_progn(:,ens_id)%tc2
-    TC(:,3)     = cat_progn(:,ens_id)%tc4
+    TC(:,1)     = cat_progn(:,end_counter)%tc1
+    TC(:,2)     = cat_progn(:,end_counter)%tc2
+    TC(:,3)     = cat_progn(:,end_counter)%tc4
     
-    QC(:,1)     = cat_progn(:,ens_id)%qa1
-    QC(:,2)     = cat_progn(:,ens_id)%qa2
-    QC(:,3)     = cat_progn(:,ens_id)%qa4
+    QC(:,1)     = cat_progn(:,end_counter)%qa1
+    QC(:,2)     = cat_progn(:,end_counter)%qa2
+    QC(:,3)     = cat_progn(:,end_counter)%qa4
     
-    CAPAC(:)    = cat_progn(:,ens_id)%capac
+    CAPAC(:)    = cat_progn(:,end_counter)%capac
 
-    CATDEF(:)   = cat_progn(:,ens_id)%catdef
-    RZEXC(:)    = cat_progn(:,ens_id)%rzexc
-    SRFEXC(:)   = cat_progn(:,ens_id)%srfexc
+    CATDEF(:)   = cat_progn(:,end_counter)%catdef
+    RZEXC(:)    = cat_progn(:,end_counter)%rzexc
+    SRFEXC(:)   = cat_progn(:,end_counter)%srfexc
     
-    GHTCNT1(:)  = cat_progn(:,ens_id)%ght(1)
-    GHTCNT2(:)  = cat_progn(:,ens_id)%ght(2)
-    GHTCNT3(:)  = cat_progn(:,ens_id)%ght(3)
-    GHTCNT4(:)  = cat_progn(:,ens_id)%ght(4)
-    GHTCNT5(:)  = cat_progn(:,ens_id)%ght(5)
-    GHTCNT6(:)  = cat_progn(:,ens_id)%ght(6)
+    GHTCNT1(:)  = cat_progn(:,end_counter)%ght(1)
+    GHTCNT2(:)  = cat_progn(:,end_counter)%ght(2)
+    GHTCNT3(:)  = cat_progn(:,end_counter)%ght(3)
+    GHTCNT4(:)  = cat_progn(:,end_counter)%ght(4)
+    GHTCNT5(:)  = cat_progn(:,end_counter)%ght(5)
+    GHTCNT6(:)  = cat_progn(:,end_counter)%ght(6)
     
-    WESNN1(:)   = cat_progn(:,ens_id)%wesn(1)
-    WESNN2(:)   = cat_progn(:,ens_id)%wesn(2)
-    WESNN3(:)   = cat_progn(:,ens_id)%wesn(3)
+    WESNN1(:)   = cat_progn(:,end_counter)%wesn(1)
+    WESNN2(:)   = cat_progn(:,end_counter)%wesn(2)
+    WESNN3(:)   = cat_progn(:,end_counter)%wesn(3)
 
-    HTSNNN1(:)  = cat_progn(:,ens_id)%htsn(1)
-    HTSNNN2(:)  = cat_progn(:,ens_id)%htsn(2)
-    HTSNNN3(:)  = cat_progn(:,ens_id)%htsn(3)
+    HTSNNN1(:)  = cat_progn(:,end_counter)%htsn(1)
+    HTSNNN2(:)  = cat_progn(:,end_counter)%htsn(2)
+    HTSNNN3(:)  = cat_progn(:,end_counter)%htsn(3)
     
-    SNDZN1(:)   = cat_progn(:,ens_id)%sndz(1)
-    SNDZN2(:)   = cat_progn(:,ens_id)%sndz(2)
-    SNDZN3(:)   = cat_progn(:,ens_id)%sndz(3)
+    SNDZN1(:)   = cat_progn(:,end_counter)%sndz(1)
+    SNDZN2(:)   = cat_progn(:,end_counter)%sndz(2)
+    SNDZN3(:)   = cat_progn(:,end_counter)%sndz(3)
     
-    if(ens_id == NUM_ENSEMBLE ) ens_id = 0
+    if(end_counter == NUM_ENSEMBLE ) ens_counter = 0
     
     ! End
     RETURN_(ESMF_SUCCESS)

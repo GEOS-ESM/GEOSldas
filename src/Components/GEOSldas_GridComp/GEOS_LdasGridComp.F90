@@ -94,7 +94,7 @@ contains
 
     type(ESMF_Config) :: CF
     integer :: LSM_CHOICE
-
+    integer :: FIRST_ENS_ID
     
     ! Begin...
 
@@ -143,6 +143,8 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+    VERIFY_(STATUS)
 
     ! ^^^^^^^^^^^^^^^^^^^^^ CLEAN UP THE FOLLOWING COMMENTS WHEN WE ARE DONE WITH THE EDITS HERE.
     !
@@ -170,25 +172,15 @@ contains
     if (LSM_CHOICE /=1 ) then
       _ASSERT( .not. (mwRTM .or. land_assim), "CATCHCN is Not Ready for assimilation or mwRTM")
     endif
-    
-    allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
 
-    ens_id(1)=0
-    if(NUM_ENSEMBLE ==1 ) then
-       id_string=''
-    else
-       fmt_str=''
-       write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
-       write(id_string, fmt_str) ens_id(1)
-    endif
-    id_string=trim(id_string)
     METFORCE = MAPL_AddChild(gc, name='METFORCE', ss=MetforceSetServices, rc=status)
     VERIFY_(status)
 
+    allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
+    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
     do i=1,NUM_ENSEMBLE
-
-       ens_id(i)=i-1 ! id start form 0
-       if(NUM_ENSEMBLE ==1 ) then
+       ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+       if(NUM_ENSEMBLE == 1 ) then
           id_string=''
        else
           write(id_string, fmt_str) ens_id(i)
@@ -203,8 +195,8 @@ contains
        childname='LAND'//trim(id_string)
        LAND(i) = MAPL_AddChild(gc, name=childname, ss=LandSetServices, rc=status)
        VERIFY_(status)
-          
     enddo
+
     ENSAVG    = MAPL_AddChild(gc, name='ENSAVG', ss=EnsSetServices, rc=status)
     VERIFY_(status)
     
