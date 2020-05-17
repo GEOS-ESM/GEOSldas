@@ -82,6 +82,8 @@ class LDASsetup:
         assert os.path.isdir(self.exphome) # exphome should exist
         self.verbose = cmdLineArgs['verbose']
         self.runmodel = cmdLineArgs['runmodel']
+        if self.runmodel :
+          print('\n The option "--runmodel" is out of date, not necessary anymore. \n')
         self.daysperjob = cmdLineArgs['daysperjob']
         self.monthsperjob = cmdLineArgs['monthsperjob']
         self.rqdExeInp = OrderedDict()
@@ -97,6 +99,7 @@ class LDASsetup:
         self.islocal = False
         self.catch = ''
         self.has_mwrtm = False
+        self.assim = False
         self.has_landassim_seed = False
         self.has_geos_pert = False
         self.has_ldassa_pert = False
@@ -351,15 +354,14 @@ class LDASsetup:
                             self.has_ldassa_pert = True
                
         # DEAL WITH mwRTM input from exec
-        _assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
-        if _assim == 0 :
-           _result = self.rqdExeInp.pop('MWRTM_FILE', None)
-           
-
+        self.assim = Ture if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
+        # verify mwrtm file
         if 'MWRTM_FILE' in self.rqdExeInp :
            _tmpfile = self.rqdExeInp['MWRTM_FILE'].replace("'",'').replace('"','')
            if os.path.isfile(_tmpfile) :
               assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'if MWRTM_FILE is specified,it should be global'
+              self.has_mwrtm = True
+              self.rqdExeInp['MWRTM_FILE'] = _tmpfile 
            else : 
               assert not _tmpfile.strip(),  ' MWRTM_FILE: %s should point to mwrtm param file'% _tmpfile
               del self.rqdExeInp['MWRTM_FILE']
@@ -713,7 +715,7 @@ class LDASsetup:
            _ensdir = self.ensdirs[iens]
            _ensid  = self.ensids[iens]
            landassim_seeds = rstpath + _ensdir + '/' + y4m2+'/' + rstid + '.landassim_obspertrseed_rst.'+y4m2d2_h2m2
-           if os.path.isfile(landassim_seeds) and self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' :
+           if os.path.isfile(landassim_seeds) and self.assim :
                _seeds = self.rstdir + _ensdir + '/' + y4m2+'/' + exp_id + '.landassim_obspertrseed_rst.'+y4m2d2_h2m2 
                shutil.copy(landassim_seeds, _seeds)
                os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ _ensid +'_rst')
@@ -834,16 +836,8 @@ class LDASsetup:
         catch_param_file = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_catparam.'+y4m2d2_h2m2+'z.bin'
         assert os.path.isfile(catch_param_file), "need catch_param file %s" % catch_param_file
 
-        # mwRTM restart file
-        mwRTMRstFile = ""      
-        #_assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
-        if 'MWRTM_FILE' in self.rqdExeInp :
+        if self.has_mwrtm :
             mwRTMRstFile = self.rqdExeInp['MWRTM_FILE']
-        #elif _assim ==1 :
-        #    mwRTMRstFile= rcoutpath +'/' + y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
- 
-        if os.path.isfile(mwRTMRstFile) :
-            self.has_mwrtm = True
             mwRTMLocal = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
             if self.islocal :
                 print "Creating the local mwRTM restart file... \n"
@@ -964,7 +958,7 @@ class LDASsetup:
                     GRID='EASE ' + self.rqdExeInp['GRIDNAME'] + ' ' +tmprcfile
                     if '-CF' in self.rqdExeInp['GRIDNAME'] :
                         GRID ='CUBE ' + self.rqdExeInp['GRIDNAME'] + ' ' +tmprcfile
-                    _assim = '1' if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else '0'
+                    _assim = '1' if self.assim else '0'
                     _perturb = '1' if self.nens > 1 else '0'
                     cmd ='./process_hist.csh '+ str(self.rqdExeInp['LSM_CHOICE']) + ' ' + str(self.rqdExeInp['AEROSOL_DEPOSITION']) + \
                           ' ' + GRID + ' ' + str(self.rqdExeInp['RUN_IRRIG']) + ' ' + _assim + ' '+ _perturb
@@ -1013,12 +1007,6 @@ class LDASsetup:
                 #for key,val in optinxny.iteritems():
                 #    ldasrcInp[key]= val
 
-     
-                if (self.runmodel) :
-                    assert ldasrcInp['LAND_ASSIM'].upper() == 'NO', "--runmodel is used,should set LAND_ASSIM to NO"
-                else :
-                    assert ldasrcInp['LAND_ASSIM'].upper() == 'YES', "--runmodel is not used,should set LAND_ASSIM to YES"
-
                 # create BC in rc file
                 tmpl_ = ''
                 if self.nens >1 :
@@ -1050,18 +1038,17 @@ class LDASsetup:
                    rstkey=[catch_,'VEGDYN','LANDPERT']
                    rstval=[self.catch,'vegdyn','landpert']
 
-                _assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
                 if self.has_mwrtm : # and _assim ==1 :
                    keyn='LANDASSIM_INTERNAL_RESTART_FILE'
                    valn='../input/restart/mwrtm_param_rst'
                    ldasrcInp[keyn]= valn
 
-                if self.has_landassim_seed and _assim ==1 :
+                if self.has_landassim_seed and self.assim :
                    keyn='LANDASSIM_OBSPERTRSEED_RESTART_FILE'
                    valn='../input/restart/landassim_obspertrseed%s_rst'
                    ldasrcInp[keyn]= valn
 
-                if _assim == 1: 
+                if self.assim: 
                    keyn='LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE'
                    valn='landassim_obspertrseed%s_checkpoint'
                    ldasrcInp[keyn]= valn
@@ -1550,7 +1537,7 @@ def parseCmdLine():
         )
     p_setup.add_argument(
         '--runmodel',
-        help='model run (no assimilation)',
+        help='obsolete, no effect any more',
         action='store_true',
         )
     p_setup.add_argument(

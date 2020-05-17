@@ -164,7 +164,7 @@ contains
     VERIFY_(STATUS)
     land_assim = (trim(LAND_ASSIM_STR) /= 'NO')
 
-    call MAPL_GetResource ( MAPL, mwRTM_file, Label="MWRTM_FILE:", DEFAULT='', RC=STATUS)
+    call MAPL_GetResource ( MAPL, mwRTM_file, Label="LANDASSIM_INTERNAL_RESTART_FILE:", DEFAULT='', RC=STATUS)
     VERIFY_(STATUS)
     mwRTM = ( len_trim(mwRTM_file) /= 0 )
 
