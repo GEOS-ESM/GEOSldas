@@ -354,7 +354,7 @@ class LDASsetup:
                             self.has_ldassa_pert = True
                
         # DEAL WITH mwRTM input from exec
-        self.assim = Ture if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
+        self.assim = True if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
         # verify mwrtm file
         if 'MWRTM_FILE' in self.rqdExeInp :
            _tmpfile = self.rqdExeInp['MWRTM_FILE'].replace("'",'').replace('"','')
