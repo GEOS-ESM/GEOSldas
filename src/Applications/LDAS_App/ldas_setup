@@ -142,8 +142,8 @@ class LDASsetup:
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None
         _first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
-        self.ensdirs  = ['ens%04d'%iens for iens in range(_first_ens_id, self.nens - 1 + _first_ens_id)]
-        self.ensids   = ['%04d'%iens    for iens in range(_first_ens_id, self.nens - 1 + _first_ens_id)]
+        self.ensdirs  = ['ens%04d'%iens for iens in range(_first_ens_id, self.nens  + _first_ens_id)]
+        self.ensids   = ['%04d'%iens    for iens in range(_first_ens_id, self.nens  + _first_ens_id)]
         if (self.nens == 1) :
             self.ensdirs_avg = self.ensdirs
             self.ensids=['']
@@ -355,15 +355,12 @@ class LDASsetup:
                
         # DEAL WITH mwRTM input from exec
         self.assim = True if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
+        if (self.assim) :
+           assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'So far, only global datat assimilation is supported'
         # verify mwrtm file
         if 'MWRTM_FILE' in self.rqdExeInp :
            _tmpfile = self.rqdExeInp['MWRTM_FILE'].replace("'",'').replace('"','')
            if os.path.isfile(_tmpfile) :
-               # I DO NOT UNDERSTAND THE FOLLOWING LINE
-               # I UNDERSTAND THAT THE SPECIFIED MWRTM_FILE MUST BE FOR THE GLOBAL DOMAIN 
-               # IF THE EXPERIMENT DOMAIN IS NOT GLOBAL, A REGIONAL MWRTM_FILE WILL BE CREATED BY preprocess_ldas.x, RIGHT?
-               # WHAT I DO NOT UNDERSTAND IS HOW THE assert IN THE FOLLOWING LINE DETERMINES WHETHER MWRTM_FILE IS INDEED GLOBAL
-              assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'if MWRTM_FILE is specified, the file should be global'
               self.has_mwrtm = True
               self.rqdExeInp['MWRTM_FILE'] = _tmpfile 
            else : 
