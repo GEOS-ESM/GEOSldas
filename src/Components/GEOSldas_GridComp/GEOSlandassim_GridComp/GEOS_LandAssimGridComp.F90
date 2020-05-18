@@ -729,7 +729,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'surface_soil_moisture_analysis'      ,&
     UNITS              = 'm3 m-3'                         ,&
-    SHORT_NAME         = 'SFSM_ANA'                      ,&
+    SHORT_NAME         = 'WCSF_ANA'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  ) 
@@ -738,7 +738,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'rootzone_soil_moisture_analysis'      ,&
     UNITS              = 'm3 m-3'                         ,&
-    SHORT_NAME         = 'RZSM_ANA'                      ,&
+    SHORT_NAME         = 'WCRZ_ANA'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
@@ -747,7 +747,7 @@ subroutine SetServices ( GC, RC )
     call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'profile_soil_moisture_analysis'      ,&
     UNITS              = 'm3 m-3'                         ,&
-    SHORT_NAME         = 'PFSM_ANA'                      ,&
+    SHORT_NAME         = 'WCPR_ANA'                      ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
@@ -770,52 +770,6 @@ subroutine SetServices ( GC, RC )
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
      VERIFY_(STATUS) 
-
-!--
-    call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'surface_soil_moisture_forecast'      ,&
-    UNITS              = 'm3 m-3'                         ,&
-    SHORT_NAME         = 'SFSM_FCST'                      ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'rootzone_soil_moisture_forecast'      ,&
-    UNITS              = 'm3 m-3'                         ,&
-    SHORT_NAME         = 'RZSM_FCST'                      ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'profile_soil_moisture_forecast'      ,&
-    UNITS              = 'm3 m-3'                         ,&
-    SHORT_NAME         = 'PFSM_FCST'                      ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'ave_catchment_temp_incl_snw_forecast',&
-    UNITS              = 'K'                         ,&
-    SHORT_NAME         = 'TPSURF_FCST'                    ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-    VERIFY_(STATUS)
-
-    call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'soil_temperatures_layer_1_forecast' ,&
-    UNITS              = 'K'                         ,&
-    SHORT_NAME         = 'TSOIL1_FCST'                ,&
-    DIMS               = MAPL_DimsTileOnly           ,&
-    VLOCATION          = MAPL_VLocationNone          ,&
-                                           RC=STATUS  )
-     VERIFY_(STATUS)
 
 !--sqz 2020----
 
@@ -1313,7 +1267,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !sqz 2020 ----
     type(cat_progn_type), dimension(:), allocatable :: diag_aup_ensavg
-    type(cat_progn_type), dimension(:,:), allocatable :: cat_progn_fcst
 !-----------
 
     type(obs_type),       dimension(:), pointer :: Observations_l => null()
@@ -1400,11 +1353,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     real, dimension(:),pointer :: RZSM_ana=>null()   !rootzone soil moisture
     real, dimension(:),pointer :: PFSM_ana=>null()   !profile soil moisture
    !
-    real, dimension(:),pointer :: TPSURF_fcst=>null()   !tpsurf
-    real, dimension(:),pointer :: TSOIL1_fcst=>null()   !tsoil1
-    real, dimension(:),pointer :: SFSM_fcst=>null()     !surface soil moisture
-    real, dimension(:),pointer :: RZSM_fcst=>null()   !rootzone soil moisture
-    real, dimension(:),pointer :: PFSM_fcst=>null()   !profile soil moisture
 !------
 
 !--------------
@@ -1673,24 +1621,13 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     VERIFY_(status)
     call MAPL_GetPointer(export, TSOIL1_ana,  'TSOIL1_ANA' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, SFSM_ana,  'SFSM_ANA' ,rc=status)
+    call MAPL_GetPointer(export, SFSM_ana,  'WCSF_ANA' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, RZSM_ana,  'RZSM_ANA' ,rc=status)
+    call MAPL_GetPointer(export, RZSM_ana,  'WCRZ_ANA' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, PFSM_ana,  'PFSM_ANA' ,rc=status)
+    call MAPL_GetPointer(export, PFSM_ana,  'WCPR_ANA' ,rc=status)
     VERIFY_(status)
 !
-    call MAPL_GetPointer(export, TPSURF_fcst,  'TPSURF_FCST' ,rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, TSOIL1_fcst,  'TSOIL1_FCST' ,rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, SFSM_fcst,  'SFSM_FCST' ,rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, RZSM_fcst,  'RZSM_FCST' ,rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, PFSM_fcst,  'PFSM_FCST' ,rc=status)
-    VERIFY_(status)
-
 !----------------
 
     allocate(met_force(N_catl))
@@ -1727,7 +1664,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
 !sqz 2020----
     allocate(diag_aup_ensavg(N_catl))
-    allocate(cat_progn_fcst(N_catl,NUM_ENSEMBLE))
 !--------
 
     !WY note: temportary
@@ -1876,13 +1812,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
 
        if (.not. spin) then
           if (fresh_incr) then
-!sqz 2020 -- save bkgd cat_progn for diagaup_forecast 
-             do i = 1, N_catl
-                 do n_e=1, NUM_ENSEMBLE
-                    cat_progn_fcst(i, n_e) = cat_progn(i,n_e)
-                 end do
-              enddo
-!-------------
 
           !apply EnKF increments 
           ! (without call to subroutine recompute_diagnostics())
@@ -1966,7 +1895,7 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               diag_aup_ensavg(i) = 0.0 
               end do 
 
-             call get_diagaup('analysis', NUM_ENSEMBLE, N_catl, cat_param, cat_progn, &
+             call get_diagaup(NUM_ENSEMBLE, N_catl, cat_param, cat_progn, &
                                 diag_aup_ensavg)
 
               if(associated(SFSM_ana)) SFSM_ana(:) = diag_aup_ensavg(:)%srfexc  ! borrowed names
@@ -1975,14 +1904,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
               if(associated(TPSURF_ana)) TPSURF_ana(:) = diag_aup_ensavg(:)%tc1
               if(associated(TSOIL1_ana)) TSOIL1_ana(:) = diag_aup_ensavg(:)%tc2
 !
-           call get_diagaup('forecast', NUM_ENSEMBLE, N_catl, cat_param, cat_progn_fcst, &
-                             diag_aup_ensavg)
-
-              if(associated(SFSM_fcst)) SFSM_fcst(:) = diag_aup_ensavg(:)%wesn(1) !borrowed names
-              if(associated(RZSM_fcst)) RZSM_fcst(:) = diag_aup_ensavg(:)%wesn(2) !see get_diagaup
-              if(associated(PFSM_fcst)) PFSM_fcst(:) = diag_aup_ensavg(:)%wesn(3)
-              if(associated(TPSURF_fcst)) TPSURF_fcst(:) = diag_aup_ensavg(:)%ght(1)
-              if(associated(TSOIL1_fcst)) TSOIL1_fcst(:) = diag_aup_ensavg(:)%ght(2)
 !---------- export associated --------------
 
 
@@ -2014,7 +1935,6 @@ subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
     deallocate(Observations_l)
 !sqz 2020---
     deallocate(diag_aup_ensavg) 
-    deallocate(cat_progn_fcst)
 !------------
 
     call MAPL_TimerOff ( MAPL, "RUN"  )

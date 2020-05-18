@@ -17,7 +17,7 @@ COLLECTIONS:
 #CUBE            'tavg24_2d_lnd_Nx'
 #ASSIM           'SMAP_L4_SM_gph'
 #                'catch_progn_incr'
-#                'catch_diag_aup'
+#                'inst3_2d_lndfcstana_Nx'
            ::
 
 #CUBE GRID_LABELS: PC720x361-DC
@@ -360,27 +360,27 @@ COLLECTIONS:
                                'SNDZN3_INCR'    , 'LANDASSIM'      ,
                          ::
 
-  catch_diag_aup.descr:       '3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land diag fcst and ana ',
-  catch_diag_aup.template:    '%y4%m2%d2_%h2%n2z.nc4',
-  catch_diag_aup.archive:     '%c/Y%y4',
-  catch_diag_aup.mode:        'instantaneous',
-  catch_diag_aup.frequency:   030000,
-  catch_diag_aup.ref_time:    000000,
-  catch_diag_aup.format:      'CFIO',
-  catch_diag_aup.regrid_exch: '../input/tile.data',
-  catch_diag_aup.regrid_name: 'GRIDNAME', 
-  catch_diag_aup.grid_label:  PC720x361-DC,
-  catch_diag_aup.deflate:     2,
-  catch_diag_aup.fields:     'SFSM_ANA'    , 'LANDASSIM'      ,
-                              'RZSM_ANA'    , 'LANDASSIM'      ,
-                              'PFSM_ANA'    , 'LANDASSIM'      ,
-                              'TPSURF_ANA'    , 'LANDASSIM'      ,
-                              'TSOIL1_ANA'    , 'LANDASSIM'      ,
-                              'SFSM_FCST'    , 'LANDASSIM'      ,
-                              'RZSM_FCST'     , 'LANDASSIM'      ,
-                              'PFSM_FCST'    , 'LANDASSIM'      ,
-                              'TPSURF_FCST'    , 'LANDASSIM'      ,
-                              'TSOIL1_FCST'    , 'LANDASSIM'      ,
+  inst3_2d_lndfcstana_Nx.descr:       '3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land diag fcst and ana ',
+  inst3_2d_lndfcstana_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
+  inst3_2d_lndfcstana_Nx.archive:     '%c/Y%y4',
+  inst3_2d_lndfcstana_Nx.mode:        'instantaneous',
+  inst3_2d_lndfcstana_Nx.frequency:   030000,
+  inst3_2d_lndfcstana_Nx.ref_time:    000000,
+  inst3_2d_lndfcstana_Nx.format:      'CFIO',
+  inst3_2d_lndfcstana_Nx.regrid_exch: '../input/tile.data',
+  inst3_2d_lndfcstana_Nx.regrid_name: 'GRIDNAME',
+  inst3_2d_lndfcstana_Nx.grid_label:  PC720x361-DC,
+  inst3_2d_lndfcstana_Nx.deflate:     2,
+  inst3_2d_lndfcstana_Nx.fields:     'WCSF_ANA' , 'LANDASSIM' ,  'SFMC_ANA' ,
+                               'WCRZ_ANA'    , 'LANDASSIM', 'RZMC_ANA'       ,
+                               'WCPR_ANA'    , 'LANDASSIM', 'PRMC_ANA'       ,
+                               'TPSURF_ANA'  , 'LANDASSIM', 'TSURF_ANA'      ,
+                               'TSOIL1_ANA'  , 'LANDASSIM', 'TSOIL1TILE_ANA' ,
+                               'TPSURF'     , 'ENSAVG'  , 'TSURF_FCST'        ,
+                               'TSOIL1TILE' , 'ENSAVG'  , 'TSOIL1TILE_FCST',
+                               'WCPR'       , 'ENSAVG'  , 'PRMC_FCST'         ,
+                               'WCRZ'       , 'ENSAVG'  , 'RZMC_FCST'         ,
+                               'WCSF'       , 'ENSAVG'  , 'SFMC_FCST'         ,
                         ::
 
 

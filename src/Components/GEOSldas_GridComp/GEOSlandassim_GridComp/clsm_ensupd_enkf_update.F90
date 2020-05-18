@@ -2938,15 +2938,9 @@ contains
 !sqz 2020 -----
   ! **********************************************************
 
- subroutine get_diagaup (option, N_ens, N_catl, cat_param, cat_progn, diagaup) 
+ subroutine get_diagaup (N_ens, N_catl, cat_param, cat_progn, diagaup) 
     !   
-    !       option "forecast"  diagfcst <- cat_progn - cat_progn_incr
-    !                         - sm_surface_forecast
-    !                         - sm_rootzone_forecast
-    !                         - sm_profile_forecast
-    !                         - surface_temp_forecast
-    !                         - soil_temp_layer1_forecast 
-    !      option "analysis" diagana <- cat_progn ( already updated by anal )
+    !       diagana
     !                         - sm_surface_analysis
     !                         - sm_rootzone_analysis
     !                         - sm_profile_analysis
@@ -2955,7 +2949,6 @@ contains
 
     implicit none
     
-    character(*),          intent(in) :: option
     integer,                intent(in) ::  N_ens, N_catl 
     type(cat_param_type),   dimension(N_catl),        intent(in)    :: cat_param
     type(cat_progn_type),   dimension(N_catl,N_ens),  intent(in)    :: cat_progn
@@ -3022,19 +3015,11 @@ contains
        end do
 
          do j=1,N_catl
-         if(option == 'analysis' ) then
           diagaup(j)%srfexc = tile_mean_l(j,1)  !borrowed type name
           diagaup(j)%rzexc = tile_mean_l(j,2)   ! ..
           diagaup(j)%catdef = tile_mean_l(j,3)  ! ..
           diagaup(j)%tc1 = tile_mean_l(j,4)     ! ..
           diagaup(j)%tc2 = tile_mean_l(j,5)     ! ..
-         else 
-          diagaup(j)%wesn(1) = tile_mean_l(j,1)   ! ..
-          diagaup(j)%wesn(2) = tile_mean_l(j,2)   ! ..
-          diagaup(j)%wesn(3) = tile_mean_l(j,3)   ! ..
-          diagaup(j)%ght(1) = tile_mean_l(j,4)    ! ..
-          diagaup(j)%ght(2) = tile_mean_l(j,5)    ! ..
-          endif
         enddo  
 
        end subroutine  get_diagaup 
