@@ -146,18 +146,6 @@ contains
     call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    ! ^^^^^^^^^^^^^^^^^^^^^ CLEAN UP THE FOLLOWING COMMENTS WHEN WE ARE DONE WITH THE EDITS HERE.
-    !
-    ! THE CHANGES HERE ARE AN ATTEMPT TO AVOID CHANGING THE INTERFACE
-    ! 1) keep the LAND_ASSIM resource parameter a string (Yes/No)
-    ! 2) use the MWRTM_FILE resource parameter to set the local logical mwRTM
-    !    --> if MWRTM_FILE is an empty string, mwRTM=.false., otherwise mwRTM=.true.
-    !    that is... if the user does NOT provide this file, don't attempt to compute Tbs;
-    !               if the user provides this file, go ahead and attempt to compute Tbs, still check "all_nodata" later)
-    ! I think with these changes we no longer need to change "ldas_setup".
-    !    (But it might still be good to clean up "--runmodel"...)
-    ! IMPORTANT: I'm not sure the new lines below for "mwRTM" are quite correct. Please double-check carefully!!!
-    !
     call MAPL_GetResource ( MAPL, LAND_ASSIM_STR, Label="LAND_ASSIM:", DEFAULT="NO", RC=STATUS)
     VERIFY_(STATUS)
     LAND_ASSIM_STR =  ESMF_UtilStringUpperCase(LAND_ASSIM_STR, rc=STATUS)
@@ -170,7 +158,7 @@ contains
 
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
     if (LSM_CHOICE /=1 ) then
-      _ASSERT( .not. (mwRTM .or. land_assim), "CATCHCN is Not Ready for assimilation or mwRTM")
+      _ASSERT( .not. (mwRTM .or. land_assim), "CatchCN is Not Ready for assimilation or mwRTM")
     endif
 
     METFORCE = MAPL_AddChild(gc, name='METFORCE', ss=MetforceSetServices, rc=status)

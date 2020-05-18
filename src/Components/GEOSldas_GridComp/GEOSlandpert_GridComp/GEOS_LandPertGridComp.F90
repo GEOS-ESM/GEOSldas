@@ -115,7 +115,7 @@ contains
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
-         Phase2_Initialize,                                                    &
+         Phase2_Initialize,                                                     &
          rc=status                                                              &
          )
     VERIFY_(status)
@@ -184,6 +184,8 @@ contains
     call MAPL_GetResource(MAPL, GEOSldas_FIRST_ENS_ID, 'FIRST_ENS_ID:',DEFAULT=0, rc=status)
     VERIFY_(status)
 
+    ! reichle, 18 May 2020: The following probably works only if FIRST_ENS_ID=0.
+    !                       Need to distinguish between ens_id and ens_counter? 
     ens_id = 0
     if ( internal%NUM_ENSEMBLE > 1) then
        !landpertxxxx
@@ -1085,8 +1087,7 @@ contains
        VERIFY_(status)
     endif
 
-
-    if (IAmRoot .and. internal%ens_id == 0) then
+    if (IAmRoot .and. internal%ens_id == 0) then     ! reichle, 18 May 2020:  "==FIRST_ENS_ID"?? ens_id vs. ens_counter
        call echo_pert_param( internal%ForcePert%npert, internal%ForcePert%param, 1, 1 )
        call echo_pert_param( internal%PrognPert%npert, internal%PrognPert%param, 1, 1 )
     endif
@@ -1107,9 +1108,9 @@ contains
 
     ! Coldstart
     if (COLDSTART) then
-       if (IAmRoot .and. internal%ens_id == 0 ) print *, trim(Iam)//'::WARNING: Cold-starting LandPert GridComp'
+       if (IAmRoot .and. internal%ens_id == 0 ) print *, trim(Iam)//'::WARNING: Cold-starting LandPert GridComp'  ! reichle, 18 May 2020:  "==FIRST_ENS_ID"?? ens_id vs. ens_counter
        ! -pert_rseed-
-       call get_init_pert_rseed(internal%ens_id, pert_rseed(1))
+       call get_init_pert_rseed(internal%ens_id, pert_rseed(1))                   ! reichle, 18 May 2020:  ens_id vs. ens_counter ??
        call init_randseed(pert_rseed)
        ! -ForcePert-
        call propagate_pert(                                                     &
@@ -1141,25 +1142,25 @@ contains
    
     end if
 
-    if(internal%ens_id ==0 ) fpert_enavg(:,:,:)=0.
+    if(internal%ens_id ==0 ) fpert_enavg(:,:,:)=0.     ! reichle, 18 May 2020:  "==FIRST_ENS_ID"?? ens_id vs. ens_counter
 
     do m = 1,internal%ForcePert%npert
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
        if(internal%ForcePert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
           fpert_enavg(:,:,m)=fpert_enavg(:,:,m)+fpert_ntrmdt(lon1:lon2,lat1:lat2,m)
-          if( internal%ens_id == internal%NUM_ENSEMBLE-1) then
+          if( internal%ens_id == internal%NUM_ENSEMBLE-1) then                     ! reichle, 18 May 2020:  "%ens_counter=="?? ens_id vs. ens_counter
              fpert_enavg(:,:,m) = -fpert_enavg(:,:,m)/real(internal%NUM_ENSEMBLE)
           endif
        endif
     enddo
 
-    if(internal%ens_id ==0 ) ppert_enavg(:,:,:)=0.
+    if(internal%ens_id ==0 ) ppert_enavg(:,:,:)=0.     ! reichle, 18 May 2020:  "==FIRST_ENS_ID"?? ens_id vs. ens_counter
 
     do m = 1,internal%PrognPert%npert  
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
        if(internal%PrognPert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
           ppert_enavg(:,:,m)=ppert_enavg(:,:,m)+ppert_ntrmdt(lon1:lon2,lat1:lat2,m)
-          if( internal%ens_id == internal%NUM_ENSEMBLE-1) then
+          if( internal%ens_id == internal%NUM_ENSEMBLE-1) then                     ! reichle, 18 May 2020:  "%ens_counter=="?? ens_id vs. ens_counter
              ppert_enavg(:,:,m) = -ppert_enavg(:,:,m)/real(internal%NUM_ENSEMBLE)
           endif
        endif
@@ -1184,7 +1185,7 @@ contains
     call esmf2ldas(StopTime, stop_time, rc=status)
     VERIFY_(status)
 
-    if( internal%ens_id ==0 .and. IAmRoot) then
+    if( internal%ens_id ==0 .and. IAmRoot) then        ! reichle, 18 May 2020:  "==FIRST_ENS_ID"?? ens_id vs. ens_counter
        ! write out the input file
        call read_ens_prop_inputs(write_nml = .true. , work_path = trim(out_path), &
             exp_id = trim(exp_id), date_time = start_time)
@@ -1233,7 +1234,7 @@ contains
 
     ! Update the r4 version of pert_rseed
     pert_rseed_r8 = real(pert_rseed,kind=ESMF_KIND_R8)
-    pert_iseed(:,internal%ens_id+1) = pert_rseed
+    pert_iseed(:,internal%ens_id+1) = pert_rseed                 ! reichle, 18 May 2020:  "%ens_counter"?? ens_id vs. ens_counter
     ! Clean up
 
     if (allocated(pert_rseed)) then ! integer version of MINTERNAL state
@@ -1377,7 +1378,8 @@ contains
     allocate(ppert_grid(n_lon,n_lat, internal%PrognPert%npert), source=MAPL_UNDEF, stat=status)
     VERIFY_(status)
 
-    ! Get pertubations on the underlying grid and convert grid data to tile data
+    ! Get pertubations on the underlying grid and convert grid data to tile data, adjust mean
+    !
     ! -ForcePert-
 
     fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert)= fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) + &
@@ -1448,7 +1450,7 @@ contains
 
     ! Update the r8 version of pert_rseed
     pert_rseed_r8 = real(pert_rseed,kind=ESMF_kind_r8)
-    pert_iseed(:,internal%ens_id+1) = pert_rseed
+    pert_iseed(:,internal%ens_id+1) = pert_rseed       ! reichle, 18 May 2020:  "%ens_counter"?? ens_id vs. ens_counter
 
     ! Clean up
     if (allocated(fpert_grid)) then
@@ -1468,7 +1470,7 @@ contains
     call MAPL_TimerOff(MAPL, "phase2_Initialize")
     call MAPL_TimerOff(MAPL, "TOTAL")
 
-    if(internal%ens_id == internal%NUM_ENSEMBLE -1) phase2_initialized = .true.
+    if(internal%ens_id == internal%NUM_ENSEMBLE -1) phase2_initialized = .true.    ! reichle, 18 May 2020:  "%ens_counter"?? ens_id vs. ens_counter
     ! End
     RETURN_(ESMF_SUCCESS)
 
@@ -1644,7 +1646,7 @@ contains
           call MAPL_DateStampGet(clock, datestamp, rc=status)
           VERIFY_(STATUS)
 
-          write(id_string,'(I4.4)') internal%ens_id
+          write(id_string,'(I4.4)') internal%ens_id                  ! reichle, 18 May 2020:  ens_id vs. ens_counter ??
           if(internal%NUM_ENSEMBLE ==1 ) id_string=''
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp
@@ -1667,13 +1669,13 @@ contains
           .false.                                                             &
         )
 
-       if(internal%ens_id ==0 ) fpert_enavg(:,:,:)=0.
+       if(internal%ens_id ==0 ) fpert_enavg(:,:,:)=0.    ! reichle, 18 May 2020: see comments ~Line 1160 re. this block and next
 
        do m = 1,internal%ForcePert%npert
           call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
           if(internal%ForcePert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
              fpert_enavg(:,:,m)=fpert_enavg(:,:,m)+fpert_ntrmdt(lon1:lon2,lat1:lat2,m)
-             if( internal%ens_id == internal%NUM_ENSEMBLE-1) then
+             if( internal%ens_id == internal%NUM_ENSEMBLE-1) then                       ! reichle, 18 May 2020: see comments ~Line 1160 re. this block and next
                 fpert_enavg(:,:,m) = -fpert_enavg(:,:,m)/real(internal%NUM_ENSEMBLE)
              endif
           endif
@@ -1694,13 +1696,13 @@ contains
            .false.                                                            &
           )
 
-       if(internal%ens_id ==0 ) ppert_enavg(:,:,:)=0.                              
+       if(internal%ens_id ==0 ) ppert_enavg(:,:,:)=0.       ! reichle, 18 May 2020: see comments ~Line 1160 re. this block and next                          
 
        do m = 1,internal%PrognPert%npert
           call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
           if(internal%PrognPert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
               ppert_enavg(:,:,m)=ppert_enavg(:,:,m)+ppert_ntrmdt(lon1:lon2,lat1:lat2,m)
-              if( internal%ens_id == internal%NUM_ENSEMBLE -1) then
+              if( internal%ens_id == internal%NUM_ENSEMBLE -1) then                      ! reichle, 18 May 2020: see comments ~Line 1160 re. this block and next
                  ppert_enavg(:,:,m) = -ppert_enavg(:,:,m)/real(internal%NUM_ENSEMBLE)
               endif
           endif
@@ -1710,7 +1712,7 @@ contains
     endif
     ! Update the r4 version of pert_rseed
     pert_rseed_r8 = real(pert_rseed,kind=ESMF_KIND_R8)
-    pert_iseed(:,internal%ens_id+1) = pert_rseed
+    pert_iseed(:,internal%ens_id+1) = pert_rseed            ! reichle, 18 May 2020: "%ens_counter" ?? 
  
     call MAPL_TimerOff(MAPL, "GenerateRaw")
     ! End
@@ -2168,7 +2170,7 @@ contains
     ! Update the r8 version of pert_rseed
     if (internal%PERTURBATIONS /=0 ) then
        pert_rseed_r8 = real(pert_rseed,kind=ESMF_kind_r8)
-       pert_iseed(:,internal%ens_id+1) = pert_rseed
+       pert_iseed(:,internal%ens_id+1) = pert_rseed            ! reichle, 18 May 2020: "%ens_counter" ?? 
     endif
 
     ! Clean up
@@ -2559,7 +2561,7 @@ contains
 
     ! Update the r8 version of pert_rseed
     pert_rseed_r8 = real(pert_rseed,kind=ESMF_kind_r8)
-    pert_iseed(:,internal%ens_id+1) = pert_rseed
+    pert_iseed(:,internal%ens_id+1) = pert_rseed                     ! reichle, 18 May 2020: "%ens_counter" ?? 
 
     ! Clean up
     if (allocated(PROGNPERT)) then
@@ -2631,7 +2633,7 @@ contains
        VERIFY_(status)
     endif
 
-    pert_rseed_r8(:) = real(pert_iseed(:,internal%ens_id+1),kind=ESMF_KIND_R8)
+    pert_rseed_r8(:) = real(pert_iseed(:,internal%ens_id+1),kind=ESMF_KIND_R8)               ! reichle, 18 May 2020: "%ens_counter" ?? 
     
   ! End
     RETURN_(ESMF_SUCCESS)
@@ -2757,7 +2759,7 @@ contains
           enddo
 
         ! 4) writing
-          write(id_string,'(I4.4)') internal%ens_id
+          write(id_string,'(I4.4)') internal%ens_id                           ! reichle, 18 May 2020:  ens_id vs. ens_counter ??
           if(internal%NUM_ENSEMBLE ==1 ) id_string=''
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint'

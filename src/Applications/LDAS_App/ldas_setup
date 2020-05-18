@@ -142,8 +142,8 @@ class LDASsetup:
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None
         _first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
-        self.ensdirs      = ['ens%04d'%iens for iens in xrange( _first_ens_id, self.nens + _first_ens_id)]
-        self.ensids       = ['%04d'%iens for iens in xrange(_first_ens_id, self.nens + _first_ens_id)]
+        self.ensdirs  = ['ens%04d'%iens for iens in range(_first_ens_id, self.nens - 1 + _first_ens_id)]
+        self.ensids   = ['%04d'%iens    for iens in range(_first_ens_id, self.nens - 1 + _first_ens_id)]
         if (self.nens == 1) :
             self.ensdirs_avg = self.ensdirs
             self.ensids=['']
@@ -359,7 +359,11 @@ class LDASsetup:
         if 'MWRTM_FILE' in self.rqdExeInp :
            _tmpfile = self.rqdExeInp['MWRTM_FILE'].replace("'",'').replace('"','')
            if os.path.isfile(_tmpfile) :
-              assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'if MWRTM_FILE is specified,it should be global'
+               # I DO NOT UNDERSTAND THE FOLLOWING LINE
+               # I UNDERSTAND THAT THE SPECIFIED MWRTM_FILE MUST BE FOR THE GLOBAL DOMAIN 
+               # IF THE EXPERIMENT DOMAIN IS NOT GLOBAL, A REGIONAL MWRTM_FILE WILL BE CREATED BY preprocess_ldas.x, RIGHT?
+               # WHAT I DO NOT UNDERSTAND IS HOW THE assert IN THE FOLLOWING LINE DETERMINES WHETHER MWRTM_FILE IS INDEED GLOBAL
+              assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'if MWRTM_FILE is specified, the file should be global'
               self.has_mwrtm = True
               self.rqdExeInp['MWRTM_FILE'] = _tmpfile 
            else : 
@@ -534,7 +538,7 @@ class LDASsetup:
 
         # ensxxxx directories
         nSegments = self.nSegments
-        for iseg in xrange(nSegments):
+        for iseg in range(nSegments):
             _start = self.begDates[iseg]
             _end = self.endDates[iseg]
 
@@ -632,7 +636,7 @@ class LDASsetup:
         sp.call(cmd,shell=True)
         # check if it is local or global
         with open('f2g.txt') as f2gfile :
-            head=[next(f2gfile) for x in xrange(2)]
+            head=[next(f2gfile) for x in range(2)]
             if(head[0].strip() != head[1].strip()) :
                 self.islocal= True
 
@@ -711,7 +715,7 @@ class LDASsetup:
         rstpath0  = self.rqdExeInp['RESTART_PATH']
      
         # just copy the landassim pert seed if it exists
-        for iens in xrange(self.nens) :
+        for iens in range(self.nens) :
            _ensdir = self.ensdirs[iens]
            _ensid  = self.ensids[iens]
            landassim_seeds = rstpath + _ensdir + '/' + y4m2+'/' + rstid + '.landassim_obspertrseed_rst.'+y4m2d2_h2m2
@@ -742,7 +746,7 @@ class LDASsetup:
         #for ens in self.ensdirs :
         catchRstFile0  = ''
         vegdynRstFile0 = ''
-        for iens in xrange(self.nens) :
+        for iens in range(self.nens) :
             ens   = self.ensdirs[iens]
             ensid = self.ensids[iens]
             myCatchRst = myRstDir+'/'+self.catch +ensid +'_internal_rst'
@@ -1158,7 +1162,7 @@ class LDASsetup:
         expid = self.rqdExeInp['EXP_ID']
         fout.write("\nsed -i 's/if($capdate<$enddate) sbatch /#if($capdate<$enddate) sbatch /g' lenkf.j\n\n")
         nSegments = self.nSegments
-        for iseg in xrange(nSegments):
+        for iseg in range(nSegments):
             if iseg ==0 :
                 fout.write("jobid%d=$(echo $(sbatch lenkf.j) | cut -d' ' -f 4)\n"%(iseg))
                 fout.write("echo $jobid%d\n"%iseg )

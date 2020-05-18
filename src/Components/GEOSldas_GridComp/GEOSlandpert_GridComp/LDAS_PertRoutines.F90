@@ -117,24 +117,17 @@ module LDAS_PertRoutinesMod
   private
 
   public :: read_ens_prop_inputs
-  ! CHANGED: we do not need get_tile_pert any more
-  ! public :: get_tile_pert
   public :: interpolate_pert_to_timestep
-  ! public :: apply_progn_pert
-  ! public :: apply_force_pert
   public :: get_pert_grid
   public :: get_progn_pert_param
   public :: get_force_pert_param
   public :: echo_pert_param
-  ! CHANGED :: io_pert_rstrt() removed - use MAPL to read internal rst vars
   ! WY note :: io_pert_rstrt() was adapted. read from LDASsa and write to a nc4 file as MAPL internal
   public :: io_pert_rstrt
-  ! CHANGED: we do not need initialize_perturbations any more
-  ! public :: initialize_perturbations
   public :: check_pert_dtstep
   ! ADDED
   public :: apply_pert
-  ! the parameters below will be overriteted by RC file 
+  ! the parameters below will be overwritten by RC file 
   integer,public :: GEOSldas_NUM_ENSEMBLE = -1
   integer,public :: GEOSldas_FIRST_ENS_ID = -1
   integer,public :: GEOSldas_FORCE_PERT_DTSTEP = -1
@@ -408,53 +401,14 @@ contains
        read (10, nml=ens_prop_inputs)
        close(10,status='keep')
     endif
-    if(     GEOSldas_NUM_ENSEMBLE      == -1 .or. GEOSldas_FIRST_ENS_ID==-1  &
+    if(     GEOSldas_NUM_ENSEMBLE      == -1 .or. GEOSldas_FIRST_ENS_ID      == -1         &
        .or. GEOSldas_FORCE_PERT_DTSTEP == -1 .or. GEOSldas_PROGN_PERT_DTSTEP == -1 ) then
        stop " GEOSldas_NUM_ENSEMBLE etc. should be initialized"
     endif
-    N_ens = GEOSldas_NUM_ENSEMBLE
-    first_ens_id = GEOSldas_FIRST_ENS_ID
-    force_pert_dtstep =GEOSldas_FORCE_PERT_DTSTEP 
-    progn_pert_dtstep =GEOSldas_PROGN_PERT_DTSTEP 
-
-    ! CHANGED: Getting rid of ability to read ensprop path and file from command line
-    ! ! Get name and path for special ens prop inputs file from
-    ! ! command line (if present)
-
-    ! ens_prop_inputs_path = ''
-    ! ens_prop_inputs_file = ''
-
-    ! call clsm_ensdrv_get_command_line(                              &
-    !      ens_prop_inputs_path=ens_prop_inputs_path,                 &
-    !      ens_prop_inputs_file=ens_prop_inputs_file )
-
-    ! if ( trim(ens_prop_inputs_path) /= ''  .and.                    &
-    !      trim(ens_prop_inputs_file) /= ''          ) then
-
-    !    ! Read data from special ens prop inputs namelist file
-
-    !    fname = trim(ens_prop_inputs_path) // '/' // trim(ens_prop_inputs_file)
-
-    !    open (10, file=fname, delim='apostrophe', action='read', status='old')
-
-    !    if (logit) write (logunit,*)
-    !    if (logit) write (logunit,'(400A)') 'reading *special* ens prop inputs from ' // trim(fname)
-    !    if (logit) write (logunit,*)
-
-    !    read (10, nml=ens_prop_inputs)
-
-    !    close(10,status='keep')
-
-    ! end if
-
-    ! over write ens prop from the test file
-    ! overwrite ens prop inputs with command line options, if any
-
-    ! write (logunit,*) 'overwriting driver inputs from command line (if present)'
-    ! write (logunit,*)
-
-    ! CHANGED: Not reading N_ens and first_ens_id from command line
-    ! call clsm_ensdrv_get_command_line( N_ens=N_ens, first_ens_id=first_ens_id )
+    N_ens             = GEOSldas_NUM_ENSEMBLE
+    first_ens_id      = GEOSldas_FIRST_ENS_ID
+    force_pert_dtstep = GEOSldas_FORCE_PERT_DTSTEP 
+    progn_pert_dtstep = GEOSldas_PROGN_PERT_DTSTEP 
 
     ! echo variables of ens_prop_inputs
 
