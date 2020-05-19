@@ -355,8 +355,6 @@ class LDASsetup:
                
         # DEAL WITH mwRTM input from exec
         self.assim = True if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
-        if (self.assim) :
-           assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'So far, only global datat assimilation is supported'
         # verify mwrtm file
         if 'MWRTM_FILE' in self.rqdExeInp :
            _tmpfile = self.rqdExeInp['MWRTM_FILE'].replace("'",'').replace('"','')
