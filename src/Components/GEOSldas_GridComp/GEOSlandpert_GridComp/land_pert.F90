@@ -312,7 +312,9 @@ contains
     
   end subroutine GEOSldas_get_pert
 
-  subroutine LDASsa_get_pert(                                &
+  ! ******************************************************************
+  
+  subroutine LDASsa_get_pert(                         &
        N_pert, N_ens,                                 &
        pert_grid_f, pert_grid_l,                      &
        dtstep,                                        &

@@ -101,9 +101,9 @@ module GEOS_LandAssimGridCompMod
   integer,                 dimension(:), pointer     :: l2rf, rf2l,rf2g, rf2f
   type(tile_coord_type),   dimension(:), pointer     :: tile_coord_rf => null()
 
-  integer,                               allocatable :: Pert_rseed(:,:)
+  integer,                               allocatable :: Pert_rseed(   :,:)
   real(kind=ESMF_KIND_R8),               allocatable :: pert_rseed_r8(:,:)
-  type(mwRTM_param_type),  dimension(:), allocatable ::  mwRTM_param
+  type(mwRTM_param_type),  dimension(:), allocatable :: mwRTM_param
 
   logical :: mwRTM_all_nodata   ! no data for mwRTM_param
   logical :: land_assim
@@ -1059,7 +1059,7 @@ contains
     call MAPL_LocStreamGet(locstream, NT_LOCAL=land_nt_local,rc=status)
     _VERIFY(status)
     
-    allocate(Pert_rseed(NRANDSEED, NUM_ENSEMBLE), source = 0)
+    allocate(Pert_rseed(   NRANDSEED, NUM_ENSEMBLE), source = 0    )
     allocate(Pert_rseed_r8(NRANDSEED, NUM_ENSEMBLE), source = 0.0d0)
     
     if (master_proc) then
