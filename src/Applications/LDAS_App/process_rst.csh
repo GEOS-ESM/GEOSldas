@@ -68,7 +68,7 @@ case [0] :
 #SBATCH --time=1:00:00
 #SBATCH --ntasks=56
 #SBATCH --job-name=mkLDAS
-#SBATCH --constraint=hasw
+###SBATCH --constraint=hasw
 #SBATCH --qos=debug
 #SBATCH --output=mkLDAS.o
 #SBATCH --error=mkLDAS.e
