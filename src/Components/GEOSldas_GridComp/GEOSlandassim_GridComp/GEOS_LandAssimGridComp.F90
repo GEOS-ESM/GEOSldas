@@ -1155,7 +1155,7 @@ contains
             )
        call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
        _VERIFY(STATUS)
-       if (index(GridName,"-CF") /=0) out_smapL4SMaup = .false. ! no out_smap for now if it is cs frid
+       if (index(GridName,"-CF") /=0) out_smapL4SMaup = .false. ! no out_smap for now if it is cs grid
     endif
     
     call MPI_BCAST(mwRTM,                 1, MPI_LOGICAL,        0,MPICOMM,mpierr)
