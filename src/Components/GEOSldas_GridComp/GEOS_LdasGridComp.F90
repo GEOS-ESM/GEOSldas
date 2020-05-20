@@ -8,10 +8,6 @@ module GEOS_LdasGridCompMod
 
   use ESMF
   use MAPL_Mod
-  !use MAPL_GridManagerMod, only: grid_manager
-  !use MAPL_RegridderManagerMod
-  !use MAPL_AbstractRegridderMod
-  !use MAPL_RegridderSpecMod
 
   use GEOS_MetforceGridCompMod, only: MetforceSetServices => SetServices
   use GEOS_LandGridCompMod, only: LandSetServices => SetServices
@@ -44,21 +40,25 @@ module GEOS_LdasGridCompMod
 
   public SetServices
 
-  ! !DESCRIPTION: This gridded component (GC) combines the GridComps
-  !  LDDATAATM, LAND, LAKE, LANDICE, SALTWATER and LANA into a
-  !  new composite LDAS GricComp.
+  ! !DESCRIPTION: This gridded component (GC) combines the GridComps:
+  !     METFORCE, LAND, LANDPERT, ENSAVG, and LANDASSIM
+  !  into a new composite LDAS GricComp.
+  !  Include later: LAKE, LANDICE(?), SALTWATER(?)
 
   !EOP
 
   include 'mpif.h'
 
   ! All children
-  integer,allocatable :: DATAATM(:)
   integer,allocatable :: LAND(:)
   integer,allocatable :: LANDPERT(:)
-  integer :: ENSAVG, LANDASSIM
+  integer             :: METFORCE, ENSAVG, LANDASSIM
+
+  ! other global variables
   integer :: NUM_ENSEMBLE
-  logical :: assim
+  logical :: land_assim
+  logical :: mwRTM
+  
 contains
 
   !BOP
@@ -86,14 +86,16 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: id_string,childname, fmt_str
-    character(len=ESMF_MAXSTR) :: LAND_ASSIM
+    character(len=ESMF_MAXSTR) :: LAND_ASSIM_STR, mwRTM_file
     integer                    :: ens_id_width
     ! Local variables
     type(T_TILECOORD_STATE), pointer :: tcinternal
     type(TILECOORD_WRAP) :: tcwrap
 
     type(ESMF_Config) :: CF
-
+    integer :: LSM_CHOICE
+    integer :: FIRST_ENS_ID
+    
     ! Begin...
 
     ! Get my name and setup traceback handle
@@ -137,49 +139,42 @@ contains
     !create ensemble children
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
-    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1,       RC=STATUS)
     VERIFY_(STATUS)
-    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:", DEFAULT=0, RC=STATUS)
+    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
-    call MAPL_GetResource ( MAPL, LAND_ASSIM, Label="LAND_ASSIM:", DEFAULT="NO", RC=STATUS)
+    call MAPL_GetResource ( MAPL, LAND_ASSIM_STR, Label="LAND_ASSIM:", DEFAULT="NO", RC=STATUS)
     VERIFY_(STATUS)
-    LAND_ASSIM =  ESMF_UtilStringUpperCase(LAND_ASSIM, rc=STATUS)
+    LAND_ASSIM_STR =  ESMF_UtilStringUpperCase(LAND_ASSIM_STR, rc=STATUS)
     VERIFY_(STATUS)
-    assim = (LAND_ASSIM /= 'NO')
+    land_assim = (trim(LAND_ASSIM_STR) /= 'NO')
 
-    allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
-    allocate(DATAATM(1))
+    call MAPL_GetResource ( MAPL, mwRTM_file, Label="LANDASSIM_INTERNAL_RESTART_FILE:", DEFAULT='', RC=STATUS)
+    VERIFY_(STATUS)
+    mwRTM = ( len_trim(mwRTM_file) /= 0 )
 
-    ! one dataatm provides all the data
-    ens_id(1)=0 ! id start form 0
-    if(NUM_ENSEMBLE ==1 ) then
-       id_string=''
-    else
-       fmt_str=''
-       write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
-       write(id_string, fmt_str) ens_id(1)
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
+    if (LSM_CHOICE /=1 ) then
+      _ASSERT( .not. (mwRTM .or. land_assim), "CatchCN is Not Ready for assimilation or mwRTM")
     endif
-    id_string=trim(id_string)
-    childname='DATAATM'//trim(id_string)
-    DATAATM(1) = MAPL_AddChild(gc, name=childname, ss=MetforceSetServices, rc=status)
+
+    METFORCE = MAPL_AddChild(gc, name='METFORCE', ss=MetforceSetServices, rc=status)
     VERIFY_(status)
 
+    allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
+    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
     do i=1,NUM_ENSEMBLE
-
-       ens_id(i)=i-1 ! id start form 0
-       if(NUM_ENSEMBLE ==1 ) then
+       ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+       if(NUM_ENSEMBLE == 1 ) then
           id_string=''
        else
           write(id_string, fmt_str) ens_id(i)
        endif
 
        id_string=trim(id_string)
-
-      ! note: different dataatm provide different data
-      ! childname='DATAATM'//trim(id_string)
-      ! DATAATM(i) = MAPL_AddChild(gc, name=childname, ss=MetforceSetServices, rc=status)
-      ! VERIFY_(status)
 
        childname='LANDPERT'//trim(id_string)
        LANDPERT(i) = MAPL_AddChild(gc, name=childname, ss=LandPertSetServices, rc=status)
@@ -188,26 +183,25 @@ contains
        childname='LAND'//trim(id_string)
        LAND(i) = MAPL_AddChild(gc, name=childname, ss=LandSetServices, rc=status)
        VERIFY_(status)
-          
     enddo
+
     ENSAVG    = MAPL_AddChild(gc, name='ENSAVG', ss=EnsSetServices, rc=status)
     VERIFY_(status)
     
-    if(assim) then
+    if(land_assim .or. mwRTM ) then
        LANDASSIM = MAPL_AddChild(gc, name='LANDASSIM', ss=LandAssimSetServices, rc=status)
        VERIFY_(status)
     endif
 
     ! Connections
     do i=1,NUM_ENSEMBLE
-    ! -DATAATM-feeds-LANDPERT's-imports-
+    ! -METFORCE-feeds-LANDPERT's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
             SHORT_NAME = ['Tair   ', 'Qair   ', 'Psurf  ', 'Rainf_C', 'Rainf  ',   &
                           'Snowf  ', 'LWdown ', 'SWdown ', 'SWnet  ', 'PARdrct',   &
                           'PARdffs', 'Wind   ', 'RefH   '],                        &
-           ! SRC_ID = DATAATM(i),                                                   &
-            SRC_ID = DATAATM(1),                                                   &
+            SRC_ID = METFORCE,                                                     &
             DST_ID = LANDPERT(i),                                                  &
             rc = status                                                            &
             )
@@ -229,15 +223,14 @@ contains
             rc = status                                                            &
             )
           VERIFY_(status)
-    ! -DATAATM-feeds-LAND's-imports-
+    ! -METFORCE-feeds-LAND's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
             SRC_NAME = ['Psurf', 'RefH ',                                          &
                         'DUDP ', 'DUSV ', 'DUWT ', 'DUSD ', 'BCDP ', 'BCSV ',      &
                         'BCWT ', 'BCSD ', 'OCDP ', 'OCSV ', 'OCWT ', 'OCSD ',      &
                         'SUDP ', 'SUSV ', 'SUWT ', 'SUSD ', 'SSDP ', 'SSSV ' ],    &
-          !  SRC_ID = DATAATM(i),                                                  &
-            SRC_ID = DATAATM(1),                                                   &
+            SRC_ID = METFORCE,                                                     &
             DST_NAME = ['PS  ', 'DZ  ',                                            &
                         'DUDP', 'DUSV', 'DUWT', 'DUSD', 'BCDP', 'BCSV',            &
                         'BCWT', 'BCSD', 'OCDP', 'OCSV', 'OCWT', 'OCSD',            &
@@ -247,34 +240,34 @@ contains
             )
        VERIFY_(status)
     ! -CATCH-feeds-LANDPERT's-imports-
-       call MAPL_AddConnectivity(                                                  &
-            gc,                                                                    &
-            SRC_NAME =  ['TC     ','CATDEF ','RZEXC  ','SRFEXC ','WESNN1 ','WESNN2 ','WESNN3 ', &
-               'GHTCNT1','GHTCNT2','GHTCNT3','GHTCNT4','GHTCNT5','GHTCNT6',        &
-               'HTSNNN1','HTSNNN2','HTSNNN3','SNDZN1 ','SNDZN2 ','SNDZN3 '],       &
-            SRC_ID = LAND(i),                                                      &
-            DST_NAME =     ['TCPert     ','CATDEFPert ','RZEXCPert  ','SRFEXCPert ','WESNN1Pert ',&
-              'WESNN2Pert ','WESNN3Pert ','GHTCNT1Pert','GHTCNT2Pert',             &
-              'GHTCNT3Pert','GHTCNT4Pert','GHTCNT5Pert','GHTCNT6Pert',             &
-              'HTSNNN1Pert','HTSNNN2Pert','HTSNNN3Pert','SNDZN1Pert ',             &
-              'SNDZN2Pert ','SNDZN3Pert '],                                        &
-            DST_ID = LANDPERT(i),                                                  &
-            rc = status                                                            &
+       call MAPL_AddConnectivity(                                                                  &
+            gc,                                                                                    &
+            SRC_NAME =  ['TC     ','CATDEF ','RZEXC  ','SRFEXC ','WESNN1 ','WESNN2 ','WESNN3 ',    &
+               'GHTCNT1','GHTCNT2','GHTCNT3','GHTCNT4','GHTCNT5','GHTCNT6',                        &
+               'HTSNNN1','HTSNNN2','HTSNNN3','SNDZN1 ','SNDZN2 ','SNDZN3 '],                       &
+            SRC_ID = LAND(i),                                                                      &
+            DST_NAME =     ['TCPert     ','CATDEFPert ','RZEXCPert  ','SRFEXCPert ','WESNN1Pert ', &
+              'WESNN2Pert ','WESNN3Pert ','GHTCNT1Pert','GHTCNT2Pert',                             &
+              'GHTCNT3Pert','GHTCNT4Pert','GHTCNT5Pert','GHTCNT6Pert',                             &
+              'HTSNNN1Pert','HTSNNN2Pert','HTSNNN3Pert','SNDZN1Pert ',                             &
+              'SNDZN2Pert ','SNDZN3Pert '],                                                        &
+            DST_ID = LANDPERT(i),                                                                  &
+            rc = status                                                                            &
             )
        VERIFY_(status)
     enddo
 
-    if(assim) then
-       call MAPL_AddConnectivity(                                                  &
-            gc,                                                                    &
-            SHORT_NAME = ['POROS ', 'COND  ','PSIS  ','BEE   ','WPWET ','GNU   ','VGWMAX',    &
-                          'BF1   ', 'BF2   ','BF3   ','CDCR1 ','CDCR2 ','ARS1  ',             &
-                          'ARS2  ', 'ARS3  ','ARA1  ','ARA2  ','ARA3  ','ARA4  ',             &
-                          'ARW1  ', 'ARW2  ','ARW3  ','ARW4  ','TSA1  ','TSA2  ','TSB1  ',    &
-                          'TSB2  ', 'ATAU  ','BTAU  ','ITY   ','Z2CH  ' ],                       &
-            SRC_ID = LAND(1),                                                      &
-            DST_ID = LANDASSIM,                                                    &
-            rc = status                                                            &
+    if(land_assim .or. mwRTM) then
+       call MAPL_AddConnectivity(                                                                  &
+            gc,                                                                                    &
+            SHORT_NAME = ['POROS ', 'COND  ','PSIS  ','BEE   ','WPWET ','GNU   ','VGWMAX',         &
+                          'BF1   ', 'BF2   ','BF3   ','CDCR1 ','CDCR2 ','ARS1  ',                  &
+                          'ARS2  ', 'ARS3  ','ARA1  ','ARA2  ','ARA3  ','ARA4  ',                  &
+                          'ARW1  ', 'ARW2  ','ARW3  ','ARW4  ','TSA1  ','TSA2  ','TSB1  ',         &
+                          'TSB2  ', 'ATAU  ','BTAU  ','ITY   ','Z2CH  ' ],                         &
+            SRC_ID = LAND(1),                                                                      &
+            DST_ID = LANDASSIM,                                                                    &
+            rc = status                                                                            &
             )
        VERIFY_(status)
     endif
@@ -417,7 +410,6 @@ contains
     VERIFY_(status)
     call esmf2ldas(CurrentTime, start_time, rc=status)
     VERIFY_(status)
-
 
     call MAPL_GetResource(MAPL,LDAS_logit,'LDAS_logit:',default = "NO",rc = status)
     VERIFY_(status)
@@ -661,8 +653,8 @@ contains
     tcinternal%grid_f = tile_grid_f
     tcinternal%grid_l = tile_grid_l
 
-    call MAPL_GetObjectFromGC(gcs(DATAATM(1)), CHILD_MAPL, rc=status)
-    VERIFY_(status) ! CHILD = DATAATM
+    call MAPL_GetObjectFromGC(gcs(METFORCE), CHILD_MAPL, rc=status)
+    VERIFY_(status) ! CHILD = METFORCE
     call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
     VERIFY_(status)
 
@@ -670,7 +662,7 @@ contains
     VERIFY_(status) ! CHILD = ens_avg
     call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
     VERIFY_(status)
-    call ESMF_UserCompSetInternalState(gcs(DATAATM(1)), 'TILE_COORD', tcwrap, status)
+    call ESMF_UserCompSetInternalState(gcs(METFORCE), 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
 
     do i = 1,NUM_ENSEMBLE
@@ -678,10 +670,6 @@ contains
        VERIFY_(status)
        call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
        VERIFY_(status)
-       !call MAPL_GetObjectFromGC(gcs(DATAATM(i)), CHILD_MAPL, rc=status)
-       !VERIFY_(status) ! CHILD = DATAATM
-       !call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
-       !VERIFY_(status)
        call MAPL_GetObjectFromGC(gcs(LANDPERT(i)), CHILD_MAPL, rc=status)
        VERIFY_(status) ! CHILD = LANDPERT
        call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
@@ -693,7 +681,7 @@ contains
        VERIFY_(status)
     enddo
 
-    if (assim) then
+    if (land_assim .or. mwRTM) then
        call MAPL_GetObjectFromGC(gcs(LANDASSIM), CHILD_MAPL, rc=status)
        VERIFY_(status) 
        call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
@@ -839,7 +827,7 @@ contains
     enddo
 
 
-    igc = DATAATM(1)
+    igc = METFORCE
     call MAPL_TimerOn(MAPL, gcnames(igc))
     call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, userRC=status)
     VERIFY_(status)
@@ -877,9 +865,17 @@ contains
           VERIFY_(status)
           call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
           VERIFY_(status)
+
+          if( mwRTM ) then
+             ! calculate ensemble-average L-band Tb (add up and normalize after last member has been added)
+             call ESMF_GridCompRun(gcs(LANDASSIM), importState=gex(igc), exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
+             VERIFY_(status)
+          endif
        endif
 
        ! Should this be moved to the beginning of the loop to avoid the pollution ?
+       ! THIS MUST BE MOVED AT LEAST TO BEFORE THE "ENSAVG/phase=3" CALL IF ENSEMBLE STATS OTHER THAN THE AVERAGE
+       ! ARE COMPUTED - reichle, 14 May 2020
        ! ApplyPrognPert
        igc = LANDPERT(i)
        call MAPL_TimerOn(MAPL, gcnames(igc))
@@ -890,7 +886,7 @@ contains
     enddo
 
     !run land assim
-    if (assim) then 
+    if (land_assim) then 
        igc = LANDASSIM
        call MAPL_TimerOn(MAPL, gcnames(igc))
        !import state is the export from ens_GridComp, assimilation run
