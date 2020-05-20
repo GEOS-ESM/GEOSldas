@@ -111,6 +111,8 @@ module GEOS_LandAssimGridCompMod
 
 contains
   
+  ! ******************************************************************************
+
   !BOP
   ! !IROUTINE: SetServices -- Sets ESMF services for component
   ! !INTERFACE:
@@ -919,6 +921,8 @@ contains
     
   end subroutine SetServices
   
+  ! ******************************************************************************
+
   ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !BOP
   ! !IROTUINE: Initialize -- initialize method for LandAssim GC
@@ -1187,6 +1191,8 @@ contains
     
   end subroutine Initialize
   
+  ! ******************************************************************************
+
   ! !IROUTINE: RUN 
   ! !INTERFACE:
   subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
@@ -1789,6 +1795,8 @@ contains
     
   end subroutine RUN
   
+  ! ******************************************************************************
+
   ! !IROTUINE: collecting and averaging
   
   subroutine UPDATE_ASSIM(gc, import, export, clock, rc)
@@ -1940,6 +1948,7 @@ contains
     
   end subroutine UPDATE_ASSIM
   
+  ! ******************************************************************************
   
   ! subroutine to calculate Tb for HISTORY output
   
@@ -2055,7 +2064,7 @@ contains
          mwRTM_param%poros, &
          WCSF,              & 
          TPSURF,            & 
-         TP1-MAPL_TICE,     &    ! units deg C !!!
+         TP1,               &    ! units deg C !!!
          sfmc_mwRTM,        & 
          tsoil_mwRTM )        
     
@@ -2104,6 +2113,7 @@ contains
     RETURN_(_SUCCESS)
   end subroutine CALC_LAND_TB
   
+  ! ******************************************************************************
   
   subroutine read_pert_rseed(seed_fname,pert_rseed_r8)
     use netcdf
@@ -2138,6 +2148,8 @@ contains
     end subroutine check
   end subroutine read_pert_rseed
   
+  ! ******************************************************************************
+
   subroutine write_pert_rseed(chk_fname, pert_rseed_r8)
     use netcdf
     character(len=*),intent(in)        :: chk_fname
@@ -2185,6 +2197,7 @@ contains
     end subroutine check
   end subroutine write_pert_rseed
   
+  ! ******************************************************************************
   
   subroutine get_mwrtm_param(internal,N_catl, rc)
     type(ESMF_State),  intent(inout) :: INTERNAL
@@ -2289,6 +2302,8 @@ contains
     _RETURN(_SUCCESS)
   end subroutine get_mwrtm_param
   
+  ! ******************************************************************************
+
   !BOP
   ! !IROTUINE: Finalize -- finalize method for LDAS GC
   ! !INTERFACE:
@@ -2362,3 +2377,5 @@ contains
   end subroutine Finalize
 
 end module GEOS_LandAssimGridCompMod
+
+! ====================== EOF =======================================================
