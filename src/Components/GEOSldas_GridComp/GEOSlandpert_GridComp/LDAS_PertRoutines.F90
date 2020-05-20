@@ -117,24 +117,17 @@ module LDAS_PertRoutinesMod
   private
 
   public :: read_ens_prop_inputs
-  ! CHANGED: we do not need get_tile_pert any more
-  ! public :: get_tile_pert
   public :: interpolate_pert_to_timestep
-  ! public :: apply_progn_pert
-  ! public :: apply_force_pert
   public :: get_pert_grid
   public :: get_progn_pert_param
   public :: get_force_pert_param
   public :: echo_pert_param
-  ! CHANGED :: io_pert_rstrt() removed - use MAPL to read internal rst vars
   ! WY note :: io_pert_rstrt() was adapted. read from LDASsa and write to a nc4 file as MAPL internal
   public :: io_pert_rstrt
-  ! CHANGED: we do not need initialize_perturbations any more
-  ! public :: initialize_perturbations
   public :: check_pert_dtstep
   ! ADDED
   public :: apply_pert
-  ! the parameters below will be overriteted by RC file 
+  ! the parameters below will be overwritten by RC file 
   integer,public :: GEOSldas_NUM_ENSEMBLE = -1
   integer,public :: GEOSldas_FIRST_ENS_ID = -1
   integer,public :: GEOSldas_FORCE_PERT_DTSTEP = -1
@@ -408,53 +401,14 @@ contains
        read (10, nml=ens_prop_inputs)
        close(10,status='keep')
     endif
-    if(     GEOSldas_NUM_ENSEMBLE      == -1 .or. GEOSldas_FIRST_ENS_ID==-1  &
+    if(     GEOSldas_NUM_ENSEMBLE      == -1 .or. GEOSldas_FIRST_ENS_ID      == -1         &
        .or. GEOSldas_FORCE_PERT_DTSTEP == -1 .or. GEOSldas_PROGN_PERT_DTSTEP == -1 ) then
        stop " GEOSldas_NUM_ENSEMBLE etc. should be initialized"
     endif
-    N_ens = GEOSldas_NUM_ENSEMBLE
-    first_ens_id = GEOSldas_FIRST_ENS_ID
-    force_pert_dtstep =GEOSldas_FORCE_PERT_DTSTEP 
-    progn_pert_dtstep =GEOSldas_PROGN_PERT_DTSTEP 
-
-    ! CHANGED: Getting rid of ability to read ensprop path and file from command line
-    ! ! Get name and path for special ens prop inputs file from
-    ! ! command line (if present)
-
-    ! ens_prop_inputs_path = ''
-    ! ens_prop_inputs_file = ''
-
-    ! call clsm_ensdrv_get_command_line(                              &
-    !      ens_prop_inputs_path=ens_prop_inputs_path,                 &
-    !      ens_prop_inputs_file=ens_prop_inputs_file )
-
-    ! if ( trim(ens_prop_inputs_path) /= ''  .and.                    &
-    !      trim(ens_prop_inputs_file) /= ''          ) then
-
-    !    ! Read data from special ens prop inputs namelist file
-
-    !    fname = trim(ens_prop_inputs_path) // '/' // trim(ens_prop_inputs_file)
-
-    !    open (10, file=fname, delim='apostrophe', action='read', status='old')
-
-    !    if (logit) write (logunit,*)
-    !    if (logit) write (logunit,'(400A)') 'reading *special* ens prop inputs from ' // trim(fname)
-    !    if (logit) write (logunit,*)
-
-    !    read (10, nml=ens_prop_inputs)
-
-    !    close(10,status='keep')
-
-    ! end if
-
-    ! over write ens prop from the test file
-    ! overwrite ens prop inputs with command line options, if any
-
-    ! write (logunit,*) 'overwriting driver inputs from command line (if present)'
-    ! write (logunit,*)
-
-    ! CHANGED: Not reading N_ens and first_ens_id from command line
-    ! call clsm_ensdrv_get_command_line( N_ens=N_ens, first_ens_id=first_ens_id )
+    N_ens             = GEOSldas_NUM_ENSEMBLE
+    first_ens_id      = GEOSldas_FIRST_ENS_ID
+    force_pert_dtstep = GEOSldas_FORCE_PERT_DTSTEP 
+    progn_pert_dtstep = GEOSldas_PROGN_PERT_DTSTEP 
 
     ! echo variables of ens_prop_inputs
 
@@ -1982,137 +1936,6 @@ contains
 
   ! *********************************************************************
 
-  ! subroutine get_tile_pert(                                &
-  !      N_pert, N_ens, pert_grid_f, pert_grid_l,            &
-  !      dtstep,                                             &
-  !      N_catl, tile_coord_l,                               &
-  !      pert_param,                                         &
-  !      Pert_rseed, Pert_ntrmdt,                            &
-  !      Pert_tile,                                          &
-  !      ens_id,                                             &
-  !      initialize_rseed,                                   &
-  !      initialize_ntrmdt,                                  &
-  !      diagnose_pert_only    )
-
-  !   ! get perturbations in tile space
-
-  !   implicit none
-
-  !   integer, intent(in) :: N_pert, N_ens
-
-  !   type(grid_def_type), intent(in) :: pert_grid_f, pert_grid_l
-
-  !   real, intent(in) :: dtstep
-
-  !   integer, intent(in) :: N_catl
-
-  !   type(tile_coord_type), dimension(:), pointer :: tile_coord_l
-
-  !   type(pert_param_type), dimension(:), pointer :: pert_param
-
-  !   integer, dimension(NRANDSEED,N_ens), intent(inout) :: Pert_rseed
-
-  !   real, dimension(N_pert,pert_grid_l%N_lon,pert_grid_l%N_lat,N_ens), &
-  !        intent(inout) :: Pert_ntrmdt
-
-  !   real, dimension(N_pert, N_catl, N_ens), intent(out) :: Pert_tile
-
-  !   integer, dimension(N_ens),    intent(in), optional :: ens_id
-
-  !   logical, intent(in), optional :: initialize_rseed
-  !   logical, intent(in), optional :: initialize_ntrmdt
-
-  !   logical, intent(in), optional :: diagnose_pert_only
-
-  !   ! local variables
-
-  !   integer :: i, n_e
-
-  !   real, dimension(N_pert,pert_grid_l%N_lon,pert_grid_l%N_lat,N_ens) :: &
-  !        Pert_grid
-
-  !   real, dimension(pert_grid_l%N_lon,pert_grid_l%N_lat) :: grid_data
-  !   real, dimension(N_catl)                            :: tile_data
-
-  !   logical :: init_rseed, init_ntrmdt, diagn_only
-
-  !   character(len=400) :: err_msg
-  !   character(len=*), parameter :: Iam = 'get_tile_pert'
-
-  !   ! ------------------------------------------------------------
-
-  !   init_rseed  = .false.
-  !   init_ntrmdt = .false.
-
-  !   if (present(initialize_rseed))   init_rseed  = initialize_rseed
-  !   if (present(initialize_ntrmdt))  init_ntrmdt = initialize_ntrmdt
-
-  !   if (init_rseed) then
-
-  !      write (logunit,*) 'initializing random seed from scratch'
-
-  !      if (present(ens_id)) then
-
-  !         call get_init_Pert_rseed( N_ens, ens_id, Pert_rseed(1,:) )
-
-  !      else
-
-  !         call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'ens_id not present')
-
-  !      end if
-
-  !   end if
-
-  !   ! -----------------------------------------------------------------
-
-  !   diagn_only = .false.
-
-  !   if (present(diagnose_pert_only))  diagn_only = diagnose_pert_only
-
-  !   if ( diagn_only .and. (init_rseed .or. init_ntrmdt) ) then
-
-  !      call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'contradictory optional inputs')
-
-  !   end if
-
-  !   ! -----------------------------------------------------------------
-
-  !   call get_pert(                                                 &
-  !        N_pert, N_ens,                                            &
-  !        pert_grid_f, pert_grid_l,                                 &
-  !        dtstep,                                                   &
-  !        pert_param,                                               &
-  !        Pert_rseed,                                               &
-  !        Pert_ntrmdt,                                              &
-  !        Pert_grid,                                                &
-  !        initialize_rseed=init_rseed,                              &
-  !        initialize_ntrmdt=init_ntrmdt,                            &
-  !        diagnose_pert_only=diagn_only     )
-
-  !   ! -----------------------------------------------------------------
-
-  !   ! map to tile space
-
-  !   do i=1,N_pert
-  !      do n_e=1,N_ens
-
-  !         grid_data = Pert_grid(i,:,:,n_e)
-
-  !         ! this call to grid2tile() links the grid on which perturbations
-  !         ! are computed to the GEOS5 tile_grid
-
-  !         call grid2tile( pert_grid_l, N_catl, tile_coord_l, grid_data, &
-  !              tile_data)
-
-  !         Pert_tile(i,:,n_e) = tile_data
-
-  !      end do
-  !   end do
-
-  ! end subroutine get_tile_pert
-
-  ! *********************************************************************
-
   subroutine interpolate_pert_to_timestep(                 &
        date_time, pert_time_old, pert_dtstep_real,         &
        Pert_old, Pert_new, Pert_ntp )
@@ -2406,194 +2229,6 @@ contains
     close (10,status='keep')
 
    end subroutine io_pert_rstrt
-
-!   subroutine initialize_perturbations(                                &
-!        N_catl, N_ens, ens_id, start_time,                             &
-!        restart_path, restart_domain, restart_id, work_path, exp_id,   &
-!        tile_coord_l, pert_grid_f, pert_grid_l,                        &
-!        N_force_pert, N_progn_pert,                                    &
-!        force_pert_param, progn_pert_param,                            &
-!        Pert_rseed, Force_pert_ntrmdt_l, Progn_pert_ntrmdt_l,          &
-!        Force_pert_tile_new, Force_pert_tile_old,                      &
-!        Progn_pert_tile_new, Progn_pert_tile_old            )
-
-!     ! Initialize perturbations variables either from a restart file or
-!     ! by reinitializing the seed
-!     !
-!     ! reichle, 21 Jun 2005
-!     ! reichle, 16 Oct 2008 - eliminated logical variable "restart_pert" from input list
-!     !
-!     ! -----------------------------------------------------------------
-
-!     implicit none
-
-!     integer, intent(in) :: N_catl, N_ens
-
-!     integer, intent(in), dimension(N_ens) :: ens_id
-
-!     type(date_time_type), intent(in) :: start_time
-
-!     character(200), intent(in) :: restart_path, work_path
-
-!     character(40), intent(in)  :: restart_domain, restart_id, exp_id
-
-!     type(tile_coord_type), dimension(:), pointer :: tile_coord_l  ! input
-
-!     type(grid_def_type), intent(in) :: pert_grid_f, pert_grid_l
-
-!     integer, intent(in) :: N_force_pert, N_progn_pert
-
-!     type(pert_param_type), dimension(:), pointer :: force_pert_param  ! input
-!     type(pert_param_type), dimension(:), pointer :: progn_pert_param  ! input
-
-!     integer, dimension(NRANDSEED,N_ens), intent(out) :: Pert_rseed
-
-!     real, dimension(N_force_pert,pert_grid_l%N_lon,pert_grid_l%N_lat,N_ens), &
-!          intent(out) :: Force_pert_ntrmdt_l
-
-!     real, dimension(N_progn_pert,pert_grid_l%N_lon,pert_grid_l%N_lat,N_ens), &
-!          intent(out) :: Progn_pert_ntrmdt_l
-
-!     real, dimension(N_force_pert,N_catl,N_ens), intent(out) :: &
-!          Force_pert_tile_new, Force_pert_tile_old
-
-!     real, dimension(N_progn_pert,N_catl,N_ens), intent(out) :: &
-!          Progn_pert_tile_new, Progn_pert_tile_old
-
-!     character(len=*), parameter :: Iam = 'initialize_perturbations'
-!     character(len=400) :: err_msg
-
-!     ! ---------------------------------
-
-!     ! locals
-
-!     character(200) :: restart_path_tmp
-
-!     integer :: n_e, rc
-
-!     logical :: initialize_rseed, initialize_ntrmdt, diagnose_pert_only, restart_pert
-
-!     ! -----------------------------------------------------------------------
-
-!     write (logunit,*)
-
-!     ! CHANGED: Replaced call to add_domain_to_path by its content
-!     ! restart_path_tmp = add_domain_to_path( restart_path, restart_domain )
-!     restart_path_tmp = trim(restart_path) // '/' // trim(restart_domain) // '/'
-
-!     initialize_rseed  = .true.
-!     initialize_ntrmdt = .true.
-
-!     diagnose_pert_only = .false.
-
-!     restart_pert       = .false.     ! assume restart file is NOT available
-
-!     ! try getting perturbations prognostics from restart file
-
-!     do n_e=1,N_ens
-
-!        call io_pert_rstrt( 'r', restart_path_tmp, restart_id, ens_id(n_e),   &
-!             start_time, tile_coord_l, pert_grid_l, pert_grid_f,              &
-!             N_force_pert, N_progn_pert, Pert_rseed(:,n_e),                   &
-!             Force_pert_ntrmdt_l(:,:,:,n_e), Progn_pert_ntrmdt_l(:,:,:,n_e), rc )
-
-!        if (n_e==1) then
-
-!           ! set restart_pert to true if first pert restart file was successfully read
-
-!           if (rc==0) restart_pert = .true.
-
-!        else
-
-!           ! stop if restart file was read for first but not for current ensemble member
-
-!           if (rc/=0 .and. restart_pert) then
-!              err_msg = 'found pert restart file for some but not all ens members'
-!              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-!           end if
-
-!        end if
-
-!     end do
-
-!     ! broadcast Pert_rseed
-!     call MPI_Bcast(Pert_rseed,NRANDSEED*N_ens,MPI_INTEGER,0,mpicomm,mpierr)
-
-!     ! restart_pert is now true if pert restart files were available for all ens members,
-!     ! false otherwise
-
-!     if (restart_pert) then
-
-!        initialize_rseed  = .false.
-!        initialize_ntrmdt = .false.
-
-!        diagnose_pert_only = .true.
-
-!     end if
-
-!     ! --------------------------------------------------------------------
-!     !
-!     ! get perturbations prognostics (unless read from restart file) and
-!     ! perturbations diagnostics
-
-!     if (N_force_pert>0) then
-
-!        call get_tile_pert(                                        &
-!             N_force_pert, N_ens, pert_grid_f, pert_grid_l,        &
-!             nodata_generic,                                       &
-!             N_catl, tile_coord_l,                                 &
-!             force_pert_param,                                     &
-!             Pert_rseed,                                           &
-!             Force_pert_ntrmdt_l,                                  &
-!             Force_pert_tile_old,                                  &
-!             ens_id=ens_id,                                        &
-!             initialize_rseed=initialize_rseed,                    &
-!             initialize_ntrmdt=initialize_ntrmdt,                  &
-!             diagnose_pert_only=diagnose_pert_only   )
-
-!        Force_pert_tile_new = Force_pert_tile_old
-
-!        initialize_rseed = .false.
-
-!     end if
-
-!     if (N_progn_pert>0) then
-
-!        call get_tile_pert(                                        &
-!             N_progn_pert, N_ens, pert_grid_f, pert_grid_l,        &
-!             nodata_generic,                                       &
-!             N_catl, tile_coord_l,                                 &
-!             progn_pert_param,                                     &
-!             Pert_rseed,                                           &
-!             Progn_pert_ntrmdt_l,                                  &
-!             Progn_pert_tile_old,                                  &
-!             ens_id=ens_id,                                        &
-!             initialize_rseed=initialize_rseed,                    &
-!             initialize_ntrmdt=initialize_ntrmdt,                  &
-!             diagnose_pert_only=diagnose_pert_only   )
-
-!        Progn_pert_tile_new = Progn_pert_tile_old
-
-!     end if
-
-!     ! --------------------------------------------------------------------
-!     !
-!     ! if no restart file was available or restart file was from a
-!     !  different experiment, write out initial restart file
-!     !  for current experiment
-
-!     if ( (.not. restart_pert) .or. (trim(restart_path_tmp)/=trim(work_path)) ) then
-
-!        do n_e=1,N_ens
-!           call io_pert_rstrt( 'w', work_path, exp_id, ens_id(n_e), &
-!                start_time, tile_coord_l, pert_grid_l, pert_grid_f, &
-!                N_force_pert, N_progn_pert, Pert_rseed(:,n_e),      &
-!                Force_pert_ntrmdt_l(:,:,:,n_e), Progn_pert_ntrmdt_l(:,:,:,n_e) )
-!        end do
-
-!     end if
-
-!   end subroutine initialize_perturbations
 
   ! ******************************************************************
 

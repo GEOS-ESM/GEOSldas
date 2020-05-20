@@ -220,9 +220,9 @@ PROGRAM mk_GEOSldasRestarts
      call MPI_FINALIZE(mpierr)
      call exit(0)
   
-else
+  else
 
-     ! The user does now have restarts, thus cold start (RESTART: 0)
+     ! The user does not have restarts, thus cold start (RESTART: 0)
 
      if(JOBFILE == 'N') then
 
@@ -241,7 +241,7 @@ else
         write(10,'(a)')'#SBATCH --time=1:00:00'
         write(10,'(a)')'#SBATCH --ntasks=56'
         write(10,'(a)')'#SBATCH --job-name=mkLDAS'
-        write(10,'(a)')'#SBATCH --constraint=hasw'
+        write(10,'(a)')'###SBATCH --constraint=hasw'
         write(10,'(a)')'#SBATCH --output=mkLDAS.o'
         write(10,'(a)')'#SBATCH --error=mkLDAS.e'
         write(10,'(a)')' ' 

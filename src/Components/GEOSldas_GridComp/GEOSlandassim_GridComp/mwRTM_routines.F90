@@ -323,10 +323,13 @@ contains
     if (logit) write(logunit,*) 'entering mwRTM_get_Tb...'
 
     ! check first element of elevation against no-data-value
+    ! (elevation is needed only when incl_atm_terms=.true.)
 
-    if ( abs(elev(1)-nodata_generic)<nodata_tol_generic ) then
-       err_msg = 'mwRTM_get_Tb(): ERROR, elev is no-data-value'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    if (incl_atm_terms) then
+       if ( abs(elev(1)-nodata_generic)<nodata_tol_generic ) then
+          err_msg = 'mwRTM_get_Tb(): ERROR, elev is no-data-value'
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       end if
     end if
 
     ! pre-compute sine and cosine

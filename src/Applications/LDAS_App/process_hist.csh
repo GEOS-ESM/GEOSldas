@@ -46,7 +46,7 @@ endif
 if($PERTURB == 1 ) then
    set GridComp = ENSAVG
    sed -i 's|VEGDYN|'VEGDYN0000'|g' $HISTRC
-   sed -i 's|DATAATM|'DATAATM0000'|g' $HISTRC
+#   sed -i 's|DATAATM|'DATAATM0000'|g' $HISTRC
 endif
 
 sed -i 's|GridComp|'$GridComp'|g' $HISTRC
