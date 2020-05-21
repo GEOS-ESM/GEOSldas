@@ -502,7 +502,7 @@ EOF
             set dayl = `echo $time_steps[$LEN] | cut -c1-8`
             set day1 = `echo $time_steps[1] | cut -c1-8`
             @ NAVAIL = ($dayl - $day1) + 1
-          else if( $LEN_ !=0 ) then
+          else if( $LEN_ != 0 ) then
             set dayl = `echo $time_steps_[$LEN] | cut -c1-8`
             set day1 = `echo $time_steps_[1] | cut -c1-8`
             @ NAVAIL = ($dayl - $day1) + 1

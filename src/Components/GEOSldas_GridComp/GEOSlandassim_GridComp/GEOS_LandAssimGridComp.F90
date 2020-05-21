@@ -2003,10 +2003,12 @@ contains
     real, dimension(:), pointer :: TB_V_enavg
 
     ! local
-    real, allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
-    real, allocatable, dimension(:) :: dummy_real
-    real, allocatable, dimension(:) :: Tb_v_tmp, TB_h_tmp
- 
+    real,    allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
+    real,    allocatable, dimension(:) :: dummy_real
+    real,    allocatable, dimension(:) :: Tb_h_tmp, TB_v_tmp
+    logical, allocatable, dimension(:) :: is_nodata
+
+    
     integer              :: N_catl, n, mpierr
     type(MAPL_LocStream) :: locstream
     
@@ -2072,7 +2074,7 @@ contains
     ! (tau-omega model as in De Lannoy et al. 2013 [doi:10.1175/JHM-D-12-092.1]
     !  but without Pellarin atmospheric corrections)
     
-    allocate(TB_h_tmp(N_catl), TB_v_tmp(N_catl))
+    allocate(TB_h_tmp(N_catl), TB_v_tmp(N_catl), is_nodata(N_catl))
     
     if (.not. incl_atm_terms) then
        allocate(dummy_real(N_catl))                   ! allocate needed for GNU compiler
@@ -2090,25 +2092,39 @@ contains
     else
        _ASSERT(.false., "top-of-atmosphere Tb calculation not yet implemented (incl_atm_terms=.true.)")
     end if
-    
+
     if (collect_tb_counter == 0) then
-       TB_V_enavg = 0.
        TB_H_enavg = 0.
+       TB_V_enavg = 0.
+       is_nodata  = .false.
     endif
+    
+    ! ensemble average Tb must be nodata if Tb of any member is nodata
+    
+    is_nodata = (                                                      &
+         (is_nodata)                                         .or.      &
+         (abs(Tb_h_tmp-nodata_generic)<nodata_tol_generic)   .or.      &
+         (abs(Tb_v_tmp-nodata_generic)<nodata_tol_generic)         )
     
     ! This counter is relative to ens_id
     collect_tb_counter = collect_tb_counter + 1
     
-    TB_V_enavg(:) = TB_V_enavg(:) + Tb_v_tmp(:)
     TB_H_enavg(:) = TB_H_enavg(:) + Tb_h_tmp(:)
+    TB_V_enavg(:) = TB_V_enavg(:) + Tb_v_tmp(:)
     
     if (collect_tb_counter == NUM_ENSEMBLE) then
-       collect_tb_counter = 0
-       TB_V_enavg(:)      = TB_V_enavg(:)/NUM_ENSEMBLE
-       TB_H_enavg(:)      = TB_H_enavg(:)/NUM_ENSEMBLE
+
+       collect_tb_counter    = 0
+
+       TB_H_enavg(:)         = TB_H_enavg(:)/NUM_ENSEMBLE
+       TB_V_enavg(:)         = TB_V_enavg(:)/NUM_ENSEMBLE
+
+       TB_H_enavg(is_nodata) = MAPL_UNDEF
+       TB_V_enavg(is_nodata) = MAPL_UNDEF
+       
     endif
     
-    deallocate(Tb_h_tmp, Tb_v_tmp, sfmc_mwRTM, tsoil_mwRTM)
+    deallocate(Tb_h_tmp, Tb_v_tmp, is_nodata, sfmc_mwRTM, tsoil_mwRTM)
     
     RETURN_(_SUCCESS)
   end subroutine CALC_LAND_TB
