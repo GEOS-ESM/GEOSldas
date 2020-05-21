@@ -29,7 +29,7 @@ module GEOS_LandAssimGridCompMod
   use LDAS_ensdrv_mpi,           only: MPI_obs_param_type 
   
   use LDAS_DateTimeMod,          only: date_time_type 
-  use LDAS_ensdrv_Globals,       only: logunit, is_nodata, nodata_generic
+  use LDAS_ensdrv_Globals,       only: logunit, LDAS_is_nodata, nodata_generic
   
   use LDAS_ConvertMod,           only: esmf2ldas
   use LDAS_DriverTypes,          only: met_force_type
@@ -105,10 +105,12 @@ module GEOS_LandAssimGridCompMod
   real(kind=ESMF_KIND_R8),               allocatable :: pert_rseed_r8(:,:)
   type(mwRTM_param_type),  dimension(:), allocatable :: mwRTM_param
 
-  logical :: mwRTM_all_nodata   ! no data for mwRTM_param
-  logical :: land_assim
-  logical :: mwRTM
-  logical, allocatable :: tb_nodata(:)
+  logical                                            :: mwRTM_all_nodata 
+  logical                                            :: land_assim
+  logical                                            :: mwRTM
+  
+  logical,                               allocatable :: tb_nodata(:)
+
 contains
   
   ! ******************************************************************************
@@ -1004,6 +1006,7 @@ contains
     _VERIFY(status)
     call MAPL_LocStreamGet(locstream, NT_LOCAL=land_nt_local,rc=status)
     _VERIFY(status)
+    
     allocate(tb_nodata(land_nt_local))
  
     if ( .not. land_assim) then   ! to arrive here, mwRTM must be .true.
@@ -2068,7 +2071,7 @@ contains
          TPSURF,            & 
          TP1,               &    ! units deg C !!!
          sfmc_mwRTM,        & 
-         tsoil_mwRTM )        
+         tsoil_mwRTM )           ! units Kelvin !!!
     
     ! calculate brightness temperatures
     ! (tau-omega model as in De Lannoy et al. 2013 [doi:10.1175/JHM-D-12-092.1]
@@ -2100,9 +2103,8 @@ contains
     endif
     
     ! ensemble average Tb must be nodata if Tb of any member is nodata
-    ! WY notes: if above comment is true, then we need to save nodata or make it global.
  
-    tb_nodata = tb_nodata .or. is_nodata(Tb_h_tmp) .or. is_nodata(Tb_v_tmp)
+    tb_nodata = tb_nodata .or. LDAS_is_nodata(Tb_h_tmp) .or. LDAS_is_nodata(Tb_v_tmp)
     
     ! This counter is relative to ens_id
     collect_tb_counter = collect_tb_counter + 1
@@ -2238,7 +2240,7 @@ contains
     real, dimension(:), pointer :: LEWT
     
     integer :: N_catl_tmp, n, mpierr, status
-    logical :: nodata, all_nodata_l
+    logical :: mwp_nodata, all_nodata_l
     
     if(allocated(mwRTM_param)) then
        _RETURN(_SUCCESS)
@@ -2306,8 +2308,8 @@ contains
     
     all_nodata_l = .true.
     do n=1,N_catl
-       call mwRTM_param_nodata_check(mwRTM_param(n), nodata )
-       if (.not. nodata) all_nodata_l = .false.
+       call mwRTM_param_nodata_check(mwRTM_param(n), mwp_nodata )
+       if (.not. mwp_nodata) all_nodata_l = .false.
     end do
     
     ! perform logical AND across elements
