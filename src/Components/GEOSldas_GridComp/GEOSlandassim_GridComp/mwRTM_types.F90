@@ -15,7 +15,8 @@ module mwRTM_types
   
   use LDAS_ensdrv_globals,           ONLY:     &
        nodata_generic,                            &
-       nodata_tol_generic
+       nodata_tol_generic,    &
+       is_nodata
 
   use ldas_exceptionsMod,                  ONLY:     &
        ldas_abort,                                &
@@ -276,13 +277,13 @@ contains
 
   ! ************************************************************
   
-  subroutine mwRTM_param_nodata_check( mwp, is_nodata )
+  subroutine mwRTM_param_nodata_check( mwp, nodata )
     
     implicit none
     
     type(mwRTM_param_type), intent(inout) :: mwp
     
-    logical,                intent(  out) :: is_nodata
+    logical,                intent(  out) :: nodata
     
     ! local variables
     
@@ -293,32 +294,32 @@ contains
     realvegcls  = real(mwp%vegcls)
     realsoilcls = real(mwp%soilcls)
     
-    if ( (abs(realvegcls    -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(realsoilcls   -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%sand      -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%clay      -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%poros     -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%wang_wt   -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%wang_wp   -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%rgh_hmin  -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%rgh_hmax  -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%rgh_wmin  -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%rgh_wmax  -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%rgh_Nrh   -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%rgh_Nrv   -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%rgh_polmix-nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%omega     -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%bh        -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%bv        -nodata_generic)<nodata_tol_generic) .or.        &
-         (abs(mwp%lewt      -nodata_generic)<nodata_tol_generic)      ) then
+    if ( is_nodata (realvegcls    ) .or.        &
+         is_nodata (realsoilcls   ) .or.        &
+         is_nodata (mwp%sand      ) .or.        &
+         is_nodata (mwp%clay      ) .or.        &
+         is_nodata (mwp%poros     ) .or.        &
+         is_nodata (mwp%wang_wt   ) .or.        &
+         is_nodata (mwp%wang_wp   ) .or.        &
+         is_nodata (mwp%rgh_hmin  ) .or.        &
+         is_nodata (mwp%rgh_hmax  ) .or.        &
+         is_nodata (mwp%rgh_wmin  ) .or.        &
+         is_nodata (mwp%rgh_wmax  ) .or.        &
+         is_nodata (mwp%rgh_Nrh   ) .or.        &
+         is_nodata (mwp%rgh_Nrv   ) .or.        &
+         is_nodata (mwp%rgh_polmix) .or.        &
+         is_nodata (mwp%omega     ) .or.        &
+         is_nodata (mwp%bh        ) .or.        &
+         is_nodata (mwp%bv        ) .or.        &
+         is_nodata (mwp%lewt      )      ) then
        
        mwp = nodata_generic
        
-       is_nodata = .true.
+       nodata = .true.
 
     else
        
-       is_nodata = .false.
+       nodata = .false.
        
     end if
     

@@ -234,10 +234,10 @@ PROGRAM tile_bin2nc4
     ! additional defintions for SMAP Nature Run - reichle, 20 May 2020
 
     case ('snow_temp_layer1');                 LONG_NAME = 'temperature_top_snow_layer';                                       UNITS = 'K' 
-    case ('tb_h')                              LONG_NAME = 'brightness_temperature_land_1410MHz_40deg_Hpol';                   UNITS = 'K' 
-    case ('tb_v')                              LONG_NAME = 'brightness_temperature_land_1410MHz_40deg_Vpol';                   UNITS = 'K' 
-    case ('TB_LAND_1410MHZ_40DEG_HPOL')        LONG_NAME = 'brightness_temperature_land_1410MHz_40deg_Hpol';                   UNITS = 'K' 
-    case ('TB_LAND_1410MHZ_40DEG_VPOL')        LONG_NAME = 'brightness_temperature_land_1410MHz_40deg_Vpol';                   UNITS = 'K' 
+    case ('tb_h');                             LONG_NAME = 'brightness_temperature_land_1410MHz_40deg_Hpol';                   UNITS = 'K' 
+    case ('tb_v');                             LONG_NAME = 'brightness_temperature_land_1410MHz_40deg_Vpol';                   UNITS = 'K' 
+    case ('TB_LAND_1410MHZ_40DEG_HPOL');       LONG_NAME = 'brightness_temperature_land_1410MHz_40deg_Hpol';                   UNITS = 'K' 
+    case ('TB_LAND_1410MHZ_40DEG_VPOL');       LONG_NAME = 'brightness_temperature_land_1410MHz_40deg_Vpol';                   UNITS = 'K' 
  
     ! Done for SM_L4
  

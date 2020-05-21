@@ -29,7 +29,7 @@ module GEOS_LandAssimGridCompMod
   use LDAS_ensdrv_mpi,           only: MPI_obs_param_type 
   
   use LDAS_DateTimeMod,          only: date_time_type 
-  use LDAS_ensdrv_Globals,       only: logunit, nodata_generic
+  use LDAS_ensdrv_Globals,       only: logunit, is_nodata, nodata_generic
   
   use LDAS_ConvertMod,           only: esmf2ldas
   use LDAS_DriverTypes,          only: met_force_type
@@ -108,7 +108,7 @@ module GEOS_LandAssimGridCompMod
   logical :: mwRTM_all_nodata   ! no data for mwRTM_param
   logical :: land_assim
   logical :: mwRTM
-
+  logical, allocatable :: tb_nodata(:)
 contains
   
   ! ******************************************************************************
@@ -999,7 +999,13 @@ contains
     call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     _VERIFY(STATUS)
     call init_log( myid, numprocs, master_proc )
-    
+    ! Get number of land tiles
+    call MAPL_Get(MAPL, LocStream=locstream,rc=status)
+    _VERIFY(status)
+    call MAPL_LocStreamGet(locstream, NT_LOCAL=land_nt_local,rc=status)
+    _VERIFY(status)
+    allocate(tb_nodata(land_nt_local))
+ 
     if ( .not. land_assim) then   ! to arrive here, mwRTM must be .true.
        ! only need to calculate Tb for HISTORY; no processing of assimilation obs necessary;
        ! generic initialization is sufficient
@@ -1057,11 +1063,6 @@ contains
     _VERIFY(status)
     tcinternal   =>tcwrap%ptr
     tile_coord_l =>tcinternal%tile_coord
-    ! Get number of land tiles
-    call MAPL_Get(MAPL, LocStream=locstream,rc=status)
-    _VERIFY(status)
-    call MAPL_LocStreamGet(locstream, NT_LOCAL=land_nt_local,rc=status)
-    _VERIFY(status)
     
     allocate(Pert_rseed(   NRANDSEED, NUM_ENSEMBLE), source = 0    )
     allocate(Pert_rseed_r8(NRANDSEED, NUM_ENSEMBLE), source = 0.0d0)
@@ -2006,7 +2007,6 @@ contains
     real,    allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
     real,    allocatable, dimension(:) :: dummy_real
     real,    allocatable, dimension(:) :: Tb_h_tmp, TB_v_tmp
-    logical, allocatable, dimension(:) :: is_nodata
 
     
     integer              :: N_catl, n, mpierr
@@ -2074,7 +2074,7 @@ contains
     ! (tau-omega model as in De Lannoy et al. 2013 [doi:10.1175/JHM-D-12-092.1]
     !  but without Pellarin atmospheric corrections)
     
-    allocate(TB_h_tmp(N_catl), TB_v_tmp(N_catl), is_nodata(N_catl))
+    allocate(TB_h_tmp(N_catl), TB_v_tmp(N_catl))
     
     if (.not. incl_atm_terms) then
        allocate(dummy_real(N_catl))                   ! allocate needed for GNU compiler
@@ -2096,15 +2096,13 @@ contains
     if (collect_tb_counter == 0) then
        TB_H_enavg = 0.
        TB_V_enavg = 0.
-       is_nodata  = .false.
+       tb_nodata  = .false.
     endif
     
     ! ensemble average Tb must be nodata if Tb of any member is nodata
-    
-    is_nodata = (                                                      &
-         (is_nodata)                                         .or.      &
-         (abs(Tb_h_tmp-nodata_generic)<nodata_tol_generic)   .or.      &
-         (abs(Tb_v_tmp-nodata_generic)<nodata_tol_generic)         )
+    ! WY notes: if above comment is true, then we need to save nodata or make it global.
+ 
+    tb_nodata = tb_nodata .or. is_nodata(Tb_h_tmp) .or. is_nodata(Tb_v_tmp)
     
     ! This counter is relative to ens_id
     collect_tb_counter = collect_tb_counter + 1
@@ -2119,12 +2117,12 @@ contains
        TB_H_enavg(:)         = TB_H_enavg(:)/NUM_ENSEMBLE
        TB_V_enavg(:)         = TB_V_enavg(:)/NUM_ENSEMBLE
 
-       TB_H_enavg(is_nodata) = MAPL_UNDEF
-       TB_V_enavg(is_nodata) = MAPL_UNDEF
+       TB_H_enavg(tb_nodata) = MAPL_UNDEF
+       TB_V_enavg(tb_nodata) = MAPL_UNDEF
        
     endif
     
-    deallocate(Tb_h_tmp, Tb_v_tmp, is_nodata, sfmc_mwRTM, tsoil_mwRTM)
+    deallocate(Tb_h_tmp, Tb_v_tmp, sfmc_mwRTM, tsoil_mwRTM)
     
     RETURN_(_SUCCESS)
   end subroutine CALC_LAND_TB
@@ -2240,7 +2238,7 @@ contains
     real, dimension(:), pointer :: LEWT
     
     integer :: N_catl_tmp, n, mpierr, status
-    logical :: is_nodata, all_nodata_l
+    logical :: nodata, all_nodata_l
     
     if(allocated(mwRTM_param)) then
        _RETURN(_SUCCESS)
@@ -2308,8 +2306,8 @@ contains
     
     all_nodata_l = .true.
     do n=1,N_catl
-       call mwRTM_param_nodata_check(mwRTM_param(n), is_nodata )
-       if (.not. is_nodata) all_nodata_l = .false.
+       call mwRTM_param_nodata_check(mwRTM_param(n), nodata )
+       if (.not. nodata) all_nodata_l = .false.
     end do
     
     ! perform logical AND across elements

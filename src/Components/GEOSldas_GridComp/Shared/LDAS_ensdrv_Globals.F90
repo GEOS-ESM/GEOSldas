@@ -20,6 +20,7 @@ module LDAS_ensdrv_Globals
   public :: nodata_generic
   public :: nodata_tolfrac_generic
   public :: nodata_tol_generic
+  public :: is_nodata
   public :: logunit
   public :: logit
   public :: master_logit
@@ -34,9 +35,11 @@ module LDAS_ensdrv_Globals
   
   real, parameter :: nodata_generic         = -9999.
   real, parameter :: nodata_tolfrac_generic = 1.e-4
-  
   real :: nodata_tol_generic = abs(nodata_generic*nodata_tolfrac_generic)
-  
+  real, parameter :: MAPL_UNDEF  = 1.0e15 ! private for now, no conflict with the one in MAPL   
+  real, parameter :: MAPL_UNDEF_tolfrac = 1.e-15
+  real :: MAPL_tol_generic = abs(MAPL_UNDEF*MAPL_UNDEF_tolfrac) 
+
   ! ----------------------------------------------------------------
   !
   ! log file
@@ -124,6 +127,18 @@ contains
     
   end subroutine write_status
 
+  elemental   function is_nodata(data) result(no_data)
+     real, intent(in) :: data
+     logical :: no_data
+
+     no_data = .false.
+     if (abs(data-nodata_generic) < nodata_tol_generic) then
+        no_data =.true.
+     else if ( abs(data-MAPL_UNDEF) < MAPL_tol_generic) then
+        no_data = .true.
+     endif
+
+  end function
   ! *************************************************************
   
 end module LDAS_ensdrv_Globals
