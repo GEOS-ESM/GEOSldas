@@ -2119,9 +2119,12 @@ contains
        TB_H_enavg(:)         = TB_H_enavg(:)/NUM_ENSEMBLE
        TB_V_enavg(:)         = TB_V_enavg(:)/NUM_ENSEMBLE
 
-       where (tb_nodata) TB_H_enavg = MAPL_UNDEF
-       where (tb_nodata) TB_V_enavg = MAPL_UNDEF
-
+       ! finalize no-data-value
+       where (tb_nodata)
+          TB_H_enavg = MAPL_UNDEF
+          TB_V_enavg = MAPL_UNDEF
+       end where
+       
     endif
     
     deallocate(Tb_h_tmp, Tb_v_tmp, sfmc_mwRTM, tsoil_mwRTM)
