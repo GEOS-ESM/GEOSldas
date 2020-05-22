@@ -3173,7 +3173,7 @@ contains
                 do k=1,N_catd
 
                    if ( abs(force_array(k,GEOSgcm_var) -nodata_GEOSgcm)<tol .or.          & 
-                        abs(ptrShForce(i1(k),j1(k))      -nodata_GEOSgcm)<tol      ) then
+                        abs(ptrShForce(i1(k),j1(k))    -nodata_GEOSgcm)<tol      ) then
                       
                       force_array(k,GEOSgcm_var) = nodata_GEOSgcm
 
@@ -3190,7 +3190,7 @@ contains
 
                 do k=1,N_catd
                    if ( abs(force_array(k,GEOSgcm_var)-nodata_GEOSgcm)<tol .or.          & 
-                        abs(ptrShForce(i1(k),j1(k))     -nodata_GEOSgcm)<tol       ) then
+                        abs(ptrShForce(i1(k),j1(k))   -nodata_GEOSgcm)<tol       ) then
                       force_array(k,GEOSgcm_var) = nodata_GEOSgcm
                    else                
                       this_lon = tile_coord(k)%com_lon

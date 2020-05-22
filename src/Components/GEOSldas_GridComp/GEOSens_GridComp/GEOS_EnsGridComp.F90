@@ -8,7 +8,6 @@ module GEOS_EnsGridCompMod
   use ESMF
   use MAPL_Mod
   use lsm_routines, only: DZGT
-  use LDAS_ensdrv_Globals, only: nodata_generic
   use catch_types, ONLY: cat_progn_type
   use catch_types, only: cat_param_type
   use, intrinsic :: ieee_arithmetic

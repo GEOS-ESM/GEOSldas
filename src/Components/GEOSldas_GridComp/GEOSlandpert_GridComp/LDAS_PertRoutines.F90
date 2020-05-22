@@ -96,12 +96,6 @@ module LDAS_PertRoutinesMod
   use RepairForcingMod,                 ONLY:     &
        repair_forcing
 
-  ! CHANGED: Getting rid of command  line arguments
-  ! TODO: Check
-  ! use clsm_ensdrv_init_routines,        ONLY:     &
-  !      clsm_ensdrv_get_command_line,              &
-  !      add_domain_to_path
-
   use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
@@ -186,9 +180,6 @@ contains
     ! 2.) overwrite options from special namelist file (if present)
     !      specified at the command line using -ens_prop_inputs_path
     !      and -ens_prop_inputs_file
-    !
-    ! 3.) overwrite options from command line (if present)
-    !      see subroutine clsm_ensdrv_get_command_line()
     !
     ! reichle, 29 Mar 2004
     ! reichle, 31 Aug 2004 - added tskin_isccp
@@ -358,8 +349,6 @@ contains
     ! Set default file name for ens prop inputs namelist file
 
     ens_prop_inputs_path = './'                                       ! set default
-    ! CHANGED: commented out get_command_line
-    ! call clsm_ensdrv_get_command_line(run_path=ens_prop_inputs_path)
     ens_prop_inputs_file = 'LDASsa_DEFAULT_inputs_ensprop.nml'
 
     ! Read data from default ens_prop_inputs namelist file
