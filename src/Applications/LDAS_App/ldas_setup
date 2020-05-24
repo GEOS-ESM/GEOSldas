@@ -772,7 +772,7 @@ class LDASsetup:
                 catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'_internal_rst.'+YYYYMMDD
 
             # catchment restart file
-            print 'catchRstFile1: ' +  catchRstFile
+            print 'catchRstFile: ' +  catchRstFile
             if os.path.isfile(catchRstFile) :
 
                 catchLocal = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
@@ -1536,27 +1536,27 @@ def parseCmdLine():
         help='input file with arguments for SLURM',
         )
     p_setup.add_argument(
-        '--runmodel',
-        help='obsolete, no effect any more',
-        action='store_true',
+        '--account',
+        help='replace computing/sponsor account in batinp file',
+        type=str, default='None'
         )
     p_setup.add_argument(
-        '--account',
-        help='replace the account in batinpfile)',
-        type=str, default='None'
+        '--runmodel',
+        help='Obsolete.',
+        action='store_true',
         )
     spltgrp = p_setup.add_mutually_exclusive_group()
     spltgrp.add_argument(
         '--daysperjob',
         type=int,
         metavar='N',
-        help='This option is no longer available.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
+        help='Obsolete.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
         )
     spltgrp.add_argument(
         '--monthsperjob',
         type=int,
         metavar='N',
-        help='This option is no longer available.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
+        help='Obsolete.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
         )
 
     return p.parse_args()

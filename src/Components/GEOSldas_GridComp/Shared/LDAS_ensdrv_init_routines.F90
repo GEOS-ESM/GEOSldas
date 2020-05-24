@@ -207,7 +207,7 @@ contains
 
     else           
        
-       print*, "Creating domain..., reading white and black lists if there have ones..." 
+       print*, "Creating domain..., reading white and black lists if present..." 
        ! ------------------------------------------------------------
        !
        ! load blacklist: catchments listed in this file will be excluded

@@ -46,7 +46,7 @@ LSM_CHOICE: 1
 # MINLAT:  -90.
 # MAXLAT:   90.
 #
-#      Specify path and filenames for blacklist and whitelist files:
+#      Path and filenames for blacklist and whitelist files.
 #      (May leave blank.)
 #
 # BLACK_FILE: '' 
@@ -63,8 +63,8 @@ MET_HINTERP: 1
 
 # ---- Specify if running model only or data assimilation
 #
-#  NO  : model only (DEFAULT; with --runmodel option)
-#  YES : assimilation (without --runmodel option)
+#  NO  : model only, with or without perturbations (default)
+#  YES : assimilation (full land analysis or just processing of obs for "innovations" output)
 #
 LAND_ASSIM: NO
 
