@@ -44,7 +44,7 @@ class LDASsetup:
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
-            'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE']
+            'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE','GRIDNAME']
 
 
         # ------
@@ -275,8 +275,6 @@ class LDASsetup:
         if 'GRIDNAME' not in self.rqdExeInp :
             tmptile =self.rqdExeInp['TILING_FILE']
             self.rqdExeInp['GRIDNAME']  = linecache.getline(tmptile, 3).strip()
-        if 'RESOLUTION' not in self.rqdExeInp :
-            self.rqdExeInp['RESOLUTION']= os.path.split(os.path.split(self.rqdExeInp['BCS_PATH'])[0])[1]
 
         if 'LSM_CHOICE' not in self.rqdExeInp:
             self.rqdExeInp['LSM_CHOICE'] = 1
