@@ -896,18 +896,17 @@ class LDASsetup:
         etcdir = self.blddirLn + '/etc'
 
         #defalt nml
-        default_nml = glob.glob(etcdir+'/LDASsa_DEFAULT*.nml')
+        default_nml = glob.glob(etcdir+'/LDASsa_DEFAULT_inputs_*.nml')
         for nmlfile in default_nml:
             shortfile=self.rundir+'/'+nmlfile.split('/')[-1]
             shutil.copy2(nmlfile, shortfile)
          # special nml
         special_nml=[]
         if 'NML_INPUT_PATH' in self.rqdExeInp :
-            special_nml = glob.glob(self.rqdExeInp['NML_INPUT_PATH']+'/*SPECIAL*nml')
+            special_nml = glob.glob(self.rqdExeInp['NML_INPUT_PATH']+'/LDASsa_SPECIAL_inputs_*.nml')
         for nmlfile in special_nml:
-            if (_nens > 1) :
-                shortfile=nmlfile.split('/')[-1]
-                shutil.copy2(nmlfile, self.rundir+'/'+shortfile)
+            shortfile=nmlfile.split('/')[-1]
+            shutil.copy2(nmlfile, self.rundir+'/'+shortfile)
 
         # get optimzed NX and IMS
         if os.path.isfile('optimized_distribution'):

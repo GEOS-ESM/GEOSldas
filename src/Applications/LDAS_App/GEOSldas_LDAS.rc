@@ -38,7 +38,7 @@ LSM_CHOICE: 1
 #
 #      Specify extremities of lat/lon rectangle:
 #         Max lat/lon range: lon=-180:180, lat=-90:90.
-#      If only whitelist should be used, specify dummy valuessuch that:
+#      If only whitelist should be used, specify dummy values such that:
 #         MINLON > MAXLON and MINLAT > MAXLAT.
 #
 # MINLON: -180.
