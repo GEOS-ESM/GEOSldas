@@ -164,10 +164,6 @@ SURFRC: LDAS.rc
 #
 DYCORE: none
 
-# ---- Only one surface level
-#
-LM: 1
-
 # ---- For MAPL_RestartOptional
 #
 MAPL_ENABLE_BOOTSTRAP: YES
