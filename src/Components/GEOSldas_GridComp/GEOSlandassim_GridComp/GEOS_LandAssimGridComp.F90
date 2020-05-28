@@ -58,7 +58,7 @@ module GEOS_LandAssimGridCompMod
   use clsm_ensupd_enkf_update,   only: output_incr_etc
   use clsm_ensupd_enkf_update,   only: write_smapL4SMaup 
   use clsm_ensdrv_out_routines,  only: init_log, GEOS_output_smapL4SMlmc 
-  use mwRTM_routines,            only : mwRTM_get_Tb, catch2mwRTM_vars
+  use mwRTM_routines,            only: mwRTM_get_Tb, catch2mwRTM_vars
 
   use, intrinsic :: ieee_arithmetic    
 
@@ -1161,9 +1161,20 @@ contains
             out_smapL4SMaup,                         &
             N_obsbias_max                            &
             )
-       call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
-       _VERIFY(STATUS)
-       if (index(GridName,"-CF") /=0) out_smapL4SMaup = .false. ! no out_smap for now if it is cs grid
+
+       if (out_smapL4SMaup) then
+          
+          call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
+          _VERIFY(STATUS)
+          
+          _ASSERT( (NUM_ENSEMBLE>1),                                                      &
+               'out_smapL4SMaup=.true. only works for NUM_ENSEMBLE>1')
+          
+          _ASSERT( (index(GridName,"EASEv2-M09") /=0),                                    &
+               'out_smapL4SMaup=.true. only works with EASEv2-M09 tile space')
+          
+       end if
+
     endif
     
     call MPI_BCAST(mwRTM,                 1, MPI_LOGICAL,        0,MPICOMM,mpierr)
