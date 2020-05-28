@@ -70,7 +70,7 @@ contains
          )
     VERIFY_(status)
 
-    ! phase one: collect ensembl forces
+    ! phase one: collect forcing ensemble 
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &

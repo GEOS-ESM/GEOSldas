@@ -534,10 +534,21 @@ contains
        
     end if
 
-    ! when L4SMaup files are written, ensure that species of interest do not
-    ! simultaneously include "SMAP_L*_Tb*" and "SMOS_fit_Tb*" obs
+    ! when L4SMaup files are written, ensure that N_ens>1 and that species of interest
+    ! do not simultaneously include "SMAP_L*_Tb*" and "SMOS_fit_Tb*" obs
     
     if (out_smapL4SMaup) then
+
+       ! stop if N_ens<=1 (cannot compute ensemble std-dev)
+       
+       if (N_ens<=1) then
+          
+          err_msg = 'out_smapL4SMaup=.true. is *not* compatible with N_ens<=1'
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+          
+       end if
+
+       ! find out if SMAP and SMOS species are simultaneously present
        
        smap_species = .false.
        smos_species = .false.

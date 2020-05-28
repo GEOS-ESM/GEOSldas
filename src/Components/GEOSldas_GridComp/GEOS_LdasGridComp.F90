@@ -239,7 +239,7 @@ contains
             rc = status                                                            &
             )
        VERIFY_(status)
-    ! -CATCH-feeds-LANDPERT's-imports-
+    ! -LAND-feeds-LANDPERT's-imports-
        call MAPL_AddConnectivity(                                                                  &
             gc,                                                                                    &
             SRC_NAME =  ['TC     ','CATDEF ','RZEXC  ','SRFEXC ','WESNN1 ','WESNN2 ','WESNN3 ',    &
@@ -258,6 +258,8 @@ contains
     enddo
 
     if(land_assim .or. mwRTM) then
+       ! -LAND-feeds-LANDASSIM's-imports-
+       ! Catchment model parameters from first LAND ens member, assumes no parameter perturbations!
        call MAPL_AddConnectivity(                                                                  &
             gc,                                                                                    &
             SHORT_NAME = ['POROS ', 'COND  ','PSIS  ','BEE   ','WPWET ','GNU   ','VGWMAX',         &
@@ -265,7 +267,7 @@ contains
                           'ARS2  ', 'ARS3  ','ARA1  ','ARA2  ','ARA3  ','ARA4  ',                  &
                           'ARW1  ', 'ARW2  ','ARW3  ','ARW4  ','TSA1  ','TSA2  ','TSB1  ',         &
                           'TSB2  ', 'ATAU  ','BTAU  ','ITY   ','Z2CH  ' ],                         &
-            SRC_ID = LAND(1),                                                                      &
+            SRC_ID = LAND(1),                                                                      &  ! Note (1) !
             DST_ID = LANDASSIM,                                                                    &
             rc = status                                                                            &
             )
@@ -842,9 +844,9 @@ contains
        VERIFY_(status)
        call MAPL_TimerOff(MAPL, gcnames(igc))
 
-       ! Use landpert's output as the input to calculate the force ensemble average
-       ! W.J note: So far it is only for catchment model. 
-       ! To make catchmentCN work with assim, the export from landgrid and catchmentCN grid need to be modified.  
+       ! Use landpert's output as the input to calculate the ensemble average forcing
+       ! W.J note: So far it is only for the Catchment model. 
+       ! To make CatchmentCN work with assim, the export from landgrid and catchmentCN grid need to be modified.  
        if ( LSM_CHOICE == 1 ) then
           call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=1, userRC=status)
           VERIFY_(status)
@@ -859,7 +861,8 @@ contains
        VERIFY_(status)
        call MAPL_TimerOff(MAPL, gcnames(igc))
 
-       ! Use land's output as the input to calculate the ensemble average
+       ! Use LAND's output as the input to calculate the ensemble average
+       igc = LAND(i)
        if (LSM_CHOICE == 1) then
           ! collect cat_param 
           call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=3, userRC=status)
@@ -868,7 +871,7 @@ contains
           VERIFY_(status)
 
           if( mwRTM ) then
-             ! calculate ensemble-average L-band Tb (add up and normalize after last member has been added)
+             ! Calculate ensemble-average L-band Tb using LAND's output (add up and normalize after last member has been added)
              call ESMF_GridCompRun(gcs(LANDASSIM), importState=gex(igc), exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
              VERIFY_(status)
           endif
@@ -886,16 +889,16 @@ contains
 
     enddo
 
-    !run land assim
+    ! Run land analysis
     if (land_assim) then 
        igc = LANDASSIM
        call MAPL_TimerOn(MAPL, gcnames(igc))
-       !import state is the export from ens_GridComp, assimilation run
+       ! Get EnKF increments and apply to "cat_progn" (imported from ENSAVG via "use" statement!); otherwise import state is export from ENSAVG
        call ESMF_GridCompRun(gcs(igc), importState=gex(ENSAVG), exportState=gex(igc), clock=clock, phase=1, userRC=status)
        VERIFY_(status)
 
        do i = 1, NUM_ENSEMBLE
-          ! update catch_progn 
+          ! Extract updated exports from "cat_progn" 
           call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(LAND(i)), clock=clock, phase=2, userRC=status)
           VERIFY_(status)
           
