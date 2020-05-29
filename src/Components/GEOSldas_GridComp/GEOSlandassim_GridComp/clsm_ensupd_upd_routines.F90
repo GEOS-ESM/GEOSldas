@@ -41,9 +41,6 @@ module clsm_ensupd_upd_routines
        get_io_filename,                           &
        is_in_rectangle
 
-  use LDAS_ensdrv_init_routines,        ONLY:     &
-       clsm_ensdrv_get_command_line
-  
   use LDAS_DateTimeMod,                 ONLY:     &
        date_time_type
   
@@ -190,9 +187,6 @@ contains
     !      specified at the command line using -ens_upd_inputs_path 
     !      and -ens_upd_inputs_file
     !
-    ! 3.) overwrite options from command line (if present)
-    !      see subroutine clsm_ensupd_get_command_line()
-    !
     ! reichle, 19 Jul 2005 
     ! reichle, 14 Apr 2006 - added "update_type" to namelist and outputs
     !                      - removed reading from "stored"/"saved" nml file
@@ -284,7 +278,6 @@ contains
     ! Set default file name for EnKF inputs namelist file
     
     ens_upd_inputs_path = '.'                                       ! set default 
-    !call clsm_ensdrv_get_command_line(run_path=ens_upd_inputs_path)
     ens_upd_inputs_file = 'LDASsa_DEFAULT_inputs_ensupd.nml'
     
     ! Read data from default ens_upd_inputs namelist file 
@@ -308,14 +301,7 @@ contains
     ens_upd_inputs_path = '.'
     ens_upd_inputs_file = 'LDASsa_SPECIAL_inputs_ensupd.nml'
        
-   ! call clsm_ensupd_get_command_line(                              &
-   !      ens_upd_inputs_path=ens_upd_inputs_path,                 &
-   !      ens_upd_inputs_file=ens_upd_inputs_file )
-    
-   ! if ( trim(ens_upd_inputs_path) /= ''  .and.            &
-   !      trim(ens_upd_inputs_file) /= ''          ) then
-       
-       ! Read data from special EnKF inputs namelist file 
+    ! Read data from special EnKF inputs namelist file 
        
     fname = trim(ens_upd_inputs_path)//'/'//trim(ens_upd_inputs_file)
     inquire(file=fname, exist=file_exists)
@@ -689,78 +675,6 @@ contains
     
   end subroutine read_ens_upd_inputs
   
-  ! ***********************************************************************
-  
-  subroutine clsm_ensupd_get_command_line(                            &
-       ens_upd_inputs_path, ens_upd_inputs_file                       &
-       )
-    
-    ! get some inputs from command line 
-    !
-    ! if present, command line arguments overwrite inputs from
-    ! ens_upd_inputs namelist files
-    !
-    ! command line should look something like
-    !
-    ! a.out -upd_driver_inputs_file fname.nml 
-    !
-    ! NOTE: This subroutine does NOT stop for unknown arguments!
-    !       (If that is desired, all arguments used by 
-    !        clsm_ensdrv_get_command_line() must be listed here
-    !        explicitly and be ignored.)
-    !
-    ! reichle, 19 Jul 2005
-    ! reichle,  2 Aug 2005 - consistency with clsm_ensdrv_get_command_line()
-    ! 
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    character(*), intent(inout), optional :: ens_upd_inputs_path
-    character(*),  intent(inout), optional :: ens_upd_inputs_file    
-    
-    ! -----------------------------------------------------------------
-    
-    integer :: N_args, iargc, i
-    
-    character(40) :: arg
-    
-    !external getarg, iargc
-    
-    ! -----------------------------------------------------------------
-    
-    N_args = iargc()
-    
-    i=0
-    
-    do while ( i < N_args )
-       
-       i = i+1
-       
-       call getarg(i,arg)
-       
-       if     ( trim(arg) == '-ens_upd_inputs_path' ) then
-          i = i+1
-          if (present(ens_upd_inputs_path))  &
-               call getarg(i,ens_upd_inputs_path)
-          
-       elseif ( trim(arg) == '-ens_upd_inputs_file' ) then
-          i = i+1
-          if (present(ens_upd_inputs_file))  &
-               call getarg(i,ens_upd_inputs_file)
-          
-       else
-               
-          i=i+1
-          if (logit) write (logunit,*) &
-               'clsm_ensupd_get_command_line(): IGNORING argument = ', trim(arg)
-          
-       endif
-       
-    end do
-    
-  end subroutine clsm_ensupd_get_command_line
-
   ! ********************************************************************
 
   subroutine init_obslog( work_path, exp_id, date_time )
