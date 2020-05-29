@@ -861,6 +861,13 @@ contains
        VERIFY_(status)
        call MAPL_TimerOff(MAPL, gcnames(igc))
 
+       ! ApplyPrognPert - moved: now before calculating ensemble average that is picked up by land analysis and HISTORY; reichle 28 May 2020 
+       igc = LANDPERT(i)
+       call MAPL_TimerOn(MAPL, gcnames(igc))
+       call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=4, userRC=status)
+       VERIFY_(status)
+       call MAPL_TimerOff(MAPL, gcnames(igc))
+
        ! Use LAND's output as the input to calculate the ensemble average
        igc = LAND(i)
        if (LSM_CHOICE == 1) then
@@ -876,16 +883,6 @@ contains
              VERIFY_(status)
           endif
        endif
-
-       ! Should this be moved to the beginning of the loop to avoid the pollution ?
-       ! THIS MUST BE MOVED AT LEAST TO BEFORE THE "ENSAVG/phase=3" CALL IF ENSEMBLE STATS OTHER THAN THE AVERAGE
-       ! ARE COMPUTED - reichle, 14 May 2020
-       ! ApplyPrognPert
-       igc = LANDPERT(i)
-       call MAPL_TimerOn(MAPL, gcnames(igc))
-       call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=4, userRC=status)
-       VERIFY_(status)
-       call MAPL_TimerOff(MAPL, gcnames(igc))
 
     enddo
 
