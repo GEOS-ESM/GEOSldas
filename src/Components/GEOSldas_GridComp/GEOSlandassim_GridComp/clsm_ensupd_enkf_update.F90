@@ -1544,8 +1544,9 @@ contains
 
        deallocate(Observations_tmp)
 
-#endif  ! LDAS_MPI
-       ! reorder tilenum, so it is consisten with the order in tile_coord.bin file
+#endif ! LDAS_MPI
+       
+       ! reorder tilenum, so it is consistent with the order in tile_coord.bin file
        if(present(rf2f)) then
           allocate(rf_tilenums(N_obsf), tilenums(N_obsf))
           rf_tilenums = Observations_f(:)%tilenum
@@ -1553,6 +1554,7 @@ contains
           Observations_f(:)%tilenum =tilenums
           deallocate(rf_tilenums, tilenums)
        endif
+       
        ! write to file
 
        fname = get_io_filename( './', exp_id, file_tag, date_time=date_time, &
@@ -1604,8 +1606,8 @@ contains
 
   ! **********************************************************************
 
-  subroutine output_incr_etc( out_ObsFcstAna,               &
-       date_time, work_path, exp_id,                        &
+  subroutine output_incr_etc( out_ObsFcstAna,                                &
+       date_time, work_path, exp_id,                                         &
        N_obsl, N_obs_param, N_ens,                                           &
        N_catl, tile_coord_l,                                                 &
        N_catf, tile_coord_f, tile_grid_f, tile_grid_g,                       &

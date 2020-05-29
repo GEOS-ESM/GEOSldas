@@ -44,7 +44,7 @@ class LDASsetup:
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
-            'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE']
+            'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE','GRIDNAME']
 
 
         # ------
@@ -104,6 +104,7 @@ class LDASsetup:
         self.has_geos_pert = False
         self.has_ldassa_pert = False
         self.nSegments = 1
+        self.perturb = 0
         # ------
         # Read exe input file which is required to set up the dir
         # ------
@@ -142,6 +143,9 @@ class LDASsetup:
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None
         _first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
+        self.perturb = int(self.rqdExeInp.get('PERTURBATIONS',0))
+        if self.nens > 1:
+           self.perturb = 1
         self.ensdirs  = ['ens%04d'%iens for iens in range(_first_ens_id, self.nens  + _first_ens_id)]
         self.ensids   = ['%04d'%iens    for iens in range(_first_ens_id, self.nens  + _first_ens_id)]
         if (self.nens == 1) :
@@ -275,8 +279,6 @@ class LDASsetup:
         if 'GRIDNAME' not in self.rqdExeInp :
             tmptile =self.rqdExeInp['TILING_FILE']
             self.rqdExeInp['GRIDNAME']  = linecache.getline(tmptile, 3).strip()
-        if 'RESOLUTION' not in self.rqdExeInp :
-            self.rqdExeInp['RESOLUTION']= os.path.split(os.path.split(self.rqdExeInp['BCS_PATH'])[0])[1]
 
         if 'LSM_CHOICE' not in self.rqdExeInp:
             self.rqdExeInp['LSM_CHOICE'] = 1
@@ -772,7 +774,7 @@ class LDASsetup:
                 catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'_internal_rst.'+YYYYMMDD
 
             # catchment restart file
-            print 'catchRstFile1: ' +  catchRstFile
+            print 'catchRstFile: ' +  catchRstFile
             if os.path.isfile(catchRstFile) :
 
                 catchLocal = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
@@ -809,14 +811,14 @@ class LDASsetup:
                     vegdynRstFile0 = vegdynRstFile
             else :    
                 vegdynRstFile = vegdynRstFile0
-            _perturb = 1 if self.nens > 1 else 0
-            if (self.has_geos_pert and _perturb == 1) :
+
+            if (self.has_geos_pert and self.perturb == 1) :
                 pertRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                 pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                 shutil.copy(pertRstFile,pertLocal)
                 pertRstFile = pertLocal
 
-            if (self.has_ldassa_pert and _perturb == 1 ) :
+            if (self.has_ldassa_pert and self.perturb == 1 ) :
                 pertRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+ens+'.pert_ldas_rst.'+y4m2d2_h2m2+'z.bin'
                 pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                 print "Convert LDASsa pert " + ensid + " rst to GEOSldas rst"
@@ -828,7 +830,7 @@ class LDASsetup:
 
             os.symlink(catchRstFile, myCatchRst)
             os.symlink(vegdynRstFile,  myVegRst)
-            if ( (self.has_geos_pert or self.has_ldassa_pert) and  _perturb == 1 ):
+            if ( (self.has_geos_pert or self.has_ldassa_pert) and  self.perturb == 1 ):
                os.symlink(pertRstFile,  myPertRst)
 
         # catch_param restar file
@@ -896,18 +898,17 @@ class LDASsetup:
         etcdir = self.blddirLn + '/etc'
 
         #defalt nml
-        default_nml = glob.glob(etcdir+'/LDASsa_DEFAULT*.nml')
+        default_nml = glob.glob(etcdir+'/LDASsa_DEFAULT_inputs_*.nml')
         for nmlfile in default_nml:
             shortfile=self.rundir+'/'+nmlfile.split('/')[-1]
             shutil.copy2(nmlfile, shortfile)
          # special nml
         special_nml=[]
         if 'NML_INPUT_PATH' in self.rqdExeInp :
-            special_nml = glob.glob(self.rqdExeInp['NML_INPUT_PATH']+'/*SPECIAL*nml')
+            special_nml = glob.glob(self.rqdExeInp['NML_INPUT_PATH']+'/LDASsa_SPECIAL_inputs_*.nml')
         for nmlfile in special_nml:
-            if (_nens > 1) :
-                shortfile=nmlfile.split('/')[-1]
-                shutil.copy2(nmlfile, self.rundir+'/'+shortfile)
+            shortfile=nmlfile.split('/')[-1]
+            shutil.copy2(nmlfile, self.rundir+'/'+shortfile)
 
         # get optimzed NX and IMS
         if os.path.isfile('optimized_distribution'):
@@ -958,9 +959,8 @@ class LDASsetup:
                     if '-CF' in self.rqdExeInp['GRIDNAME'] :
                         GRID ='CUBE ' + self.rqdExeInp['GRIDNAME'] + ' ' +tmprcfile
                     _assim = '1' if self.assim else '0'
-                    _perturb = '1' if self.nens > 1 else '0'
                     cmd ='./process_hist.csh '+ str(self.rqdExeInp['LSM_CHOICE']) + ' ' + str(self.rqdExeInp['AEROSOL_DEPOSITION']) + \
-                          ' ' + GRID + ' ' + str(self.rqdExeInp['RUN_IRRIG']) + ' ' + _assim + ' '+ _perturb
+                          ' ' + GRID + ' ' + str(self.rqdExeInp['RUN_IRRIG']) + ' ' + _assim + ' '+ str(self.nens)
                     print(cmd)
                     os.system(cmd)
                     #sp.call(cmd)       
@@ -1009,8 +1009,9 @@ class LDASsetup:
                 # create BC in rc file
                 tmpl_ = ''
                 if self.nens >1 :
-                   ldasrcInp['PERTURBATIONS'] ='1'
                    tmpl_='%s' 
+                if self.perturb == 1:
+                   ldasrcInp['PERTURBATIONS'] ='1'
                 bcval=['../input/green','../input/lai','../input/ndvi','../input/nirdf','../input/visdf']
                 bckey=['GREEN','LAI','NDVI','NIRDF','VISDF']
                 for key, val in zip(bckey,bcval):
@@ -1032,8 +1033,7 @@ class LDASsetup:
         
                 rstkey=[catch_,'VEGDYN']
                 rstval=[self.catch,'vegdyn']
-                _perturb = 1 if self.nens > 1 else 0
-                if((self.has_ldassa_pert or self.has_geos_pert) and _perturb == 1) :
+                if((self.has_ldassa_pert or self.has_geos_pert) and self.perturb == 1) :
                    rstkey=[catch_,'VEGDYN','LANDPERT']
                    rstval=[self.catch,'vegdyn','landpert']
 
@@ -1042,38 +1042,36 @@ class LDASsetup:
                    valn='../input/restart/mwrtm_param_rst'
                    ldasrcInp[keyn]= valn
 
+                if self.nens > 1 :
+                   keyn='ENS_ID_WIDTH'
+                   valn='4'
+                   ldasrcInp[keyn]= valn
+
                 if self.has_landassim_seed and self.assim :
                    keyn='LANDASSIM_OBSPERTRSEED_RESTART_FILE'
-                   valn='../input/restart/landassim_obspertrseed%s_rst'
+                   valn='../input/restart/landassim_obspertrseed'+tmpl_+'_rst'
                    ldasrcInp[keyn]= valn
 
                 if self.assim: 
                    keyn='LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE'
-                   valn='landassim_obspertrseed%s_checkpoint'
-                   ldasrcInp[keyn]= valn
-
-                ensid =""
-                if self.nens > 1 :
-                   ensid ="%s"
-                   keyn='ENS_ID_WIDTH'
-                   valn='4'
+                   valn='landassim_obspertrseed'+tmpl_+'_checkpoint'
                    ldasrcInp[keyn]= valn
        
                 for key,val in zip(rstkey,rstval) :
                     keyn = key+ '_INTERNAL_RESTART_FILE'
-                    valn = '../input/restart/'+val+ensid+'_internal_rst'
+                    valn = '../input/restart/'+val+tmpl_+'_internal_rst'
                     ldasrcInp[keyn]= valn
                         
                 # checkpoint file and its type
                 keyn = catch_ + '_INTERNAL_CHECKPOINT_FILE'
-                valn = self.catch+ensid+'_internal_checkpoint'
+                valn = self.catch+tmpl_+'_internal_checkpoint'
                 ldasrcInp[keyn]= valn
 
                 # for lat/lon and EASE tile space, specify LANDPERT checkpoint file here (via MAPL);
                 # for cube-sphere tile space, Landpert GC will set up LANDPERT checkpoint file 
-                if('-CF' not in self.rqdExeInp['GRIDNAME'] and _perturb == 1):
+                if('-CF' not in self.rqdExeInp['GRIDNAME'] and self.perturb == 1):
                     keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
-                    valn = 'landpert'+ensid+'_internal_checkpoint'
+                    valn = 'landpert'+tmpl_+'_internal_checkpoint'
                     ldasrcInp[keyn]= valn
                     
     
@@ -1536,27 +1534,27 @@ def parseCmdLine():
         help='input file with arguments for SLURM',
         )
     p_setup.add_argument(
-        '--runmodel',
-        help='obsolete, no effect any more',
-        action='store_true',
+        '--account',
+        help='replace computing/sponsor account in batinp file',
+        type=str, default='None'
         )
     p_setup.add_argument(
-        '--account',
-        help='replace the account in batinpfile)',
-        type=str, default='None'
+        '--runmodel',
+        help='Obsolete.',
+        action='store_true',
         )
     spltgrp = p_setup.add_mutually_exclusive_group()
     spltgrp.add_argument(
         '--daysperjob',
         type=int,
         metavar='N',
-        help='This option is no longer available.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
+        help='Obsolete.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
         )
     spltgrp.add_argument(
         '--monthsperjob',
         type=int,
         metavar='N',
-        help='This option is no longer available.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
+        help='Obsolete.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
         )
 
     return p.parse_args()

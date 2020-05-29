@@ -11,7 +11,7 @@ setenv    GRIDNAME $4
 setenv    HISTRC $5
 setenv    RUN_IRRIG $6
 setenv    ASSIM  $7
-setenv    PERTURB $8
+setenv    NENS $8
 
 echo $GRIDNAME
 
@@ -43,7 +43,7 @@ if($LSM_CHOICE == 2) then
    sed -i 's/>>>HIST_CATCHCN<<</''/g' $HISTRC
 endif
 
-if($PERTURB == 1 ) then
+if($NENS > 1) then
    set GridComp = ENSAVG
    sed -i 's|VEGDYN|'VEGDYN0000'|g' $HISTRC
 #   sed -i 's|DATAATM|'DATAATM0000'|g' $HISTRC
