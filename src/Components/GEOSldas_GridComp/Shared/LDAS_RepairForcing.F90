@@ -4,7 +4,7 @@ module RepairForcingMod
   use LDAS_TileCoordType, only: tile_coord_type
   use LDAS_ExceptionsMod, only: ldas_abort, LDAS_GENERIC_ERROR
   use MAPL_SatVaporMod, only: MAPL_EQsat
-  use LDAS_ensdrv_Globals, only: logunit, nodata_generic, nodata_tol_generic
+  use LDAS_ensdrv_Globals, only: logunit, LDAS_is_nodata
   use MAPL_ConstantsMod, only: stefan_boltzmann=>MAPL_STFBOL
   use LDAS_ensdrv_Globals, only: master_logit
   implicit none
@@ -447,7 +447,7 @@ contains
 
        ! SWnet is no-data-value for most forcing data sets (except MERRA, G5DAS)
 
-       if(abs(met_force(i)%SWnet-nodata_generic)>nodata_tol_generic) then
+       if( .not. LDAS_is_nodata(met_force(i)%SWnet) ) then
 
           if (field(1:3)=='all' .or. field(1:7)=='SWnet  ') then
 
@@ -491,7 +491,7 @@ contains
 
        ! PARdffs is no-data-value for most forcing data sets (except MERRA, G5DAS)
 
-       if(abs(met_force(i)%PARdffs-nodata_generic)>nodata_tol_generic) then
+       if( .not. LDAS_is_nodata(met_force(i)%PARdffs)) then
 
           if (field(1:3)=='all' .or. field(1:7)=='PARdffs') then
 
@@ -544,7 +544,7 @@ contains
        !
        ! MUST "repair" PARdffs *before* PARdrct
 
-       if(abs(met_force(i)%PARdrct-nodata_generic)>nodata_tol_generic) then
+       if( .not. LDAS_is_nodata(met_force(i)%PARdrct) ) then
 
           if (field(1:3)=='all' .or. field(1:7)=='PARdrct') then
 

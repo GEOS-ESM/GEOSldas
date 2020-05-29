@@ -8,34 +8,28 @@ module LDAS_ensdrv_init_routines
   ! (originally in clsm_ensdrv_drv_routines.F90)
   !
   ! reichle, 22 Aug 2014
+  ! reichle, 22 May 2020 - cleanup
 
   use ESMF
   use GEOS_MOD
 
-  use LDAS_ensdrv_Globals,           ONLY:     &
+  use LDAS_ensdrv_Globals,              ONLY:     &
        log_master_only,                           &
        logunit,                                   &
        logit,                                     &
        nodata_generic
        
-  use MAPL_ConstantsMod,                ONLY:     &
-       Tzero  => MAPL_TICE
-
   use MAPL_BaseMod,                     ONLY:     &
        NTYPS  => MAPL_NumVegTypes
 
-  use LDAS_TileCoordType,                 ONLY:     &
+  use LDAS_TileCoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type,                             &
-       operator (==),                              &
+       operator (==),                             &
        N_cont_max,                                &
        io_tile_coord_type,                        &
        io_grid_def_type
   
-  use LDAS_DateTimeMod,                   ONLY:     &
-       date_time_type,                            &
-       get_dofyr_pentad
-
   use LDAS_ensdrv_functions,            ONLY:     &
        get_io_filename,                           &
        is_in_list,                                &
@@ -43,16 +37,12 @@ module LDAS_ensdrv_init_routines
        open_land_param_file,                      &
        word_count
        
-!  use clsm_ensdrv_drv_routines,         ONLY:     &
-!       check_cat_progn
-
-  use LDAS_TileCoordRoutines,              ONLY:     & 
+  use LDAS_TileCoordRoutines,           ONLY:     & 
        is_cat_in_box,                             &
-       !reorder_tiles,                             &
        get_tile_grid,                             &
        read_til_file
   
-  use LDAS_ExceptionsMod,                  ONLY:     &
+  use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
 
@@ -72,13 +62,9 @@ module LDAS_ensdrv_init_routines
 
   private
  
-  public :: add_domain_to_path
   public :: domain_setup
   public :: read_cat_param
-  public :: clsm_ensdrv_get_command_line
   public :: io_domain_files
-
-  !integer ,parameter :: N_gt=6, N_snow=3
 
   character(10), private :: tmpstring10
   character(40), private :: tmpstring40
@@ -86,24 +72,6 @@ module LDAS_ensdrv_init_routines
 contains
   
   ! ********************************************************************
-
-
-  character(200) function add_domain_to_path( pathname, exp_domain )
-    
-    ! make sure "exp_domain" is always added to "pathname" in the same way
-    ! (so that comparison of strings does not depend on extra slashes)
-    ! - reichle, 2 Apr 2014
-    
-    implicit none
-    
-    character(200) :: pathname
-    character(40)  :: exp_domain
-    
-    add_domain_to_path = trim(pathname)  // '/' // trim(exp_domain) // '/'
-    
-  end function add_domain_to_path
-    
-  ! ****************************************************************
   
   subroutine domain_setup(                                             &
        N_cat_global, tile_coord_global,                                &
@@ -239,7 +207,7 @@ contains
 
     else           
        
-       print*, "Creating domain..., reading white and black lists if there have ones..." 
+       print*, "Creating domain..., reading white and black lists if present..." 
        ! ------------------------------------------------------------
        !
        ! load blacklist: catchments listed in this file will be excluded
@@ -1135,150 +1103,6 @@ contains
   end subroutine read_cat_param
 
   ! *************************************************************************
-
-  subroutine read_VEG_Height(                                                    &
-       N_catg, veg_path, V_HEIGHT )
-
-    ! addapted from read_cat_param
-
-    implicit none
-    
-    integer,                                    intent(in)  :: N_catg
-    character(*),                             intent(in)  :: veg_path
-    real, dimension(N_catg),intent(inout) :: V_HEIGHT
-       
-    character( 80) :: fname
-    character(999) :: tmpstr999
-    
-    character(100), dimension(2) :: search_dir
-
-    integer :: n, k, m, dummy_int, dummy_int2, istat, N_search_dir, N_col
-    
-    integer, dimension(N_catg)           :: tmpint, tmpint2, tmptileid
-    
-    real,    dimension(N_catg,7) :: tmpreal
-    
-    real    :: dummy_real, dummy_real2, z_in_m, term1, term2
-
-    logical :: dummy_logical
-
-    character(len=*), parameter          :: Iam = 'read_Veg_Hight'
-    character(len=400)                   :: err_msg
-
-    real,    dimension(NTYPS)            :: VGZ2
-
-    ! legacy vegetation height look-up table (for backward compatibility)
-    !
-    DATA VGZ2 /35.0, 20.0, 17.0, 0.6, 0.5, 0.6/      ! Dorman and Sellers (1989)
-    
-    ! ---------------------------------------------------------------------
-    
-    if (logit) write (logunit,*) 'reading VEG_HEIGHT'
-    if (logit) write (logunit,*)
-    
-    ! -----------------------------
-    
-    ! Vegetation class
-
-    if (logit) write (logunit,*) 'Reading vegetation class and, if available, height'
-    
-    fname = '/mosaic_veg_typs_fracs'
-
-    N_search_dir = 2         ! specify sub-dirs of veg_path to search for file "fname"
-    
-    search_dir(1) = 'clsm'
-    search_dir(2) = 'VEGETATION-GSWP2'
-
-    ! find out how many columns are in the (formatted) file
-    
-    istat = open_land_param_file(                                                 &
-         10, .true., dummy_logical, N_search_dir, fname, veg_path, search_dir)
-        
-    read(10,'(a)') tmpstr999    ! read first line
-    ! count words in first line (delimited by space)
-    N_col = word_count( tmpstr999 )
-
-    ! get line number or the real N_catg
-    n =1
-    do while (.true.) 
-       read(10,*,iostat= istat) tmpstr999
-       if(IS_IOSTAT_END(istat)) exit
-       n=n+1  
-    enddo
-
-    if(n /= N_catg) stop " Please don't add vegheight to REGIONAOL veg restart"
-
-    close(10, status='keep')
-    
-    
-    ! read parameters
-
-    istat = open_land_param_file(                                                 &
-         10, .true., dummy_logical, N_search_dir, fname, veg_path, search_dir)
-
-    tmptileid = 0
-
-    tmpreal   = nodata_generic
-    
-    select case (N_col)
-       
-    case (6)
-
-       ! legacy vegetation height from look-up table
-       
-       if (logit) write (logunit,*) 'Using vegetation height look-up table'
-
-       do n=1,N_catg
-          
-          read (10,*) tmptileid(n), dummy_int, tmpint(n)
-          
-       end do
-
-       if ( (any(tmpint<1)) .or. (any(tmpint>NTYPS)) ) then
-          
-          err_msg = 'veg type (class) exceeds allowed min/max'
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          
-       end if
-       
-       do n=1,N_catg
-
-          tmpreal(n,1) = VGZ2( tmpint(n) )
-
-       end do
-
-    case (7)
-
-       ! vegetation height from boundary condition file
-       
-       if (logit) write (logunit,*) 'reading vegetation height from file'
-
-       do n=1,N_catg
-          
-          ! 7-th column contains veg height in m
-          
-          read (10,*) tmptileid(n), dummy_int, tmpint(n),         &
-               dummy_int2, dummy_real, dummy_real2, tmpreal(n,1)
-          
-       end do
-       
-    case default
-       
-       err_msg = 'unknown number of columns in ' // trim(fname)
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       
-    end select
-    
-    close (10,status='keep')
-    
-    if (logit) write (logunit,*) 'done reading'
-    if (logit) write (logunit,*) 
-    
-    V_HEIGHT = tmpreal(:,1)
-      
-  end subroutine read_VEG_Height
-  
-  ! **********************************************************************
   
   subroutine read_black_or_whitelist(N_cat, fname, blacklist, N_black) 
     
@@ -1376,336 +1200,6 @@ contains
        
   end subroutine read_black_or_whitelist
   
-  ! ****************************************************************
-  
-  subroutine clsm_ensdrv_get_command_line(   &
-       driver_inputs_path,      &
-       driver_inputs_file,      &
-       start_time,              &
-       end_time,                &
-       resolution,              &
-       exp_domain,              &
-       exp_id,                  &
-       work_path,               &
-       run_path,                &
-       restart_path,            &
-       restart_domain,          &
-       restart_id,              &
-       tile_coord_path,         &
-       tile_coord_file,         &
-       catchment_def_path,      &
-       catchment_def_file,      &
-       met_tag,                 &
-       met_path,                &
-       force_dtstep,            &
-       restart,                 &
-       spin,                    &
-       ens_prop_inputs_path,    &
-       ens_prop_inputs_file,    &
-       N_ens,                   &
-       first_ens_id             &
-       )
-    
-    ! get inputs from command line 
-    !
-    ! if present, command line arguments overwrite inputs from
-    !  driver_inputs or ens_prop_inputs namelist files
-    !
-    ! command line should look something like
-    !
-    ! a.out -start_year 1979 -restart true -driver_inputs_file fname.nml 
-    !
-    ! NOTE: Arguments that are used for assimilation ("ensupd") must be 
-    !       listed here explicitly (and will be ignored).  Otherwise it
-    !       would not be possible to stop for unknown arguments.
-    !
-    ! reichle, 29 Aug 02
-    ! 
-    ! modified for namelist input file path and name
-    ! - reichle, 6 May 03
-    ! converted to optional arguments, added arguments for EnKF inputs
-    ! - reichle, 29 Mar 04
-    !
-    ! reichle,  2 Aug 2005 - consistency with clsm_ensdrv_get_command_line()
-    ! reichle,  6 Mar 2008 - added force_dtstep for DAS/MERRA integration
-    !
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    character(200), intent(inout), optional :: driver_inputs_path
-    character(200), intent(inout), optional :: work_path, run_path
-    character(200), intent(inout), optional :: restart_path
-    
-    character(40), intent(inout),  optional :: driver_inputs_file    
-    
-    type(date_time_type), intent(inout), optional :: start_time
-    type(date_time_type), intent(inout), optional :: end_time
-    
-    character(40), intent(inout), optional :: exp_domain, exp_id, resolution
-    character(40), intent(inout), optional :: restart_domain, restart_id
-
-    character(200), intent(inout), optional :: tile_coord_path
-    character(200), intent(inout), optional :: catchment_def_path
-    character(80),  intent(inout), optional :: tile_coord_file
-    character(40),  intent(inout), optional :: catchment_def_file
-    
-    character(200), intent(inout), optional :: met_path
-    character(80),  intent(inout), optional :: met_tag
-    
-    integer,        intent(inout), optional :: force_dtstep
-
-    logical,        intent(inout), optional :: restart, spin 
-    
-    character(200), intent(inout), optional :: ens_prop_inputs_path
-    character(40),  intent(inout), optional :: ens_prop_inputs_file    
-    
-    integer, intent(inout), optional :: N_ens, first_ens_id
-
-    ! -----------------------------------------------------------------
-    
-    integer :: N_args, iargc, i
-    
-    character(40) :: arg
-
-    logical :: outlog
-    
-    character(len=*), parameter :: Iam = 'clsm_ensdrv_get_command_line'
-    character(len=400) :: err_msg
-
-    !external getarg, iargc
-    
-    ! -----------------------------------------------------------------
-
-    ! make sure log file has already been opened
-
-    inquire( logunit, opened=outlog )
-
-    ! do not write log output for non-master processes as requested
-    
-    if ((log_master_only) .and. (.not. master_proc)) outlog = .false.
-    
-    N_args = iargc()
-    
-    i=0
-    
-    do while ( i < N_args )
-       
-       i = i+1
-       
-       call getarg(i,arg)
-       
-       if     ( trim(arg) == '-driver_inputs_path' ) then
-          i = i+1
-          if (present(driver_inputs_path))  call getarg(i,driver_inputs_path)
-          
-       elseif ( trim(arg) == '-driver_inputs_file' ) then
-          i = i+1
-          if (present(driver_inputs_file))  call getarg(i,driver_inputs_file)
-          
-       elseif ( trim(arg) == '-start_year' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(start_time))  read (arg,*) start_time%year
-          
-       elseif ( trim(arg) == '-start_month' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(start_time))  read (arg,*) start_time%month
-
-       elseif ( trim(arg) == '-start_day' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(start_time))  read (arg,*) start_time%day
-
-       elseif ( trim(arg) == '-start_hour' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(start_time))  read (arg,*) start_time%hour
-
-       elseif ( trim(arg) == '-start_min' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(start_time))  read (arg,*) start_time%min
-
-       elseif ( trim(arg) == '-start_sec' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(start_time))  read (arg,*) start_time%sec
-
-       elseif ( trim(arg) == '-end_year' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(end_time))  read (arg,*) end_time%year
-          
-       elseif ( trim(arg) == '-end_month' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(end_time))  read (arg,*) end_time%month
-
-       elseif ( trim(arg) == '-end_day' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(end_time))  read (arg,*) end_time%day
-
-       elseif ( trim(arg) == '-end_hour' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(end_time))  read (arg,*) end_time%hour
-
-       elseif ( trim(arg) == '-end_min' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(end_time))  read (arg,*) end_time%min
-
-       elseif ( trim(arg) == '-end_sec' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(end_time))  read (arg,*) end_time%sec
-
-       elseif ( trim(arg) == '-resolution' ) then
-          i = i+1
-          if (present(resolution))  call getarg(i,resolution)
-
-       elseif ( trim(arg) == '-exp_domain' ) then
-          i = i+1
-          if (present(exp_domain))  call getarg(i,exp_domain)
-
-       elseif ( trim(arg) == '-exp_id' ) then
-          i = i+1
-          if (present(exp_id))  call getarg(i,exp_id)
-
-       elseif ( trim(arg) == '-work_path' ) then
-          i = i+1
-          if (present(work_path))  call getarg(i,work_path)
-          
-       elseif ( trim(arg) == '-run_path' ) then
-          i = i+1
-          if (present(run_path))  call getarg(i,run_path)
-          
-       elseif ( trim(arg) == '-restart_path' ) then
-          i = i+1
-          if (present(restart_path))  call getarg(i,restart_path)
-          
-       elseif ( trim(arg) == '-restart_domain' ) then
-          i = i+1
-          if (present(restart_domain))  call getarg(i,restart_domain)
-
-       elseif ( trim(arg) == '-restart_id' ) then
-          i = i+1
-          if (present(restart_id))  call getarg(i,restart_id)
-          
-       elseif ( trim(arg) == '-tile_coord_path' ) then
-          i = i+1
-          if (present(tile_coord_path))     call getarg(i,tile_coord_path)
-          
-       elseif ( trim(arg) == '-tile_coord_file' ) then
-          i = i+1
-          if (present(tile_coord_file))     call getarg(i,tile_coord_file)
-          
-       elseif ( trim(arg) == '-catchment_def_path' ) then
-          i = i+1
-          if (present(catchment_def_path))  call getarg(i,catchment_def_path)
-          
-       elseif ( trim(arg) == '-catchment_def_file' ) then
-          i = i+1
-          if (present(catchment_def_file))  call getarg(i,catchment_def_file)
-
-       elseif ( trim(arg) == '-met_path' ) then
-          i = i+1
-          if (present(met_path))  call getarg(i,met_path)
-          
-       elseif ( trim(arg) == '-met_tag' ) then
-          i = i+1
-          if (present(met_tag))  call getarg(i,met_tag)
-          
-       elseif ( trim(arg) == '-force_dtstep' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(force_dtstep))  read (arg,*) force_dtstep
-          
-       elseif ( trim(arg) == '-restart' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(restart))  read (arg,*) restart
-
-       elseif ( trim(arg) == '-spin' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(spin))  read (arg,*) spin
-
-       elseif ( trim(arg) == '-ens_prop_inputs_path' ) then
-          i = i+1
-          if (present(ens_prop_inputs_path))  &
-               call getarg(i,ens_prop_inputs_path)
-          
-       elseif ( trim(arg) == '-ens_prop_inputs_file' ) then
-          i = i+1
-          if (present(ens_prop_inputs_file)) &
-               call getarg(i,ens_prop_inputs_file)
-          
-       elseif ( trim(arg) == '-N_ens' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(N_ens))  read (arg,*) N_ens
-
-       elseif ( trim(arg) == '-first_ens_id' ) then
-          i = i+1
-          call getarg(i,arg)
-          if (present(first_ens_id))  read (arg,*) first_ens_id
-          
-          
-          ! ignore arguments for assimilation, bias, adaptive estimation
-          
-       elseif ( trim(arg) == '-ens_upd_inputs_path' ) then
-          i = i+1
-          if (outlog) &
-               write (logunit,*) 'clsm_ensdrv_get_command_line(): IGNORING argument = ', &
-               trim(arg)
-       
-       elseif ( trim(arg) == '-ens_upd_inputs_file' ) then
-          i = i+1
-          if (outlog) &
-               write (logunit,*) 'clsm_ensdrv_get_command_line(): IGNORING argument = ', &
-               trim(arg)
-          
-       elseif ( trim(arg) == '-cat_bias_inputs_path' ) then
-          i = i+1
-          if (outlog) &
-               write (logunit,*) 'clsm_ensdrv_get_command_line(): IGNORING argument = ', &
-               trim(arg)
-          
-       elseif ( trim(arg) == '-cat_bias_inputs_file' ) then
-          i = i+1
-          if (outlog) &
-               write (logunit,*) 'clsm_ensdrv_get_command_line(): IGNORING argument = ', &
-               trim(arg)
-
-       elseif ( trim(arg) == '-adapt_inputs_path' ) then
-          i = i+1
-          if (outlog) &
-               write (logunit,*) 'clsm_ensdrv_get_command_line(): IGNORING argument = ', &
-               trim(arg)
-          
-       elseif ( trim(arg) == '-adapt_inputs_file' ) then
-          i = i+1
-          if (outlog) &
-               write (logunit,*) 'clsm_ensdrv_get_command_line(): IGNORING argument = ', &
-               trim(arg)
-          
-          ! stop for any other arguments
-          
-       else
-          
-          err_msg = 'unknown argument = ' // trim(arg)
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-       endif
-       
-    end do
-    
-  end subroutine clsm_ensdrv_get_command_line
-
   ! ***********************************************************************
 
 end module LDAS_ensdrv_init_routines

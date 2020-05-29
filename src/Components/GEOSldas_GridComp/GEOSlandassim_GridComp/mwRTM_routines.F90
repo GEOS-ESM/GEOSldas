@@ -28,7 +28,7 @@ module mwRTM_routines
        mwRTM_param_nodata_check,                  &
        assignment (=)
     
-  use LDAS_ensdrv_globals,           ONLY:     &
+  use LDAS_ensdrv_globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
@@ -37,7 +37,7 @@ module mwRTM_routines
   use LDAS_ensdrv_functions,            ONLY:     &
        open_land_param_file
 
-  use LDAS_exceptionsMod,                  ONLY:     &
+  use LDAS_exceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
 
@@ -103,7 +103,7 @@ contains
     
     character(100), dimension(N_search_dir_max) :: search_dir
 
-    logical                                     :: all_nodata, is_nodata
+    logical                                     :: all_nodata, mwp_nodata
     
     character(len=*), parameter :: Iam = 'mwRTM_get_param'
     character(len=400) :: err_msg
@@ -156,9 +156,9 @@ contains
     
     do n=1,N_tile
        
-       call mwRTM_param_nodata_check( mwp(n), is_nodata )
+       call mwRTM_param_nodata_check( mwp(n), mwp_nodata )
        
-       if (.not. is_nodata) all_nodata = .false.
+       if (.not. mwp_nodata) all_nodata = .false.
        
     end do
 
@@ -320,7 +320,7 @@ contains
     
     !---------------------------------------------------
     
-    if (logit) write(logunit,*) 'entering mwRTM_get_Tb...'
+    !if (logit) write(logunit,*) 'entering mwRTM_get_Tb...'
 
     ! check first element of elevation against no-data-value
     ! (elevation is needed only when incl_atm_terms=.true.)
@@ -495,7 +495,7 @@ contains
 
     end do
     
-    if (logit) write(logunit,*) 'exiting mwRTM_get_Tb.'
+    !if (logit) write(logunit,*) 'exiting mwRTM_get_Tb.'
     
   end subroutine mwRTM_get_Tb
   

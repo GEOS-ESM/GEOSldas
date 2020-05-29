@@ -63,16 +63,7 @@ See below for how to build the model in multiple steps.
 
 ## How to Set Up and Run GEOSldas
 
-a) Obtain an interactive _compute_ node:
-
-```
-xalloc --nodes=1
-```
-
-The GEOSldas setup script uses MPI and **must** be run on a compute node.  (For NCCS SLES11, a login node also works.)
-
-
-b) On the _compute_ node, set up the job as follows:
+a) Set up the job as follows:
 
 ```
 cd (build_path)/GEOSldas/install/bin
@@ -113,9 +104,9 @@ ldas_setup sample -h
 ldas_setup setup  -h
 ```
 
-Configure the experiment output by editing the ```HISTORY.rc``` file.
+b) Configure the experiment output by editing the ```./run/HISTORY.rc``` file as needed.
 
-c) Finally, run the job:
+c) Run the job:
 ```
 cd [exp_path]/[exp_name]/run/
 sbatch lenkf.j

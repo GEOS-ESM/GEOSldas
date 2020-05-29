@@ -29,7 +29,7 @@ module GEOS_LandAssimGridCompMod
   use LDAS_ensdrv_mpi,           only: MPI_obs_param_type 
   
   use LDAS_DateTimeMod,          only: date_time_type 
-  use LDAS_ensdrv_Globals,       only: logunit, nodata_generic
+  use LDAS_ensdrv_Globals,       only: logunit, LDAS_is_nodata, nodata_generic
   
   use LDAS_ConvertMod,           only: esmf2ldas
   use LDAS_DriverTypes,          only: met_force_type
@@ -58,7 +58,7 @@ module GEOS_LandAssimGridCompMod
   use clsm_ensupd_enkf_update,   only: output_incr_etc
   use clsm_ensupd_enkf_update,   only: write_smapL4SMaup 
   use clsm_ensdrv_out_routines,  only: init_log, GEOS_output_smapL4SMlmc 
-  use mwRTM_routines,            only : mwRTM_get_Tb, catch2mwRTM_vars
+  use mwRTM_routines,            only: mwRTM_get_Tb, catch2mwRTM_vars
 
   use, intrinsic :: ieee_arithmetic    
 
@@ -105,12 +105,16 @@ module GEOS_LandAssimGridCompMod
   real(kind=ESMF_KIND_R8),               allocatable :: pert_rseed_r8(:,:)
   type(mwRTM_param_type),  dimension(:), allocatable :: mwRTM_param
 
-  logical :: mwRTM_all_nodata   ! no data for mwRTM_param
-  logical :: land_assim
-  logical :: mwRTM
+  logical                                            :: mwRTM_all_nodata 
+  logical                                            :: land_assim
+  logical                                            :: mwRTM
+  
+  logical,                               allocatable :: tb_nodata(:)
 
 contains
   
+  ! ******************************************************************************
+
   !BOP
   ! !IROUTINE: SetServices -- Sets ESMF services for component
   ! !INTERFACE:
@@ -919,6 +923,8 @@ contains
     
   end subroutine SetServices
   
+  ! ******************************************************************************
+
   ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !BOP
   ! !IROTUINE: Initialize -- initialize method for LandAssim GC
@@ -995,7 +1001,14 @@ contains
     call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     _VERIFY(STATUS)
     call init_log( myid, numprocs, master_proc )
+    ! Get number of land tiles
+    call MAPL_Get(MAPL, LocStream=locstream,rc=status)
+    _VERIFY(status)
+    call MAPL_LocStreamGet(locstream, NT_LOCAL=land_nt_local,rc=status)
+    _VERIFY(status)
     
+    allocate(tb_nodata(land_nt_local))
+ 
     if ( .not. land_assim) then   ! to arrive here, mwRTM must be .true.
        ! only need to calculate Tb for HISTORY; no processing of assimilation obs necessary;
        ! generic initialization is sufficient
@@ -1053,11 +1066,6 @@ contains
     _VERIFY(status)
     tcinternal   =>tcwrap%ptr
     tile_coord_l =>tcinternal%tile_coord
-    ! Get number of land tiles
-    call MAPL_Get(MAPL, LocStream=locstream,rc=status)
-    _VERIFY(status)
-    call MAPL_LocStreamGet(locstream, NT_LOCAL=land_nt_local,rc=status)
-    _VERIFY(status)
     
     allocate(Pert_rseed(   NRANDSEED, NUM_ENSEMBLE), source = 0    )
     allocate(Pert_rseed_r8(NRANDSEED, NUM_ENSEMBLE), source = 0.0d0)
@@ -1153,9 +1161,16 @@ contains
             out_smapL4SMaup,                         &
             N_obsbias_max                            &
             )
-       call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
-       _VERIFY(STATUS)
-       if (index(GridName,"-CF") /=0) out_smapL4SMaup = .false. ! no out_smap for now if it is cs grid
+
+       if (out_smapL4SMaup) then
+          
+          call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
+          _VERIFY(STATUS)
+          _ASSERT( (NUM_ENSEMBLE>1),                   "out_smapL4SMaup=.true. only works for NUM_ENSEMBLE>1")
+          _ASSERT( (index(GridName,"EASEv2-M09") /=0), "out_smapL4SMaup=.true. only works with EASEv2-M09 tile space")
+          
+       end if
+
     endif
     
     call MPI_BCAST(mwRTM,                 1, MPI_LOGICAL,        0,MPICOMM,mpierr)
@@ -1187,6 +1202,8 @@ contains
     
   end subroutine Initialize
   
+  ! ******************************************************************************
+
   ! !IROUTINE: RUN 
   ! !INTERFACE:
   subroutine RUN ( GC, IMPORT, EXPORT, CLOCK, RC )
@@ -1789,6 +1806,8 @@ contains
     
   end subroutine RUN
   
+  ! ******************************************************************************
+
   ! !IROTUINE: collecting and averaging
   
   subroutine UPDATE_ASSIM(gc, import, export, clock, rc)
@@ -1940,6 +1959,7 @@ contains
     
   end subroutine UPDATE_ASSIM
   
+  ! ******************************************************************************
   
   ! subroutine to calculate Tb for HISTORY output
   
@@ -1994,10 +2014,11 @@ contains
     real, dimension(:), pointer :: TB_V_enavg
 
     ! local
-    real, allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
-    real, allocatable, dimension(:) :: dummy_real
-    real, allocatable, dimension(:) :: Tb_v_tmp, TB_h_tmp
- 
+    real,    allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
+    real,    allocatable, dimension(:) :: dummy_real
+    real,    allocatable, dimension(:) :: Tb_h_tmp, TB_v_tmp
+
+    
     integer              :: N_catl, n, mpierr
     type(MAPL_LocStream) :: locstream
     
@@ -2055,9 +2076,9 @@ contains
          mwRTM_param%poros, &
          WCSF,              & 
          TPSURF,            & 
-         TP1-MAPL_TICE,     &    ! units deg C !!!
+         TP1,               &    ! units deg C !!!
          sfmc_mwRTM,        & 
-         tsoil_mwRTM )        
+         tsoil_mwRTM )           ! units Kelvin !!!
     
     ! calculate brightness temperatures
     ! (tau-omega model as in De Lannoy et al. 2013 [doi:10.1175/JHM-D-12-092.1]
@@ -2081,22 +2102,36 @@ contains
     else
        _ASSERT(.false., "top-of-atmosphere Tb calculation not yet implemented (incl_atm_terms=.true.)")
     end if
-    
+
     if (collect_tb_counter == 0) then
-       TB_V_enavg = 0.
        TB_H_enavg = 0.
+       TB_V_enavg = 0.
+       tb_nodata  = .false.
     endif
+    
+    ! ensemble average Tb must be nodata if Tb of any member is nodata
+ 
+    tb_nodata = tb_nodata .or. LDAS_is_nodata(Tb_h_tmp) .or. LDAS_is_nodata(Tb_v_tmp)
     
     ! This counter is relative to ens_id
     collect_tb_counter = collect_tb_counter + 1
     
-    TB_V_enavg(:) = TB_V_enavg(:) + Tb_v_tmp(:)
     TB_H_enavg(:) = TB_H_enavg(:) + Tb_h_tmp(:)
+    TB_V_enavg(:) = TB_V_enavg(:) + Tb_v_tmp(:)
     
     if (collect_tb_counter == NUM_ENSEMBLE) then
-       collect_tb_counter = 0
-       TB_V_enavg(:)      = TB_V_enavg(:)/NUM_ENSEMBLE
-       TB_H_enavg(:)      = TB_H_enavg(:)/NUM_ENSEMBLE
+
+       collect_tb_counter    = 0
+
+       TB_H_enavg(:)         = TB_H_enavg(:)/NUM_ENSEMBLE
+       TB_V_enavg(:)         = TB_V_enavg(:)/NUM_ENSEMBLE
+
+       ! finalize no-data-value
+       where (tb_nodata)
+          TB_H_enavg = MAPL_UNDEF
+          TB_V_enavg = MAPL_UNDEF
+       end where
+       
     endif
     
     deallocate(Tb_h_tmp, Tb_v_tmp, sfmc_mwRTM, tsoil_mwRTM)
@@ -2104,6 +2139,7 @@ contains
     RETURN_(_SUCCESS)
   end subroutine CALC_LAND_TB
   
+  ! ******************************************************************************
   
   subroutine read_pert_rseed(seed_fname,pert_rseed_r8)
     use netcdf
@@ -2138,6 +2174,8 @@ contains
     end subroutine check
   end subroutine read_pert_rseed
   
+  ! ******************************************************************************
+
   subroutine write_pert_rseed(chk_fname, pert_rseed_r8)
     use netcdf
     character(len=*),intent(in)        :: chk_fname
@@ -2185,6 +2223,7 @@ contains
     end subroutine check
   end subroutine write_pert_rseed
   
+  ! ******************************************************************************
   
   subroutine get_mwrtm_param(internal,N_catl, rc)
     type(ESMF_State),  intent(inout) :: INTERNAL
@@ -2211,7 +2250,7 @@ contains
     real, dimension(:), pointer :: LEWT
     
     integer :: N_catl_tmp, n, mpierr, status
-    logical :: is_nodata, all_nodata_l
+    logical :: mwp_nodata, all_nodata_l
     
     if(allocated(mwRTM_param)) then
        _RETURN(_SUCCESS)
@@ -2279,8 +2318,8 @@ contains
     
     all_nodata_l = .true.
     do n=1,N_catl
-       call mwRTM_param_nodata_check(mwRTM_param(n), is_nodata )
-       if (.not. is_nodata) all_nodata_l = .false.
+       call mwRTM_param_nodata_check(mwRTM_param(n), mwp_nodata )
+       if (.not. mwp_nodata) all_nodata_l = .false.
     end do
     
     ! perform logical AND across elements
@@ -2289,6 +2328,8 @@ contains
     _RETURN(_SUCCESS)
   end subroutine get_mwrtm_param
   
+  ! ******************************************************************************
+
   !BOP
   ! !IROTUINE: Finalize -- finalize method for LDAS GC
   ! !INTERFACE:
@@ -2362,3 +2403,5 @@ contains
   end subroutine Finalize
 
 end module GEOS_LandAssimGridCompMod
+
+! ====================== EOF =======================================================

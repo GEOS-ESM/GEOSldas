@@ -16,6 +16,7 @@ COLLECTIONS:
 #EASE            'tavg24_1d_lnd_Nt'	
 #CUBE            'tavg24_2d_lnd_Nx'
 #ASSIM           'SMAP_L4_SM_gph'
+#                'inst1_1d_lnr_Nt'
 #                'catch_progn_incr'
            ::
 
@@ -323,9 +324,21 @@ COLLECTIONS:
                                'TA'         , 'ENSAVG'      , 'temp_lowatmmodlay'                 ,
                                'QA'         , 'ENSAVG'      , 'specific_humidity_lowatmmodlay'    ,
                                'UU'         , 'ENSAVG'      , 'windspeed_lowatmmodlay'            ,
-                               'GRN'        , 'VEGDYN'  , 'vegetation_greenness_fraction'     ,
-                               'LAI'        , 'VEGDYN'  , 'leaf_area_index'                   ,
+                               'GRN'        , 'VEGDYN'      , 'vegetation_greenness_fraction'     ,
+                               'LAI'        , 'VEGDYN'      , 'leaf_area_index'                   ,
                                ::
+
+  inst1_1d_lnr_Nt.descr:        'Tile-space,1-Hourly,Instantaneous,Single-Level,Assimilation,Land Nature Run Diagnostics',
+  inst1_1d_lnr_Nt.template:     '%y4%m2%d2_%h2%n2z.bin' ,
+  inst1_1d_lnr_Nt.mode:         'instantaneous' ,
+  inst1_1d_lnr_Nt.frequency:    010000 ,
+  inst1_1d_lnr_Nt.ref_time:     000000,
+  inst1_1d_lnr_Nt.fields:      'TPSURF'                     , 'ENSAVG'      , 'surface_temp'                      ,
+                               'TSOIL1TILE'                 , 'ENSAVG'      , 'soil_temp_layer1'                  ,
+                               'TPSNOW'                     , 'ENSAVG'      , 'snow_temp_layer1'                  ,
+                               'TB_LAND_1410MHZ_40DEG_HPOL' , 'LANDASSIM'   , 'tb_h'                              ,
+                               'TB_LAND_1410MHZ_40DEG_VPOL' , 'LANDASSIM'   , 'tb_v'                              ,
+			       ::
 
   catch_progn_incr.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Prognostics Increments',
   catch_progn_incr.template:    '%y4%m2%d2_%h2%n2z.bin',
