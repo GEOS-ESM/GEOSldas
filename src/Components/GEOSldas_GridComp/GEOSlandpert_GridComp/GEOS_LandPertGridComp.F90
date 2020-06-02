@@ -7,6 +7,7 @@ module GEOS_LandPertGridCompMod
   ! !USES
 
   use ESMF
+  use ESMF_CFIOMod, only: ESMF_CFIOStrTemplate
   use MAPL_Mod
   use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
   use LDAS_PertTypes, only: pert_param_type
@@ -978,12 +979,12 @@ contains
        VERIFY_(status)
 
        id_string=""
-       if (internal%NUM_EMSEMBLE > 1) then
+       if (internal%NUM_ENSEMBLE > 1) then
          n = len(trim(COMP_NAME))
          id_string = COMP_NAME(n-ens_id_width+1:n)
        endif
 
-       call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_name_tmp)),'GRADS', xid = trim(id_string), stat=status)
+       call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_fname_tmp)),'GRADS', xid = trim(id_string), stat=status)
 
        if (index(rst_fname, 'NONE') == 0) then
 
