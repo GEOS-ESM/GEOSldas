@@ -572,8 +572,9 @@ EOF
    # Move Intermediate Checkpoints to RESTARTS directory
    # ---------------------------------------------------
    
-   @ inens = 0
-   while ($inens < $NENS)
+   @ inens = MY_FIRST_ENS_ID
+   @ enens = $inens + $NENS
+   while ($inens < $enens)
        if ($inens <10) then
           set ENSDIR = `echo ens000${inens}`
        else if($inens<100) then
