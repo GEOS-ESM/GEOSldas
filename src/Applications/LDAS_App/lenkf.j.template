@@ -41,12 +41,12 @@ setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 #             Experiment Specific Environment Variables
 #######################################################################
 
-setenv    HOMDIR     $EXPDIR/run/
-setenv    SCRDIR     $EXPDIR/scratch
-setenv    MODEL      MY_MODEL
-@         NENS  =    MY_ENSEMBLE
-setenv    MYNAME `finger $USER | cut -d: -f3 | head -1`
-setenv    NODAILIES  MY_MONTHLY
+setenv    HOMDIR         $EXPDIR/run/
+setenv    SCRDIR         $EXPDIR/scratch
+setenv    MODEL          MY_MODEL
+@         NENS  =        MY_ENSEMBLE
+setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
+setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 
 #
 # DEBUGGER : 0 -- no debugger
@@ -308,7 +308,34 @@ while ( $counter <= ${NUM_SGMT} )
     
    
    #######################################################################
-   #               Move HISTORY Files to cat/ens Directory
+   #              Move Legacy LDASsa Files to ana/ens_avg Directory
+   #######################################################################
+
+   # must be done before moving HISTORY files
+   
+   set ObsFcses = `ls *.ldas_ObsFcstAna.*.bin` 
+   foreach obsfcs ( $ObsFcses ) 
+      set ThisTime = `echo $obsfcs | rev | cut -d'.' -f2 | rev`
+      set TY = `echo $ThisTime | cut -c1-4`
+      set TM = `echo $ThisTime | cut -c5-6` 
+      set THISDIR = $EXPDIR/output/$EXPDOMAIN/ana/ens_avg/Y${TY}/M${TM}/
+      if (! -e $THISDIR            ) mkdir -p $THISDIR
+      /bin/mv $obsfcs ${THISDIR}$obsfcs
+   end
+
+   set smapL4s = `ls *.ldas_tile_inst_smapL4SMaup.*.bin` 
+   foreach smapl4 ( $smapL4s ) 
+      set ThisTime = `echo $smapl4 | rev | cut -d'.' -f2 | rev`
+      set TY = `echo $ThisTime | cut -c1-4`
+      set TM = `echo $ThisTime | cut -c5-6` 
+      set THISDIR = $EXPDIR/output/$EXPDOMAIN/ana/ens_avg/Y${TY}/M${TM}/
+      if (! -e $THISDIR            ) mkdir -p $THISDIR
+      /bin/mv $smapl4 ${THISDIR}$smapl4
+   end
+
+
+   #######################################################################
+   #              Move HISTORY Files to cat/ens Directory
    #######################################################################
    
    set outfiles = `ls $EXPID.*[bin,nc4]`
@@ -367,11 +394,12 @@ while ( $counter <= ${NUM_SGMT} )
    done:
    
    #######################################################################
-   #            (1) Concatenating Sub-daily Files to Daily Files
-   #            (2) Write monthly means  
+   #              Post-Process model diagnostic output
+   #              (1) Concatenate sub-daily files to daily files
+   #              (2) Write monthly means  
    #######################################################################
    
-   if ($NODAILIES > 0) then
+   if ($POSTPROC_HIST > 0) then
    
      set PWD = `pwd`
    
@@ -405,7 +433,20 @@ while ( $counter <= ${NUM_SGMT} )
              @ day++    
              set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}${DD}_* | rev | cut -d'.' -f2 | rev`
              set LEN_SUB = `echo $#time_steps`
+
+             # no file or just one file? nothing to concatenate, move on to the next collection
              if ($LEN_SUB <= 1) continue
+
+             # check if day is complete (get HISTORY time step from first two files)
+             set hour1   = `echo $time_steps[1] | cut -c10-11`
+             set min1    = `echo $time_steps[1] | cut -c12-13`
+             set hour2   = `echo $time_steps[2] | cut -c10-11`
+             set min2    = `echo $time_steps[2] | cut -c12-13`
+             @ dt_hist   = ($hour2 - $hour1) * 60 + ($min2 - $min1)
+             @ N_per_day = (24 * 60) / $dt_hist		
+             # not enough sub-daily files? move on to the next collection
+             if($LEN_SUB < $N_per_day) continue
+
              set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
 
 # ----------------------------------------------------------------------------
@@ -434,45 +475,67 @@ EOF
              ncks -4 -h -v time_stamp timestamp.nc4 -A ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
              /bin/rm timestamp.cdl
              /bin/rm timestamp.nc4
-             /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4 
-
+             # rudimentary check for desired nc4 file;  if ok, delete sub-daily files
+             if ( -f ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4 ) then
+                if ( ! -z ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4 ) then
+                   /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}${DD}_*.nc4
+                endif
+             endif 
           end # concatenate for each day 
-   
-          set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}* | rev | cut -d'.' -f2 | rev`
-          set tstep2 = \"`echo $time_steps | sed 's/\ /\","/g'`\"
-          set LEN = `echo $#time_steps`
-          # no file? move on  
-          if ($LEN == 0) continue
-    
-          set dayl = `echo $time_steps[$LEN] | cut -c1-8`
-          set day1 = `echo $time_steps[1] | cut -c1-8`
-          @ NAVAIL = ($dayl - $day1) + 1
-   
-          # not enough days? move on to the next collection
-          if($NAVAIL != $NDAYS) continue
-      
-          # create the monly average
 
-          ncra -h $EXPID.$ThisCol.${YYYY}${MM}??.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
+          # write monthly mean file and (optionally) remove daily files
+          # ------------------------------------------------------------------
+
+          # NOTE: Collections written with daily frequency ("tavg24" and "inst24") have not
+          #       been concatenated into daily files.  There are two possibilities  for the
+          #       time stamps of files to be averaged:
+          #         *.YYYYMMDD.*       daily files from concatenation of sub-daily files
+          #         *.YYYYMMDD_HHMM.*  daily (avg or inst) files written directly by HISTORY.rc
+   
+          set time_steps  = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}??.* | rev | cut -d'.' -f2 | rev`
+          set time_steps_ = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}??_* | rev | cut -d'.' -f2 | cut -d'_' -f2 | rev`
+          set LEN  = `echo $#time_steps`
+          set LEN_ = `echo $#time_steps_`
+
+          # check if month is complete 
+          if ($LEN != 0) then 
+            set dayl = `echo $time_steps[$LEN] | cut -c1-8`
+            set day1 = `echo $time_steps[1] | cut -c1-8`
+            @ NAVAIL = ($dayl - $day1) + 1
+          else if( $LEN_ != 0 ) then
+            set dayl = `echo $time_steps_[$LEN] | cut -c1-8`
+            set day1 = `echo $time_steps_[1] | cut -c1-8`
+            @ NAVAIL = ($dayl - $day1) + 1
+          else
+            @ NAVAIL = 0
+          endif
+            
+          # not enough days for monthly mean? move on to the next collection
+          if($NAVAIL != $NDAYS) continue
+   
+          # create monthly-mean nc4 file
+          ncra -h $EXPID.$ThisCol.${YYYY}${MM}*.nc4 ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4
           
-          # don't want a daily? delete the daily and sub-dailies and continue
-          #
-          if($NODAILIES == 2) then
-             /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}*
+          if($POSTPROC_HIST == 2) then
+             # rudimentary check for desired nc4 file;  if ok, delete daily files
+             if ( -f ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4 ) then
+                if ( ! -z ${EXPID}.${ThisCol}.monthly.$YYYY$MM.nc4 ) then
+                   /bin/rm $EXPID.${ThisCol}.${YYYY}${MM}*
+                endif
+             endif
              continue
           endif
    
        end # each collection
      end # each month
      cd $PWD
-   endif # dailies > 0
+   endif # POSTPROC_HIST > 0
    
    #######################################################################
    #   Rename Final Checkpoints => Restarts for Next Segment and Archive
    #        Note: cap_restart contains the current NYMD and NHMS
    #######################################################################
    
-   set edate  = e`cat cap_restart | cut -c1-8`_`cat cap_restart | cut -c10-11`z
    set eYEAR = `cat cap_restart | cut -c1-4`
    set eMON  = `cat cap_restart | cut -c5-6`
    set eDAY  = `cat cap_restart | cut -c7-8`
@@ -558,45 +621,36 @@ EOF
        set rstfiles2 = `ls landpert${ENSID}_internal_checkpoint.*`
        set rstfiles3 = `ls landassim_obspertrseed${ENSID}_checkpoint.*`
    
-       set NFILES = `echo $#rstfiles1`
-       if($NFILES > 0) then
-          foreach rfile ( $rstfiles1 ) 
-             set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
-             set TY = `echo $ThisTime | cut -c1-4`
-             set TM = `echo $ThisTime | cut -c5-6` 
-             set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
-             if (! -e $THISDIR            ) mkdir -p $THISDIR
-             /bin/mv $rfile ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
-             /usr/bin/gzip ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4 &
-          end
-       endif
+       foreach rfile ( $rstfiles1 ) 
+          set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
+          set TY = `echo $ThisTime | cut -c1-4`
+          set TM = `echo $ThisTime | cut -c5-6` 
+          set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
+          if (! -e $THISDIR            ) mkdir -p $THISDIR
+          /bin/mv $rfile ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
+          /usr/bin/gzip ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4 &
+       end
        
-       set NFILES = `echo $#rstfiles2`
-       if($NFILES > 0) then
-          foreach rfile ( $rstfiles2 ) 
-             set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
-             set TY = `echo $ThisTime | cut -c1-4`
-             set TM = `echo $ThisTime | cut -c5-6` 
-             set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
-             if (! -e $THISDIR            ) mkdir -p $THISDIR
+       foreach rfile ( $rstfiles2 ) 
+          set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
+          set TY = `echo $ThisTime | cut -c1-4`
+          set TM = `echo $ThisTime | cut -c5-6` 
+          set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
+          if (! -e $THISDIR            ) mkdir -p $THISDIR
              (ncks -4 -O -C -x -v lat,lon $rfile ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4;\
                /usr/bin/gzip ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4; \
                /bin/rm -f $rfile) &
-          end
-       endif
+       end
    
-       set NFILES = `echo $#rstfiles3`
-       if($NFILES > 0) then
-          foreach rfile ( $rstfiles3 ) 
-             set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
-             set TY = `echo $ThisTime | cut -c1-4`
-             set TM = `echo $ThisTime | cut -c5-6` 
-             set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
-             if (! -e $THISDIR            ) mkdir -p $THISDIR
+       foreach rfile ( $rstfiles3 ) 
+          set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
+          set TY = `echo $ThisTime | cut -c1-4`
+          set TM = `echo $ThisTime | cut -c5-6` 
+          set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${TY}/M${TM}/
+          if (! -e $THISDIR            ) mkdir -p $THISDIR
              /bin/mv $rfile ${THISDIR}${EXPID}.landassim_obspertrseed_rst.${ThisTime}.nc4
-          end
-       endif
-   
+       end
+  
        @ inens ++
    end  ## end of while ($inens < $NENS)
    wait 
@@ -625,7 +679,7 @@ EOF
    /bin/cp cap_restart $HOMDIR/cap_restart
    
    #######################################################################
-   #                         Update Iteration Counter
+   #              Update Iteration Counter
    #######################################################################
    
    set enddate = `echo  $END_DATE | cut -c1-8`
@@ -641,7 +695,7 @@ EOF
 end
 
 #######################################################################
-#            set next log and error file 
+#                 Set Next Log and Error Files 
 #######################################################################
 
 set logfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${logYEAR}/M${logMON}/${EXPID}.ldas_log.${logYEAR}${logMON}${logDAY}_${logHour}${logMin}z.txt
@@ -658,7 +712,7 @@ if(-f GEOSldas_err_txt) then
 endif
 
 #######################################################################
-#                              Re-Submit Job
+#                 Re-Submit Job
 #######################################################################
 
 if ( $rc == 0 ) then

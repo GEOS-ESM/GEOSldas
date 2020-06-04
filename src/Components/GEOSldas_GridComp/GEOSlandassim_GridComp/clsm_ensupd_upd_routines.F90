@@ -14,7 +14,7 @@ module clsm_ensupd_upd_routines
        MAPL_RADIUS,                               &
        MAPL_PI
   
-  use LDAS_ensdrv_Globals,           ONLY:     &
+  use LDAS_ensdrv_Globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
@@ -41,10 +41,7 @@ module clsm_ensupd_upd_routines
        get_io_filename,                           &
        is_in_rectangle
 
-  use LDAS_ensdrv_init_routines,        ONLY:     &
-       clsm_ensdrv_get_command_line
-  
-  use LDAS_DateTimeMod,                   ONLY:     &
+  use LDAS_DateTimeMod,                 ONLY:     &
        date_time_type
   
   use catch_types,                      ONLY:     &
@@ -63,22 +60,22 @@ module clsm_ensupd_upd_routines
        write_obs_param,                           &
        N_obs_ang_max
 
-  use LDAS_DriverTypes,                     ONLY:     &
+  use LDAS_DriverTypes,                 ONLY:     &
        met_force_type
 
   use mwRTM_types,                      ONLY:     &
        mwRTM_param_type
 
-  use LDAS_PertTypes,                  ONLY:     &
+  use LDAS_PertTypes,                   ONLY:     &
        pert_param_type,                           &
        allocate_pert_param,                       &
        deallocate_pert_param
   
-  use LDAS_TileCoordType,                 ONLY:     &
+  use LDAS_TileCoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type
 
-  use LDAS_TilecoordRoutines,              ONLY:     &
+  use LDAS_TilecoordRoutines,           ONLY:     &
        get_tile_num_in_ellipse,                   &
        get_number_of_tiles_in_cell_ij,            &
        get_tile_num_in_cell_ij,                   &
@@ -96,7 +93,7 @@ module clsm_ensupd_upd_routines
        catch_calc_tsurf,                          &
        catch_calc_tsurf_excl_snow
   
-  use lsm_routines,                  ONLY:     &
+  use lsm_routines,                     ONLY:     &
        catch_calc_soil_moist,                     &
        catch_calc_tp,                             &
        catch_calc_ght,                            &
@@ -117,7 +114,7 @@ module clsm_ensupd_upd_routines
        mpistatus,                                 &
        mpierr
 
-  use LDAS_ExceptionsMod,                  ONLY:     &
+  use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
   
@@ -170,12 +167,11 @@ contains
        dtstep_assim,                            &
        centered_update,                         &
        xcompact, ycompact,                      &
+       fcsterr_inflation_fac,                   &
        N_obs_param,                             &
        obs_param,                               &
        out_obslog,                              &
        out_ObsFcstAna,                          &
-!       out_incr,                                &
-!       out_incr_format,                         &
        out_smapL4SMaup,                         &
        N_obsbias_max                            &
        )
@@ -191,9 +187,6 @@ contains
     !      specified at the command line using -ens_upd_inputs_path 
     !      and -ens_upd_inputs_file
     !
-    ! 3.) overwrite options from command line (if present)
-    !      see subroutine clsm_ensupd_get_command_line()
-    !
     ! reichle, 19 Jul 2005 
     ! reichle, 14 Apr 2006 - added "update_type" to namelist and outputs
     !                      - removed reading from "stored"/"saved" nml file
@@ -201,8 +194,8 @@ contains
 
     implicit none
     
-    character(*),       intent(in)    :: work_path
-    character(*),        intent(in)    :: exp_id
+    character(*),         intent(in)    :: work_path
+    character(*),         intent(in)    :: exp_id
 
     type(date_time_type), intent(in)    :: date_time
     
@@ -222,6 +215,7 @@ contains
     logical,              intent(out)   :: centered_update
     
     real,                 intent(out)   :: xcompact, ycompact
+    real,                 intent(out)   :: fcsterr_inflation_fac
 
     integer,              intent(out)   :: N_obs_param
     
@@ -229,11 +223,8 @@ contains
     
     logical,              intent(out)   :: out_obslog
     logical,              intent(out)   :: out_ObsFcstAna
-!    logical,              intent(out)   :: out_incr
     logical,              intent(out)   :: out_smapL4SMaup
 
-!    integer,              intent(out)   :: out_incr_format    
-    
     integer,              intent(out)   :: N_obsbias_max
     
     ! ------------------------
@@ -277,10 +268,9 @@ contains
          centered_update,          &
          out_obslog,               &
          out_ObsFcstAna,           &
-!         out_incr,                 &
-!         out_incr_format,          & 
          out_smapL4SMaup,          &
          xcompact, ycompact,       &
+         fcsterr_inflation_fac,    &
          obs_param_nml
         
     ! ------------------------------------------------------------------
@@ -288,7 +278,6 @@ contains
     ! Set default file name for EnKF inputs namelist file
     
     ens_upd_inputs_path = '.'                                       ! set default 
-    !call clsm_ensdrv_get_command_line(run_path=ens_upd_inputs_path)
     ens_upd_inputs_file = 'LDASsa_DEFAULT_inputs_ensupd.nml'
     
     ! Read data from default ens_upd_inputs namelist file 
@@ -312,14 +301,7 @@ contains
     ens_upd_inputs_path = '.'
     ens_upd_inputs_file = 'LDASsa_SPECIAL_inputs_ensupd.nml'
        
-   ! call clsm_ensupd_get_command_line(                              &
-   !      ens_upd_inputs_path=ens_upd_inputs_path,                 &
-   !      ens_upd_inputs_file=ens_upd_inputs_file )
-    
-   ! if ( trim(ens_upd_inputs_path) /= ''  .and.            &
-   !      trim(ens_upd_inputs_file) /= ''          ) then
-       
-       ! Read data from special EnKF inputs namelist file 
+    ! Read data from special EnKF inputs namelist file 
        
     fname = trim(ens_upd_inputs_path)//'/'//trim(ens_upd_inputs_file)
     inquire(file=fname, exist=file_exists)
@@ -693,78 +675,6 @@ contains
     
   end subroutine read_ens_upd_inputs
   
-  ! ***********************************************************************
-  
-  subroutine clsm_ensupd_get_command_line(                            &
-       ens_upd_inputs_path, ens_upd_inputs_file                       &
-       )
-    
-    ! get some inputs from command line 
-    !
-    ! if present, command line arguments overwrite inputs from
-    ! ens_upd_inputs namelist files
-    !
-    ! command line should look something like
-    !
-    ! a.out -upd_driver_inputs_file fname.nml 
-    !
-    ! NOTE: This subroutine does NOT stop for unknown arguments!
-    !       (If that is desired, all arguments used by 
-    !        clsm_ensdrv_get_command_line() must be listed here
-    !        explicitly and be ignored.)
-    !
-    ! reichle, 19 Jul 2005
-    ! reichle,  2 Aug 2005 - consistency with clsm_ensdrv_get_command_line()
-    ! 
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    character(*), intent(inout), optional :: ens_upd_inputs_path
-    character(*),  intent(inout), optional :: ens_upd_inputs_file    
-    
-    ! -----------------------------------------------------------------
-    
-    integer :: N_args, iargc, i
-    
-    character(40) :: arg
-    
-    !external getarg, iargc
-    
-    ! -----------------------------------------------------------------
-    
-    N_args = iargc()
-    
-    i=0
-    
-    do while ( i < N_args )
-       
-       i = i+1
-       
-       call getarg(i,arg)
-       
-       if     ( trim(arg) == '-ens_upd_inputs_path' ) then
-          i = i+1
-          if (present(ens_upd_inputs_path))  &
-               call getarg(i,ens_upd_inputs_path)
-          
-       elseif ( trim(arg) == '-ens_upd_inputs_file' ) then
-          i = i+1
-          if (present(ens_upd_inputs_file))  &
-               call getarg(i,ens_upd_inputs_file)
-          
-       else
-               
-          i=i+1
-          if (logit) write (logunit,*) &
-               'clsm_ensupd_get_command_line(): IGNORING argument = ', trim(arg)
-          
-       endif
-       
-    end do
-    
-  end subroutine clsm_ensupd_get_command_line
-
   ! ********************************************************************
 
   subroutine init_obslog( work_path, exp_id, date_time )
@@ -1013,7 +923,8 @@ contains
        N_catl_vec, low_ind, tile_grid_g,                         &
        obs_param,                                                &
        met_force, lai, cat_param, cat_progn, mwRTM_param,        &
-       N_obsl, Observations_l, Obs_pred_l, obsbias_ok )
+       N_obsl, Observations_l, Obs_pred_l, obsbias_ok,           &
+       fcsterr_inflation_fac )
     
     ! Compute ensemble of measurement predictions from ensemble 
     !  of tile-space Catchment prognostics.
@@ -1066,6 +977,8 @@ contains
     real,                   dimension(:,:),   pointer :: Obs_pred_l            ! output
     
     logical,                intent(in),    dimension(N_obsl), optional :: obsbias_ok       
+
+    real,                   intent(in),                       optional :: fcsterr_inflation_fac      
     
     ! --------------------------------------------------------------------------------
     !
@@ -1164,13 +1077,15 @@ contains
     
     logical, dimension(N_obsl) :: obsbias_ok_tmp
 
+    real                       :: inflation_factor
+
     character(len=*), parameter :: Iam = 'get_obs_pred'
     character(len=400) :: err_msg
     character(len= 10) :: tmpstring10
     
     ! --------------------------------------------------------------
     !
-    ! deal with optional argument
+    ! deal with optional arguments
 
     if (present(obsbias_ok)) then
        
@@ -1181,7 +1096,18 @@ contains
        obsbias_ok_tmp = .false.
 
     end if
-    
+        
+    if (present(fcsterr_inflation_fac) .and. beforeEnKFupdate) then
+
+       ! ONLY inflate *before* EnKF update!!!
+
+       inflation_factor = fcsterr_inflation_fac
+       
+    else
+       
+       inflation_factor = -9999.
+       
+    end if
 
     ! --------------------------------------------------------------
     !
@@ -1978,6 +1904,10 @@ contains
                 
                 call row_variance( 1, N_ens, Obs_pred_l(j,1:N_ens), tmpvar, tmpmean )
                 
+                ! inflate fcstvar
+                
+                if (inflation_factor > 0.)  tmpvar(1) = tmpvar(1) * inflation_factor**2
+                             
              else
                 
                 tmpmean(1) = Obs_pred_l(j,1)
@@ -2017,6 +1947,9 @@ contains
                 
                 call row_variance( 1, N_ens, Obs_pred_l(i,1:N_ens), tmpvar, tmpmean )
                 
+                ! no need to inflate analysis Obs_pred because state increments already included
+                !  impact of inflation
+
              end if
              
           else
@@ -3457,7 +3390,7 @@ contains
        tile_grid_f, tile_coord, l2f,                            &
        Observations, Obs_pred, Obs_pert,                        &
        cat_param,                                               &
-       xcompact, ycompact,                                      &
+       xcompact, ycompact, fcsterr_inflation_fac,               &
        cat_progn, cat_progn_incr )
     
     ! get increments for Catchment prognostic variables
@@ -3506,7 +3439,7 @@ contains
     
     type(cat_param_type), dimension(N_catd), intent(in) :: cat_param
     
-    real, intent(in) :: xcompact, ycompact
+    real, intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
     
     type(cat_progn_type), intent(in),  dimension(N_catd,N_ens) :: cat_progn
     
@@ -3748,14 +3681,15 @@ contains
              
              ! EnKF update
              
-             call enkf_increments(                                         &
+             call enkf_increments(                                        &
                   N_state, N_selected_obs, N_ens,                         &
                   Observations(ind_obs(1:N_selected_obs)),                &
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
-                  State_incr )
+                  State_incr,                                             &
+                  fcsterr_inflation_fac=fcsterr_inflation_fac )
              
              ! assemble cat_progn increments
              
@@ -3836,7 +3770,8 @@ contains
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  &
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                   Obs_cov,                                                &
-                  State_incr, State_lon, State_lat, xcompact, ycompact )             
+                  State_incr, State_lon, State_lat, xcompact, ycompact,   &
+                  fcsterr_inflation_fac )             
              
              deallocate(Obs_cov)
              
@@ -3901,14 +3836,15 @@ contains
              
              ! EnKF update
              
-             call enkf_increments(                                         &
+             call enkf_increments(                                        &
                   N_state, N_selected_obs, N_ens,                         &
                   Observations(ind_obs(1:N_selected_obs)),                &
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
-                  State_incr )
+                  State_incr,                                             &
+                  fcsterr_inflation_fac=fcsterr_inflation_fac )
              
              ! assemble cat_progn increments
                           
@@ -3973,14 +3909,15 @@ contains
              
              ! EnKF update
              
-             call enkf_increments(                                         &
+             call enkf_increments(                                        &
                   N_state, N_selected_obs, N_ens,                         &
                   Observations(ind_obs(1:N_selected_obs)),                &
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  & 
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
-                  State_incr )
+                  State_incr,                                             &
+                  fcsterr_inflation_fac=fcsterr_inflation_fac )
              
              ! assemble cat_progn increments
                           
@@ -4047,14 +3984,15 @@ contains
 
              ! EnKF update
              
-             call enkf_increments(                                         &
+             call enkf_increments(                                        &
                   N_state, N_selected_obs, N_ens,                         &
                   Observations(ind_obs(1:N_selected_obs)),                &
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  &
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                   Obs_cov(                                                &
                   ind_obs(1:N_selected_obs), ind_obs(1:N_selected_obs)),  &
-                  State_incr )
+                  State_incr,                                             &
+                  fcsterr_inflation_fac=fcsterr_inflation_fac )
 
              ! assemble cat_progn increments
 
@@ -4146,7 +4084,8 @@ contains
                   Obs_pred(ind_obs(1:N_selected_obs),:),                  &
                   Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                   Obs_cov,                                                &
-                  State_incr, State_lon, State_lat, xcompact, ycompact )             
+                  State_incr, State_lon, State_lat, xcompact, ycompact,   &
+                  fcsterr_inflation_fac )             
              
              deallocate(Obs_cov)
 
@@ -4271,7 +4210,8 @@ contains
                      Obs_pred(ind_obs(1:N_selected_obs),:),                  &
                      Obs_pert(ind_obs(1:N_selected_obs),:),                  &
                      Obs_cov,                                                &
-                     State_incr, State_lon, State_lat, xcompact, ycompact )             
+                     State_incr, State_lon, State_lat, xcompact, ycompact,   &
+                     fcsterr_inflation_fac )             
                 
                 deallocate(Obs_cov)
                 

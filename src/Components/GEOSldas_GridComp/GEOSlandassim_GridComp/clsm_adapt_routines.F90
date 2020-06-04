@@ -48,9 +48,6 @@ module clsm_adapt_routines
   use LDAS_ensdrv_functions,            ONLY:     &
        get_io_filename
 
-  use LDAS_ensdrv_init_routines,        ONLY:     &
-       clsm_ensdrv_get_command_line
-
   use LDAS_TilecoordRoutines,              ONLY:     &
        grid2tile
 
@@ -72,77 +69,6 @@ module clsm_adapt_routines
 contains
   
   ! ***********************************************************************
-  
-  subroutine clsm_adapt_get_command_line(                             &
-       adapt_inputs_path, adapt_inputs_file                           &
-       )
-    
-    ! get some inputs from command line 
-    !
-    ! if present, command line arguments overwrite inputs from
-    ! clsm_adapt_default_inputs namelist file
-    !
-    ! command line should look something like
-    !
-    ! a.out -adapt_inputs_file fname.nml 
-    !
-    ! NOTE: This subroutine does NOT stop for unknown arguments!
-    !       (If that is desired, all arguments used by 
-    !        clsm_ensdrv_get_command_line() must be listed here
-    !        explicitly and be ignored.)
-    !
-    ! reichle, 14 Dec 2006
-    ! 
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    character(200), intent(inout), optional :: adapt_inputs_path
-    character(40),  intent(inout), optional :: adapt_inputs_file    
-    
-    ! -----------------------------------------------------------------
-    
-    integer :: N_args, iargc, i
-    
-    character(40) :: arg
-    
-    !external getarg, iargc
-    
-    ! -----------------------------------------------------------------
-    
-    N_args = iargc()
-    
-    i=0
-    
-    do while ( i < N_args )
-       
-       i = i+1
-       
-       call getarg(i,arg)
-       
-       if     ( trim(arg) == '-adapt_inputs_path' ) then
-          i = i+1
-          if (present(adapt_inputs_path))  &
-               call getarg(i,adapt_inputs_path)
-          
-       elseif ( trim(arg) == '-adapt_inputs_file' ) then
-          i = i+1
-          if (present(adapt_inputs_file))  &
-               call getarg(i,adapt_inputs_file)
-          
-       else
-          
-          i=i+1
-          if (logit) write (logunit,*) &
-               'clsm_adapt_get_command_line(): IGNORING argument = ', trim(arg)
-          
-       endif
-       
-    end do
-    
-  end subroutine clsm_adapt_get_command_line
-  
-  ! ----------------------------------------------------------------------
   
   subroutine read_adapt_inputs( work_path, exp_id, date_time,              &
        adapt_type, adapt_misc_param, adapt_progn_pert, adapt_force_pert )
@@ -170,6 +96,8 @@ contains
     
     character(300) :: fname
 
+    logical        :: file_exists
+
     ! -----------------------------------------
     
     namelist / adapt_inputs / &
@@ -180,7 +108,6 @@ contains
     ! Set default file name for driver inputs namelist file
     
     adapt_inputs_path = './'                                       ! set default 
-    call clsm_ensdrv_get_command_line(run_path=adapt_inputs_path)
     adapt_inputs_file = 'LDASsa_DEFAULT_inputs_adapt.nml'
     
     ! Read data from default adapt_inputs namelist file 
@@ -190,7 +117,7 @@ contains
     open (10, file=fname, delim='apostrophe', action='read', status='old')
 
     if (logit) write (logunit,*)
-    if (logit) write (logunit,*) 'reading *default* adapt inputs from ', trim(fname)
+    if (logit) write (logunit,'(400A)') 'reading *default* adapt inputs from ', trim(fname)
     if (logit) write (logunit,*)
     
     read (10, nml=adapt_inputs)
@@ -198,35 +125,30 @@ contains
     close(10,status='keep')
     
     
-    ! Get name and path for special adapt inputs file from 
-    ! command line (if present) 
+    ! Read from special adapt inputs file (if present) 
     
-    adapt_inputs_path = ''
-    adapt_inputs_file = ''
+    adapt_inputs_file = 'LDASsa_SPECIAL_inputs_adapt.nml'
     
-    call clsm_adapt_get_command_line(                                 &
-         adapt_inputs_path=adapt_inputs_path,                         &
-         adapt_inputs_file=adapt_inputs_file )
+    ! Read data from special adapt_inputs namelist file 
     
-    if ( trim(adapt_inputs_path) /= ''  .and.            &
-         trim(adapt_inputs_file) /= ''          ) then
-       
-       ! Read data from special adapt_inputs namelist file 
-       
-       fname = trim(adapt_inputs_path) // '/' // trim(adapt_inputs_file)
-       
+    fname = trim(adapt_inputs_path) // '/' // trim(adapt_inputs_file)
+    
+    inquire(file=fname, exist=file_exists)
+
+    if (file_exists) then        
+
        open (10, file=fname, delim='apostrophe', action='read', status='old')
        
        if (logit) write (logunit,*)
-       if (logit) write (logunit,*) 'reading *special* adapt inputs from ', trim(fname)
+       if (logit) write (logunit,'(400A)') 'reading *special* adapt inputs from ', trim(fname)
        if (logit) write (logunit,*)
        
        read (10, nml=adapt_inputs)
        
        close(10,status='keep')
-       
+
     end if
-    
+       
     ! echo variables of adapt_inputs
     
     if (logit) write (logunit,*) 'adapt inputs are:'

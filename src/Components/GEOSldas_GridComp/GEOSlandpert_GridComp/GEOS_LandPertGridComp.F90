@@ -69,6 +69,7 @@ module GEOS_LandPertGridCompMod
 
   integer,dimension(:,:),pointer,public :: pert_iseed=>null()
   integer :: lat1, lat2, lon1, lon2
+  integer :: FIRST_ENS_ID
 contains
 
   !BOP
@@ -115,7 +116,7 @@ contains
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
-         Phase2_Initialize,                                                    &
+         Phase2_Initialize,                                                     &
          rc=status                                                              &
          )
     VERIFY_(status)
@@ -184,7 +185,8 @@ contains
     call MAPL_GetResource(MAPL, GEOSldas_FIRST_ENS_ID, 'FIRST_ENS_ID:',DEFAULT=0, rc=status)
     VERIFY_(status)
 
-    ens_id = 0
+    FIRST_ENS_ID = GEOSldas_FIRST_ENS_ID
+    ens_id = FIRST_ENS_ID
     if ( internal%NUM_ENSEMBLE > 1) then
        !landpertxxxx
        read(comp_name(9:12),*) ens_id
@@ -1085,8 +1087,7 @@ contains
        VERIFY_(status)
     endif
 
-
-    if (IAmRoot .and. internal%ens_id == 0) then
+    if (IAmRoot .and. internal%ens_id == FIRST_ENS_ID) then
        call echo_pert_param( internal%ForcePert%npert, internal%ForcePert%param, 1, 1 )
        call echo_pert_param( internal%PrognPert%npert, internal%PrognPert%param, 1, 1 )
     endif
@@ -1107,7 +1108,7 @@ contains
 
     ! Coldstart
     if (COLDSTART) then
-       if (IAmRoot .and. internal%ens_id == 0 ) print *, trim(Iam)//'::WARNING: Cold-starting LandPert GridComp'
+       if (IAmRoot .and. internal%ens_id == FIRST_ENS_ID ) print *, trim(Iam)//'::WARNING: Cold-starting LandPert GridComp'
        ! -pert_rseed-
        call get_init_pert_rseed(internal%ens_id, pert_rseed(1))
        call init_randseed(pert_rseed)
@@ -1141,25 +1142,25 @@ contains
    
     end if
 
-    if(internal%ens_id ==0 ) fpert_enavg(:,:,:)=0.
+    if(internal%ens_id == FIRST_ENS_ID ) fpert_enavg(:,:,:)=0. 
 
     do m = 1,internal%ForcePert%npert
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
        if(internal%ForcePert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
           fpert_enavg(:,:,m)=fpert_enavg(:,:,m)+fpert_ntrmdt(lon1:lon2,lat1:lat2,m)
-          if( internal%ens_id == internal%NUM_ENSEMBLE-1) then
+          if( internal%ens_id-FIRST_ENS_ID == internal%NUM_ENSEMBLE-1) then
              fpert_enavg(:,:,m) = -fpert_enavg(:,:,m)/real(internal%NUM_ENSEMBLE)
           endif
        endif
     enddo
 
-    if(internal%ens_id ==0 ) ppert_enavg(:,:,:)=0.
+    if(internal%ens_id == FIRST_ENS_ID) ppert_enavg(:,:,:)=0. 
 
     do m = 1,internal%PrognPert%npert  
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
        if(internal%PrognPert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
           ppert_enavg(:,:,m)=ppert_enavg(:,:,m)+ppert_ntrmdt(lon1:lon2,lat1:lat2,m)
-          if( internal%ens_id == internal%NUM_ENSEMBLE-1) then
+          if( internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE-1) then
              ppert_enavg(:,:,m) = -ppert_enavg(:,:,m)/real(internal%NUM_ENSEMBLE)
           endif
        endif
@@ -1184,7 +1185,7 @@ contains
     call esmf2ldas(StopTime, stop_time, rc=status)
     VERIFY_(status)
 
-    if( internal%ens_id ==0 .and. IAmRoot) then
+    if( internal%ens_id == FIRST_ENS_ID .and. IAmRoot) then
        ! write out the input file
        call read_ens_prop_inputs(write_nml = .true. , work_path = trim(out_path), &
             exp_id = trim(exp_id), date_time = start_time)
@@ -1233,7 +1234,7 @@ contains
 
     ! Update the r4 version of pert_rseed
     pert_rseed_r8 = real(pert_rseed,kind=ESMF_KIND_R8)
-    pert_iseed(:,internal%ens_id+1) = pert_rseed
+    pert_iseed(:,internal%ens_id + 1 - FIRST_ENS_ID ) = pert_rseed
     ! Clean up
 
     if (allocated(pert_rseed)) then ! integer version of MINTERNAL state
@@ -1377,7 +1378,8 @@ contains
     allocate(ppert_grid(n_lon,n_lat, internal%PrognPert%npert), source=MAPL_UNDEF, stat=status)
     VERIFY_(status)
 
-    ! Get pertubations on the underlying grid and convert grid data to tile data
+    ! Get pertubations on the underlying grid and convert grid data to tile data, adjust mean
+    !
     ! -ForcePert-
 
     fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert)= fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) + &
@@ -1448,7 +1450,7 @@ contains
 
     ! Update the r8 version of pert_rseed
     pert_rseed_r8 = real(pert_rseed,kind=ESMF_kind_r8)
-    pert_iseed(:,internal%ens_id+1) = pert_rseed
+    pert_iseed(:,internal%ens_id+1-FIRST_ENS_ID) = pert_rseed
 
     ! Clean up
     if (allocated(fpert_grid)) then
@@ -1468,7 +1470,7 @@ contains
     call MAPL_TimerOff(MAPL, "phase2_Initialize")
     call MAPL_TimerOff(MAPL, "TOTAL")
 
-    if(internal%ens_id == internal%NUM_ENSEMBLE -1) phase2_initialized = .true.
+    if(internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE -1) phase2_initialized = .true. 
     ! End
     RETURN_(ESMF_SUCCESS)
 
@@ -1644,7 +1646,7 @@ contains
           call MAPL_DateStampGet(clock, datestamp, rc=status)
           VERIFY_(STATUS)
 
-          write(id_string,'(I4.4)') internal%ens_id
+          write(id_string,'(I4.4)') internal%ens_id            
           if(internal%NUM_ENSEMBLE ==1 ) id_string=''
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp
@@ -1663,17 +1665,17 @@ contains
           real(internal%ForcePert%dtstep),                                    &
           pert_rseed,                                                         &
           internal%ForcePert%param,                                           &
-          fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),                       &
+          fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),       &
           .false.                                                             &
         )
 
-       if(internal%ens_id ==0 ) fpert_enavg(:,:,:)=0.
+       if(internal%ens_id == FIRST_ENS_ID ) fpert_enavg(:,:,:)=0.    
 
        do m = 1,internal%ForcePert%npert
           call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
           if(internal%ForcePert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
              fpert_enavg(:,:,m)=fpert_enavg(:,:,m)+fpert_ntrmdt(lon1:lon2,lat1:lat2,m)
-             if( internal%ens_id == internal%NUM_ENSEMBLE-1) then
+             if( internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE-1) then              
                 fpert_enavg(:,:,m) = -fpert_enavg(:,:,m)/real(internal%NUM_ENSEMBLE)
              endif
           endif
@@ -1694,13 +1696,13 @@ contains
            .false.                                                            &
           )
 
-       if(internal%ens_id ==0 ) ppert_enavg(:,:,:)=0.                              
+       if(internal%ens_id == FIRST_ENS_ID) ppert_enavg(:,:,:)=0.       
 
        do m = 1,internal%PrognPert%npert
           call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
           if(internal%PrognPert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
               ppert_enavg(:,:,m)=ppert_enavg(:,:,m)+ppert_ntrmdt(lon1:lon2,lat1:lat2,m)
-              if( internal%ens_id == internal%NUM_ENSEMBLE -1) then
+              if( internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE -1) then                      
                  ppert_enavg(:,:,m) = -ppert_enavg(:,:,m)/real(internal%NUM_ENSEMBLE)
               endif
           endif
@@ -1710,7 +1712,7 @@ contains
     endif
     ! Update the r4 version of pert_rseed
     pert_rseed_r8 = real(pert_rseed,kind=ESMF_KIND_R8)
-    pert_iseed(:,internal%ens_id+1) = pert_rseed
+    pert_iseed(:,internal%ens_id+1 - FIRST_ENS_ID) = pert_rseed            
  
     call MAPL_TimerOff(MAPL, "GenerateRaw")
     ! End
@@ -2168,7 +2170,7 @@ contains
     ! Update the r8 version of pert_rseed
     if (internal%PERTURBATIONS /=0 ) then
        pert_rseed_r8 = real(pert_rseed,kind=ESMF_kind_r8)
-       pert_iseed(:,internal%ens_id+1) = pert_rseed
+       pert_iseed(:,internal%ens_id+1-FIRST_ENS_ID) = pert_rseed           
     endif
 
     ! Clean up
@@ -2559,7 +2561,7 @@ contains
 
     ! Update the r8 version of pert_rseed
     pert_rseed_r8 = real(pert_rseed,kind=ESMF_kind_r8)
-    pert_iseed(:,internal%ens_id+1) = pert_rseed
+    pert_iseed(:,internal%ens_id+1-FIRST_ENS_ID) = pert_rseed              
 
     ! Clean up
     if (allocated(PROGNPERT)) then
@@ -2631,7 +2633,7 @@ contains
        VERIFY_(status)
     endif
 
-    pert_rseed_r8(:) = real(pert_iseed(:,internal%ens_id+1),kind=ESMF_KIND_R8)
+    pert_rseed_r8(:) = real(pert_iseed(:,internal%ens_id+1-FIRST_ENS_ID),kind=ESMF_KIND_R8)
     
   ! End
     RETURN_(ESMF_SUCCESS)

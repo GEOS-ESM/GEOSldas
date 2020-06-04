@@ -72,7 +72,7 @@ SMAP_Nature_v04, SMAP_Nature_v04.1
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-SMAP_Nature_v05
+SMAP_Nature_v05, v7.2, v8.1;  SMAP L4_SM Version 4, Version 5
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/  ! before 1/1/2015
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/   ! after  1/1/2015
@@ -168,12 +168,21 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : cross_d5124_RPFPIT               ! uses "late-look" through present
 ```
 
-#### FP
+#### GEOS FP
 ```
-  MET_TAG  : e5110_fp
-  MET_TAG  : e5130_fp
-  MET_TAG  : e5131_fp
-  MET_TAG  : cross_FP
+  MET_TAG  : e5110_fp      ! starting 11 Jun 2013
+  MET_TAG  : e5130_fp      ! starting 20 Aug 2014
+  MET_TAG  : e5131_fp      ! starting  1 May 2015
+  MET_TAG  : f516_fp       ! starting 24 Jan 2017
+  MET_TAG  : f517_fp       ! starting  1 Nov 2017
+  MET_TAG  : f521_fp       ! starting 11 Jul 2018
+  MET_TAG  : f522_fp       ! starting 13 Mar 2019
+  MET_TAG  : f525_fp       ! starting 30 Jan 2020
+  MET_TAG  : f525_p5_fp    ! starting  7 Apr 2020
+
+  MET_TAG  : cross_FP      ! stitch FP experiment names across years 
+
+  MET_TAG  : GEOS.fp.asm   ! "seamless" FP files (published/generic file names, ~same result as cross_FP)
 ```
 
 #### FP with precip corrections as in pre-beta SMAP L4_SM products
@@ -184,7 +193,7 @@ COMMONLY USED values for `MET_TAG`:
 #### SMAP_Nature_v03
 ```
   MET_TAG  : cross_RPFPIT__precCPCUG5RPFPITv1                ! before 1/1/2014
-  MET_TAG  : cross_FP__precCPCUG5FPv1		            ! after  1/1/2014
+  MET_TAG  : cross_FP__precCPCUG5FPv1		             ! after  1/1/2014
 ```
 
 #### SMAP_Nature_v04      
@@ -199,7 +208,7 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : cross_FP__precCPCUG5FPv2                        ! after  1/1/2015
 ```
 
-#### SMAP_Nature_v05
+#### SMAP_Nature_v05, v7.2, v8.1;  SMAP L4_SM Version 4, Version 5
 ```
   MET_TAG  : M2COR_cross__precCPCUGPCP22clim_MERRA2_BMTXS    ! before 1/1/2015
   MET_TAG  : cross_FP__precCPCUG5FPv3                        ! after  1/1/2015
@@ -259,7 +268,7 @@ COMMONLY USED boundary conditions (bcs):
   BCS_PATH = /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/
 ```
 
-#### Icarus-NL ("New Land")
+#### Icarus-NL ("New Land"), SMAP_Nature_v7.2
 ```
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NL/
 ```
@@ -269,8 +278,7 @@ Notes:
 - This path remains in place to permit recreating experiments that have used this path.
 - The sub-directory "Icarus-NL_MERRA-2/" contains the "new land" bcs.  The string "MERRA-2" in this sub-directory name refers to ocean bcs that are not relevant for GEOSldas.
 
-
-#### Icarus-NL ("New Land") v2
+#### Icarus-NLv2, SMAP L4_SM Version 4
 ```
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv2/
 ```
@@ -279,7 +287,7 @@ Notes:
 - Icarus-NLv2 is a update to Icarus-NL bcs. A patch has been applied to files green*.data, nirdf*.dat, and visdf*.dat. 
 - DEFAULT for GEOSldas v17.8.0 
 	
-#### Icarus-NL ("New Land") v3
+#### Icarus-NLv3, SMAP_Nature_v8.1, SMAP L4_SM Version 5
 ```
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv3/
 ```

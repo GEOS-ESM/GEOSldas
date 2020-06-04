@@ -62,13 +62,13 @@ module GEOS_MetforceGridCompMod
   end type T_MET_FORCING
 
   ! Internal state and its wrapper
-  type T_DATAATM_STATE
+  type T_METFORCE_STATE
      private
      type(T_MET_FORCING) :: mf
-  end type T_DATAATM_STATE
-  type DATAATM_WRAP
-     type(T_DATAATM_STATE), pointer :: ptr=>null()
-  end type DATAATM_WRAP
+  end type T_METFORCE_STATE
+  type METFORCE_WRAP
+     type(T_METFORCE_STATE), pointer :: ptr=>null()
+  end type METFORCE_WRAP
 
   !! Wrapper to the tile_coord variable
   !type T_TILECOORD_STATE
@@ -104,8 +104,8 @@ contains
     character(len=ESMF_MAXSTR) :: comp_name
 
     ! Local variables
-    type(T_DATAATM_STATE), pointer :: internal
-    type(DATAATM_WRAP) :: wrap
+    type(T_METFORCE_STATE), pointer :: internal
+    type(METFORCE_WRAP) :: wrap
 
     ! Begin...
 
@@ -143,7 +143,7 @@ contains
     allocate(internal, stat=status)
     VERIFY_(status)
     wrap%ptr => internal
-    call ESMF_UserCompSetInternalState(gc, 'Dataatm_state', wrap, status)
+    call ESMF_UserCompSetInternalState(gc, 'METFORCE_state', wrap, status)
     VERIFY_(status)
 
     ! Set the state variable specs
@@ -572,8 +572,8 @@ contains
     type(T_MET_FORCING) :: mf
 
     ! Internal private state variables
-    type(T_DATAATM_STATE), pointer :: internal=>null()
-    type(DATAATM_WRAP) :: wrap
+    type(T_METFORCE_STATE), pointer :: internal=>null()
+    type(METFORCE_WRAP) :: wrap
     type(TILECOORD_WRAP) :: tcwrap
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
@@ -606,7 +606,7 @@ contains
     VERIFY_(status)
 
     ! Get component's internal private state
-    call ESMF_UserCompGetInternalState(gc, 'Dataatm_state', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'METFORCE_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
 
@@ -767,8 +767,8 @@ contains
     type(date_time_type) :: force_time_prv, force_time_nxt, model_time_nxt
 
     ! Private internal state variables
-    type(T_DATAATM_STATE), pointer :: internal=>null()
-    type(DATAATM_WRAP) :: wrap
+    type(T_METFORCE_STATE), pointer :: internal=>null()
+    type(METFORCE_WRAP) :: wrap
     type(TILECOORD_WRAP) :: tcwrap ! LDAS' tile_coord variable
     type(tile_coord_type), pointer :: tile_coord(:)
 
@@ -851,7 +851,7 @@ contains
     VERIFY_(status)
 
     ! Get component's internal private state
-    call ESMF_UserCompGetInternalState(gc, 'Dataatm_state', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'METFORCE_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
  
@@ -1239,8 +1239,8 @@ contains
 
     ! Local variables
     type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
-    type(T_DATAATM_STATE), pointer :: internal
-    type(DATAATM_WRAP) :: wrap
+    type(T_METFORCE_STATE), pointer :: internal
+    type(METFORCE_WRAP) :: wrap
     type(ESMF_Alarm) :: MetForcing
     !external :: GEOS_closefile
     ! Begin...
@@ -1255,7 +1255,7 @@ contains
     VERIFY_(status)
 
     ! Get component's internal private state
-    call ESMF_UserCompGetInternalState(gc, 'Dataatm_state', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'METFORCE_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
 

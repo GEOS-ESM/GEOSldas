@@ -40,9 +40,6 @@ module clsm_bias_routines
   use LDAS_ensdrv_functions,            ONLY:     &
        get_io_filename
 
-  use LDAS_ensdrv_init_routines,        ONLY:     &
-       clsm_ensdrv_get_command_line
-
   use clsm_ensupd_upd_routines,         ONLY:     &
        get_cat_progn_ens_avg
 
@@ -78,78 +75,6 @@ contains
   !
   ! -------------------------------------------------------------------
   
-  subroutine clsm_cat_bias_get_command_line(                    &
-       cat_bias_inputs_path, cat_bias_inputs_file               &
-       )
-    
-    ! get some inputs from command line 
-    !
-    ! if present, command line arguments overwrite inputs from
-    ! catbias_inputs namelist files
-    !
-    ! command line should look something like
-    !
-    ! a.out -cat_bias_inputs_file fname.nml 
-    !
-    ! NOTE: This subroutine does NOT stop for unknown arguments!
-    !       (If that is desired, all arguments used by 
-    !        clsm_ensdrv_get_command_line() must be listed here
-    !        explicitly and be ignored.)
-    !
-    ! reichle, 18 Oct 2005
-    ! 
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    character(*), intent(inout), optional :: cat_bias_inputs_path
-    character(*),  intent(inout), optional :: cat_bias_inputs_file    
-    
-    ! -----------------------------------------------------------------
-    
-    integer :: N_args, iargc, i
-    
-    character(40) :: arg
-    
-    !external getarg, iargc
-    
-    ! -----------------------------------------------------------------
-    
-    N_args = iargc()
-    
-    i=0
-    
-    do while ( i < N_args )
-       
-       i = i+1
-       
-       call getarg(i,arg)
-       
-       if     ( trim(arg) == '-cat_bias_inputs_path' ) then
-          i = i+1
-          if (present(cat_bias_inputs_path))  &
-               call getarg(i,cat_bias_inputs_path)
-          
-       elseif ( trim(arg) == '-cat_bias_inputs_file' ) then
-          i = i+1
-          if (present(cat_bias_inputs_file))  &
-               call getarg(i,cat_bias_inputs_file)
-          
-       else
-               
-          i=i+1
-          if (logit) write (logunit,*)                                    &
-               'clsm_cat_bias_get_command_line(): IGNORING argument = ',  &
-               trim(arg)
-          
-       endif
-       
-    end do
-    
-  end subroutine clsm_cat_bias_get_command_line
-  
-  ! ********************************************************************
-
   subroutine io_rstrt_cat_bias( action, work_path, exp_id, date_time, &
        model_dtstep, N_cat, N_catbias, cat_bias )
     
@@ -578,7 +503,6 @@ contains
     ! read default cat bias inputs file
     
     cat_bias_inputs_path = './'                                       ! set default 
-    !call clsm_ensdrv_get_command_line(run_path=cat_bias_inputs_path)
     cat_bias_inputs_file = 'LDASsa_DEFAULT_inputs_catbias.nml'
       
     fname = trim(cat_bias_inputs_path) // '/' // trim(cat_bias_inputs_file)
@@ -594,21 +518,11 @@ contains
     close(10,status='keep')
     
        
-    ! Get name and path for special cat bias inputs file from
-    ! command line (if present) 
-    
-   ! cat_bias_inputs_path = ''
-   ! cat_bias_inputs_file = ''
-    
-   ! call clsm_cat_bias_get_command_line(                            &
-   !      cat_bias_inputs_path=cat_bias_inputs_path,                 &
-   !      cat_bias_inputs_file=cat_bias_inputs_file )
+    ! Read from special cat bias inputs file (if present) 
     
     cat_bias_inputs_file = 'LDASsa_SPECIAL_inputs_catbias.nml'
-   ! if ( trim(cat_bias_inputs_path) /= ''  .and.                &
-   !      trim(cat_bias_inputs_file) /= ''          ) then
-       
-       ! Read data from special cat bias inputs namelist file 
+
+    ! Read data from special cat bias inputs namelist file 
        
     fname = trim(cat_bias_inputs_path)//'/'//trim(cat_bias_inputs_file)
 
