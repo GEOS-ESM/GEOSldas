@@ -61,9 +61,8 @@ module GEOS_LandAssimGridCompMod
   use clsm_ensupd_enkf_update,   only: output_incr_etc
   use clsm_ensupd_enkf_update,   only: write_smapL4SMaup 
   use clsm_ensdrv_out_routines,  only: init_log, GEOS_output_smapL4SMlmc 
-  !sqz 2020---- 
   use clsm_ensdrv_drv_routines,  only: recompute_diagS
-  !----sqz 2020
+
   use mwRTM_routines,            only: mwRTM_get_Tb, catch2mwRTM_vars
 
   use, intrinsic :: ieee_arithmetic    
@@ -749,8 +748,6 @@ contains
        RC=STATUS  )
   _VERIFY(STATUS)
   
-  !sqz 2020----
-
   ! some analysis model diagnostics
 
   ! - sm_surface_analysis           [m3 m-3]
@@ -806,8 +803,6 @@ contains
        RC=STATUS  ) 
   VERIFY_(STATUS) 
   
-  !--sqz 2020
-
   !
   ! INTERNAL STATE
   !
@@ -1324,11 +1319,10 @@ contains
 
     type(cat_progn_type), dimension(:,:),   allocatable :: cat_progn_incr
     type(cat_progn_type), dimension(:),     allocatable :: cat_progn_incr_ensavg
-    !sqz 2020 ----
     type(cat_progn_type), dimension(:),     allocatable :: cat_progn_tmp
+
     type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS
     type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS_ensavg
-    !-----------sqz 2020
 
     type(obs_type),       dimension(:),     pointer     :: Observations_l => null()
 
@@ -1384,7 +1378,6 @@ contains
     real, dimension(:),pointer :: SNDZN2_incr=>null()
     real, dimension(:),pointer :: SNDZN3_incr=>null()
 
-    !sqz 2020 ----
     !! export for analysis model diagnostics 
 
     real, dimension(:),pointer :: SFMC_ana=>null()     ! surface soil moisture
@@ -1392,8 +1385,6 @@ contains
     real, dimension(:),pointer :: PRMC_ana=>null()     ! profile soil moisture
     real, dimension(:),pointer :: TPSURF_ana=>null()   ! tpsurf
     real, dimension(:),pointer :: TSOIL1_ana=>null()   ! tsoil1
-    !
-    !------sqz 2020
     
     logical, save              :: firsttime=.true.
     type(cat_bias_param_type)  :: cat_bias_param
@@ -1602,7 +1593,6 @@ contains
     call MAPL_GetPointer(export, SNDZN3_incr,  'SNDZN3_INCR'  ,rc=status)
     _VERIFY(status)
 
-    !sqz 2020 ---
     ! exports for analysis model diagnostics
     
     call MAPL_GetPointer(export, TPSURF_ana,  'TPSURF_ANA' ,rc=status)
@@ -1615,8 +1605,6 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(export, PRMC_ana,    'WCPR_ANA' ,rc=status)
     VERIFY_(status)
-    !
-    !----------------sqz 2020
 
     allocate(met_force(N_catl))
     met_force(:)%Tair    = TA_enavg(:)
@@ -1866,7 +1854,6 @@ contains
        if(associated(SNDZN2_incr))  SNDZN2_incr(:)  = cat_progn_incr_ensavg(:)%sndz(2)
        if(associated(SNDZN3_incr))  SNDZN3_incr(:)  = cat_progn_incr_ensavg(:)%sndz(3)
        
-       !sqz 2020 ---
 
        ! recompute select model diagnostics after analysis
        
@@ -1908,7 +1895,6 @@ contains
        deallocate(cat_diagS)
        deallocate(cat_diagS_ensavg) 
 
-       ! --- sqz 2020
        
        ! write analysis fields into SMAP L4_SM aup file 
        ! whenever it was time for assimilation (regardless 

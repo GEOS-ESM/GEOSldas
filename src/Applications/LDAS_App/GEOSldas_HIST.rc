@@ -383,12 +383,12 @@ COLLECTIONS:
                                      'WCRZ'        , 'ENSAVG'    , 'RZMC_FCST'       ,
                                      'WCPR'        , 'ENSAVG'    , 'PRMC_FCST'       ,
                                      'TPSURF'      , 'ENSAVG'    , 'TSURF_FCST'      ,
-                                     'TSOIL1TILE'  , 'ENSAVG'    , 'TP1_FCST'        ,
+                                     'TSOIL1TILE'  , 'ENSAVG'    , 'TSOIL1_FCST'     ,
                                      'WCSF_ANA'    , 'LANDASSIM' , 'SFMC_ANA'        ,
                                      'WCRZ_ANA'    , 'LANDASSIM' , 'RZMC_ANA'        ,
                                      'WCPR_ANA'    , 'LANDASSIM' , 'PRMC_ANA'        ,
                                      'TPSURF_ANA'  , 'LANDASSIM' , 'TSURF_ANA'       ,
-                                     'TSOIL1_ANA'  , 'LANDASSIM' , 'TP1_ANA'         ,
+                                     'TSOIL1_ANA'  , 'LANDASSIM' , 'TSOIL1_ANA'      ,
                         ::
 
   inst3_2d_lndfcstana_Nx.descr:       '2d,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
@@ -406,12 +406,12 @@ COLLECTIONS:
                                      'WCRZ'        , 'ENSAVG'    , 'RZMC_FCST'       ,
                                      'WCPR'        , 'ENSAVG'    , 'PRMC_FCST'       ,
                                      'TPSURF'      , 'ENSAVG'    , 'TSURF_FCST'      ,
-                                     'TSOIL1TILE'  , 'ENSAVG'    , 'TP1_FCST'        ,
+                                     'TSOIL1TILE'  , 'ENSAVG'    , 'TSOIL1_FCST'     ,
                                      'WCSF_ANA'    , 'LANDASSIM' , 'SFMC_ANA'        ,
                                      'WCRZ_ANA'    , 'LANDASSIM' , 'RZMC_ANA'        ,
                                      'WCPR_ANA'    , 'LANDASSIM' , 'PRMC_ANA'        ,
                                      'TPSURF_ANA'  , 'LANDASSIM' , 'TSURF_ANA'       ,
-                                     'TSOIL1_ANA'  , 'LANDASSIM' , 'TP1_ANA'         ,
+                                     'TSOIL1_ANA'  , 'LANDASSIM' , 'TSOIL1_ANA'      ,
                         ::
 
 # ========================== EOF ==============================================================
