@@ -70,6 +70,7 @@ module GEOS_LandPertGridCompMod
   integer,dimension(:,:),pointer,public :: pert_iseed=>null()
   integer :: lat1, lat2, lon1, lon2
   integer :: FIRST_ENS_ID
+  logical :: COLDSTART
 contains
 
   !BOP
@@ -877,7 +878,6 @@ contains
     integer :: model_dtstep
     integer :: land_nt_local,m,n, i1, in, j1, jn
     logical :: IAmRoot
-    logical :: COLDSTART
     integer :: ipert,n_lon,n_lat, n_lon_g, n_lat_g
     integer, allocatable :: pert_rseed(:)
     real :: dlon, dlat,locallat,locallon
@@ -1381,7 +1381,7 @@ contains
     ! Get pertubations on the underlying grid and convert grid data to tile data, adjust mean
     !
     ! -ForcePert-
-
+    if (.not. COLDSTART ) fpert_enavg = 0.
     fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert)= fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) + &
             fpert_enavg(:,:,:)
 
@@ -1416,6 +1416,7 @@ contains
     internal%ForcePert%DataNxt = internal%ForcePert%DataPrv
 
     ! -PrognPert-
+    if (.not. COLDSTART ) ppert_enavg = 0.
     ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert)= ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert) + &
             ppert_enavg(:,:,:)
     call get_pert(                                                              &
