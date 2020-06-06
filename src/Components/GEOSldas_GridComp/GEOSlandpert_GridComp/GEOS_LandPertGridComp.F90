@@ -1378,12 +1378,16 @@ contains
     allocate(ppert_grid(n_lon,n_lat, internal%PrognPert%npert), source=MAPL_UNDEF, stat=status)
     VERIFY_(status)
 
-    ! Get pertubations on the underlying grid and convert grid data to tile data, adjust mean
+    ! Get pertubations on the underlying grid and convert grid data to tile data
     !
     ! -ForcePert-
-    if (.not. COLDSTART ) fpert_enavg = 0.
-    fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert)= fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) + &
-            fpert_enavg(:,:,:)
+    !
+    ! adjust mean after cold start  (if fpert_ntrmdt is from restart file,
+    !   mean was adjusted in ApplyForcePert before restart was written)
+    if (COLDSTART)                                                              &
+         fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) =         &
+         fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) +         &
+         fpert_enavg(:,:,:)
 
     call get_pert(                                                              &
          internal%ForcePert%npert,                                              &
@@ -1391,7 +1395,7 @@ contains
          real(internal%ForcePert%dtstep),                                       &
          internal%ForcePert%param,                                              &
          pert_rseed,                                                            &
-         fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),                          &
+         fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),          &
          fpert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
@@ -1416,16 +1420,21 @@ contains
     internal%ForcePert%DataNxt = internal%ForcePert%DataPrv
 
     ! -PrognPert-
-    if (.not. COLDSTART ) ppert_enavg = 0.
-    ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert)= ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert) + &
-            ppert_enavg(:,:,:)
+    !
+    ! adjust mean after cold start  (if ppert_ntrmdt is from restart file,
+    !   mean was adjusted in ApplyPrognPert before restart was written)
+    if (COLDSTART)                                                              &
+         ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert) =         &
+         ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert) +         &
+         ppert_enavg(:,:,:)
+    
     call get_pert(                                                              &
          internal%PrognPert%npert,                                              &
          internal%pgrid_l, internal%pgrid_f,                                    &
          real(internal%PrognPert%dtstep),                                       &
          internal%PrognPert%param,                                              &
          pert_rseed,                                                            &
-         ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),                          &
+         ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),          &
          ppert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
