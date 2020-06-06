@@ -1072,7 +1072,7 @@ contains
     
     if (master_proc) then
        
-       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../intput/restart/landassim_obspertrseed%s_rst", RC=STATUS)
+       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
        call MAPL_DateStampGet( clock, datestamp, rc=status)
        _VERIFY(STATUS)
