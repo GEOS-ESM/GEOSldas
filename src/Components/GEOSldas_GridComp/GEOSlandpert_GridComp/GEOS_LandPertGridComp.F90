@@ -7,6 +7,7 @@ module GEOS_LandPertGridCompMod
   ! !USES
 
   use ESMF
+  use ESMF_CFIOMod, only: ESMF_CFIOStrTemplate
   use MAPL_Mod
   use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
   use LDAS_PertTypes, only: pert_param_type
@@ -841,7 +842,7 @@ contains
     integer :: status
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
-    character(len=ESMF_MAXSTR) :: rst_fname
+    character(len=ESMF_MAXSTR) :: rst_fname, rst_fname_tmp
 
     ! ESMF variables
     type(ESMF_VM) :: vm
@@ -882,6 +883,8 @@ contains
     integer, allocatable :: pert_rseed(:)
     real :: dlon, dlat,locallat,locallon
     type(ESMF_Grid) :: Grid
+    character(len=ESMF_MAXSTR) :: id_string
+    integer :: ens_id_width
     ! Begin...
 
     ! Get component's name and setup traceback handle
@@ -961,6 +964,9 @@ contains
     n_lon = internal%pgrid_l%n_lon
     n_lat = internal%pgrid_l%n_lat
 
+    call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+    VERIFY_(status)
+
    ! Pointers to mapl internals
     if ( internal%isCubedSphere ) then
        n_lon_g = internal%pgrid_g%n_lon
@@ -969,8 +975,16 @@ contains
        allocate(internal%ppert_ntrmdt(n_lon_g, n_lat_g, N_PROGN_PERT_MAX), source=0.0)
        allocate(internal%pert_rseed_r8(NRANDSEED), source=0.0d0)
        
-       call MAPL_GetResource(MAPL, rst_fname, trim(comp_name)//'_INTERNAL_RESTART_FILE:',DEFAULT='NONE', rc=status)
+       call MAPL_GetResource(MAPL, rst_fname_tmp, 'LANDPERT_INTERNAL_RESTART_FILE:',DEFAULT='NONE', rc=status)
        VERIFY_(status)
+
+       id_string=""
+       if (internal%NUM_ENSEMBLE > 1) then
+         n = len(trim(COMP_NAME))
+         id_string = COMP_NAME(n-ens_id_width+1:n)
+       endif
+
+       call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_fname_tmp)),'GRADS', xid = trim(id_string), stat=status)
 
        if (index(rst_fname, 'NONE') == 0) then
 
