@@ -1673,7 +1673,7 @@ contains
           write(id_string,'(I4.4)') internal%ens_id            
           if(internal%NUM_ENSEMBLE ==1 ) id_string=''
 
-          chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp
+          chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp//'.nc4'
 
           call write_pert_checkpoint(trim(chk_fname),internal%fpert_ntrmdt, internal%ppert_ntrmdt, internal%pert_rseed_r8)
        endif
@@ -2925,8 +2925,8 @@ contains
      call check( nf90_def_var(ncid, 'ppert_ntrmdt', NF90_REAL,   dimids, p_varid) )
      call check( nf90_def_var(ncid, 'pert_rseed',   NF90_DOUBLE, seed_dimid, s_varid) )
 
-     call check( nf90_def_var_deflate(ncid, f_varid, 1, 1, 2))
-     call check( nf90_def_var_deflate(ncid, p_varid, 1, 1, 2))
+  !   call check( nf90_def_var_deflate(ncid, f_varid, 1, 1, 2))
+  !   call check( nf90_def_var_deflate(ncid, p_varid, 1, 1, 2))
   ! Assign attribute
      call check( nf90_put_att(ncid, f_varid, UNITS, units_) )
      call check( nf90_put_att(ncid, p_varid, UNITS, units_) )
