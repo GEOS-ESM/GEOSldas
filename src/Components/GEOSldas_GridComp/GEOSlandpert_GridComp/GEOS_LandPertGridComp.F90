@@ -39,7 +39,7 @@ module GEOS_LandPertGridCompMod
   use LDAS_PertRoutinesMod, only: GEOSldas_PROGN_PERT_DTSTEP
   use LDAS_PertRoutinesMod, only: GEOSldas_NUM_ENSEMBLE
   use LDAS_PertRoutinesMod, only: GEOSldas_FIRST_ENS_ID
-  use LDAS_TileCoordRoutines, only: grid2tile, tile2grid, tile_mask_grid
+  use LDAS_TileCoordRoutines, only: grid2tile, tile2grid_simple, tile_mask_grid
   use LDAS_TileCoordRoutines, only: get_ij_ind_from_latlon
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
@@ -1660,12 +1660,12 @@ contains
          VERIFY_(STATUS)
        enddo
        if (IamRoot) then
-       ! 3) tile2grid
+       ! 3) tile2grid. simple reverser of grid2tile without weighted
           do m = 1, nfpert
-             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
        
        ! 4) writing
@@ -2775,13 +2775,15 @@ contains
          call ArrayGather(tile_data_p(:,m), tile_data_p_all(:,m), tilegrid, mask=mask, rc=status)
          VERIFY_(STATUS)
        enddo
+
        if (MAPL_am_I_Root()) then
-       ! 3) tile2grid
+       ! 3) tile2grid 
+            ! this step is simply a reverse of grid2tile without any weighted   
           do m = 1, nfpert
-             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
 
         ! 4) writing
