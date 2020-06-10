@@ -109,7 +109,7 @@ FIRST_ENS_ID: 0
 
 # ---- Job segments: Length
 #
-#      Specify period between output of restart files.  (GEOSldas.x shuts down and restarts.)
+#      Specify period between GEOSldas.x shutdown and restart.
 #      Default is the entire simulation period (END_DATE minus BEG_DATE).
 #      Format:            yyyymmdd hhmmss
 #
@@ -123,6 +123,17 @@ FIRST_ENS_ID: 0
 #      Default is 1.
 #
 # NUM_SGMT: 1
+
+
+# ---- CHECKPOINT file output
+#
+#      By default, CHECKPOINT (restart) files are are written at the end of each job segment. 
+#      Restart files can also be written before exiting GEOSldas.x. 
+#      The following resource parameters specify the frequency and reference time.
+#      Format:            hhmmss
+#
+# RECORD_FREQUENCY: 240000
+# RECORD_REF_TIME:  000000
 
 
 # ---- Output: Write log file (YES/NO)?
