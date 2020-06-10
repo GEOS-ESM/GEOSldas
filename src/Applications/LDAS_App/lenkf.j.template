@@ -696,7 +696,7 @@ EOF
 
    if ( $capdate < $enddate ) then
      @ counter = $counter + 1
-   else if ( $capdate == $enddate || $endhour < $caphour ) then
+   else if ( $capdate == $enddate && $caphour < $endhour ) then
      @ counter = $counter + 1
    else
      @ counter = ${NUM_SGMT} + 1
