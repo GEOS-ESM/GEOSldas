@@ -14,8 +14,10 @@ module GEOS_LandAssimGridCompMod
   
   use ESMF
   use MAPL_Mod
-  use ESMF_CFIOMOD,              only:  ESMF_CFIOstrTemplate
+  use ESMF_CFIOMOD,              only: ESMF_CFIOstrTemplate
   
+  use MAPL_ConstantsMod,         only: MAPL_TICE
+    
   use LDAS_TileCoordType,        only: tile_coord_type
   use LDAS_TileCoordType,        only: grid_def_type
   use LDAS_TileCoordType,        only: T_TILECOORD_STATE
@@ -46,6 +48,7 @@ module GEOS_LandAssimGridCompMod
   use catch_bias_types,          only: cat_bias_param_type
   use catch_types,               only: cat_progn_type
   use catch_types,               only: cat_param_type
+  use catch_types,               only: cat_diagS_type
   use catch_types,               only: assignment(=), operator (+), operator (/)
   use clsm_bias_routines,        only: initialize_obs_bias
   use clsm_bias_routines,        only: read_cat_bias_inputs 
@@ -58,6 +61,8 @@ module GEOS_LandAssimGridCompMod
   use clsm_ensupd_enkf_update,   only: output_incr_etc
   use clsm_ensupd_enkf_update,   only: write_smapL4SMaup 
   use clsm_ensdrv_out_routines,  only: init_log, GEOS_output_smapL4SMlmc 
+  use clsm_ensdrv_drv_routines,  only: recompute_diagS
+
   use mwRTM_routines,            only: mwRTM_get_Tb, catch2mwRTM_vars
 
   use, intrinsic :: ieee_arithmetic    
@@ -743,7 +748,61 @@ contains
        RC=STATUS  )
   _VERIFY(STATUS)
   
+  ! some analysis model diagnostics
 
+  ! - sm_surface_analysis           [m3 m-3]
+  ! - sm_rootzone_analysis          [m3 m-3]
+  ! - sm_profile_analysis           [m3 m-3]
+  ! - surface_temp_analysis         [K]
+  ! - soil_temp_layer1_analysis     [K]
+
+  ! could add other model diagnostics available in "cat_diagS_ensavg" (see below)
+  
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_moisture_surface_analysis'                      ,&
+       UNITS              = 'm3 m-3'                                              ,&
+       SHORT_NAME         = 'WCSF_ANA'                                            ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_moisture_rootzone_analysis'                     ,&
+       UNITS              = 'm3 m-3'                                              ,&
+       SHORT_NAME         = 'WCRZ_ANA'                                            ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_moisture_profile_analysis'                      ,&
+       UNITS              = 'm3 m-3'                                              ,&
+       SHORT_NAME         = 'WCPR_ANA'                                            ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'ave_catchment_temp_incl_snw_analysis'                ,&
+       UNITS              = 'K'                                                   ,&
+       SHORT_NAME         = 'TPSURF_ANA'                                          ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS)
+  
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_temperatures_layer_1_analysis'                  ,&
+       UNITS              = 'K'                                                   ,&
+       SHORT_NAME         = 'TSOIL1_ANA'                                          ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  ) 
+  VERIFY_(STATUS) 
+  
   !
   ! INTERNAL STATE
   !
@@ -1241,7 +1300,7 @@ contains
     type(date_time_type)              :: date_time_new
     character(len=14)                 :: datestamp
 
-    integer                           :: N_catl, N_catg,N_obsl_max, n_e, i
+    integer                           :: N_catl, N_catg,N_obsl_max, n_e, ii
 
     character(len=300)                :: out_path
     character(len=ESMF_MAXSTR)        :: exp_id
@@ -1253,15 +1312,19 @@ contains
     integer                           :: N_adapt_R
     type(MAPL_LocStream)              :: locstream
 
-    integer,              dimension(:),     allocatable  :: obs_pert_adapt_param
+    integer,              dimension(:),     allocatable :: obs_pert_adapt_param
     real,                 dimension(:,:),   allocatable :: Pert_adapt_R
     real,                 dimension(:,:),   allocatable :: Obs_pert
     type(obs_bias_type),  dimension(:,:,:), allocatable :: obs_bias 
 
     type(cat_progn_type), dimension(:,:),   allocatable :: cat_progn_incr
     type(cat_progn_type), dimension(:),     allocatable :: cat_progn_incr_ensavg
+    type(cat_progn_type), dimension(:),     allocatable :: cat_progn_tmp
 
-    type(obs_type),       dimension(:),     pointer :: Observations_l => null()
+    type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS
+    type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS_ensavg
+
+    type(obs_type),       dimension(:),     pointer     :: Observations_l => null()
 
     logical  :: fresh_incr
     integer  :: N_obsf,N_obsl
@@ -1315,8 +1378,14 @@ contains
     real, dimension(:),pointer :: SNDZN2_incr=>null()
     real, dimension(:),pointer :: SNDZN3_incr=>null()
 
+    !! export for analysis model diagnostics 
 
-    logical                    :: spin
+    real, dimension(:),pointer :: SFMC_ana=>null()     ! surface soil moisture
+    real, dimension(:),pointer :: RZMC_ana=>null()     ! rootzone soil moisture
+    real, dimension(:),pointer :: PRMC_ana=>null()     ! profile soil moisture
+    real, dimension(:),pointer :: TPSURF_ana=>null()   ! tpsurf
+    real, dimension(:),pointer :: TSOIL1_ana=>null()   ! tsoil1
+    
     logical, save              :: firsttime=.true.
     type(cat_bias_param_type)  :: cat_bias_param
     integer                    :: N_catbias
@@ -1470,9 +1539,9 @@ contains
     _VERIFY(status)
     call MAPL_GetPointer(import, LAI,           'LAI',     rc=status)
     _VERIFY(status)
-!
-! export for incr
-!
+    
+    ! exports for model prognostics increments
+    
     call MAPL_GetPointer(export, TC1_incr,     'TCFSAT_INCR'  ,rc=status)
     _VERIFY(status)
     call MAPL_GetPointer(export, TC2_incr,     'TCFTRN_INCR'  ,rc=status)
@@ -1524,6 +1593,19 @@ contains
     call MAPL_GetPointer(export, SNDZN3_incr,  'SNDZN3_INCR'  ,rc=status)
     _VERIFY(status)
 
+    ! exports for analysis model diagnostics
+    
+    call MAPL_GetPointer(export, TPSURF_ana,  'TPSURF_ANA' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, TSOIL1_ana,  'TSOIL1_ANA' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, SFMC_ana,    'WCSF_ANA' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, RZMC_ana,    'WCRZ_ANA' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, PRMC_ana,    'WCPR_ANA' ,rc=status)
+    VERIFY_(status)
+
     allocate(met_force(N_catl))
     met_force(:)%Tair    = TA_enavg(:)
     met_force(:)%Qair    = QA_enavg(:)    
@@ -1552,11 +1634,12 @@ contains
             trim(exp_id), start_time, N_catl, numprocs, N_catl_vec, low_ind, obs_bias)
     end if
     
-    allocate(cat_progn_incr(N_catl,NUM_ENSEMBLE))
-    allocate(cat_progn_incr_ensavg(N_catl))
-    allocate(Observations_l(N_obsl_max))
-    
-    !WY note: temporary
+    allocate(cat_progn_incr(       N_catl,     NUM_ENSEMBLE))
+    allocate(cat_progn_incr_ensavg(N_catl                  ))
+    allocate(Observations_l(       N_obsl_max              ))
+
+    ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 #ifdef DBG_LANDASSIM_INPUTS
     
     if (firsttime) then
@@ -1604,6 +1687,7 @@ contains
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%wind, mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%RefH, mask=mask, rc=status); _VERIFY(STATUS)
        
+
        unit = GETFILE( "landassim_catprogn_inputs.bin", form="unformatted", RC=STATUS )
        _VERIFY(STATUS)
        
@@ -1670,6 +1754,9 @@ contains
     endif
     
 #endif   ! DBG_LANDASSIM_INPUTS
+
+    ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
     
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
@@ -1692,105 +1779,137 @@ contains
          ! below  are dummy for now
          N_adapt_R, obs_pert_adapt_param, Pert_adapt_R)
     
-    ! forced to apply
-    spin = .false.
     
-    if (.not. spin) then
-       if (fresh_incr) then
-          ! apply EnKF increments 
-          ! (without call to subroutine recompute_diagnostics())
-          call apply_enkf_increments( N_catl, NUM_ENSEMBLE, update_type, cat_param, &
-               cat_progn_incr, cat_progn )
-          
-       end if ! fresh_incr
+    if (fresh_incr) then
+       ! apply EnKF increments (incl. call to catch_calc_soil_moist but not to recompute_diagS())
+       call apply_enkf_increments( N_catl, NUM_ENSEMBLE, update_type, cat_param, &
+            cat_progn_incr, cat_progn )
        
-       ! if requested, write incr and/or ObsFcstAna files whenever it was
-       ! time for assimilation, even if there were no observations
-       ! - reichle, 29 Aug 2014           
+    end if ! fresh_incr
+    
+    ! if requested, write incr and/or ObsFcstAna files whenever it was
+    ! time for assimilation, even if there were no observations
+    ! - reichle, 29 Aug 2014           
+    
+    secs_in_day = &
+         date_time_new%hour*3600 + date_time_new%min*60 + date_time_new%sec
+    
+    if (centered_update)  secs_in_day = secs_in_day + dtstep_assim/2
+    
+    ! WY note : Here N_catg is not the global land tile number
+    ! but a maximum global_id this simulation covers. 
+    ! Need to find the number 
+    N_catg = maxval(rf2g)
+    
+    if (mod(secs_in_day, dtstep_assim)==0) then
        
-       secs_in_day = &
-            date_time_new%hour*3600 + date_time_new%min*60 + date_time_new%sec
+       call output_incr_etc( out_ObsFcstAna,                             &
+            date_time_new, trim(out_path), trim(exp_id),                 &
+            N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
+            N_catl, tile_coord_l,                                        &
+            N_catf, tile_coord_rf, tcinternal%grid_f, tcinternal%grid_g, &
+            N_catl_vec, low_ind, rf2l, N_catg, rf2g,                     &
+            obs_param,                                                   &
+            met_force, lai,                                              &
+            cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
+            Observations_l, rf2f=rf2f )
        
-       if (centered_update)  secs_in_day = secs_in_day + dtstep_assim/2
+       do ii = 1, N_catl
+          cat_progn_incr_ensavg(ii) = 0.0
+          do n_e=1, NUM_ENSEMBLE
+             cat_progn_incr_ensavg(ii) = cat_progn_incr_ensavg(ii) &
+                  + cat_progn_incr(ii,n_e)
+          end do
+          cat_progn_incr_ensavg(ii) = cat_progn_incr_ensavg(ii)/real(NUM_ENSEMBLE)
+       enddo
        
-       ! WY note : Here N_catg is not the global land tile number
-       ! but a maximum global_id this simulation covers. 
-       ! Need to find the number 
-       N_catg = maxval(rf2g)
+       if(associated(TC1_incr))     TC1_incr(:)     = cat_progn_incr_ensavg(:)%tc1
+       if(associated(TC2_incr))     TC2_incr(:)     = cat_progn_incr_ensavg(:)%tc2
+       if(associated(TC4_incr))     TC4_incr(:)     = cat_progn_incr_ensavg(:)%tc4
+       if(associated(QC1_incr))     QC1_incr(:)     = cat_progn_incr_ensavg(:)%qa1
+       if(associated(QC2_incr))     QC2_incr(:)     = cat_progn_incr_ensavg(:)%qa2
+       if(associated(QC4_incr))     QC4_incr(:)     = cat_progn_incr_ensavg(:)%qa4
        
-       if (mod(secs_in_day, dtstep_assim)==0) then
-          
-          call output_incr_etc( out_ObsFcstAna,                             &
-               date_time_new, trim(out_path), trim(exp_id),                 &
-               N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
-               N_catl, tile_coord_l,                                        &
-               N_catf, tile_coord_rf, tcinternal%grid_f, tcinternal%grid_g, &
-               N_catl_vec, low_ind, rf2l, N_catg, rf2g,                     &
-               obs_param,                                                   &
-               met_force, lai,                                              &
-               cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
-               Observations_l, rf2f=rf2f )
-          
-          
-          do i = 1, N_catl
-             cat_progn_incr_ensavg(i) = 0.0
-             do n_e=1, NUM_ENSEMBLE
-                cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
-                     + cat_progn_incr(i,n_e)
-             end do
-             cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(NUM_ENSEMBLE)
-          enddo
-          
-          if(associated(TC1_incr))     TC1_incr(:)     = cat_progn_incr_ensavg(:)%tc1
-          if(associated(TC2_incr))     TC2_incr(:)     = cat_progn_incr_ensavg(:)%tc2
-          if(associated(TC4_incr))     TC4_incr(:)     = cat_progn_incr_ensavg(:)%tc4
-          if(associated(QC1_incr))     QC1_incr(:)     = cat_progn_incr_ensavg(:)%qa1
-          if(associated(QC2_incr))     QC2_incr(:)     = cat_progn_incr_ensavg(:)%qa2
-          if(associated(QC4_incr))     QC4_incr(:)     = cat_progn_incr_ensavg(:)%qa4
-          
-          if(associated(CAPAC_incr))   CAPAC_incr(:)   = cat_progn_incr_ensavg(:)%capac
-          if(associated(CATDEF_incr))  CATDEF_incr(:)  = cat_progn_incr_ensavg(:)%catdef
-          if(associated(RZEXC_incr))   RZEXC_incr(:)   = cat_progn_incr_ensavg(:)%rzexc
-          if(associated(SRFEXC_incr))  SRFEXC_incr(:)  = cat_progn_incr_ensavg(:)%srfexc
-          
-          if(associated(GHTCNT1_incr)) GHTCNT1_incr(:) = cat_progn_incr_ensavg(:)%ght(1)
-          if(associated(GHTCNT2_incr)) GHTCNT2_incr(:) = cat_progn_incr_ensavg(:)%ght(2)
-          if(associated(GHTCNT3_incr)) GHTCNT3_incr(:) = cat_progn_incr_ensavg(:)%ght(3)
-          if(associated(GHTCNT4_incr)) GHTCNT4_incr(:) = cat_progn_incr_ensavg(:)%ght(4)
-          if(associated(GHTCNT5_incr)) GHTCNT5_incr(:) = cat_progn_incr_ensavg(:)%ght(5)
-          if(associated(GHTCNT6_incr)) GHTCNT6_incr(:) = cat_progn_incr_ensavg(:)%ght(6)
-          
-          if(associated(WESNN1_incr))  WESNN1_incr(:)  = cat_progn_incr_ensavg(:)%wesn(1)
-          if(associated(WESNN2_incr))  WESNN2_incr(:)  = cat_progn_incr_ensavg(:)%wesn(2)
-          if(associated(WESNN3_incr))  WESNN3_incr(:)  = cat_progn_incr_ensavg(:)%wesn(3)
-          
-          if(associated(HTSNNN1_incr)) HTSNNN1_incr(:) = cat_progn_incr_ensavg(:)%htsn(1)
-          if(associated(HTSNNN2_incr)) HTSNNN2_incr(:) = cat_progn_incr_ensavg(:)%htsn(2)
-          if(associated(HTSNNN3_incr)) HTSNNN3_incr(:) = cat_progn_incr_ensavg(:)%htsn(3)
-          
-          if(associated(SNDZN1_incr))  SNDZN1_incr(:)  = cat_progn_incr_ensavg(:)%sndz(1)
-          if(associated(SNDZN2_incr))  SNDZN2_incr(:)  = cat_progn_incr_ensavg(:)%sndz(2)
-          if(associated(SNDZN3_incr))  SNDZN3_incr(:)  = cat_progn_incr_ensavg(:)%sndz(3)
-          
+       if(associated(CAPAC_incr))   CAPAC_incr(:)   = cat_progn_incr_ensavg(:)%capac
+       if(associated(CATDEF_incr))  CATDEF_incr(:)  = cat_progn_incr_ensavg(:)%catdef
+       if(associated(RZEXC_incr))   RZEXC_incr(:)   = cat_progn_incr_ensavg(:)%rzexc
+       if(associated(SRFEXC_incr))  SRFEXC_incr(:)  = cat_progn_incr_ensavg(:)%srfexc
+       
+       if(associated(GHTCNT1_incr)) GHTCNT1_incr(:) = cat_progn_incr_ensavg(:)%ght(1)
+       if(associated(GHTCNT2_incr)) GHTCNT2_incr(:) = cat_progn_incr_ensavg(:)%ght(2)
+       if(associated(GHTCNT3_incr)) GHTCNT3_incr(:) = cat_progn_incr_ensavg(:)%ght(3)
+       if(associated(GHTCNT4_incr)) GHTCNT4_incr(:) = cat_progn_incr_ensavg(:)%ght(4)
+       if(associated(GHTCNT5_incr)) GHTCNT5_incr(:) = cat_progn_incr_ensavg(:)%ght(5)
+       if(associated(GHTCNT6_incr)) GHTCNT6_incr(:) = cat_progn_incr_ensavg(:)%ght(6)
+       
+       if(associated(WESNN1_incr))  WESNN1_incr(:)  = cat_progn_incr_ensavg(:)%wesn(1)
+       if(associated(WESNN2_incr))  WESNN2_incr(:)  = cat_progn_incr_ensavg(:)%wesn(2)
+       if(associated(WESNN3_incr))  WESNN3_incr(:)  = cat_progn_incr_ensavg(:)%wesn(3)
+       
+       if(associated(HTSNNN1_incr)) HTSNNN1_incr(:) = cat_progn_incr_ensavg(:)%htsn(1)
+       if(associated(HTSNNN2_incr)) HTSNNN2_incr(:) = cat_progn_incr_ensavg(:)%htsn(2)
+       if(associated(HTSNNN3_incr)) HTSNNN3_incr(:) = cat_progn_incr_ensavg(:)%htsn(3)
+       
+       if(associated(SNDZN1_incr))  SNDZN1_incr(:)  = cat_progn_incr_ensavg(:)%sndz(1)
+       if(associated(SNDZN2_incr))  SNDZN2_incr(:)  = cat_progn_incr_ensavg(:)%sndz(2)
+       if(associated(SNDZN3_incr))  SNDZN3_incr(:)  = cat_progn_incr_ensavg(:)%sndz(3)
+       
 
-          ! write analysis fields into SMAP L4_SM aup file 
-          ! whenever it was time for assimilation (regardless 
-          ! of whether obs were actually assimilated and fresh
-          ! increments were computed)
-          
-          if (out_smapL4SMaup)                                                        &
-               call write_smapL4SMaup( 'analysis', date_time_new, trim(out_path),     &
-               trim(exp_id), NUM_ENSEMBLE, N_catl, N_catf, N_obsl, tile_coord_rf,     &
-               tcinternal%grid_g, N_catl_vec, low_ind,                                &
-               N_obs_param, obs_param, Observations_l, cat_param, cat_progn   )
-          
-       end if
+       ! recompute select model diagnostics after analysis
        
-       fresh_incr = .false.
+       allocate(cat_progn_tmp(   N_catl))
+       allocate(cat_diagS(       N_catl))
+       allocate(cat_diagS_ensavg(N_catl))
        
-    endif !spin
+       do ii=1,N_catl
+          cat_diagS_ensavg(ii) = 0.0        ! initialize ens average
+       end do
+       
+       do n_e=1,NUM_ENSEMBLE
+          
+          ! make a copy of cat_progn to ensure 0-diff (recompute_diagS() potentially alters its input cat_progn)
+          
+          do ii=1,N_catl
+             cat_progn_tmp(ii) = cat_progn(ii,n_e)   
+          end do
+          
+          call recompute_diagS( N_catl, cat_param, cat_progn_tmp, cat_diagS )
+          
+          do ii=1,N_catl
+             cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii) + cat_diagS(ii)
+          end do
+          
+       end do
+       
+       do ii=1,N_catl
+          cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize
+       end do
+       
+       if(associated(SFMC_ana))   SFMC_ana(:)   = cat_diagS_ensavg(:)%sfmc 
+       if(associated(RZMC_ana))   RZMC_ana(:)   = cat_diagS_ensavg(:)%rzmc  
+       if(associated(PRMC_ana))   PRMC_ana(:)   = cat_diagS_ensavg(:)%prmc 
+       if(associated(TPSURF_ana)) TPSURF_ana(:) = cat_diagS_ensavg(:)%tsurf
+       if(associated(TSOIL1_ana)) TSOIL1_ana(:) = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
+
+       deallocate(cat_progn_tmp)
+       deallocate(cat_diagS)
+       deallocate(cat_diagS_ensavg) 
+
+       
+       ! write analysis fields into SMAP L4_SM aup file 
+       ! whenever it was time for assimilation (regardless 
+       ! of whether obs were actually assimilated and fresh
+       ! increments were computed)
+       
+       if (out_smapL4SMaup)                                                        &
+            call write_smapL4SMaup( 'analysis', date_time_new, trim(out_path),     &
+            trim(exp_id), NUM_ENSEMBLE, N_catl, N_catf, N_obsl, tile_coord_rf,     &
+            tcinternal%grid_g, N_catl_vec, low_ind,                                &
+            N_obs_param, obs_param, Observations_l, cat_param, cat_progn   )
+       
+    end if   ! (mod(secs_in_day, dtstep_assim)==0)    (time for assimilation)
     
-    
+    fresh_incr = .false.
     
     !--------------------
     ! Pointers to inputs

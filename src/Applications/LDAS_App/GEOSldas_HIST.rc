@@ -18,6 +18,8 @@ COLLECTIONS:
 #ASSIM           'SMAP_L4_SM_gph'
 #                'inst1_1d_lnr_Nt'
 #                'catch_progn_incr'
+#                'inst3_1d_lndfcstana_Nt'
+#                'inst3_2d_lndfcstana_Nx'
            ::
 
 #CUBE GRID_LABELS: PC720x361-DC
@@ -372,3 +374,44 @@ COLLECTIONS:
                                'SNDZN3_INCR'    , 'LANDASSIM'      ,
                          ::
 
+  inst3_1d_lndfcstana_Nt.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
+  inst3_1d_lndfcstana_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
+  inst3_1d_lndfcstana_Nt.mode:        'instantaneous',
+  inst3_1d_lndfcstana_Nt.frequency:   030000,
+  inst3_1d_lndfcstana_Nt.ref_time:    000000,
+  inst3_1d_lndfcstana_Nt.fields:     'WCSF'        , 'ENSAVG'    , 'SFMC_FCST'       ,
+                                     'WCRZ'        , 'ENSAVG'    , 'RZMC_FCST'       ,
+                                     'WCPR'        , 'ENSAVG'    , 'PRMC_FCST'       ,
+                                     'TPSURF'      , 'ENSAVG'    , 'TSURF_FCST'      ,
+                                     'TSOIL1TILE'  , 'ENSAVG'    , 'TSOIL1_FCST'     ,
+                                     'WCSF_ANA'    , 'LANDASSIM' , 'SFMC_ANA'        ,
+                                     'WCRZ_ANA'    , 'LANDASSIM' , 'RZMC_ANA'        ,
+                                     'WCPR_ANA'    , 'LANDASSIM' , 'PRMC_ANA'        ,
+                                     'TPSURF_ANA'  , 'LANDASSIM' , 'TSURF_ANA'       ,
+                                     'TSOIL1_ANA'  , 'LANDASSIM' , 'TSOIL1_ANA'      ,
+                        ::
+
+  inst3_2d_lndfcstana_Nx.descr:       '2d,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
+  inst3_2d_lndfcstana_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
+  inst3_2d_lndfcstana_Nx.archive:     '%c/Y%y4',
+  inst3_2d_lndfcstana_Nx.mode:        'instantaneous',
+  inst3_2d_lndfcstana_Nx.frequency:   030000,
+  inst3_2d_lndfcstana_Nx.ref_time:    000000,
+  inst3_2d_lndfcstana_Nx.format:      'CFIO',
+  inst3_2d_lndfcstana_Nx.regrid_exch: '../input/tile.data',
+  inst3_2d_lndfcstana_Nx.regrid_name: 'GRIDNAME',
+  inst3_2d_lndfcstana_Nx.grid_label:  PC720x361-DC,
+  inst3_2d_lndfcstana_Nx.deflate:     2,
+  inst3_2d_lndfcstana_Nx.fields:     'WCSF'        , 'ENSAVG'    , 'SFMC_FCST'       ,
+                                     'WCRZ'        , 'ENSAVG'    , 'RZMC_FCST'       ,
+                                     'WCPR'        , 'ENSAVG'    , 'PRMC_FCST'       ,
+                                     'TPSURF'      , 'ENSAVG'    , 'TSURF_FCST'      ,
+                                     'TSOIL1TILE'  , 'ENSAVG'    , 'TSOIL1_FCST'     ,
+                                     'WCSF_ANA'    , 'LANDASSIM' , 'SFMC_ANA'        ,
+                                     'WCRZ_ANA'    , 'LANDASSIM' , 'RZMC_ANA'        ,
+                                     'WCPR_ANA'    , 'LANDASSIM' , 'PRMC_ANA'        ,
+                                     'TPSURF_ANA'  , 'LANDASSIM' , 'TSURF_ANA'       ,
+                                     'TSOIL1_ANA'  , 'LANDASSIM' , 'TSOIL1_ANA'      ,
+                        ::
+
+# ========================== EOF ==============================================================

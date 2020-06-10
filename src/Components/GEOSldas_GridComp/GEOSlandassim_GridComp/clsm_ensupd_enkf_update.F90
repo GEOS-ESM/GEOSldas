@@ -135,7 +135,7 @@ module clsm_ensupd_enkf_update
   public :: get_enkf_increments
   public :: apply_enkf_increments
   public :: output_incr_etc
-  public :: write_smapL4SMaup
+  public :: write_smapL4SMaup 
 
 contains
 
@@ -1978,7 +1978,7 @@ contains
     !                         - sm_profile_forecast
     !                         - surface_temp_forecast
     !                         - soil_temp_layer1_forecast
-    !
+    
     ! option = 'analysis' : append select analysis fields into output file
     !
     !                         - sm_surface_analysis
