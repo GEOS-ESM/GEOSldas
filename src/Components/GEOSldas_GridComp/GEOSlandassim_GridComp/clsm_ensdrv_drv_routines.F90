@@ -11,6 +11,9 @@ module clsm_ensdrv_drv_routines
   !                      - optimized restart-to-exp-domain mapping in initialize_model()
   ! reichle,  5 Apr 2013 - revised treatment of output collections
 
+  use MAPL_ConstantsMod,                ONLY:     &
+       Tzero => MAPL_TICE
+  
   use catch_constants,                  ONLY:     &
        N_snow => CATCH_N_SNOW,                    &
        N_gt   => CATCH_N_GT
@@ -20,14 +23,32 @@ module clsm_ensdrv_drv_routines
   
   use catch_types,                      ONLY:     &
        cat_param_type,                            &
-       cat_progn_type
+       cat_progn_type,                            &
+       cat_diagS_type,                            &
+       catprogn2wesn,                             &
+       catprogn2htsn,                             &
+       catprogn2sndz,                             &
+       catprogn2ghtcnt
 
+  
   use LDAS_ensdrv_mpi,                  ONLY:     &
        mpicomm,                                   &
        mpierr,                                    &
        numprocs,                                  &
        master_proc
 
+  use catchment_model,                  ONLY:     &
+       catch_calc_tsurf
+
+  use lsm_routines,                     ONLY:     &
+       catch_calc_soil_moist,                     &
+       catch_calc_tp
+
+  use StieglitzSnow,                    ONLY:     &
+       StieglitzSnow_calc_asnow,                  &
+       StieglitzSnow_calc_tpsnow
+
+  
   implicit none
 
   include 'mpif.h'
@@ -35,6 +56,7 @@ module clsm_ensdrv_drv_routines
   private
   
   public :: check_cat_progn
+  public :: recompute_diagS
   public :: l2f_real
   public :: f2l_real
   public :: f2l_real8
@@ -122,8 +144,112 @@ contains
 
   end subroutine check_cat_progn
 
-  ! *************************************************************
+  ! *********************************************************************
+  
+  subroutine recompute_diagS( N_catd, cat_param, cat_progn, cat_diagS )
     
+    ! replace cat_diagS with updated diagnostics
+    !
+    ! typically called after prognostics perturbations, EnKF update, and/or cat 
+    !  bias correction
+    ! 
+    ! IMPORTANT: cat_progn is intent(inout) because srfexc, rzexc, and catdef 
+    !  fields *might* be changed! Such changes can be prevented by first calling 
+    !  subroutine check_cat_progn().
+    !
+    ! reichle, 20 Oct 2004
+    ! reichle, 14 Feb 2013 - added recomputation of soil temperature
+    ! reichle, 30 Oct 2013 - moved from clsm_ensupd_upd_routines.F90
+    !                      - removed dependency on "update_type"
+    !                      - added recompute of snow diagnostics
+    
+    integer, intent(in) :: N_catd
+    
+    ! note: cat_progn must be "inout" because call to calc_soil_moist
+    !       might reset inconsistent sets of srfexc, rzexc, catdef
+    
+    type(cat_param_type), dimension(N_catd), intent(in)    :: cat_param    
+    type(cat_progn_type), dimension(N_catd), intent(inout) :: cat_progn
+    type(cat_diagS_type), dimension(N_catd), intent(inout) :: cat_diagS
+    
+    ! local variables
+    
+    integer :: ii
+    
+    real, dimension(     N_catd) :: ar4, fices
+    
+    real, dimension(N_gt,N_catd) :: tp
+    
+    ! ------------------------------------------------------------------
+    
+    ! update soil moisture diagnostics
+    
+    ! note that the call to calc_soil_moist resets srfexc, rzexc, and
+    ! catdef if they are not consistent!
+    
+    ! updated to new interface - reichle, 3 Apr 2012
+    
+    call catch_calc_soil_moist(                                     &
+         N_catd,                                                    &
+         cat_param%vegcls, cat_param%dzsf,  cat_param%vgwmax,       &
+         cat_param%cdcr1,  cat_param%cdcr2, cat_param%psis,         &
+         cat_param%bee,    cat_param%poros, cat_param%wpwet,        &
+         cat_param%ars1,   cat_param%ars2,  cat_param%ars3,         &
+         cat_param%ara1,   cat_param%ara2,  cat_param%ara3,         &
+         cat_param%ara4,   cat_param%arw1,  cat_param%arw2,         &
+         cat_param%arw3,   cat_param%arw4,                          &
+         cat_progn%srfexc, cat_progn%rzexc, cat_progn%catdef,       &
+         cat_diagS%ar1,    cat_diagS%ar2,   ar4,                    &
+         cat_diagS%sfmc,   cat_diagS%rzmc,  cat_diagS%prmc)            
+    
+
+    ! update snow cover fraction and snow temperatures
+    
+    call StieglitzSnow_calc_asnow(                                  &
+         N_snow, N_catd, catprogn2wesn(N_catd,cat_progn), cat_diagS%asnow )
+
+    do ii=1,N_snow
+              
+       call StieglitzSnow_calc_tpsnow( N_catd,                      &
+            cat_progn(1:N_catd)%htsn(ii),                           &
+            cat_progn(1:N_catd)%wesn(ii),                           &
+            cat_diagS(1:N_catd)%tpsn(ii),                           &
+            fices )
+       
+       cat_diagS%tpsn(ii) = cat_diagS%tpsn(ii) + Tzero   ! convert to Kelvin
+       
+    end do
+    
+    ! update surface temperature
+    
+    ! updated to new interface, 
+    ! need ar1, ar2, ar4 from call to catch_calc_soil_moist() above
+    ! - reichle, 3 Apr 2012
+    
+    call catch_calc_tsurf( N_catd,                                  &
+         cat_progn%tc1, cat_progn%tc2, cat_progn%tc4,               &
+         catprogn2wesn(N_catd,cat_progn),                           &
+         catprogn2htsn(N_catd,cat_progn),                           &
+         cat_diagS%ar1, cat_diagS%ar2, ar4,                         &
+         cat_diagS%tsurf )
+ 
+    ! update soil temperature
+    
+    ! NOTE: "tp" is returned in CELSIUS [for consistency w/ catchment.F90]
+    
+    call catch_calc_tp( N_catd, cat_param%poros,                    &
+         catprogn2ghtcnt(N_catd,cat_progn), tp )
+    
+    do ii=1,N_gt
+       
+       cat_diagS(:)%tp(ii) = tp(ii,:)
+       
+    end do
+    
+  end subroutine recompute_diagS
+  
+  ! ********************************************************************
+
   subroutine l2f_real( N_l, N_f, N_l_vec, low_ind, data_l, data_f)
     
     ! wrapper for MPI_GATHERV applied to MPI_REAL vector
