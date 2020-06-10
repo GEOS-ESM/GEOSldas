@@ -853,7 +853,7 @@ contains
     type(ESMF_State) :: MINTERNAL
 
     ! LDAS variables
-    type(date_time_type) :: start_time, stop_time
+    type(date_time_type) :: start_time, stop_time, current_time
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -1198,11 +1198,13 @@ contains
     VERIFY_(status)
     call esmf2ldas(StopTime, stop_time, rc=status)
     VERIFY_(status)
+    call esmf2ldas(CurrentTime, current_time, rc=status)
+    VERIFY_(status)
 
     if( internal%ens_id == FIRST_ENS_ID .and. IAmRoot) then
        ! write out the input file
        call read_ens_prop_inputs(write_nml = .true. , work_path = trim(out_path), &
-            exp_id = trim(exp_id), date_time = start_time)
+            exp_id = trim(exp_id), date_time = current_time)
     endif
 
 
