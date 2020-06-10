@@ -2270,6 +2270,7 @@ contains
     
     inquire (file = trim(seed_fname), exist=file_exist)
     if ( .not. file_exist) then
+       print *, 'Cold-starting OBSPERTRSEED. File not found: ', trim(seed_fname)
        pert_rseed_r8 = 0
        return
     endif
