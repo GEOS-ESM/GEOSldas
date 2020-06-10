@@ -821,7 +821,7 @@ contains
 
   !BOP
 
-  ! !IROTUINE: Initialize -- initialize method for LDAS GC
+  ! !IROUTINE: Initialize -- initialize method for LDAS GC
 
   ! !INTERFACE:
 
@@ -1122,7 +1122,7 @@ contains
 
     ! Coldstart
     if (COLDSTART) then
-       if (IAmRoot .and. internal%ens_id == FIRST_ENS_ID ) print *, trim(Iam)//'::WARNING: Cold-starting LandPert GridComp'
+       if (IAmRoot) print *, trim(Iam)//'::WARNING: Cold-starting '// trim(COMP_NAME) // ' GridComp'
        ! -pert_rseed-
        call get_init_pert_rseed(internal%ens_id, pert_rseed(1))
        call init_randseed(pert_rseed)
