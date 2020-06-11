@@ -600,6 +600,8 @@ EOF
        set rstf = 'landpert'
        if (-f ${rstf}${ENSID}_internal_checkpoint ) then
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+	  # copy generic restart file to final location/name but remove lat/lon variables
+	  #  (lat/lon variables are not correct when running in EASE-grid tile space)
           ncks -4 -O -C -x -v lat,lon ${rstf}${ENSID}_internal_checkpoint $tmp_file
           /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
           set old_rst = `/usr/bin/readlink -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`

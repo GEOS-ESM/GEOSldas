@@ -1519,8 +1519,8 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: chk_fname
-    character(len=4) :: id_string
-    character(len=14)    :: datestamp
+    character(len=4)           :: id_string    ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
+    character(len=14)          :: datestamp
 
     ! ESMF variables
     type(ESMF_Alarm) :: ForcePertAlarm, PrognPertAlarm
@@ -1672,7 +1672,7 @@ contains
           call MAPL_DateStampGet(clock, datestamp, rc=status)
           VERIFY_(STATUS)
 
-          write(id_string,'(I4.4)') internal%ens_id            
+          write(id_string,'(I4.4)') internal%ens_id    ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
           if(internal%NUM_ENSEMBLE ==1 ) id_string=''
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp//'.nc4'
@@ -2692,7 +2692,7 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: chk_fname
-    character(len=4) :: id_string
+    character(len=4)           :: id_string   ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -2785,7 +2785,7 @@ contains
           enddo
 
         ! 4) writing
-          write(id_string,'(I4.4)') internal%ens_id
+          write(id_string,'(I4.4)') internal%ens_id     ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
           if(internal%NUM_ENSEMBLE ==1 ) id_string=''
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint'

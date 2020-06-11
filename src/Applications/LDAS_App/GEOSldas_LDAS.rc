@@ -129,12 +129,12 @@ FIRST_ENS_ID: 0
 #
 #      By default, CHECKPOINT (restart) files are are written at the end of each job segment. 
 #      Restart files can also be written before exiting GEOSldas.x. 
-#      The following resource parameters specify the frequency and reference time.
+#      The following resource parameters specify the frequency and reference time and date.
 #      Format:            hhmmss
 #
-# RECORD_FREQUENCY: 240000
-# RECORD_REF_TIME:  000000
-# RECORD_REF_DATE:  yyyymmdd hhmmss
+# RECORD_FREQUENCY: 240000                 
+# RECORD_REF_TIME:  000000                
+# RECORD_REF_DATE:  19790101 000000           # yyyymmdd hhmmss
 
 
 # ---- Output: Write log file (YES/NO)?
