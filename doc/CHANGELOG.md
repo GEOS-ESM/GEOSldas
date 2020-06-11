@@ -33,15 +33,90 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
+
+
+
+
+------------------------------
+[v17.9.0-beta.7](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.7) - 2020-06-11
+------------------------------
+
+- Zero-diff vs. v17.9.0-beta.6 for model-only simulations without perturbations.
+
+- Not zero-diff for simulations with perturbations (including data assimilation).
+
+- Infrastructure:
+
+  - Added calculation of ensemble-mean Catchment model diagnostics to LANDASSIM GridComp for output of instantaneous forecast and analysis estimates via HISTORY (“lndfcstana” Collection).
+
+
+- Bug fixes and other minor changes:
+
+  - Fixed handling of LANDPERT restart files after cold-start in first job segment.
+
+  - For lat/lon and EASE tile space only, fixed violation of zero-diff (binary identical) results when stopping/restarting at different intervals (removed extra zero-mean adjustment of LANDPERT after reading from restart file).  Requires more work for cube-sphere tile space.
+
+  - Fixed LANDPERT restart file name for cube-sphere.
+
+  - Added log message for all ens members if LANDPERT is cold-started.
+
+  - Removed deflation of LANDPERT checkpoint files.
+
+  - Added “.nc4” file name extension for cube-sphere LANDPERT checkpoint file.
+
+  - Added log message for OBSPERTRSEED “cold” start.
+
+  - Fixed typo in default OBSPERTRSEED restart file name.
+
+  - Fixed time stamp of output *ensprop*inputs.nml file.
+
+  - Fixed FIRST_ENS_ID for post-processing.
+
+  - Added “endhour” for control of loop through job segments in lenkf.j.template to facilitate job segments that are shorter than a full day.
+
+  - Added sample entries in “LDAS.rc” for output of CHECKPOINT (restart) files before GEOSldas.x exits (RECORD_FREQUENCY, RECORD_REF_TIME, RECORD_REF_DATE).
+
+
+
+------------------------------
+[v17.9.0-beta.6](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.6) - 2020-05-29
+------------------------------
+
+- Zero-diff vs. v17.9.0-beta.5 for model-only simulations without perturbations.
+
+- Not zero-diff for simulations with perturbations (including data assimilation).
+
+- Infrastructure:
+
+  - Output of L-band Tb via HISTORY (nodata value = MAPL_UNDEF = 1.e15).
+
+- Bug fixes:
+
+  - Changed timing of application of model prognostics perturbations such that perturbations at the current time step impact the land analysis and HISTORY output at that same time step. Before the fix, ApplyPrognPert was executed too late and the current time step's prognostics perturbations were missed by the land analysis and HISTORY, and only felt at the next time step. Consequently, simulations with perturbations are not zero-diff vs. v17.9.0-beta.5.
+
+  - Fixed no-data-value handling in computation of the ensemble average for surface temperature components.
+
+- Cleanup and documentation:
+
+  - Avoids redundant entries in LDAS.rc.
+  - Enabled setup for NUM_ENSEMBLE=1 with PERTURBATION=1.
+  - Improved help and log messages for setup and configuration.
+  - Option "--runmodel" of "ldas_setup" script is now obsolete.
+  - "DATAATM" renamed to "METFORCE" in HISTORY.rc.
+  - Removed default constraint to Haswell nodes.
+
+
+
+------------------------------
 [v17.9.0-beta.5](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.5) - 2020-05-11
 ------------------------------
 - Pre-release meant for use under SLES12 at NCCS.  Still works for SLES11.
 
-- New/Updated Science Functionality:
+- Science functionality:
 
   - Forecast error covariance inflation with scalar (globally constant) factor.
 
-- New/Updated Infrastructure:
+- Infrastructure:
 
   - Support for GEOS FP forcing with generic ("seamless") file names.
   - Resource parameter changes:
@@ -49,7 +124,7 @@ Overview of Git Releases:
     - Renamed MONTHLY_OUTPUT to POSTPROC_HIST.
   - Updated utilities to MAPL v2.1.3, ESMA_env v2.1.3+intel19.1.0.
   
-- Bug Fixes and Other Minor Changes:
+- Bug fixes and other minor changes:
 
   - Added basic protections for concatenation of sub-daily into daily nc4 files and for generation of monthly-mean nc4 files.
   - Write ObsFcstAna and smapL4SMaup files into ./scratch, then move to ana/ens_avg/year/month dir in postprocessing.
@@ -70,11 +145,11 @@ Overview of Git Releases:
 - Zero-diff vs. v17.9.0-beta.3 for Catchment only (except SMAP L1C Tb fore-minus-aft check).
 - Not zero-diff for CatchCN (via v1.8.3 of GEOS_GCMGridComp).
 
-- New/Updated Science Functionality:
+- Science functionality:
 
   - Resurrected SMAP L1C Tb fore-minus-aft check.
 
-- New/Updated Infrastructure:
+- Infrastructure:
 
   - Updated utilities to MAPL v2.1.1, ESMA_env v2.1.1., ESMA_cmake v3.0.1.
   - New GEOS_SurfaceGridComp.rc file (via v1.8.3 of GEOS_GCMGridComp).
@@ -84,7 +159,7 @@ Overview of Git Releases:
   - Subdaily-to-daily concatenation processes before month is complete.
   - Temporary solution to create directories for ObsFcstAna files to enable extending an existing GEOSldas run without going through setup.
 
-- Bug Fixes and Other Minor Changes:
+- Bug fixes and other minor changes:
 
   - Updated README.md.
   - ~obspertrseed~ restart file name when restarting from existing run.
@@ -101,7 +176,7 @@ Overview of Git Releases:
 ------------------------------
 [v17.9.0-beta.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.2) - 2020-02-26
 ------------------------------
-- New/Updated Science Functionality:
+- Science functionality:
 
   - Assimilation when running on cube-sphere tiles.
   - Read forcing from cube-sphere grid when running on matching cube-sphere tiles.
@@ -111,7 +186,7 @@ Overview of Git Releases:
   - Configuration option to add extra variables into catch restart files (as needed by GCM).
   - Allows processing of (assimilation) observations for innovations output *without* perturbations turned on.
 
-- New/Updated Infrastructure:
+- Infrastructure:
 
   - Support for SLES 12 in addition to SLES11 (ESMA_env v2.0.2).
   - Updated to MAPL v2.0.
@@ -121,7 +196,7 @@ Overview of Git Releases:
   - Added LDAS_app/mk_GEOSldasRestarts.F90 (adapted from GCM GridComp's mk_LDASsaRestarts.F90 in preparation for re-tiling changes).
   - Fixed output log file name and location.
 
-- Bug Fixes and Other Minor Changes: 
+- Bug fixes and other minor changes: 
 
   - Bug fix in select-update_type 9 (abs(deltaT)>0.)
   - Bug fix for local mwRTM and time dimension restart.

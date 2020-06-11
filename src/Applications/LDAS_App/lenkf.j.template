@@ -572,8 +572,9 @@ EOF
    # Move Intermediate Checkpoints to RESTARTS directory
    # ---------------------------------------------------
    
-   @ inens = 0
-   while ($inens < $NENS)
+   @ inens = MY_FIRST_ENS_ID
+   @ enens = $inens + $NENS
+   while ($inens < $enens)
        if ($inens <10) then
           set ENSDIR = `echo ens000${inens}`
        else if($inens<100) then
@@ -599,11 +600,19 @@ EOF
        set rstf = 'landpert'
        if (-f ${rstf}${ENSID}_internal_checkpoint ) then
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+	  # copy generic restart file to final location/name but remove lat/lon variables
+	  #  (lat/lon variables are not correct when running in EASE-grid tile space)
           ncks -4 -O -C -x -v lat,lon ${rstf}${ENSID}_internal_checkpoint $tmp_file
           /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
           set old_rst = `/usr/bin/readlink -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /bin/ln -s $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
+          set pert_rst = `grep -o "LANDPERT_INTERNAL_RESTART_FILE" LDAS.rc`
+          if ( $pert_rst == '' ) then
+             echo "LANDPERT_INTERNAL_RESTART_FILE: ../input/restart/landpert%s_internal_rst" >> LDAS.rc
+             /bin/mv ../run/LDAS.rc ../run/LDAS.rc.sgmt0
+             /bin/cp LDAS.rc ../run/LDAS.rc 
+          endif 
           /usr/bin/gzip $old_rst &
        endif
    
@@ -681,14 +690,18 @@ EOF
    #######################################################################
    #              Update Iteration Counter
    #######################################################################
-   
+
    set enddate = `echo  $END_DATE | cut -c1-8`
+   set endhour = `echo  $END_DATE | cut -c10-11`
    set capdate = `cat cap_restart | cut -c1-8`
-   
+   set caphour = `cat cap_restart | cut -c10-11`
+
    if ( $capdate < $enddate ) then
-   @ counter = $counter    + 1
+     @ counter = $counter + 1
+   else if ( $capdate == $enddate && $caphour < $endhour ) then
+     @ counter = $counter + 1
    else
-   @ counter = ${NUM_SGMT} + 1
+     @ counter = ${NUM_SGMT} + 1
    endif
    
 ## End of the while ( $counter <= ${NUM_SGMT} ) loop ##

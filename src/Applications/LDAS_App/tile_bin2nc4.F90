@@ -384,9 +384,22 @@ PROGRAM tile_bin2nc4
     case ('SNDZN1_INCR');  LONG_NAME = 'increment_snow_depth_layer_1';                                   UNITS = 'm'
     case ('SNDZN2_INCR');  LONG_NAME = 'increment_snow_depth_layer_2';                                   UNITS = 'm'
     case ('SNDZN3_INCR');  LONG_NAME = 'increment_snow_depth_layer_3';                                   UNITS = 'm'
-    !
+
+    ! land assimilation forecast and analysis for Catchment model diagnostics
+
+    case ('SFMC_FCST');    LONG_NAME = 'soil_moisture_surface_forecast';                                 UNITS = 'm3 m-3'
+    case ('RZMC_FCST');    LONG_NAME = 'soil_moisture_rootzone_forecast';                                UNITS = 'm3 m-3'
+    case ('PRMC_FCST');    LONG_NAME = 'soil_moisture_profile_forecast';                                 UNITS = 'm3 m-3'
+    case ('TSURF_FCST');   LONG_NAME = 'ave_catchment_temp_incl_snw_forecast';                           UNITS = 'K'
+    case ('TSOIL1_FCST');  LONG_NAME = 'soil_temperatures_layer_1_forecast';                             UNITS = 'K'
+    case ('SFMC_ANA');     LONG_NAME = 'soil_moisture_surface_analysis';                                 UNITS = 'm3 m-3'
+    case ('RZMC_ANA');     LONG_NAME = 'soil_moisture_rootzone_analysis';                                UNITS = 'm3 m-3'
+    case ('PRMC_ANA');     LONG_NAME = 'soil_moisture_profile_analysis';                                 UNITS = 'm3 m-3'
+    case ('TSURF_ANA');    LONG_NAME = 'ave_catchment_temp_incl_snw_analysis';                           UNITS = 'K'
+    case ('TSOIL1_ANA');   LONG_NAME = 'soil_temperatures_layer_1_analysis';                             UNITS = 'K'
+
     ! default LONG_NAME and UNITS for nc4 files created by tile_bin2nc4.F90 (used for any SHORT_NAME not listed above):
-    !
+
     case default;          LONG_NAME = 'not defined in tile_bin2nc4.F90';                                UNITS = 'not defined in tile_bin2nc4.F90';
 
     end select
