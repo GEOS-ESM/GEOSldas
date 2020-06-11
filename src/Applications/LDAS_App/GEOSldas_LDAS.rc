@@ -134,6 +134,7 @@ FIRST_ENS_ID: 0
 #
 # RECORD_FREQUENCY: 240000
 # RECORD_REF_TIME:  000000
+# RECORD_REF_DATE:  yyyymmdd hhmmss
 
 
 # ---- Output: Write log file (YES/NO)?
