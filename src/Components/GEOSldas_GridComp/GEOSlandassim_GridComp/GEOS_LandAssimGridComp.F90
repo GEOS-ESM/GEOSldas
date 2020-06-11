@@ -2281,6 +2281,9 @@ contains
        end if
        pert_rseed_r8 = 0
        return
+    else
+       tmpstr = 'Reading OBSPERTRSEED for ens member ' // trim(id_string) // ' from '
+       print *, trim(tmpstr), trim(seed_fname)
     endif
     
     call check( nf90_open(seed_fname, NF90_NOWRITE, ncid) )
