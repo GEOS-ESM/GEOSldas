@@ -33,11 +33,6 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
-
-
-
-
-------------------------------
 [v17.9.0-beta.7](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.7) - 2020-06-11
 ------------------------------
 
@@ -54,7 +49,7 @@ Overview of Git Releases:
 
   - Fixed handling of LANDPERT restart files after cold-start in first job segment.
 
-  - For lat/lon and EASE tile space only, fixed violation of zero-diff (binary identical) results when stopping/restarting at different intervals (removed extra zero-mean adjustment of LANDPERT after reading from restart file).  Requires more work for cube-sphere tile space.
+  - Fixed violation of zero-diff (binary identical) results when stopping/restarting at different intervals (removed extra zero-mean adjustment of LANDPERT after reading from restart file and fixed tile2grid operation for cube-sphere tile space).
 
   - Fixed LANDPERT restart file name for cube-sphere.
 
@@ -64,11 +59,11 @@ Overview of Git Releases:
 
   - Added “.nc4” file name extension for cube-sphere LANDPERT checkpoint file.
 
-  - Added log message for OBSPERTRSEED “cold” start.
+  - Added log messages for initialization of OBSPERTRSEED.
 
   - Fixed typo in default OBSPERTRSEED restart file name.
 
-  - Fixed time stamp of output *ensprop*inputs.nml file.
+  - Fixed time stamp of output *ensprop_inputs.nml file.
 
   - Fixed FIRST_ENS_ID for post-processing.
 
