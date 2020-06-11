@@ -105,6 +105,7 @@ class LDASsetup:
         self.has_ldassa_pert = False
         self.nSegments = 1
         self.perturb = 0
+        self.first_ens_id = 0
         # ------
         # Read exe input file which is required to set up the dir
         # ------
@@ -142,12 +143,12 @@ class LDASsetup:
         _mydir = self.exphome + '/' + self.rqdExeInp['EXP_ID']
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None
-        _first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
+        self.first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
         self.perturb = int(self.rqdExeInp.get('PERTURBATIONS',0))
         if self.nens > 1:
            self.perturb = 1
-        self.ensdirs  = ['ens%04d'%iens for iens in range(_first_ens_id, self.nens  + _first_ens_id)]
-        self.ensids   = ['%04d'%iens    for iens in range(_first_ens_id, self.nens  + _first_ens_id)]
+        self.ensdirs  = ['ens%04d'%iens for iens in range(self.first_ens_id, self.nens  + self.first_ens_id)]
+        self.ensids   = ['%04d'%iens    for iens in range(self.first_ens_id, self.nens  + self.first_ens_id)]
         if (self.nens == 1) :
             self.ensdirs_avg = self.ensdirs
             self.ensids=['']
@@ -1273,6 +1274,8 @@ class LDASsetup:
                         fout.write(line.replace('MY_MODEL',self.catch))
                     elif 'MY_POSTPROC_HIST' in line :
                         fout.write(line.replace('MY_POSTPROC_HIST',str(self.rqdExeInp['POSTPROC_HIST'])))                        
+                    elif 'MY_FIRST_ENS_ID' in line :
+                        fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))                        
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
                      

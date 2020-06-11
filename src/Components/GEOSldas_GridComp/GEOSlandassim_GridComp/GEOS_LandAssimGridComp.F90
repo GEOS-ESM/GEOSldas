@@ -1035,7 +1035,7 @@ contains
     character(len=300)   :: seed_fname
     character(len=300)   :: fname_tpl
     character(len=14)    :: datestamp
-    character(len=4)     :: id_string
+    character(len=4)     :: id_string        ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
     integer              :: nymd, nhms
 
     !! from LDASsa
@@ -1131,7 +1131,7 @@ contains
     
     if (master_proc) then
        
-       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../intput/restart/landassim_obspertrseed%s_rst", RC=STATUS)
+       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
        call MAPL_DateStampGet( clock, datestamp, rc=status)
        _VERIFY(STATUS)
@@ -1139,10 +1139,10 @@ contains
        read(datestamp(10:13),*) nhms
        nhms = nhms*100
        do ens = 0, NUM_ENSEMBLE-1
-          write(id_string,'(I4.4)') ens + FIRST_ENS_ID
+          write(id_string,'(I4.4)') ens + FIRST_ENS_ID  ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
           seed_fname = ""
           call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
-          call read_pert_rseed(seed_fname,Pert_rseed_r8(:,ens+1))
+          call read_pert_rseed(id_string,seed_fname,Pert_rseed_r8(:,ens+1))
           
           Pert_rseed(:,ens+1) = nint(Pert_rseed_r8(:,ens+1))
           if (all(Pert_rseed(:,ens+1) == 0)) then
@@ -1391,7 +1391,7 @@ contains
     integer                    :: N_catbias
     character(len=300)         :: seed_fname
     character(len=300)         :: fname_tpl
-    character(len=4)           :: id_string
+    character(len=4)           :: id_string        ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
     integer                    :: ens, nymd, nhms
 
 #ifdef DBG_LANDASSIM_INPUTS
@@ -1485,7 +1485,7 @@ contains
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
-             write(id_string,'(I4.4)') ens + FIRST_ENS_ID
+             write(id_string,'(I4.4)') ens + FIRST_ENS_ID   ! BUG! format string should be '(I[ens_id_width].[ens_id_width])'  (reichle, 11 Jun 2020)
              seed_fname = ""
              call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
              _VERIFY(STATUS)
@@ -2260,18 +2260,30 @@ contains
   
   ! ******************************************************************************
   
-  subroutine read_pert_rseed(seed_fname,pert_rseed_r8)
+  subroutine read_pert_rseed(id_string,seed_fname,pert_rseed_r8)
     use netcdf
+    character(len=*),intent(in)           :: id_string
     character(len=*),intent(in)           :: seed_fname
     real(kind=ESMF_KIND_R8),intent(inout) :: pert_rseed_r8(:)
     
     integer :: ncid, s_varid, en_dim, n_ens, id_varid, i, pos
     logical :: file_exist
+
+    character(len=ESMF_MAXSTR) :: tmpstr
     
     inquire (file = trim(seed_fname), exist=file_exist)
     if ( .not. file_exist) then
+       tmpstr = 'Cold-starting OBSPERTRSEED for ens member ' // trim(id_string) // '.'
+       if (len_trim(seed_fname)>0) then
+          print *, trim(tmpstr), 'File not found: ', trim(seed_fname)
+       else
+          print *, trim(tmpstr), 'Restart file name is empty.'
+       end if
        pert_rseed_r8 = 0
        return
+    else
+       tmpstr = 'Reading OBSPERTRSEED for ens member ' // trim(id_string) // ' from '
+       print *, trim(tmpstr), trim(seed_fname)
     endif
     
     call check( nf90_open(seed_fname, NF90_NOWRITE, ncid) )
@@ -2473,7 +2485,7 @@ contains
     character(len=300)           :: fname_tpl
     character(len=300)           :: out_path
     character(len=ESMF_MAXSTR)   :: exp_id
-    character(len=4)             :: id_string
+    character(len=4)             :: id_string    ! BUG!  should  be "len=ens_id_width" (reichle, 11 Jun 2020)
     character(len=14)            :: datestamp
     integer                      :: ens, nymd, nhms
     
@@ -2504,7 +2516,7 @@ contains
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
-             write(id_string,'(I4.4)') ens + FIRST_ENS_ID
+             write(id_string,'(I4.4)') ens + FIRST_ENS_ID       ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
              seed_fname = ""
              call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
              _VERIFY(STATUS)

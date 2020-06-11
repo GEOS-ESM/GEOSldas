@@ -7,6 +7,7 @@ module GEOS_LandPertGridCompMod
   ! !USES
 
   use ESMF
+  use ESMF_CFIOMod, only: ESMF_CFIOStrTemplate
   use MAPL_Mod
   use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
   use LDAS_PertTypes, only: pert_param_type
@@ -38,7 +39,7 @@ module GEOS_LandPertGridCompMod
   use LDAS_PertRoutinesMod, only: GEOSldas_PROGN_PERT_DTSTEP
   use LDAS_PertRoutinesMod, only: GEOSldas_NUM_ENSEMBLE
   use LDAS_PertRoutinesMod, only: GEOSldas_FIRST_ENS_ID
-  use LDAS_TileCoordRoutines, only: grid2tile, tile2grid, tile_mask_grid
+  use LDAS_TileCoordRoutines, only: grid2tile, tile2grid_simple, tile_mask_grid
   use LDAS_TileCoordRoutines, only: get_ij_ind_from_latlon
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
@@ -70,6 +71,7 @@ module GEOS_LandPertGridCompMod
   integer,dimension(:,:),pointer,public :: pert_iseed=>null()
   integer :: lat1, lat2, lon1, lon2
   integer :: FIRST_ENS_ID
+  logical :: COLDSTART
 contains
 
   !BOP
@@ -819,7 +821,7 @@ contains
 
   !BOP
 
-  ! !IROTUINE: Initialize -- initialize method for LDAS GC
+  ! !IROUTINE: Initialize -- initialize method for LDAS GC
 
   ! !INTERFACE:
 
@@ -840,7 +842,7 @@ contains
     integer :: status
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
-    character(len=ESMF_MAXSTR) :: rst_fname
+    character(len=ESMF_MAXSTR) :: rst_fname, rst_fname_tmp
 
     ! ESMF variables
     type(ESMF_VM) :: vm
@@ -851,7 +853,7 @@ contains
     type(ESMF_State) :: MINTERNAL
 
     ! LDAS variables
-    type(date_time_type) :: start_time, stop_time
+    type(date_time_type) :: start_time, stop_time, current_time
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -877,11 +879,12 @@ contains
     integer :: model_dtstep
     integer :: land_nt_local,m,n, i1, in, j1, jn
     logical :: IAmRoot
-    logical :: COLDSTART
     integer :: ipert,n_lon,n_lat, n_lon_g, n_lat_g
     integer, allocatable :: pert_rseed(:)
     real :: dlon, dlat,locallat,locallon
     type(ESMF_Grid) :: Grid
+    character(len=ESMF_MAXSTR) :: id_string
+    integer :: ens_id_width
     ! Begin...
 
     ! Get component's name and setup traceback handle
@@ -961,6 +964,9 @@ contains
     n_lon = internal%pgrid_l%n_lon
     n_lat = internal%pgrid_l%n_lat
 
+    call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+    VERIFY_(status)
+
    ! Pointers to mapl internals
     if ( internal%isCubedSphere ) then
        n_lon_g = internal%pgrid_g%n_lon
@@ -969,8 +975,16 @@ contains
        allocate(internal%ppert_ntrmdt(n_lon_g, n_lat_g, N_PROGN_PERT_MAX), source=0.0)
        allocate(internal%pert_rseed_r8(NRANDSEED), source=0.0d0)
        
-       call MAPL_GetResource(MAPL, rst_fname, trim(comp_name)//'_INTERNAL_RESTART_FILE:',DEFAULT='NONE', rc=status)
+       call MAPL_GetResource(MAPL, rst_fname_tmp, 'LANDPERT_INTERNAL_RESTART_FILE:',DEFAULT='NONE', rc=status)
        VERIFY_(status)
+
+       id_string=""
+       if (internal%NUM_ENSEMBLE > 1) then
+         n = len(trim(COMP_NAME))
+         id_string = COMP_NAME(n-ens_id_width+1:n)
+       endif
+
+       call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_fname_tmp)),'GRADS', xid = trim(id_string), stat=status)
 
        if (index(rst_fname, 'NONE') == 0) then
 
@@ -1108,7 +1122,7 @@ contains
 
     ! Coldstart
     if (COLDSTART) then
-       if (IAmRoot .and. internal%ens_id == FIRST_ENS_ID ) print *, trim(Iam)//'::WARNING: Cold-starting LandPert GridComp'
+       if (IAmRoot) print *, trim(Iam)//'::WARNING: Cold-starting '// trim(COMP_NAME) // ' GridComp'
        ! -pert_rseed-
        call get_init_pert_rseed(internal%ens_id, pert_rseed(1))
        call init_randseed(pert_rseed)
@@ -1184,11 +1198,13 @@ contains
     VERIFY_(status)
     call esmf2ldas(StopTime, stop_time, rc=status)
     VERIFY_(status)
+    call esmf2ldas(CurrentTime, current_time, rc=status)
+    VERIFY_(status)
 
     if( internal%ens_id == FIRST_ENS_ID .and. IAmRoot) then
        ! write out the input file
        call read_ens_prop_inputs(write_nml = .true. , work_path = trim(out_path), &
-            exp_id = trim(exp_id), date_time = start_time)
+            exp_id = trim(exp_id), date_time = current_time)
     endif
 
 
@@ -1378,12 +1394,16 @@ contains
     allocate(ppert_grid(n_lon,n_lat, internal%PrognPert%npert), source=MAPL_UNDEF, stat=status)
     VERIFY_(status)
 
-    ! Get pertubations on the underlying grid and convert grid data to tile data, adjust mean
+    ! Get pertubations on the underlying grid and convert grid data to tile data
     !
     ! -ForcePert-
-
-    fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert)= fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) + &
-            fpert_enavg(:,:,:)
+    !
+    ! adjust mean after cold start  (if fpert_ntrmdt is from restart file,
+    !   mean was adjusted in ApplyForcePert before restart was written)
+    if (COLDSTART)                                                              &
+         fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) =         &
+         fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) +         &
+         fpert_enavg(:,:,:)
 
     call get_pert(                                                              &
          internal%ForcePert%npert,                                              &
@@ -1391,7 +1411,7 @@ contains
          real(internal%ForcePert%dtstep),                                       &
          internal%ForcePert%param,                                              &
          pert_rseed,                                                            &
-         fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),                          &
+         fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),          &
          fpert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
@@ -1416,15 +1436,21 @@ contains
     internal%ForcePert%DataNxt = internal%ForcePert%DataPrv
 
     ! -PrognPert-
-    ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert)= ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert) + &
-            ppert_enavg(:,:,:)
+    !
+    ! adjust mean after cold start  (if ppert_ntrmdt is from restart file,
+    !   mean was adjusted in ApplyPrognPert before restart was written)
+    if (COLDSTART)                                                              &
+         ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert) =         &
+         ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert) +         &
+         ppert_enavg(:,:,:)
+    
     call get_pert(                                                              &
          internal%PrognPert%npert,                                              &
          internal%pgrid_l, internal%pgrid_f,                                    &
          real(internal%PrognPert%dtstep),                                       &
          internal%PrognPert%param,                                              &
          pert_rseed,                                                            &
-         ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),                          &
+         ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),          &
          ppert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
@@ -1493,8 +1519,8 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: chk_fname
-    character(len=4) :: id_string
-    character(len=14)    :: datestamp
+    character(len=4)           :: id_string    ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
+    character(len=14)          :: datestamp
 
     ! ESMF variables
     type(ESMF_Alarm) :: ForcePertAlarm, PrognPertAlarm
@@ -1634,22 +1660,22 @@ contains
          VERIFY_(STATUS)
        enddo
        if (IamRoot) then
-       ! 3) tile2grid
+       ! 3) tile2grid. simple reverser of grid2tile without weighted
           do m = 1, nfpert
-             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
        
        ! 4) writing
           call MAPL_DateStampGet(clock, datestamp, rc=status)
           VERIFY_(STATUS)
 
-          write(id_string,'(I4.4)') internal%ens_id            
+          write(id_string,'(I4.4)') internal%ens_id    ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
           if(internal%NUM_ENSEMBLE ==1 ) id_string=''
 
-          chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp
+          chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp//'.nc4'
 
           call write_pert_checkpoint(trim(chk_fname),internal%fpert_ntrmdt, internal%ppert_ntrmdt, internal%pert_rseed_r8)
        endif
@@ -2666,7 +2692,7 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: chk_fname
-    character(len=4) :: id_string
+    character(len=4)           :: id_string   ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -2749,17 +2775,19 @@ contains
          call ArrayGather(tile_data_p(:,m), tile_data_p_all(:,m), tilegrid, mask=mask, rc=status)
          VERIFY_(STATUS)
        enddo
+
        if (MAPL_am_I_Root()) then
-       ! 3) tile2grid
+       ! 3) tile2grid 
+            ! this step is simply a reverse of grid2tile without any weighted   
           do m = 1, nfpert
-             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
 
         ! 4) writing
-          write(id_string,'(I4.4)') internal%ens_id
+          write(id_string,'(I4.4)') internal%ens_id     ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
           if(internal%NUM_ENSEMBLE ==1 ) id_string=''
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint'
@@ -2901,8 +2929,8 @@ contains
      call check( nf90_def_var(ncid, 'ppert_ntrmdt', NF90_REAL,   dimids, p_varid) )
      call check( nf90_def_var(ncid, 'pert_rseed',   NF90_DOUBLE, seed_dimid, s_varid) )
 
-     call check( nf90_def_var_deflate(ncid, f_varid, 1, 1, 2))
-     call check( nf90_def_var_deflate(ncid, p_varid, 1, 1, 2))
+  !   call check( nf90_def_var_deflate(ncid, f_varid, 1, 1, 2))
+  !   call check( nf90_def_var_deflate(ncid, p_varid, 1, 1, 2))
   ! Assign attribute
      call check( nf90_put_att(ncid, f_varid, UNITS, units_) )
      call check( nf90_put_att(ncid, p_varid, UNITS, units_) )
