@@ -14,7 +14,7 @@ module LDAS_ForceMod
   use LDAS_ensdrv_Globals,              ONLY:     &
        logunit,                                   &
        logit,                                     &
-       master_logit,                              &
+       root_logit,                                &
        nodata_generic,                            &
        nodata_tol_generic,                        &
        nodata_tolfrac_generic
@@ -333,7 +333,7 @@ contains
        
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
-       if(master_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
+       if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
 
        GEOS_forcing = .true.
 
@@ -781,7 +781,7 @@ contains
     fname = trim(met_path) // trim(berg_dir(berg_var)) // '/' // YYYY       &
          // '/' // trim(berg_name(berg_var)) // '.' // YYYY // MM // '.nc'
         
-    if(master_logit) write(logunit,*) 'get netcdf compression params from ' // trim(fname)
+    if(root_logit) write(logunit,*) 'get netcdf compression params from ' // trim(fname)
     
     ierr = NF_OPEN(fname,NF_NOWRITE,ncid)
     
@@ -806,7 +806,7 @@ contains
        fname = trim(met_path) // trim(berg_dir(berg_var)) // '/' // YYYY     &
             // '/' // trim(berg_name(berg_var)) // '.' // YYYY // MM // '.nc'
        
-       if(master_logit) write (logunit,*) 'opening ' // trim(fname)
+       if(root_logit) write (logunit,*) 'opening ' // trim(fname)
        
        ierr = NF_OPEN(fname,NF_NOWRITE,ncid)
        
@@ -1031,7 +1031,7 @@ contains
     fname = trim(met_path) // '/' // YYYY // '/'    &
          // 'red_ark_forc' // '.' // YYYY // '.' // DDD // '.' // HH
     
-    if(master_logit) write(logunit,*) 'opening ' // trim(fname)
+    if(root_logit) write(logunit,*) 'opening ' // trim(fname)
     
     open(10, file=fname, form='formatted', action='read', status='old')
     
@@ -1249,7 +1249,7 @@ contains
             // trim(RedArk_GOLD_name(this_var)) // '_RedArk_' // &
             YYYY // MM // DD // '_' // HHMM
        
-       if(master_logit) write (logunit,*) 'opening ' // trim(fname)
+       if(root_logit) write (logunit,*) 'opening ' // trim(fname)
        
        open(10,file=fname,form='formatted',action='read')
        
@@ -1450,7 +1450,7 @@ contains
             // trim(RedArk_Princeton_name(this_var)) // '_RedArk_' // &
             YYYY // MM // DD // '_' // HHMM
        
-       if(master_logit) write (logunit,*) 'opening ' // trim(fname)
+       if(root_logit) write (logunit,*) 'opening ' // trim(fname)
        
        open(10,file=fname,form='formatted',action='read')
        
@@ -1664,7 +1664,7 @@ contains
        fname = trim(met_path) // '/' // trim(Princeton_name(Princeton_var))  &
             // '_3hourly_' // YYYY // '-' // YYYY // '.nc'
        
-       if(master_logit) write(logunit,*) 'opening' // trim(fname)
+       if(root_logit) write(logunit,*) 'opening' // trim(fname)
 
        ierr = NF_OPEN(fname, NF_NOWRITE, ncid)
        
@@ -1847,7 +1847,7 @@ contains
     
     fname = trim(met_path) // '/' // YYYY//'-'//MM//'.nc'
     
-    if(master_logit) write (logunit,*) 'opening' // trim(fname)
+    if(root_logit) write (logunit,*) 'opening' // trim(fname)
     
     ierr = NF_OPEN(fname, NF_NOWRITE, ncid)
     
@@ -2061,7 +2061,7 @@ contains
     fname = trim(met_path) // trim(gldas_name(gldas_var)) // '/' // YYYY     &
          // '/' // trim(gldas_name(gldas_var)) // '.' // YYYY // MM // '.nc'
     
-    if(master_logit) write (logunit,*) 'get netcdf compression params from ' // trim(fname)
+    if(root_logit) write (logunit,*) 'get netcdf compression params from ' // trim(fname)
     
     ierr = NF_OPEN(fname,NF_NOWRITE,ncid)
     
@@ -2087,7 +2087,7 @@ contains
             // '/' // trim(gldas_name(gldas_var)) // '.' // YYYY // MM //    &
             '.nc'
        
-       if(master_logit) write (logunit,*) 'opening ' // trim(fname)
+       if(root_logit) write (logunit,*) 'opening ' // trim(fname)
        
        ierr = NF_OPEN(fname,NF_NOWRITE,ncid)
        
@@ -2355,7 +2355,7 @@ contains
     !
     !if (present(ens_id)) unitnumber = unitnumber + ens_id
     
-    if(master_logit)  write (logunit,*) 'opening ', trim(fname)
+    if(root_logit)  write (logunit,*) 'opening ', trim(fname)
     
     open(unitnumber, file=fname, form='formatted', action='read', status='old')
     
@@ -3007,7 +3007,7 @@ contains
                (j==1)                                       .and.                &
                (tmp_init)                                   .and.                &
                (trim(GEOSgcm_defs(GEOSgcm_var,2))=='tavg')  .and.                &
-               (master_logit)                                       ) then
+               (root_logit)                                       ) then
              
              if (.not. MERRA_file_specs)  write (logunit,'(400A)')               &
                   'NOTE: Initialization. Data from tavg file are not used '  //  &
@@ -3759,7 +3759,7 @@ contains
     !!end if
     !
     ! The above fix did not work in MPI because subroutine get_forcing() is 
-    ! only called by the master process.  All other processes are unaware of
+    ! only called by the root process.  All other processes are unaware of
     ! any changes to "ignore_SWnet_for_snow" from its uninitialized value
     ! because an MPI broadcast was missing. 
     ! As of April 2015, "ignore_SWnet_for_snow" is no longer meaningful.
@@ -4568,7 +4568,7 @@ contains
     ! if no file was found, report file names that were tried
     
     if (.not. file_exists) then
-       if(master_logit) then
+       if(root_logit) then
           print '(400A)',  trim(Iam) // ': Could not find any of the following files:'
           print '(400A)',  trim(fname_full_tmp1)
           print '(400A)',  trim(fname_full_tmp2)
@@ -4622,7 +4622,7 @@ contains
       if( fid == -9999 ) then ! not open yet
          ierr=nf90_open(fname_full,NF90_NOWRITE, fid)
 
-         if(master_logit) then
+         if(root_logit) then
            write(logunit,'(400A)') "opening file: "//trim(fname_full)
          endif
          ASSERT_( ierr == nf90_noerr)
@@ -4905,7 +4905,7 @@ contains
     ! if no file was found, report file names that were tried
     
     if( .not. file_exists ) then
-       if(master_logit) then 
+       if(root_logit) then 
           print '(400A)',  trim(Iam) // ': Could not find any of the following files:'
           print '(400A)',  trim(fname_full_tmp1)
           print '(400A)',  trim(fname_full_tmp2)
@@ -5108,7 +5108,7 @@ contains
        fname = trim(met_path) // trim(gswp2_name(gswp2_var)) // '/'     &
             // '/' // trim(gswp2_name(gswp2_var)) // YYYY // MM // '.nc'
        
-       if(master_logit) write (logunit,*) 'opening ' // trim(fname)
+       if(root_logit) write (logunit,*) 'opening ' // trim(fname)
        
        ierr = NF_OPEN(fname,NF_NOWRITE,ncid)
        
@@ -5123,7 +5123,7 @@ contains
        
        if (gswp2_var == 1) then
           
-          if(master_logit) write (logunit,*) 'get netcdf compression params from ' // trim(fname)
+          if(root_logit) write (logunit,*) 'get netcdf compression params from ' // trim(fname)
           
           if (ierr/=0) then
              err_msg = 'error opening netcdf file'
@@ -5345,7 +5345,7 @@ contains
           else
              
              if (abs(force_vec(i_next)-nodata_forcing)>tol) then
-                if(master_logit) write (logunit,*) 'forcing has no-data-value in tile ID = ', &
+                if(root_logit) write (logunit,*) 'forcing has no-data-value in tile ID = ', &
                      tile_coord(i)%tile_id
                 force_vec(i)=force_vec(i_next)
              else
@@ -5364,8 +5364,8 @@ contains
     end do
     
     if (create_blacklist) then
-       if(master_logit)  write (logunit,*) '---------------------------------------------------------------'
-       if(master_logit)  write (logunit,*) ' found N_black = ',N_black, ' tiles that should be blacklisted'
+       if(root_logit)  write (logunit,*) '---------------------------------------------------------------'
+       if(root_logit)  write (logunit,*) ' found N_black = ',N_black, ' tiles that should be blacklisted'
        err_msg = 'blacklist now in file fort.9999'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
@@ -5413,7 +5413,7 @@ contains
           tmpstring300 = 'shift_forcing_date(): Are you sure? ' // &
                'If so, edit source code and recompile.'                    
           
-          if(master_logit) write (logunit,*) tmpstring300
+          if(root_logit) write (logunit,*) tmpstring300
           write(0,*) tmpstring300
           stop
 

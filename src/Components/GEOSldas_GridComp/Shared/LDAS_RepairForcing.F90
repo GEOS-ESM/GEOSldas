@@ -6,7 +6,7 @@ module RepairForcingMod
   use MAPL_SatVaporMod, only: MAPL_EQsat
   use LDAS_ensdrv_Globals, only: logunit, LDAS_is_nodata
   use MAPL_ConstantsMod, only: stefan_boltzmann=>MAPL_STFBOL
-  use LDAS_ensdrv_Globals, only: master_logit
+  use LDAS_ensdrv_Globals, only: root_logit
   implicit none
 
   private
@@ -161,7 +161,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%Rainf  ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)') 'repair_forcing: Rainf < 0. in tile ID ' //  &
                   tile_id_str // ': met_force(i)%Rainf = ' // tmpstr13a
 
@@ -179,7 +179,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%Rainf_C  ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)') 'repair_forcing: Rainf_C < 0. in tile ID ' //&
                   tile_id_str // ': met_force(i)%Rainf_C = ' // tmpstr13a
 
@@ -196,7 +196,7 @@ contains
              write (tmpstr13a,'(e13.5)') met_force(i)%Rainf    ! convert real to string
              write (tmpstr13b,'(e13.5)') met_force(i)%Rainf_C  ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)') 'repair_forcing: Rainf < Rainf_C in tile ID ' //  &
                   tile_id_str // ': met_force(i)%Rainf = ' // tmpstr13a //              &
                   ', met_force(i)%Rainf_C = ' // tmpstr13b
@@ -215,7 +215,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%Snowf    ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)') 'repair_forcing: Snowf < 0. in tile ID ' //&
                   tile_id_str // ': met_force(i)%Snowf = ' // tmpstr13a
 
@@ -240,7 +240,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%Tair    ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)')                                                 &
                   'repair_forcing: Tair < '//min_Tair_string//' in tile ID ' //       &
                   tile_id_str // ': met_force(i)%Tair = ' // tmpstr13a
@@ -253,7 +253,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%Tair    ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)')                                                 &
                   'repair_forcing: Tair > '//max_Tair_string//' in tile ID ' //       &
                   tile_id_str // ': met_force(i)%Tair = ' // tmpstr13a
@@ -274,7 +274,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%PSurf    ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)')                                                  &
                   'repair_forcing: Psurf > '//max_PSurf_string//' in tile ID ' //      &
                   tile_id_str // ': met_force(i)%PSurf = ' // tmpstr13a
@@ -295,7 +295,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%Qair    ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)') 'repair_forcing: Qair < 0. in tile ID ' //      &
                   tile_id_str // ': met_force(i)%Qair = ' // tmpstr13a
 
@@ -316,7 +316,7 @@ contains
                 write (tmpstr13a,'(e13.5)') met_force(i)%Qair    ! convert real to string
                 write (tmpstr13b,'(e13.5)') met_force(i)%Qair/Qair_sat
 
-                if (master_logit) &
+                if (root_logit) &
                 write (logunit,'(200A)') 'repair_forcing: Qair > Qair_sat in tile ID ' // &
                      tile_id_str // ': met_force(i)%Qair = ' // tmpstr13a //              &
                      ', met_force(i)%Qair/Qair_sat = ' // tmpstr13b
@@ -343,7 +343,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%Wind    ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)') 'repair_forcing: Wind < 0. in tile ID ' //&
                   tile_id_str // ': met_force(i)%Wind = ' // tmpstr13a
 
@@ -374,7 +374,7 @@ contains
                 write (tmpstr13a,'(e13.5)') met_force(i)%LWdown    ! convert real to string
                 write (tmpstr13b,'(e13.5)') min_LWdown
 
-                if (master_logit) &
+                if (root_logit) &
                 write (logunit,'(200A)') 'repair_forcing: LWdown < min_LWdown in tile ID ' // &
                      tile_id_str // ': met_force(i)%LWdown = ' // tmpstr13a //                &
                      ', min_LWdown = ' // tmpstr13b
@@ -390,7 +390,7 @@ contains
                 write (tmpstr13a,'(e13.5)') met_force(i)%LWdown    ! convert real to string
                 write (tmpstr13b,'(e13.5)') max_LWdown
 
-                if (master_logit) &
+                if (root_logit) &
                 write (logunit,'(200A)') 'repair_forcing: LWdown > max_LWdown in tile ID ' // &
                      tile_id_str // ': met_force(i)%LWdown = ' // tmpstr13a //                &
                      ', max_LWdown = ' // tmpstr13b
@@ -413,7 +413,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%SWdown    ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)') 'repair_forcing: SWdown < 0. in tile ID ' //&
                   tile_id_str // ': met_force(i)%SWdown = ' // tmpstr13a
 
@@ -431,7 +431,7 @@ contains
 
              write (tmpstr13a,'(e13.5)') met_force(i)%SWdown    ! convert real to string
 
-             if (master_logit) &
+             if (root_logit) &
              write (logunit,'(200A)') 'repair_forcing: SWdown > ' // SWDN_MAX_string // &
                   ' in tile ID ' //  tile_id_str // ': met_force(i)%SWdown = ' // tmpstr13a
 
@@ -455,7 +455,7 @@ contains
 
                 write (tmpstr13a,'(e13.5)') met_force(i)%SWnet    ! convert real to string
 
-                if (master_logit) &
+                if (root_logit) &
                 write (logunit,'(200A)') 'repair_forcing: SWnet < 0. in tile ID ' //&
                      tile_id_str // ': met_force(i)%SWnet = ' // tmpstr13a
 
@@ -473,7 +473,7 @@ contains
                 write (tmpstr13a,'(e13.5)') met_force(i)%SWnet    ! convert real to string
                 write (tmpstr13b,'(e13.5)') met_force(i)%SWdown   ! convert real to string
 
-                if (master_logit) &
+                if (root_logit) &
                 write (logunit,'(200A)') 'repair_forcing: SWnet > SWdown in tile ID ' //  &
                      tile_id_str // ': met_force(i)%SWnet = ' // tmpstr13a //             &
                      ', met_force(i)%SWdown = ' // tmpstr13b
@@ -499,7 +499,7 @@ contains
 
                 write (tmpstr13a,'(e13.5)') met_force(i)%PARdffs    ! convert real to string
 
-                if (master_logit) &
+                if (root_logit) &
                 write (logunit,'(200A)') 'repair_forcing: PARdffs < 0. in tile ID ' //&
                      tile_id_str // ': met_force(i)%PARdffs = ' // tmpstr13a
 
@@ -524,7 +524,7 @@ contains
                 write (tmpstr13a,'(e13.5)') tmp_maxPar           ! convert real to string
                 write (tmpstr13b,'(e13.5)') met_force(i)%PARdffs ! convert real to string
 
-                if (master_logit) &
+                if (root_logit) &
                 write (logunit,'(200A)') 'repair_forcing: PARdffs > ' // tmpstr13a //   &
                      ' in tile ID ' // tile_id_str // ': met_force(i)%PARdffs = ' //    &
                      tmpstr13b
@@ -552,7 +552,7 @@ contains
 
                 write (tmpstr13a,'(e13.5)') met_force(i)%PARdrct ! convert real to string
 
-                if (master_logit) &
+                if (root_logit) &
                 write (logunit,'(200A)') 'repair_forcing: PARdrct < 0. in tile ID ' //&
                      tile_id_str // ': met_force(i)%PARdrct = ' // tmpstr13a
 
@@ -571,7 +571,7 @@ contains
                 write (tmpstr13a,'(e13.5)') tmp_maxPar           ! convert real to string
                 write (tmpstr13b,'(e13.5)') met_force(i)%PARdrct ! convert real to string
 
-                if (master_logit) &
+                if (root_logit) &
                 write (logunit,'(200A)') 'repair_forcing: PARdrct > ' // tmpstr13a //   &
                      ' in tile ID ' // tile_id_str // ': met_force(i)%PARdrct = ' //    &
                      tmpstr13b
@@ -599,7 +599,7 @@ contains
 
           write (tmpstr16,'(i16)') kk  ! convert integer to string
 
-          if (master_logit) &
+          if (root_logit) &
           write (logunit,'(200A)')                                         &
                'repair_forcing: turning OFF warnings after detecting ' //  &
                trim(tmpstr16) // ' tiles with problematic forcing'

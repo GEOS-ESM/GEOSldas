@@ -27,7 +27,7 @@ module GEOS_LandAssimGridCompMod
   use nr_ran2_gasdev,            only: NRANDSEED, init_randseed
   use land_pert_routines,        only: get_init_pert_rseed
   use LDAS_ensdrv_mpi,           only: mpicomm,numprocs,myid
-  use LDAS_ensdrv_mpi,           only: master_proc
+  use LDAS_ensdrv_mpi,           only: root_proc
   use LDAS_ensdrv_mpi,           only: MPI_obs_param_type 
   
   use LDAS_DateTimeMod,          only: date_time_type 
@@ -1059,7 +1059,7 @@ contains
     _VERIFY(STATUS)
     call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     _VERIFY(STATUS)
-    call init_log( myid, numprocs, master_proc )
+    call init_log( myid, numprocs, root_proc )
     ! Get number of land tiles
     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
     _VERIFY(status)
@@ -1129,7 +1129,7 @@ contains
     allocate(Pert_rseed(   NRANDSEED, NUM_ENSEMBLE), source = 0    )
     allocate(Pert_rseed_r8(NRANDSEED, NUM_ENSEMBLE), source = 0.0d0)
     
-    if (master_proc) then
+    if (root_proc) then
        
        call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
@@ -1198,7 +1198,7 @@ contains
        rf2l( l2rf(i) ) = i
     end do
     
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_upd_inputs(                     &
             trim(out_path),                          &
             trim(exp_id),                            &
@@ -1245,11 +1245,11 @@ contains
     call MPI_BCAST(out_smapL4SMaup,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
     
-    if (.not. master_proc)  allocate(obs_param(N_obs_param)) 
+    if (.not. root_proc)  allocate(obs_param(N_obs_param)) 
     
     call MPI_BCAST(obs_param,   N_obs_param, MPI_OBS_PARAM_TYPE, 0,MPICOMM,mpierr)
     
-    if (master_proc) call echo_clsm_ensupd_glob_param(logunit) 
+    if (root_proc) call echo_clsm_ensupd_glob_param(logunit) 
     
     call MAPL_GenericInitialize(gc, import, export, clock, rc=status)
     _VERIFY(status)
@@ -1465,7 +1465,7 @@ contains
        if (mwRTM) &
             call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
             N_catl, tile_coord_l, cat_param, mwRTM_param )
-       if (master_proc) then 
+       if (root_proc) then 
           ! for out put
           call read_cat_bias_inputs(  trim(out_path), trim(exp_id), start_time, update_type, &
                cat_bias_param, N_catbias)
@@ -1474,7 +1474,7 @@ contains
     
     ! The time is one model time step behind Current time, so record the checkpoint here 
     if (MAPL_RecordAlarmIsRinging(MAPL)) then
-       if (master_proc) then
+       if (root_proc) then
           Pert_rseed_r8 = Pert_rseed
           call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
           _VERIFY(STATUS)
@@ -2503,7 +2503,7 @@ contains
        call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
        _VERIFY(STATUS)
        
-       if (master_proc) then
+       if (root_proc) then
           if (out_obslog) call finalize_obslog()
           Pert_rseed_r8 = Pert_rseed
           call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", &

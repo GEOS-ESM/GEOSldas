@@ -46,7 +46,7 @@ module land_pert_routines
   use LDAS_ExceptionsMod,               ONLY:     & 
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
-  use LDAS_ensdrv_Globals, only: master_logit,logunit
+  use LDAS_ensdrv_Globals, only: root_logit,logunit
     
   implicit none
   
@@ -1551,7 +1551,7 @@ contains
     
     
       ! echo part of forcepert_param (mean, std, and ccorr for i=1, j=1 only):
-  if(master_logit) then
+  if(root_logit) then
      do i=1,N_forcepert
      
         write (logunit,*) 'forcepert_param(',i,')%descr=', &
@@ -1582,7 +1582,7 @@ contains
              forcepert_param(i)%ccorr(j,1,1)
         end do
      end do
- endif ! master_logit
+ endif ! root_logit
     
     
     

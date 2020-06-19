@@ -28,7 +28,7 @@ PROGRAM mk_GEOSldasRestarts
   ! initialize to non-MPI values
   
   integer  :: myid=0, numprocs=1, mpierr
-  logical  :: master_proc=.true.
+  logical  :: root_proc=.true.
   
   ! Carbon model specifics
   ! ----------------------
@@ -268,7 +268,7 @@ PROGRAM mk_GEOSldasRestarts
      endif
   endif
  
-  if (master_proc) then
+  if (root_proc) then
      
      ! read in ntiles 
      ! ----------------------------
@@ -289,7 +289,7 @@ PROGRAM mk_GEOSldasRestarts
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      stop
   endif
-  if (master_proc) then 
+  if (root_proc) then 
      if(trim(MODEL) == 'CATCH'  ) call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData2/clsm/','OutData2/catch_internal_rst'  )
      if(trim(MODEL) == 'CATCHCN') call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData2/clsm/','OutData2/catchcn_internal_rst')
   endif
@@ -371,7 +371,7 @@ contains
 
     read (10) NTILES_RST
     
-    if(master_proc) then
+    if(root_proc) then
        print *,'NTILES in BCs      : ',NTILES
        print *,'NTILES in restarts : ',NTILES_RST
     endif
@@ -403,7 +403,7 @@ contains
     allocate (latc   (1:ntiles_rst))
     allocate (tid_offl  (ntiles_rst))
 
-    if (master_proc) then
+    if (root_proc) then
         allocate (long   (ntiles))
         allocate (latg   (ntiles))
         allocate (ld_reorder(ntiles_rst))   
@@ -455,7 +455,7 @@ contains
        endif
     end do
 
-    if(master_proc) deallocate (long)
+    if(root_proc) deallocate (long)
      
     call MPI_BCAST(lonc,ntiles_rst,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(latc,ntiles_rst,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
@@ -468,7 +468,7 @@ contains
     ! id_glb for hydrologic variable
 
     call GetIds(lonc,latc,lonn,latt,id_loc, tid_offl)
-    if(master_proc)  allocate (id_glb  (ntiles))
+    if(root_proc)  allocate (id_glb  (ntiles))
      
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 !     call MPI_GATHERV( &
@@ -492,7 +492,7 @@ contains
 
      deallocate (id_loc)
 
-     if(master_proc)  then 
+     if(root_proc)  then 
                 
         inquire(file =  trim(rst_file), exist=fexist)
         if (.not. fexist) then
@@ -557,7 +557,7 @@ contains
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),3/), (/nt_local(myid+1),1/),CLMC_sf1)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),4/), (/nt_local(myid+1),1/),CLMC_sf2)
         
-        if (master_proc) then
+        if (root_proc) then
 
            allocate (ityp_tmp (ntiles_rst,nveg))
            allocate (fveg_tmp (ntiles_rst,nveg))  
@@ -603,7 +603,7 @@ contains
              CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2, &
              fveg_offl, ityp_offl)
 
-        if(master_proc) allocate (id_glb_cn  (ntiles,nveg))
+        if(root_proc) allocate (id_glb_cn  (ntiles,nveg))
 
         allocate (id_loc (ntiles))
         call MPI_Barrier(MPI_COMM_WORLD, STATUS)
@@ -632,11 +632,11 @@ contains
               endif
            end do
            
-           if(master_proc) id_glb_cn (:,nv) = id_loc
+           if(root_proc) id_glb_cn (:,nv) = id_loc
            
         end do
         
-        if(master_proc) then
+        if(root_proc) then
 
            allocate (var_off_col (1: NTILES_RST, 1 : nzone,1 : var_col))
            allocate (var_off_pft (1: NTILES_RST, 1 : nzone,1 : nveg, 1 : var_pft))
@@ -1121,7 +1121,7 @@ contains
     allocate (lonc   (1:ntiles_smap))
     allocate (latc   (1:ntiles_smap))
 
-    if (master_proc) then
+    if (root_proc) then
 
        allocate (long   (ntiles))
        allocate (latg   (ntiles))
@@ -1190,7 +1190,7 @@ contains
 !         latt,nt_local(myid+1),MPI_real  , &
 !         0,MPI_COMM_WORLD, mpierr )
 
-    if(master_proc) deallocate (long, latg)
+    if(root_proc) deallocate (long, latg)
      
     call MPI_BCAST(lonc,ntiles_smap,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(latc,ntiles_smap,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
@@ -1204,7 +1204,7 @@ contains
     
     ! Loop through NTILES (# of tiles in output array) find the nearest neighbor from Qing.  
 
-    if(master_proc)  allocate (id_glb  (ntiles))
+    if(root_proc)  allocate (id_glb  (ntiles))
 
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 !     call MPI_GATHERV( &
@@ -1226,7 +1226,7 @@ contains
         endif
      end do     
         
-    if (master_proc) call put_land_vars  (NTILES, ntiles_smap, id_glb, ld_reorder, model)
+    if (root_proc) call put_land_vars  (NTILES, ntiles_smap, id_glb, ld_reorder, model)
 
     call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
@@ -1771,7 +1771,7 @@ contains
     allocate (lonc   (1:ntiles_cn))
     allocate (latc   (1:ntiles_cn))
 
-    if (master_proc) then
+    if (root_proc) then
        
        ! --------------------------------------------
        ! Read exact lonn, latt from output .til file 
@@ -1828,7 +1828,7 @@ contains
     end do
     
 
-    if(master_proc) deallocate (long, latg)
+    if(root_proc) deallocate (long, latg)
  
     call MPI_BCAST(lonc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
     call MPI_BCAST(latc,ntiles_cn,MPI_REAL,0,MPI_COMM_WORLD,mpierr)
@@ -1856,7 +1856,7 @@ contains
     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),3/), (/nt_local(myid+1),1/),CLMC_sf1)
     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/low_ind(myid+1),4/), (/nt_local(myid+1),1/),CLMC_sf2)
 
-    if (master_proc) then
+    if (root_proc) then
 
        allocate (TILE_ID  (1:ntiles_cn))
 
@@ -1907,7 +1907,7 @@ contains
       
     ! update id_glb in root
     
-    if(master_proc)  then
+    if(root_proc)  then
        allocate (id_glb  (ntiles, nveg))
        allocate (id_vec  (ntiles))
     endif
@@ -1934,11 +1934,11 @@ contains
           endif
        end do
         
-       if(master_proc) id_glb (:,nv) = id_vec
+       if(root_proc) id_glb (:,nv) = id_vec
         
     end do
 
-    if(master_proc) then
+    if(root_proc) then
 
        allocate (var_off_col (1: NTILES_CN, 1 : nzone,1 : var_col))
        allocate (var_off_pft (1: NTILES_CN, 1 : nzone,1 : nveg, 1 : var_pft))
@@ -2961,12 +2961,12 @@ contains
     call MPI_COMM_RANK( MPI_COMM_WORLD, myid, mpierr )
     call MPI_COMM_SIZE( MPI_COMM_WORLD, numprocs, mpierr )
 
-    if (myid .ne. 0)  master_proc = .false.
+    if (myid .ne. 0)  root_proc = .false.
     
 !    call init_MPI_types()
     
     write (*,*) "MPI process ", myid, " of ", numprocs, " is alive"    
-    write (*,*) "MPI process ", myid, ": master_proc=", master_proc
+    write (*,*) "MPI process ", myid, ": root_proc=", root_proc
 
   end subroutine init_MPI
   

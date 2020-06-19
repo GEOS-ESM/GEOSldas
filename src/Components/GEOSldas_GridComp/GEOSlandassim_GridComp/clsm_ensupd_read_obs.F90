@@ -21,11 +21,11 @@ module clsm_ensupd_read_obs
   use io_hdf5,                          ONLY:     &
        hdf5read 
 
-  use LDAS_ease_conv,                      ONLY:     &
+  use LDAS_ease_conv,                   ONLY:     &
        easeV2_convert,                            &
        easeV2_extent
   
-  use LDAS_ensdrv_globals,           ONLY:     &
+  use LDAS_ensdrv_globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_tolfrac_generic
@@ -33,7 +33,7 @@ module clsm_ensupd_read_obs
   use clsm_ensupd_glob_param,           ONLY:     &
        unitnum_obslog
 
-  use LDAS_DateTimeMod,                   ONLY:     &
+  use LDAS_DateTimeMod,                 ONLY:     &
        date_time_type,                            &
        augment_date_time,                         &
        get_dofyr_pentad,                          &
@@ -46,7 +46,7 @@ module clsm_ensupd_read_obs
        obs_type,                                  &
        obs_param_type
 
-  use LDAS_TilecoordType,                 ONLY:     &
+  use LDAS_TilecoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type
 
@@ -55,17 +55,17 @@ module clsm_ensupd_read_obs
        f2l_real8,                                 &
        f2l_logical
   
-  use LDAS_TilecoordRoutines,              ONLY:     &
+  use LDAS_TilecoordRoutines,           ONLY:     &
        get_tile_num_from_latlon
   
   use LDAS_ensdrv_mpi,                  ONLY:     &
-       master_proc,                               &
+       root_proc,                                 &
        numprocs,                                  &
-       mpicomm,                            &
+       mpicomm,                                   &
        MPI_obs_type,                              &
        mpierr
 
-  use LDAS_exceptionsMod,                  ONLY:     &
+  use LDAS_exceptionsMod,               ONLY:     &
        ldas_abort,                                &
        ldas_warn,                                 &
        LDAS_GENERIC_ERROR,                        &
@@ -6454,7 +6454,7 @@ contains
        
 #endif
        
-       if (master_proc) then
+       if (root_proc) then
           
           N_obsf = sum(N_obsl_vec)
           
@@ -6499,7 +6499,7 @@ contains
        mask_v_A = .false.   ! initialize
        mask_v_D = .false.   ! initialize
     
-       if (master_proc) then
+       if (root_proc) then
           
           ! mask for H-pol ascending
           
@@ -6591,7 +6591,7 @@ contains
 
           deallocate(Observations_f)
           
-       end if  ! (master_proc)
+       end if  ! (root_proc)
        
        ! MPI broadcast masks
        
@@ -6904,7 +6904,7 @@ contains
     
     ! read observations and optionally scale observations to model clim
     !
-    ! intended to be called by master_proc
+    ! intended to be called by root_proc
 
     ! 10 Jun 2011 - removed model-based QC for MPI re-structuring (now done
     !               in connection with get_obs_pred())
@@ -8115,7 +8115,7 @@ contains
     type(grid_def_type),                          intent(in)  :: tile_grid_f
     
     ! N_tile_in_cell_ij and tile_num_in_cell_ij are on the "full" domain
-    !  and guaranteed to be allocated ONLY for the master_proc
+    !  and guaranteed to be allocated ONLY for the root_proc
     !  (but may be allocated on all processors depending on obs_param%FOV)
 
     integer, dimension(:,:),   pointer :: N_tile_in_cell_ij_f   ! input 
@@ -8187,7 +8187,7 @@ contains
           call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'something wrong')
        end if
                  
-       if (master_proc) then
+       if (root_proc) then
           
           ! subroutine read_obs() reads all observations in obs files 
           ! (typically global) and returns a vector in (full domain) 
