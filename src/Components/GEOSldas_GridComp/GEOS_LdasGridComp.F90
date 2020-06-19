@@ -25,9 +25,9 @@ module GEOS_LdasGridCompMod
   use LDAS_DateTimeMod,ONLY: date_time_type
   use LDAS_ensdrv_mpi, only: MPI_tile_coord_type, MPI_grid_def_type
   use LDAS_ensdrv_mpi, only: init_MPI_types,mpicomm,numprocs,myid 
-  use LDAS_ensdrv_mpi, only: master_proc
+  use LDAS_ensdrv_mpi, only: root_proc
   use LDAS_ensdrv_init_routines, only: io_domain_files
-  use LDAS_ensdrv_Globals, only: logunit,logit,master_logit,echo_clsm_ensdrv_glob_param
+  use LDAS_ensdrv_Globals, only: logunit,logit,root_logit,echo_clsm_ensdrv_glob_param
   use lsm_routines,  only: lsmroutines_echo_constants  
   use StieglitzSnow, only: StieglitzSnow_echo_constants
   use SurfParams,    only: SurfParams_init
@@ -403,7 +403,7 @@ contains
     VERIFY_(status)
     call MPI_COMM_RANK(mpicomm, myid,mpierr)
     call MPI_COMM_SIZE(mpicomm, numprocs, mpierr )
-    master_proc = IAmRoot
+    root_proc = IAmRoot
     ! Turn timers on
     call MAPL_TimerOn(MAPL, "TOTAL")
     call MAPL_TimerOn(MAPL, "Initialize")
@@ -417,7 +417,7 @@ contains
     VERIFY_(status)
 
     logit = (trim(LDAS_logit) /= 'NO')
-    master_logit = (IamRoot .and. logit)
+    root_logit = (IamRoot .and. logit)
 
     ! Init catchment constants, currently different in GCM and GEOSldas
     call MAPL_GetResource(MAPL, LAND_PARAMS,Label="LAND_PARAMS:",DEFAULT="Icarus",RC=STATUS)
