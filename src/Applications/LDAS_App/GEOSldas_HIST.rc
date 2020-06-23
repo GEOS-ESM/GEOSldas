@@ -2,7 +2,7 @@
 #
 # This file is edited by "ldsetup" via "process_hist.csh".  The strings '#ASSIM', '#EASE', and '#CUBE' 
 #  are not linked to MAPL HISTORY functionality.  For example, the line 
-#    "#CUBE            'tavg24_2d_lnd_Nx'"
+#    "#CUBE            'tavg12_2d_lnd_Nx'"
 #  does not mean that the 'lnd' output will be on a cube-sphere grid. 
 
 #CUBE VERSION: 1
@@ -11,10 +11,10 @@ EXPDSC: GEOSldas_output
 EXPSRC: GEOSldas
 
 COLLECTIONS:
-#EASE            'tavg24_1d_lfs_Nt'
-#CUBE            'tavg24_2d_lfs_Nx'	
-#EASE            'tavg24_1d_lnd_Nt'	
-#CUBE            'tavg24_2d_lnd_Nx'
+#EASE            'tavg12_1d_lfs_Nt'
+#CUBE            'tavg12_2d_lfs_Nx'	
+#EASE            'tavg12_1d_lnd_Nt'	
+#CUBE            'tavg12_2d_lnd_Nx'
 #ASSIM           'SMAP_L4_SM_gph'
 #                'inst1_1d_lnr_Nt'
 #                'catch_progn_incr'
@@ -33,13 +33,13 @@ COLLECTIONS:
 #CUBE PC720x361-DC.DATELINE: DC
 #CUBE PC720x361-DC.LM: 1
 
-  tavg24_1d_lfs_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
-  tavg24_1d_lfs_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
-  tavg24_1d_lfs_Nt.archive:     '%c/Y%y4',
-  tavg24_1d_lfs_Nt.mode:        'time-averaged',
-  tavg24_1d_lfs_Nt.frequency:   240000,
-  tavg24_1d_lfs_Nt.ref_time:    000000,
-  tavg24_1d_lfs_Nt.fields:'Tair'       , 'METFORCE'      ,
+  tavg12_1d_lfs_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
+  tavg12_1d_lfs_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
+  tavg12_1d_lfs_Nt.archive:     '%c/Y%y4',
+  tavg12_1d_lfs_Nt.mode:        'time-averaged',
+  tavg12_1d_lfs_Nt.frequency:   120000,
+  tavg12_1d_lfs_Nt.ref_time:    000000,
+  tavg12_1d_lfs_Nt.fields:'Tair'       , 'METFORCE'      ,
                           'Qair'       , 'METFORCE'      ,
                           'LWdown'     , 'METFORCE'      ,
                           'SWdown'     , 'METFORCE'      ,
@@ -60,18 +60,18 @@ COLLECTIONS:
                           'HLWUP'      , 'GridComp'      ,	
           ::
 
-  tavg24_2d_lfs_Nx.descr:       '2d,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
-  tavg24_2d_lfs_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
-  tavg24_2d_lfs_Nx.archive:     '%c/Y%y4',
-  tavg24_2d_lfs_Nx.mode:        'time-averaged',
-  tavg24_2d_lfs_Nx.frequency:   240000,
-  tavg24_2d_lfs_Nx.ref_time:    000000,
-  tavg24_2d_lfs_Nx.format:      'CFIO',
-  tavg24_2d_lfs_Nx.regrid_exch: '../input/tile.data',
-  tavg24_2d_lfs_Nx.regrid_name: 'GRIDNAME',
-  tavg24_2d_lfs_Nx.grid_label:  PC720x361-DC,
-  tavg24_2d_lfs_Nx.deflate:     2,
-  tavg24_2d_lfs_Nx.fields:'Tair'       , 'METFORCE'      ,
+  tavg12_2d_lfs_Nx.descr:       '2d,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
+  tavg12_2d_lfs_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
+  tavg12_2d_lfs_Nx.archive:     '%c/Y%y4',
+  tavg12_2d_lfs_Nx.mode:        'time-averaged',
+  tavg12_2d_lfs_Nx.frequency:   120000,
+  tavg12_2d_lfs_Nx.ref_time:    000000,
+  tavg12_2d_lfs_Nx.format:      'CFIO',
+  tavg12_2d_lfs_Nx.regrid_exch: '../input/tile.data',
+  tavg12_2d_lfs_Nx.regrid_name: 'GRIDNAME',
+  tavg12_2d_lfs_Nx.grid_label:  PC720x361-DC,
+  tavg12_2d_lfs_Nx.deflate:     2,
+  tavg12_2d_lfs_Nx.fields:'Tair'       , 'METFORCE'      ,
                           'Qair'       , 'METFORCE'      ,
                           'LWdown'     , 'METFORCE'      ,
                           'SWdown'     , 'METFORCE'      ,
@@ -92,12 +92,12 @@ COLLECTIONS:
                           'HLWUP'      , 'GridComp'       ,	
           ::
 
-  tavg24_1d_lnd_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics',
-  tavg24_1d_lnd_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
-  tavg24_1d_lnd_Nt.mode:        'time-averaged',
-  tavg24_1d_lnd_Nt.frequency:   240000,
-  tavg24_1d_lnd_Nt.ref_time:    000000,
-  tavg24_1d_lnd_Nt.fields:     'WET3'       , 'GridComp'  , 'GWETPROF'     ,
+  tavg12_1d_lnd_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics',
+  tavg12_1d_lnd_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
+  tavg12_1d_lnd_Nt.mode:        'time-averaged',
+  tavg12_1d_lnd_Nt.frequency:   120000,
+  tavg12_1d_lnd_Nt.ref_time:    000000,
+  tavg12_1d_lnd_Nt.fields:     'WET3'       , 'GridComp'  , 'GWETPROF'     ,
                                'WET2'       , 'GridComp'  , 'GWETROOT'     ,
                                'WET1'       , 'GridComp'  , 'GWETTOP'      ,
                                'WCPR'       , 'GridComp'  , 'PRMC'         ,
@@ -185,17 +185,17 @@ COLLECTIONS:
 >>>HIST_IRRIG<<<        'IRRIGRATE'  , 'GridComp'  ,
                                ::
 
-  tavg24_2d_lnd_Nx.descr:       '2d,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics',
-  tavg24_2d_lnd_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
-  tavg24_2d_lnd_Nx.mode:        'time-averaged',
-  tavg24_2d_lnd_Nx.frequency:    240000,
-  tavg24_2d_lnd_Nx.ref_time:     000000,
-  tavg24_2d_lnd_Nx.format:       'CFIO',
-  tavg24_2d_lnd_Nx.regrid_exch:  '../input/tile.data'
-  tavg24_2d_lnd_Nx.regrid_name:  'GRIDNAME'
-  tavg24_2d_lnd_Nx.grid_label:   PC720x361-DC
-  tavg24_2d_lnd_Nx.deflate:      2,
-  tavg24_2d_lnd_Nx.fields:     'WET3'       , 'GridComp'  , 'GWETPROF'     ,
+  tavg12_2d_lnd_Nx.descr:       '2d,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics',
+  tavg12_2d_lnd_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
+  tavg12_2d_lnd_Nx.mode:        'time-averaged',
+  tavg12_2d_lnd_Nx.frequency:    120000,
+  tavg12_2d_lnd_Nx.ref_time:     000000,
+  tavg12_2d_lnd_Nx.format:       'CFIO',
+  tavg12_2d_lnd_Nx.regrid_exch:  '../input/tile.data'
+  tavg12_2d_lnd_Nx.regrid_name:  'GRIDNAME'
+  tavg12_2d_lnd_Nx.grid_label:   PC720x361-DC
+  tavg12_2d_lnd_Nx.deflate:      2,
+  tavg12_2d_lnd_Nx.fields:     'WET3'       , 'GridComp'  , 'GWETPROF'     ,
                                'WET2'       , 'GridComp'  , 'GWETROOT'     ,
                                'WET1'       , 'GridComp'  , 'GWETTOP'      ,
                                'WCPR'       , 'GridComp'  , 'PRMC'         ,
