@@ -1547,7 +1547,7 @@ contains
     ! If input argument "reorder" is ".false." and "pfaf_system=0", assume that tiles have 
     ! already been reordered.  Check for obvious violations and only return "N_tiles_cont".
     ! 
-    ! Typically done only by the master process (because the re-ordering requires
+    ! Typically done only by the root process (because the re-ordering requires
     ! a second copy of the full domain tile coord structure).
     !
     ! reichle, 26 June 2012

@@ -10,7 +10,7 @@ module GEOS_MetforceGridCompMod
   use MAPL_Mod
 
   use LDAS_ensdrv_Globals, only: nodata_generic, nodata_tol_generic
-  use LDAS_ensdrv_Globals, only: logunit,master_logit,logit
+  use LDAS_ensdrv_Globals, only: logunit,logit   !,root_logit
   use LDAS_DateTimeMod, only: date_time_type, date_time_print
   use LDAS_TileCoordType, only: tile_coord_type
   use LDAS_TileCoordType, only: T_TILECOORD_STATE 
@@ -936,7 +936,7 @@ contains
        call LDAS_move_new_force_to_old(internal%mf%DataNxt,internal%mf%DataPrv, &
            MERRA_file_specs,GEOS_Forcing,AEROSOL_DEPOSITION)
 
-       !if(master_logit) write(logunit,*) trim(Iam)//'::force_time_nxt: ', date_time_print(force_time_nxt)
+       !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_nxt: ', date_time_print(force_time_nxt)
 
        ! -compute-average-zenith-angle-over-daylight-part-of-forcing-interval-
        call MAPL_SunGetInsolation(                                              &
@@ -968,7 +968,7 @@ contains
 
     end if
 
-    !if(master_logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
+    !if(root_logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
     !if(logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
 
     ! Compute zenith angle at the next time step
@@ -997,7 +997,7 @@ contains
        RETURN_(ESMF_FAILURE)
     end if
 
-    !if(master_logit) write(logunit,*)  trim(Iam)//'::zth max/min: ', maxval(zth), minval(zth)
+    !if(root_logit) write(logunit,*)  trim(Iam)//'::zth max/min: ', maxval(zth), minval(zth)
 
     ! -convert-mf%TimePrv-to-LDAS-datetime-
     call esmf2ldas(internal%mf%TimePrv, force_time_prv, rc=status)
@@ -1006,9 +1006,9 @@ contains
     ! -convert-ModelTimeNxt-to-LDAS-datetime-
     call esmf2ldas(ModelTimeNxt, model_time_nxt, rc=status)
 
-    !if(master_logit) write(logunit,*) trim(Iam)//'::force_time_prv: ', date_time_print(force_time_prv)
+    !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_prv: ', date_time_print(force_time_prv)
 
-    !if(master_logit) write(logunit,*) trim(Iam)//'::model_time_nxt: ', date_time_print(model_time_nxt)
+    !if(root_logit) write(logunit,*) trim(Iam)//'::model_time_nxt: ', date_time_print(model_time_nxt)
 
     ! Allocate memory for interpolated MetForcing data
     mf_nodata = nodata_generic
@@ -1031,7 +1031,7 @@ contains
          rc=status                                                              &
          )
     VERIFY_(status)
-    !if(master_logit) write(logunit,*) trim(Iam)//'::mf_ntp%tair max/min: ', maxval(mfDataNtp%Tair), minval(mfDataNtp%Tair)
+    !if(root_logit) write(logunit,*) trim(Iam)//'::mf_ntp%tair max/min: ', maxval(mfDataNtp%Tair), minval(mfDataNtp%Tair)
 
     ! Pointers to exports (allocate memory)
     call MAPL_GetPointer(export, Tair, 'Tair', alloc=.true., rc=status)

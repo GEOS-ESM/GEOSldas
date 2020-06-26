@@ -24,8 +24,8 @@ module LDAS_ensdrv_Globals
   public :: LDAS_is_nodata
   public :: logunit
   public :: logit
-  public :: master_logit
-  public :: log_master_only
+  public :: root_logit
+  public :: log_root_only
   
   public :: echo_clsm_ensdrv_glob_param
   public :: write_status
@@ -50,13 +50,13 @@ module LDAS_ensdrv_Globals
   ! until the job terminates.
   !
   ! NOTE: "logunit=stdout" is disabled if log messages are requested from *all* processors
-  !       (that is, for "log_master_only=.false.") to avoid garbled output
+  !       (that is, for "log_root_only=.false.") to avoid garbled output
 
   integer, parameter :: logunit         = output_unit ! defined in iso_fortran_env
   
-  logical, parameter :: log_master_only = .true.
+  logical, parameter :: log_root_only = .true.
   
-  logical            :: logit,master_logit
+  logical            :: logit,root_logit
 
   
 contains
@@ -82,7 +82,7 @@ contains
     write (logunit,*)
     write (logunit,*) 'logunit                 = ',   logunit
     write (logunit,*)
-    write (logunit,*) 'log_master_only         = ',   log_master_only
+    write (logunit,*) 'log_root_only           = ',   log_root_only
     write (logunit,*)
     write (logunit,*) 'logit                   = ',   logit
     write (logunit,*)

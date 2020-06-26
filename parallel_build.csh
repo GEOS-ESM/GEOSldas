@@ -21,9 +21,11 @@ setenv ESMADIR $srcdir
 set origargv = "$argv"
 
 setenv external ""
+setenv USEMEPO FALSE
 while ($#argv)
-   if ("$1" == "-develop") then
-      setenv external "-e Develop.cfg"
+
+   if ("$1" == "-mepo") then
+      setenv USEMEPO TRUE
    endif
 
    shift
@@ -36,8 +38,14 @@ if (! -d ${ESMADIR}/@env) then
       echo " Please run from a head node"
       exit 1
    else
-      echo " Running checkout_externals"
-      checkout_externals $external
+      if ( "$USEMEPO" == "TRUE") then
+         echo "Running mepo initialization"
+         mepo init
+         mepo clone
+      else
+         echo " Running checkout_externals"
+         checkout_externals $external
+      endif
    endif
 endif
 

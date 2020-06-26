@@ -114,7 +114,7 @@ module clsm_ensupd_enkf_update
   use LDAS_ensdrv_mpi,                  ONLY:     &
        MPI_cat_param_type,                        &
        MPI_cat_progn_type,                        &
-       master_proc,                               &
+       root_proc,                                 &
        numprocs,                                  &
        myid,                                      &
        mpierr,                                    &
@@ -400,9 +400,9 @@ contains
        !
        ! Get additional grid/tile information that is needed to map obs
        ! from lat/lon to tiles.  This needs to be done:
-       ! - by master process (because of call to read_obs() in collect_obs())
+       ! - by root process (because of call to read_obs() in collect_obs())
        ! - by all processes if FOV>~0 ("tile_num_in_circle" needed in get_obs_pred())
-       if ( (master_proc)                                      .or.            &
+       if ( (root_proc)                                        .or.            &
             (any(obs_param(1:N_obs_param)%FOV>FOV_threshold))        )  then
 
           allocate(N_tile_in_cell_ij_f(tile_grid_f%N_lon,tile_grid_f%N_lat))
@@ -695,7 +695,7 @@ contains
           end do
           call MPI_Gather(nTiles_l,1,MPI_INTEGER,                                    &
                nTilesl_vec,1,MPI_INTEGER,0,mpicomm,mpierr)
-          if (master_proc) nTiles_f = sum(nTilesl_vec)
+          if (root_proc) nTiles_f = sum(nTilesl_vec)
           call MPI_Bcast(nTiles_f,1,MPI_INTEGER,0,mpicomm,mpierr)
           if (logit) then
              write (tmpstr12,'(i12)') nTiles_f         ! convert integer to string
@@ -704,8 +704,8 @@ contains
           end if
              
           ! Step 2b: indTiles_l -> indTiles_f (on root)
-          if (master_proc) allocate(indTiles_f(nTiles_f), source=-99)
-          if (master_proc) then
+          if (root_proc) allocate(indTiles_f(nTiles_f), source=-99)
+          if (root_proc) then
              tmp_low_ind(1) = 1
              do iproc=1,numprocs-1
                 tmp_low_ind(iproc+1) = tmp_low_ind(iproc) + nTilesl_vec(iproc)
@@ -741,12 +741,12 @@ contains
 
           ! Step 2d: indTiles_ana -> indTilesAna_vec (on root)
           ! root needs indTiles_ana from each proc to distribute cat_param, cat_progn etc.
-          if (master_proc) then
+          if (root_proc) then
              do iproc=1,numprocs
                 allocate(indTilesAna_vec(iproc)%ind(nTilesAna_vec(iproc)))
              end do
           end if
-          if (master_proc) then
+          if (root_proc) then
              indTilesAna_vec(1)%ind = indTiles_ana ! copy contribution from root
              do src=1,numprocs-1
                 recvct = nTilesAna_vec(src+1)
@@ -764,8 +764,8 @@ contains
           ! Step 2: timing info
           call MPI_Reduce(t_end-t_start,tmax,1,MPI_REAL,MPI_MAX,0,mpicomm,mpierr)
           call MPI_Reduce(t_end-t_start,tmin,1,MPI_REAL,MPI_MIN,0,mpicomm,mpierr)
-          if (master_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')            &
-               'AnaLoadBal: Step 2 time taken (create indTiles_ana): ',                  &
+          if (root_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')           &
+               'AnaLoadBal: Step 2 time taken (create indTiles_ana): ',               &
                '  max =', tmax, ',  min =', tmin
 
           ! Step 3a: for each proc create nObs_ana, indObs_ana and Obs_ana
@@ -794,18 +794,18 @@ contains
           ! Step 3b: nObs_ana -> nObsAna_vec (on root)
           call MPI_Gather(nObs_ana,1,MPI_INTEGER,                            &
                nObsAna_vec,1,MPI_INTEGER,0,mpicomm,mpierr)
-          if (master_proc .and. logit) write (logunit,'(2A,I7,A,I7)')          &
+          if (root_proc .and. logit) write (logunit,'(2A,I7,A,I7)')          &
                'AnaLoadBal: nObs_ana statistics:   ',                        &
                'max =', maxval(nObsAna_vec), ',  min =', minval(nObsAna_vec)
           
           ! Step 3c: indObs_ana -> indObsAna_vec (on root)
           ! root needs indObs_ana from each proc (to distribute Obs_pred_l)
-          if (master_proc) then
+          if (root_proc) then
              do iproc=1,numprocs
                 allocate(indObsAna_vec(iproc)%ind(nObsAna_vec(iproc)))
              end do
           end if
-          if (master_proc) then
+          if (root_proc) then
              indObsAna_vec(1)%ind = indObs_ana(1:nObs_ana) ! copy contribution from root
              do src=1,numprocs-1
                 recvct = nObsAna_vec(src+1)
@@ -824,8 +824,8 @@ contains
           ! Step 3: timing info
           call MPI_Reduce(t_end-t_start,tmax,1,MPI_REAL,MPI_MAX,0,mpicomm,mpierr)
           call MPI_Reduce(t_end-t_start,tmin,1,MPI_REAL,MPI_MIN,0,mpicomm,mpierr)
-          if (master_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')            &
-               'AnaLoadBal: Step 3 time taken (create indObs_ana): ',                    &
+          if (root_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')            &
+               'AnaLoadBal: Step 3 time taken (create indObs_ana): ',                  &
                '  max =', tmax, ',  min =', tmin
           !-AnaLodaBal-decomposition-ends-here
 
@@ -841,13 +841,13 @@ contains
           tile_coord_ana = tile_coord_f(indTiles_ana)
 
           ! Step 4c: cat_param(N_catl) -> cat_param_f (on root) -> cat_param_ana
-          if (master_proc) allocate(cat_param_f(N_catf))
+          if (root_proc) allocate(cat_param_f(N_catf))
           call MPI_Gatherv(                                             &
                cat_param,   N_catl,                MPI_cat_param_type,  &
                cat_param_f, N_catl_vec, low_ind-1, MPI_cat_param_type,  &
                0, mpicomm, mpierr )
           allocate(cat_param_ana(nTiles_ana))
-          if (master_proc) then
+          if (root_proc) then
              cat_param_ana = cat_param_f(indTilesAna_vec(1)%ind)
              do dest=1,numprocs-1
                 sendtag = dest
@@ -867,7 +867,7 @@ contains
 
           ! Step 4d: cat_progn -> cat_progn_f (on root) -> cat_progn_ana
           ! one ensemble at a time
-          if (master_proc) allocate(cat_progn_f(N_catf))
+          if (root_proc) allocate(cat_progn_f(N_catf))
           allocate(cat_progn_ana(nTiles_ana,N_ens))
           allocate(tmp_cat_progn_ana(nTiles_ana)) ! CSD-BUGFIX
 
@@ -877,7 +877,7 @@ contains
                   cat_progn(:,iEns),  N_catl,                  MPI_cat_progn_type,  &
                   cat_progn_f,        N_catl_vec,  low_ind-1,  MPI_cat_progn_type,  &
                   0, mpicomm, mpierr )
-             if (master_proc) then
+             if (root_proc) then
                 cat_progn_ana(:,iEns) = cat_progn_f(indTilesAna_vec(1)%ind)
                 do dest=1, numprocs-1
                    sendtag = dest
@@ -914,9 +914,9 @@ contains
 
           ! Step 4e: Obs_pred_l (obs%assim=.true.) -> Obs_pred_f_assim (on root) -> Obs_pred_ana
           ! one ensemble at a time
-          if (master_proc) allocate(Obs_pred_f_assim(N_obsf_assim))
+          if (root_proc) allocate(Obs_pred_f_assim(N_obsf_assim))
           allocate(Obs_pred_ana(nObs_ana,N_ens), source=0.)
-          if (master_proc) then
+          if (root_proc) then
              tmp_low_ind(1) = 1
              do iproc=1,numprocs-1
                 tmp_low_ind(iproc+1) = tmp_low_ind(iproc) + N_obsl_assim_vec(iproc)
@@ -929,7 +929,7 @@ contains
                   Obs_pred_f_assim,          N_obsl_assim_vec, tmp_low_ind-1, MPI_REAL,  &
                   0, mpicomm, mpierr )
              ! Obs_pred_f_assim (on root) -> Obs_pred_ana
-             if (master_proc) then
+             if (root_proc) then
                 ! copy Obs_pred_ana for root
                 Obs_pred_ana(:,iEns) = Obs_pred_f_assim(indObsAna_vec(1)%ind) 
                 ! communicate
@@ -956,8 +956,8 @@ contains
           ! Step 4: timing info
           call MPI_Reduce(t_end-t_start,tmax,1,MPI_REAL,MPI_MAX,0,mpicomm,mpierr)
           call MPI_Reduce(t_end-t_start,tmin,1,MPI_REAL,MPI_MIN,0,mpicomm,mpierr)
-          if (master_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')            &
-               'AnaLoadBal: Step 4 time taken (distribute inputs): ',                    &
+          if (root_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')            &
+               'AnaLoadBal: Step 4 time taken (distribute inputs): ',                  &
                '  max =', tmax, ',  min =', tmin
           !-AnaLoadBal-Input-Distribution-ends-here
 
@@ -1046,8 +1046,8 @@ contains
           ! cat_enkf_incr timinig info
           call MPI_Reduce(t_end-t_start,tmax,1,MPI_REAL,MPI_MAX,0,mpicomm,mpierr)
           call MPI_Reduce(t_end-t_start,tmin,1,MPI_REAL,MPI_MIN,0,mpicomm,mpierr)
-          if (master_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')            &
-               'Time taken by cat_enkf_increments:  ',                                   &
+          if (root_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')            &
+               'Time taken by cat_enkf_increments:  ',                                 &
                '  max =', tmax, ',  min =', tmin
 #else
           ! NOTE: make sure to pass into cat_enkf_increments() only the
@@ -1073,13 +1073,13 @@ contains
           ! cat_progn_incr_ana -> cat_progn_incr_f -> cat_progn_incr
           ! WE PROBABLY SHOULD DO AWAY WITH recvBuf
           call cpu_time(t_start)
-          if (master_proc) then
+          if (root_proc) then
              allocate(cat_progn_incr_f(N_catf))
              allocate(recvBuf(maxval(nTilesAna_vec))) ! temp storage of incoming data
           end if
           do iEns=1,N_ens
              ! cat_progn_incr_ana -> cat_progn_incr_f
-             if (master_proc) then
+             if (root_proc) then
                 do iTile=1,N_catf ! cannot do cat_progn_incr_f = 0.
                    cat_progn_incr_f(iTile) = 0. ! initialize
                 end do
@@ -1114,8 +1114,8 @@ contains
           ! Step 5: timing info
           call MPI_Reduce(t_end-t_start,tmax,1,MPI_REAL,MPI_MAX,0,mpicomm,mpierr)
           call MPI_Reduce(t_end-t_start,tmin,1,MPI_REAL,MPI_MIN,0,mpicomm,mpierr)
-          if (master_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')            &
-               'AnaLoadBal: Step 5 time taken (collect increments): ',                   &
+          if (root_proc .and. logit) write (logunit,'(2A,ES10.3,A,ES10.3)')           &
+               'AnaLoadBal: Step 5 time taken (collect increments): ',                &
                '  max =', tmax, ',  min =', tmin
           !-AnaLoadBal-Output-Collection-ends-here-
 #endif
@@ -1448,7 +1448,7 @@ contains
 
 #endif
 
-    if (master_proc) then
+    if (root_proc) then
 
        N_obsf = sum(N_obsl_vec)
 
@@ -1481,7 +1481,7 @@ contains
     !
     ! write to file
 
-    if (master_proc) then
+    if (root_proc) then
 
 #ifdef LDAS_MPI
 
@@ -1739,7 +1739,7 @@ contains
 !!       file_tag = 'ldas_incr'
 !!       dir_name = 'ana'
 !!
-!!       if (master_proc)  allocate(cat_progn_incr_f(N_catf))
+!!       if (root_proc)  allocate(cat_progn_incr_f(N_catf))
 !!
 !!#ifdef LDAS_MPI
 !!
@@ -1751,7 +1751,7 @@ contains
 !!#else
 !!       cat_progn_incr_f = cat_progn_incr_ensavg
 !!#endif
-!!       if (master_proc) then
+!!       if (root_proc) then
 !!
 !!
 !!          select case (out_incr_format)
@@ -1805,7 +1805,7 @@ contains
 !!
 !!          deallocate(cat_progn_incr_f)
 !!
-!!       end if  ! masterproc
+!!       end if  ! root_proc
 !!
 !!    end if     ! out_incr
 
@@ -1853,7 +1853,7 @@ contains
     integer,               dimension(N_catl),        intent(in) :: l2f
 
     ! N_tile_in_cell_ij and tile_num_in_cell_ij are on the "full" domain
-    !  and guaranteed to be allocated ONLY for the master_proc
+    !  and guaranteed to be allocated ONLY for the root_proc
     !  (but may be allocated on all processors depending on obs_param%FOV)
 
     integer, dimension(:,:),   pointer :: N_tile_in_cell_ij_f   ! input
@@ -2098,7 +2098,7 @@ contains
     !
     ! assemble file name and open file
 
-    if (master_proc) then
+    if (root_proc) then
 
        fname = get_io_filename( './', exp_id, file_tag,                      &
             date_time=date_time, dir_name=dir_name, ens_id=-1, no_subdirs=.true.)
@@ -2143,7 +2143,7 @@ contains
 
 #endif
 
-       if (master_proc) then
+       if (root_proc) then
 
           N_obsf = sum(N_obsl_vec)
 
@@ -2174,7 +2174,7 @@ contains
 
        ! -----------------------------------------------------
 
-       if (master_proc) then
+       if (root_proc) then
 
           ! determine mapping from Observations vector onto global 9 km EASE grid
 
@@ -2804,7 +2804,7 @@ contains
           deallocate(data_h_9km_tile)
           deallocate(data_v_9km_tile)
 
-       end if  ! master_proc
+       end if  ! root_proc
 
     end if     ! (option=='orig_obs' .or. option=='obs_fcst')
 
@@ -2889,7 +2889,7 @@ contains
           call l2f_real( N_catl, N_catf, N_catl_vec, low_ind,  &
                tile_mean_l(:,k), tile_data_f)
 
-          if (master_proc) write(unitnum) (tile_data_f(n), n=1,N_catf)
+          if (root_proc) write(unitnum) (tile_data_f(n), n=1,N_catf)
 
        end do
 
@@ -2910,7 +2910,7 @@ contains
              call l2f_real( N_catl, N_catf, N_catl_vec, low_ind,  &
                   tile_std_l(:,k), tile_data_f)
 
-             if (master_proc) write(unitnum) (tile_data_f(n), n=1,N_catf)
+             if (root_proc) write(unitnum) (tile_data_f(n), n=1,N_catf)
 
           end do
 
@@ -2924,7 +2924,7 @@ contains
     !
     ! close output file
 
-    if (master_proc)  close(unitnum,status='keep')
+    if (root_proc)  close(unitnum,status='keep')
 
   end subroutine write_smapL4SMaup
 
