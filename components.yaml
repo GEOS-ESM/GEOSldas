@@ -28,6 +28,6 @@ GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: git@github.com:GEOS-ESM/GEOSgcm_GridComp.git
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
-  tag: v1.8.7
+  tag: v1.9.0
 
 
