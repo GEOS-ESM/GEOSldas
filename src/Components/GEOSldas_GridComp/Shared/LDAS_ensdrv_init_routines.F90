@@ -14,7 +14,6 @@ module LDAS_ensdrv_init_routines
   use GEOS_MOD
 
   use LDAS_ensdrv_Globals,              ONLY:     &
-       log_master_only,                           &
        logunit,                                   &
        logit,                                     &
        nodata_generic
@@ -51,9 +50,6 @@ module LDAS_ensdrv_init_routines
        cat_progn_type,                            &
        N_gt,                                      &
        N_snow
-
-  use LDAS_ensdrv_mpi,                  ONLY:     &
-       master_proc
 
   use ESMF
   use MAPL_Mod

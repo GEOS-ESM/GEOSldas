@@ -9,7 +9,7 @@ module clsm_ensdrv_out_routines
   ! reichle, 22 Aug 2014
 
   use LDAS_ensdrv_globals,              ONLY:     &
-       log_master_only,                           &
+       log_root_only,                             &
        logunit,                                   &
        logit
   
@@ -26,7 +26,7 @@ module clsm_ensdrv_out_routines
        mwRTM_param_type
 
   use LDAS_ensdrv_mpi,                  ONLY:     &
-       master_proc,                               &
+       root_proc,                                 &
        numprocs
 
   use LDAS_DateTimeMod,                 ONLY:    &
@@ -52,7 +52,7 @@ contains
   
   ! ********************************************************************
 
-  subroutine init_log( myid, numprocs, master_proc )
+  subroutine init_log( myid, numprocs, root_proc )
     
     ! open file for output log, write a few things
 
@@ -63,7 +63,7 @@ contains
     implicit none
     
     integer, intent(in) :: myid, numprocs
-    logical, intent(in) :: master_proc
+    logical, intent(in) :: root_proc
     
     ! ------------------------------------------------------------------------
     !
@@ -89,7 +89,7 @@ contains
     
     ! interpret parameters from clsm_ensdrv_glob_param
 
-    if (log_master_only .and. (.not. master_proc)) then
+    if (log_root_only .and. (.not. root_proc)) then
        
        logit = .false.
        
@@ -101,7 +101,7 @@ contains
 
     ! stop if logunit is stdout and output is requested for *all* processors
     
-    if ( (.not. log_master_only) .and. (logunit==output_unit) ) then
+    if ( (.not. log_root_only) .and. (logunit==output_unit) ) then
        
        err_msg = 'logunit=output_unit (stdout) together with logging *all* procs is disabled'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
@@ -141,7 +141,7 @@ contains
        
        write (logunit,*) "process ", myid, " of ", numprocs, " is alive"
        write (logunit,*)
-       write (logunit,*) "process ", myid, ": master_proc=", master_proc
+       write (logunit,*) "process ", myid, ": root_proc=", root_proc
        write (logunit,*)
        
     end if  ! if (logit)

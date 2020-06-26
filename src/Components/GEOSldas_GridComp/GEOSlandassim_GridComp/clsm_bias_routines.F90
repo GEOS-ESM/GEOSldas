@@ -11,12 +11,12 @@ module clsm_bias_routines
        N_snow => CATCH_N_SNOW,                    &
        N_gt   => CATCH_N_GT
   
-  use LDAS_ensdrv_globals,           ONLY:     &
+  use LDAS_ensdrv_globals,              ONLY:     &
        nodata_generic,                            &
        logit,                                     &
        logunit
   
-  use  LDAS_DateTimeMod,                   ONLY:     &
+  use  LDAS_DateTimeMod,                ONLY:     &
        date_time_type
   
   use catch_types,                      ONLY:     &
@@ -32,9 +32,9 @@ module clsm_bias_routines
        obs_bias_type
 
   use LDAS_ensdrv_mpi,                  ONLY:     &
-       master_proc,                               &
+       root_proc,                                 &
        MPI_obs_bias_type,                         &
-       mpicomm,                            &
+       mpicomm,                                   &
        MPIERR
 
   use LDAS_ensdrv_functions,            ONLY:     &
@@ -43,7 +43,7 @@ module clsm_bias_routines
   use clsm_ensupd_upd_routines,         ONLY:     &
        get_cat_progn_ens_avg
 
-  use LDAS_exceptionsMod,                  ONLY:     &
+  use LDAS_exceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
     
@@ -1069,7 +1069,7 @@ contains
 
     ! ------------------------------------------------------------------
     
-    if (master_proc) then 
+    if (root_proc) then 
        
        allocate(obs_bias_f(N_catf,N_obs_param,N_obsbias_max))
        
@@ -1098,7 +1098,7 @@ contains
     
 #endif
     
-    if (master_proc)  deallocate(obs_bias_f)
+    if (root_proc)  deallocate(obs_bias_f)
     
   end subroutine initialize_obs_bias
   
@@ -1313,7 +1313,7 @@ contains
     
     integer :: i,j
 
-    if (master_proc) allocate(obs_bias_f(N_catf,N_obs_param, N_obsbias_max))
+    if (root_proc) allocate(obs_bias_f(N_catf,N_obs_param, N_obsbias_max))
     
 #ifdef LDAS_MPI
     
@@ -1336,7 +1336,7 @@ contains
     
 #endif
     
-    if (master_proc) then
+    if (root_proc) then
        
        call io_rstrt_obs_bias(                         &
             'w', work_path, exp_id, date_time, N_catf, &

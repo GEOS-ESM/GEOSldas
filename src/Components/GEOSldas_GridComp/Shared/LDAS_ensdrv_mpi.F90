@@ -59,7 +59,7 @@ module LDAS_ensdrv_mpi
   integer, public  :: myid=0, numprocs=1, mpicomm
   integer, public  :: mpierr, mpistatus(MPI_STATUS_SIZE)
   
-  logical, public  :: master_proc=.true.
+  logical, public  :: root_proc=.true.
   
   integer, public  :: MPI_tile_coord_type, MPI_grid_def_type
   integer, public  :: MPI_cat_param_type,  MPI_cat_progn_type

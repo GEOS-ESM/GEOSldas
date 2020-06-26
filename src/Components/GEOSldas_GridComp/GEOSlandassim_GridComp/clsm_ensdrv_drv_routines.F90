@@ -34,8 +34,7 @@ module clsm_ensdrv_drv_routines
   use LDAS_ensdrv_mpi,                  ONLY:     &
        mpicomm,                                   &
        mpierr,                                    &
-       numprocs,                                  &
-       master_proc
+       numprocs
 
   use catchment_model,                  ONLY:     &
        catch_calc_tsurf

@@ -18,9 +18,9 @@ module LDAS_PertRoutinesMod
   use ESMF
   use MAPL_Mod
 
-  use LDAS_ensdrv_Globals,                  ONLY:     &
+  use LDAS_ensdrv_Globals,              ONLY:     &
        logunit,                                   &
-       master_logit,                                   &
+       root_logit,                                &
        nodata_generic,                            &
        nodata_tolfrac_generic,                    &
        nodata_tol_generic
@@ -35,7 +35,7 @@ module LDAS_PertRoutinesMod
        grid_def_type,                             &
        io_grid_def_type
 
-  use LDAS_TileCoordRoutines,          ONLY:     &
+  use LDAS_TileCoordRoutines,           ONLY:     &
         LDAS_create_grid_g,                       &
         get_ij_ind_from_latlon
 
@@ -294,7 +294,7 @@ contains
     ! MPI variables
     type(ESMF_VM) :: vm
     integer :: mpicomm
-    logical :: master_proc,f_exist
+    logical :: root_proc,f_exist
 
     ! -----------------------------------------------------------------
 
@@ -333,7 +333,7 @@ contains
     VERIFY_(status)
     call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
     VERIFY_(status)
-    master_proc = MAPL_Am_I_Root(vm)
+    root_proc = MAPL_Am_I_Root(vm)
 
     ! ---------------------------------------------------------------------
     !
@@ -359,7 +359,7 @@ contains
     if (present(kw_echo)) then
        if (kw_echo) then
 
-          if(master_logit) then
+          if(root_logit) then
              write (logunit,*)
              write (logunit,'(400A)') 'reading *default* ens prop inputs from ' // trim(fname)
              write (logunit,*)
@@ -380,7 +380,7 @@ contains
        if (present(kw_echo)) then
           if (kw_echo) then
 
-             if(master_logit) then
+             if(root_logit) then
                 write (logunit,*)
                 write (logunit,'(400A)') 'reading *SPECIAL* ens prop inputs from ' // trim(fname)
                 write (logunit,*)
@@ -401,7 +401,7 @@ contains
 
     ! echo variables of ens_prop_inputs
 
-    if (present(kw_echo) .and. master_logit) then
+    if (present(kw_echo) .and. root_logit) then
        if (kw_echo) then
 
           write (logunit,*) 'ens_prop inputs are:'
@@ -424,7 +424,7 @@ contains
           do i=1,N_ens
              kw_ens_id(i) = first_ens_id + i - 1
           end do
-          if(master_logit) then
+          if(root_logit) then
              write (logunit,*)
              write (logunit,*) 'ens_id = ', (kw_ens_id(i), i=1,N_ens)
              write (logunit,*)
@@ -511,8 +511,8 @@ contains
           fname = get_io_filename( work_path, exp_id, file_tag, date_time=date_time, &
                dir_name=dir_name, file_ext=file_ext )
 
-          if(master_logit) write (logunit,'(400A)') 'writing ens prop inputs to ' // trim(fname)
-          if(master_logit) write (logunit,*)
+          if(root_logit) write (logunit,'(400A)') 'writing ens prop inputs to ' // trim(fname)
+          if(root_logit) write (logunit,*)
 
           open(10, file=fname, status='unknown', action='write', &
                delim='apostrophe')
@@ -996,7 +996,7 @@ contains
     ! MPI variables
     type(ESMF_VM) :: vm
     integer :: mpicomm, numprocs, myid, mpierr
-    logical :: master_proc
+    logical :: root_proc
 
     ! -----------------------------------------------------------------
 
@@ -1004,13 +1004,13 @@ contains
     VERIFY_(status)
     call ESMF_VMGet(VM, petCount=numprocs, localPet=myid, mpiCommunicator=mpicomm, rc=status)
     VERIFY_(status)
-    master_proc = MAPL_Am_I_Root(vm)
+    root_proc = MAPL_Am_I_Root(vm)
 
     ! ---------
     !
     ! DESCR
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_descr_force_pert=tmp_force_pert_character)
 
@@ -1029,7 +1029,7 @@ contains
     !
     ! ZEROMEAN
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_zeromean_force_pert=tmp_force_pert_logical)
 
@@ -1045,7 +1045,7 @@ contains
     !
     ! COARSEN
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_coarsen_force_pert=tmp_force_pert_logical)
 
@@ -1063,7 +1063,7 @@ contains
 
     ! obtain (default) homogeneous std of forcing perturbations
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_std_force_pert=tmp_force_pert_real)
 
@@ -1086,7 +1086,7 @@ contains
 
     ! find out whether std_force_pert should be read from file
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_stdfromfile_force_pert=tmp_force_pert_logical)
 
@@ -1104,7 +1104,7 @@ contains
 
        ! find out name (incl full path) of file with std value
 
-       if (master_proc)                                               &
+       if (root_proc)                                               &
             call read_ens_prop_inputs(                                &
             kw_stdfilename_force_pert = stdfilename_force_pert        &
             )
@@ -1177,7 +1177,7 @@ contains
     ! PC: instead of reading one param (and broadcasting it) at a time, it
     ! will be better to read them all and broadcast at one go
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_std_normal_max_force_pert=tmp_force_pert_real)
 
@@ -1192,7 +1192,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_xcorr_force_pert=tmp_force_pert_real)
 
@@ -1206,7 +1206,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_ycorr_force_pert=tmp_force_pert_real)
 
@@ -1220,7 +1220,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_tcorr_force_pert=tmp_force_pert_real)
 
@@ -1234,7 +1234,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_typ_force_pert=tmp_force_pert_real)
 
@@ -1253,7 +1253,7 @@ contains
     ! (see subroutine read_ens_prop_inputs)
     ! now fill in the rest of the information (diagonal=1 and symmetry)
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_ccorr_force_pert=tmp_force_pert_ccorr)
 
@@ -1387,7 +1387,7 @@ contains
     ! MPI variables
     type(ESMF_VM) :: vm
     integer :: mpicomm, numprocs, myid, mpierr
-    logical :: master_proc
+    logical :: root_proc
 
     ! -----------------------------------------------------------------
 
@@ -1395,13 +1395,13 @@ contains
     VERIFY_(status)
     call ESMF_VMGet(VM, petCount=numprocs, localPet=myid, mpiCommunicator=mpicomm, rc=status)
     VERIFY_(status)
-    master_proc = MAPL_Am_I_Root(vm)
+    root_proc = MAPL_Am_I_Root(vm)
 
     ! -------
     !
     ! DESCR
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_descr_progn_pert=tmp_progn_pert_character)
 
@@ -1420,7 +1420,7 @@ contains
     !
     ! ZEROMEAN
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_zeromean_progn_pert=tmp_progn_pert_logical)
 
@@ -1436,7 +1436,7 @@ contains
     !
     ! COARSEN
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_coarsen_progn_pert=tmp_progn_pert_logical)
 
@@ -1454,7 +1454,7 @@ contains
     !
     ! obtain (default) homogeneous std of forcing perturbations
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_std_progn_pert=tmp_progn_pert_real)
 
@@ -1477,7 +1477,7 @@ contains
 
     ! find out whether std_progn_pert should be read from file
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_stdfromfile_progn_pert=tmp_progn_pert_logical)
 
@@ -1496,7 +1496,7 @@ contains
 
        ! find out name (incl full path) of file with std value
 
-       if (master_proc)                                               &
+       if (root_proc)                                               &
             call read_ens_prop_inputs(                                &
             kw_stdfilename_progn_pert = stdfilename_progn_pert        &
             )
@@ -1566,7 +1566,7 @@ contains
     !       homogeneous (ie same for all catchments, unlike std_progn_pert)
     !       typ_progn_pert must also be homogeneous
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_std_normal_max_progn_pert=tmp_progn_pert_real)
 
@@ -1581,7 +1581,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_xcorr_progn_pert=tmp_progn_pert_real)
 
@@ -1595,7 +1595,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_ycorr_progn_pert=tmp_progn_pert_real)
 
@@ -1609,7 +1609,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_tcorr_progn_pert=tmp_progn_pert_real)
 
@@ -1623,7 +1623,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_typ_progn_pert=tmp_progn_pert_real)
 
@@ -1642,7 +1642,7 @@ contains
     ! (see subroutine read_ens_prop_inputs)
     ! now fill in the rest of the information (diagonal=1 and symmetry)
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_ccorr_progn_pert=tmp_progn_pert_ccorr)
 
@@ -1985,7 +1985,7 @@ contains
 
     ! -------------------------------------------------------------
 
-    if (master_logit) then
+    if (root_logit) then
        write (logunit,*) 'echo_pert_param():'
 
        do m=1,N_pert
@@ -2013,7 +2013,7 @@ contains
 
           end do
        end do
-     endif ! master_logit
+     endif ! root_logit
   end subroutine echo_pert_param
 
  !*************************************************************
@@ -2088,7 +2088,7 @@ contains
             file_tag, date_time=date_time,                          &
             dir_name=dir_name, ens_id=ens_id, file_ext=file_ext )
 
-!!$       if (master_proc) then
+!!$       if (root_proc) then
        inquire(file=filename,exist=file_exists)
        if(.not. file_exists) then
           write (6,'(400A)') &
@@ -2106,7 +2106,7 @@ contains
 !!$       call MPI_Bcast(istat, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpierr)
 !!$#endif
 
-!!$       if (master_proc) then
+!!$       if (root_proc) then
 
        write (6,'(400A)') &
                'Reading pert restart file ' // trim(filename)
@@ -2171,7 +2171,7 @@ contains
 
        do k=1,N_force_pert
 
-!!$          if (master_proc) then
+!!$          if (root_proc) then
              read (10) ((Pert_ntrmdt_f(i,j), i=1,pert_grid_f%N_lon), &
                   j=1,pert_grid_f%N_lat)
 
@@ -2187,7 +2187,7 @@ contains
 
        do k=1,N_progn_pert
 
-!!$          if (master_proc) then
+!!$          if (root_proc) then
              read (10) ((Pert_ntrmdt_f(i,j), i=1,pert_grid_f%N_lon), &
                   j=1,pert_grid_f%N_lat)
              Progn_pert_ntrmdt_g(xstart:xend, ystart:yend,k) = Pert_ntrmdt_f(:,:)
@@ -2214,7 +2214,7 @@ contains
 
     end select
     
-!!    if (master_proc)  close (10,status='keep')
+!!    if (root_proc)  close (10,status='keep')
     close (10,status='keep')
 
    end subroutine io_pert_rstrt

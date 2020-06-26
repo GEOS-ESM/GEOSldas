@@ -678,10 +678,9 @@ class LDASsetup:
         # link BC
         print "linking bcs..." 
         bcnames=['green','lai','ndvi','nirdf','visdf']
-        for ensid in self.ensids :
-            for bcln,bc in zip(bcnames,bcs) :
-                myBC=self.inpdir+'/'+bcln+ensid+'.data'
-                os.symlink(bc,myBC)
+        for bcln,bc in zip(bcnames,bcs) :
+           myBC=self.inpdir+'/'+bcln+'.data'
+           os.symlink(bc,myBC)
 
         # create and link restart 
         print "Creating and lining restart..."
@@ -1016,8 +1015,8 @@ class LDASsetup:
                 bcval=['../input/green','../input/lai','../input/ndvi','../input/nirdf','../input/visdf']
                 bckey=['GREEN','LAI','NDVI','NIRDF','VISDF']
                 for key, val in zip(bckey,bcval):
-                   keyn= key+'_FILE'
-                   valn= val+tmpl_+'.data'
+                   keyn = key+'_FILE'
+                   valn = val+'.data'
                    ldasrcInp[keyn]= valn
 
                 # create restart item in RC
