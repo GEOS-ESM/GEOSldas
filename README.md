@@ -1,6 +1,6 @@
 # GEOSldas Fixture
 
-This document explains how to build, set up, and run the GEOS land modeling and data assimilation system (`GEOSldas`).
+This document explains how to build, set up, and run the GEOS land modeling and data assimilation system (`GEOSldas`) on the most common systems used by GMAO.  Additional steps are needed on other systems.
 
 ## How to Build GEOSldas
 
