@@ -91,6 +91,13 @@ if( ${LSMCHOICE} == 2 ) then # CatchCN Only
     ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/FPAR_CDF_Params-M09.nc4
 endif
 
+# Generate the complete ExtData.rc
+# --------------------------------
+if(-e ExtData.rc )    /bin/rm -f   ExtData.rc
+/bin/ln -s  $ESMADIR/etc/GEOS_LandGridComp_ExtData.rc
+set  extdata_files = `/bin/ls -1 *_ExtData.rc`
+cat $extdata_files > ExtData.rc 
+
 #######################################################################
 #                      Domain Decomposition
 #######################################################################
