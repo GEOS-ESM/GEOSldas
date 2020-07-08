@@ -375,7 +375,6 @@ contains
     type(ESMF_DistGrid) :: distgrid
 
     ! MAPL variables
-    type(MAPL_LocStream) :: surf_locstream
     type(MAPL_LocStream) :: land_locstream
     type(MAPL_MetaComp), pointer :: MAPL=>null() ! GC's MAPL obj
     type(MAPL_MetaComp), pointer :: CHILD_MAPL=>null() ! Child's MAPL obj
@@ -582,7 +581,7 @@ contains
          NAME=GCNAMES(LAND(1)), &
          RC=STATUS )
     VERIFY_(STATUS)
-    
+
     call MAPL_TimerOff(MAPL, "-LocStreamCreate")
     ! Convert LAND's LocStream to LDAS' tile_coord and save it in the GridComp
     ! -get-tile-information-from-land's-locstream-
@@ -1063,7 +1062,7 @@ contains
         
         call MAPL_LocStreamTransform( PTR, XFORM, TILE, RC=STATUS ) 
         VERIFY_(STATUS)
-        
+
         RETURN_(ESMF_SUCCESS)
     
       end subroutine FILLIN_TILE
