@@ -18,7 +18,6 @@ module GEOS_MetforceGridCompMod
   use LDAS_ForceMod, only: LDAS_GetForcing => get_forcing
   use LDAS_ForceMod, only: LDAS_move_new_force_to_old
   use LDAS_ForceMod, only: FileOpenedHash,GEOS_closefile
-  use LDAS_ForceMod, only: i_indg,j_indg
   use LDAS_DriverTypes, only: met_force_type, assignment(=)
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_InterpMod, only: LDAS_TInterpForcing=>metforcing_tinterp
@@ -35,8 +34,6 @@ module GEOS_MetforceGridCompMod
 
   real, parameter      :: daylen = 86400.
 
-  integer, pointer :: cs_i_indg(:) =>null()
-  integer, pointer :: cs_j_indg(:) =>null()
   ! !PUBLIC MEMBER FUNCTIONS:
 
   public :: SetServices
@@ -624,8 +621,6 @@ contains
     call MAPL_LocStreamGet(                                                     &
          locstream,                                                             &
          NT_LOCAL=land_nt_local,                                                &
-         GRIDIM = i_indg,                                                       &
-         GRIDJM = j_indg,                                                       &
          rc=status                                                              &
          )
     VERIFY_(status)

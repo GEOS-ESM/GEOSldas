@@ -59,7 +59,7 @@ module LDAS_ForceMod
   public :: get_forcing
   public :: LDAS_move_new_force_to_old
   public :: GEOS_closefile
-  public :: i_indg, j_indg
+  public :: cs_i_indg, cs_j_indg ! initialized in GEOS_LdasGridComp
 
   type(Hash_Table),public :: FileOpenedHash
 
@@ -88,8 +88,9 @@ module LDAS_ForceMod
 
   type(local_grid), target :: local_info
   
-  integer, pointer :: i_indg(:)=>null()
-  integer, pointer :: j_indg(:)=>null()
+  !! initialized in GEOS_LdasGridComp
+  integer, pointer :: cs_i_indg(:)=>null()
+  integer, pointer :: cs_j_indg(:)=>null()
 
 contains
 
@@ -4679,13 +4680,9 @@ contains
           if( isCubed ) then ! cs grid
              ! i_indg and j_indg are changed to LatLon grid
              do k=1,N_cat
-                !i1(k) = tile_coord(k)%cs_i_indg
-                !j1(k) = tile_coord(k)%cs_j_indg
-                i1(k) = i_indg(k)
-                j1(k) = j_indg(k)
+                i1(k) = cs_i_indg(k)
+                j1(k) = cs_j_indg(k)
              enddo
-             if (any(i1 /= tile_coord%cs_i_indg)) stop " wrong cs-i" 
-             if (any(j1 /= tile_coord%cs_j_indg)) stop " wrong cs-j" 
           else
              do k=1,N_cat
 

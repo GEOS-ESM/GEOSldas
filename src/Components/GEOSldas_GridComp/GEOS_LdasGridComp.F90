@@ -31,7 +31,7 @@ module GEOS_LdasGridCompMod
   use lsm_routines,  only: lsmroutines_echo_constants  
   use StieglitzSnow, only: StieglitzSnow_echo_constants
   use SurfParams,    only: SurfParams_init
-
+  use LDAS_ForceMod, only: cs_i_indg, cs_j_indg
   implicit none
 
   private
@@ -371,6 +371,7 @@ contains
 
     integer,dimension(:),pointer :: f2g
     integer :: N_catf
+    integer, allocatable :: cs_i_indg_f(:), cs_j_indg_f(:)
 
     type(grid_def_type) :: tile_grid_g
     type(grid_def_type) :: tile_grid_f
@@ -591,9 +592,8 @@ contains
 
             ASSERT_(index(tile_grid_g%gridtype, 'c3') /=0)
             !1) save original index
-            tile_coord_f%cs_i_indg = tile_coord_f%i_indg 
-            tile_coord_f%cs_j_indg = tile_coord_f%j_indg 
-            
+            cs_i_indg_f = tile_coord_f%i_indg            
+            cs_j_indg_f = tile_coord_f%j_indg            
             !2) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
             call get_pert_grid(tile_grid_g, latlon_tmp_g)
             tile_grid_g = latlon_tmp_g
@@ -632,6 +632,17 @@ contains
       tcinternal%l2f = tile_id2f(local_id)
       tcinternal%tile_coord = tile_coord_f(tcinternal%l2f)
       deallocate(f2tile_id, tile_id2f)
+
+      if (trim(grid_type) == "Cubed-Sphere" ) then
+         if (.not. IamRoot) allocate(cs_i_indg_f(N_catf), cs_j_indg_f(N_catf))
+         call MPI_BCAST(cs_i_indg_f, N_catf, MPI_INTEGER, 0, mpicomm, mpierr)
+         call MPI_BCAST(cs_j_indg_f, N_catf, MPI_INTEGER, 0, mpicomm, mpierr)
+         allocate(cs_i_indg(land_nt_local), cs_j_indg(land_nt_local))
+         cs_i_indg = cs_i_indg_f(tcinternal%l2f)
+         cs_j_indg = cs_j_indg_f(tcinternal%l2f)
+         deallocate(cs_i_indg_f, cs_j_indg_f)
+      endif
+
     end block
 
     do i = 0, numprocs-1
