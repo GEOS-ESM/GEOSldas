@@ -287,7 +287,7 @@ Notes:
 - Icarus-NLv2 is a update to Icarus-NL bcs. A patch has been applied to files green*.data, nirdf*.dat, and visdf*.dat. 
 - DEFAULT for GEOSldas v17.8.0 
 	
-#### Icarus-NLv3, SMAP_Nature_v8.1, SMAP L4_SM Version 5
+#### Icarus-NLv3, SMAP_Nature_v8.1
 ```
   BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv3/
 ```
@@ -301,6 +301,14 @@ Notes:
 
 - Generated with cvs tag Jason-3_0_LANDBCS
 - DEFAULT for GEOSldas AFTER v17.8.0
+
+#### Icarus-NLv4, SMAP_Nature_v8.3, SMAP L4_SM Version 5
+```
+  BCS_PATH = /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv4_EASE/
+```
+
+Notes: 
+- Icarus-NLv4 is identical to Icarus-NLv3 except that NLv4 reinstates veg heights from JPL/Simard et al. 2011 Lidar data.
 
 
       
