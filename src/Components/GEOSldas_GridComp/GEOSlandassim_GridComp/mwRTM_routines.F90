@@ -613,7 +613,9 @@ contains
      
      gamma  = -0.57 * wp + 0.481
 
-     !wt = 0.49 * wp + 0.165 !transition SM, parameter
+     ! wt = 0.49 * wp + 0.165     transition SM parameter from Wang and Schmugge 1980;
+     !                            note typo in De Lannoy et al 2013 (0.48 instead of 0.49)
+     
 
      IF (wc <= wt) THEN
      
