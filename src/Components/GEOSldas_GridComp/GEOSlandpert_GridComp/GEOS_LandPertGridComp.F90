@@ -39,8 +39,7 @@ module GEOS_LandPertGridCompMod
   use LDAS_PertRoutinesMod, only: GEOSldas_PROGN_PERT_DTSTEP
   use LDAS_PertRoutinesMod, only: GEOSldas_NUM_ENSEMBLE
   use LDAS_PertRoutinesMod, only: GEOSldas_FIRST_ENS_ID
-  use LDAS_TileCoordRoutines, only: grid2tile, tile2grid_simple, tile_mask_grid
-  use LDAS_TileCoordRoutines, only: get_ij_ind_from_latlon
+  use LDAS_TileCoordRoutines, only: grid2tile_simple, tile2grid_simple, tile_mask_grid
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
   !use catch_types, only: cat_param_type
@@ -1427,9 +1426,7 @@ contains
        !     rc=status                                                           &
        !     )
        !VERIFY_(status)
-       !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, fpert_grid(:,:,ipert), &
-       !         internal%ForcePert%DataPrv(:,ipert))
-       call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+       call grid2tile_simple( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 fpert_grid(:,:,ipert), internal%ForcePert%DataPrv(:,ipert))
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
     end do
@@ -1466,9 +1463,7 @@ contains
        !     rc=status                                                           &
        !     )
        !VERIFY_(status)
-       !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, ppert_grid(:,:,ipert), &
-       !         internal%PrognPert%DataPrv(:,ipert))
-       call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
+       call grid2tile_simple( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataPrv(:,ipert))
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
     end do
@@ -1631,11 +1626,11 @@ contains
        allocate(tile_data_f(land_nt_local,nfpert))
        allocate(tile_data_p(land_nt_local,nppert))
        do m = 1, nfpert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile_simple(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 fpert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_f(:,m)) 
        enddo
        do m = 1, nppert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile_simple(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 ppert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_p(:,m)) 
        enddo
        ! 2) gather tiledata
@@ -1977,9 +1972,7 @@ contains
              !     rc=status                                                        &
              !     )
              !VERIFY_(status)
-             !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, fpert_grid(:,:,ipert), &
-             !     internal%ForcePert%DataNxt(:,ipert))
-             call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_grid(:,:,ipert), &
+             call grid2tile_simple( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_grid(:,:,ipert), &
                   internal%ForcePert%DataNxt(:,ipert))
              call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
           end do
@@ -2486,9 +2479,7 @@ contains
           !     rc=status                                                        &
           !     )
           !VERIFY_(status)
-          !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, ppert_grid(:,:,ipert), &
-          !      internal%PrognPert%DataNxt(:,ipert))
-          call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
+          call grid2tile_simple( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataNxt(:,ipert))
           call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
        end do
@@ -2747,11 +2738,11 @@ contains
        allocate(tile_data_f(land_nt_local,nfpert))
        allocate(tile_data_p(land_nt_local,nppert))
        do m = 1, nfpert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile_simple(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 internal%fpert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_f(:,m)) 
        enddo
        do m = 1, nppert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile_simple(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 internal%ppert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_p(:,m)) 
        enddo
        ! 2) gather tiledata

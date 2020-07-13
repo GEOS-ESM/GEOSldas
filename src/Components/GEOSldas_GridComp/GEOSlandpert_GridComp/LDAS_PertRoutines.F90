@@ -36,8 +36,7 @@ module LDAS_PertRoutinesMod
        io_grid_def_type
 
   use LDAS_TileCoordRoutines,           ONLY:     &
-        LDAS_create_grid_g,                       &
-        get_ij_ind_from_latlon
+        LDAS_create_grid_g
 
   use LDAS_PertTypes,                   ONLY:     &
        pert_param_type,                           &
