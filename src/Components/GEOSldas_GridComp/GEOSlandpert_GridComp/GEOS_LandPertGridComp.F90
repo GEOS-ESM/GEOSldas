@@ -1658,10 +1658,10 @@ contains
        if (IamRoot) then
        ! 3) tile2grid. simple reverser of grid2tile without weighted averaging/no-data-handling
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
        
        ! 4) writing
@@ -2776,10 +2776,10 @@ contains
        ! 3) tile2grid 
             ! this step is simply a reverse of grid2tile without any weighted   
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
 
         ! 4) writing
