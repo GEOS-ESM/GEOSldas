@@ -49,7 +49,7 @@ module clsm_adapt_routines
        get_io_filename
 
   use LDAS_TilecoordRoutines,              ONLY:     &
-       grid2tile_simple
+       grid2tile
 
   use LDAS_exceptionsMod,                  ONLY:     &
        ldas_abort,                                &
@@ -943,10 +943,10 @@ contains
           
           ! get mean and std in tile space 
           
-          call grid2tile_simple( pert_grid, N_catd, tile_coord%i_indg,tile_coord%j_indg, & !tile_coord,       &
+          call grid2tile( pert_grid, N_catd, tile_coord%i_indg,tile_coord%j_indg, & !tile_coord,       &
                pert_param(n)%mean, mu )
 
-          call grid2tile_simple( pert_grid, N_catd, tile_coord%i_indg,tile_coord%j_indg, & !tile_coord,       &
+          call grid2tile( pert_grid, N_catd, tile_coord%i_indg,tile_coord%j_indg, & !tile_coord,       &
                pert_param(n)%std,  sg )
           
           select case (pert_param(n)%typ)

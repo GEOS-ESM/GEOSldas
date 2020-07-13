@@ -11,7 +11,8 @@
 module LDAS_TileCoordRoutines
 
   use MAPL_BaseMod, only: MAPL_GetHorzIJIndex
-  use LDAS_TileCoordType,                 ONLY:     &
+  
+  use LDAS_TileCoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type,                             &
        init_grid_def_type,                        &
@@ -20,7 +21,7 @@ module LDAS_TileCoordRoutines
        tile_typ_land,                             &
        N_cont_max
 
-  use LDAS_ensdrv_Globals,           ONLY:     &
+  use LDAS_ensdrv_Globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
@@ -29,14 +30,14 @@ module LDAS_TileCoordRoutines
   use MAPL_ConstantsMod,                ONLY:     &
        MAPL_RADIUS                                    ! Earth radius
   
-  use LDAS_EASE_conv,                      ONLY:     &
+  use LDAS_EASE_conv,                   ONLY:     &
        easev1_convert,easev2_convert
 
   use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
 
- use LDAS_ensdrv_functions,            ONLY:     &
+ use LDAS_ensdrv_functions,             ONLY:     &
        is_in_list,                                &
        is_in_domain 
   
@@ -51,7 +52,7 @@ module LDAS_TileCoordRoutines
   public :: get_tile_num_from_latlon
   public :: get_ij_ind_from_latlon
   public :: tile2grid_simple
-  public :: grid2tile_simple
+  public :: grid2tile
   public :: tile_mask_grid
   public :: is_cat_in_box
   public :: LDAS_create_grid_g
@@ -59,7 +60,7 @@ module LDAS_TileCoordRoutines
   character(10) :: tmpstring10
   character(40) :: tmpstring40
 
-  interface grid2tile_simple
+  interface grid2tile
     module procedure grid2tile_real, grid2tile_real8
   end interface  
 contains
@@ -281,6 +282,8 @@ contains
 
   end subroutine LDAS_create_grid_g
 
+  ! **********************************************************************  
+  
   subroutine LDAS_read_land_tile( tile_file,catch_file, tile_grid_g, tile_coord_land,f2g )
     ! inputs:
     !
@@ -497,6 +500,8 @@ contains
 
   end subroutine LDAS_read_land_tile
 
+  ! **********************************************************************
+
   subroutine get_tile_grid( N_tile, tile_coord, tile_grid_g, tile_grid )     
     
     ! get matching tile_grid for given tile_coord and (global) tile_grid_g
@@ -635,6 +640,7 @@ contains
   end subroutine get_tile_grid
 
   ! **********************************************************************
+
   subroutine get_number_of_tiles_in_cell_ij( N_tile, tile_coord, tile_grid, &
        N_tile_in_cell_ij)
     
@@ -682,6 +688,8 @@ contains
     if (logit) write (logunit,*)
 
   end subroutine get_number_of_tiles_in_cell_ij
+
+  ! **********************************************************************
 
   subroutine get_tile_num_in_cell_ij( N_tile, tile_coord, tile_grid, &
        max_N_tile_in_cells, tile_num_in_cell_ij )
@@ -755,6 +763,8 @@ contains
     end do
     
   end subroutine get_tile_num_in_cell_ij
+
+  ! **********************************************************************
 
   subroutine read_grid_elev( fname, tile_grid, N_tile, tile_coord )
 
@@ -896,6 +906,8 @@ contains
     
   end subroutine fix_dateline_bug_in_tilecoord
 
+  ! **********************************************************************
+  
   subroutine read_catchment_def( catchment_def_file, N_tile, tile_coord )
     
     ! reichle, 17 May 2011: read elevation data if available
@@ -1483,15 +1495,21 @@ contains
     N_tile_in_ellipse = mm
     
   end subroutine get_tile_num_in_ellipse
+
+  ! **********************************************************************
   
-  subroutine tile2grid_simple( N_tile, tile_coord, tile_grid, tile_data, grid_data)
-    ! no interpolation or weighted. simply assign the tile value to grid
+  subroutine tile2grid_simple( N_tile, i_indgs, j_indgs, tile_grid, tile_data, grid_data)
+
+    ! Interpolate from tile space to grid space without interpolation/weighted/no-data-handling.
+    ! Simply assign the tile value to the grid cell (last assignment prevails)
+
     implicit none
     
     integer, intent(in) :: N_tile
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
-    
+
+    integer, intent(in) :: i_indgs(:)     ! dimension(N_tile)
+    integer, intent(in) :: j_indgs(:)     ! dimension(N_tile)
+     
     type(grid_def_type), intent(in) :: tile_grid
     
     real, dimension(N_tile), intent(in) :: tile_data
@@ -1507,8 +1525,8 @@ contains
 
     ! ------------------------------------
     
-    if (size(tile_coord)/=N_tile) then
-       err_msg = 'tile_coord and tile_data do not match.'
+    if (size(i_indgs)/=N_tile .or. size(j_indgs)/=N_tile) then
+       err_msg = '[i,j]_indg and tile_data do not match.'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
     !
@@ -1521,14 +1539,156 @@ contains
 
     grid_data = no_data
     do n=1,N_tile
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
+       i = i_indgs(n) - off_i
+       j = j_indgs(n) - off_j
        grid_data(i,j) = tile_data(n)
     end do
     
   end subroutine tile2grid_simple
 
   ! *******************************************************************
+  !
+  ! The subroutine tile2grid_full() is the original LDASsa tile2grid() 
+  !  subroutine with weighted averaging and no-data-handling.
+  !
+  ! This subroutine should no longer be used and is provided here for
+  !   reference only.  Use MAPL LocationStream instead.
+  !
+  ! - reichle, 13 July 2020
+
+  subroutine tile2grid_full( N_tile, tile_coord, tile_grid, tile_data,    &
+       grid_data, no_data_value, no_data_tol, echo )
+    
+    ! map from tile space to tile definition grid
+    !
+    ! NOTE: tile_coord must match tile_data
+    !
+    ! optional inputs: 
+    !   no_data_value :
+    !   no_data_tol   : tolerance when checking tile_data 
+    !                     against no_data_value
+    !   echo          : echo no_data_value and tolerance
+    !
+    ! The indices tile_coord%i_indg and tile_coord%j_indg refer to the *global*
+    ! tile definition grid (as obtained from the tile_coord_file).
+    ! Integers "off_i" and "off_j" describe the offset between the global 
+    ! "tile_grid_g" and a smaller "tile_grid_d" for the domaim of interest.  
+    ! With these offsets tile2grid() can be used to map from tile space to a 
+    ! subgrid of "tile_grid_g"
+    
+    ! reichle, 28 Jan 2005
+    ! reichle, 16 May 2005 - added offset for "domain" grid
+    ! reichle, 21 May 2010 - off_i, off_j now part of grid_def_type
+
+    implicit none
+    
+    integer, intent(in) :: N_tile
+    
+    type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+    
+    type(grid_def_type), intent(in) :: tile_grid
+    
+    real, dimension(N_tile), intent(in) :: tile_data
+    
+    real, dimension(tile_grid%N_lon,tile_grid%N_lat), intent(out) :: grid_data
+    
+    real, intent(in), optional :: no_data_value, no_data_tol
+    
+    logical, intent(in), optional :: echo
+        
+    ! local variables
+    
+    integer :: n, i, j, off_i, off_j
+    
+    real :: w, no_data, tol
+    
+    real, parameter :: no_data_default     = -9999.
+    real, parameter :: no_data_tol_default = 1e-4
+    
+    real, dimension(tile_grid%N_lon,tile_grid%N_lat) :: wgrid
+    
+    character(len=*), parameter :: Iam = 'tile2grid'
+    character(len=400) :: err_msg
+
+    ! ------------------------------------
+    
+    if (size(tile_coord)/=N_tile) then
+       err_msg = 'tile_coord and tile_data do not match.'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    end if
+
+    if (present(no_data_value)) then
+       no_data = no_data_value
+    else
+       no_data = no_data_default
+    end if
+    
+    if (present(no_data_tol)) then
+       tol = no_data_tol
+    else
+       tol = no_data_tol_default
+    end if
+    
+    if (present(echo)) then
+       if (echo .and. logit) then
+          write (logunit,*) 'tile2grid: using no-data-value = ', no_data , &
+               ' with tolerance = ', tol
+       end if
+    end if
+    
+    ! ------------------------------------------------------
+    !
+    ! adjust for 0-based indexing (eg., EASE grids)
+    
+    off_i = tile_grid%i_offg + (tile_grid%ind_base - 1)
+    off_j = tile_grid%j_offg + (tile_grid%ind_base - 1)
+    
+    ! initialize
+    
+    grid_data = 0.
+    wgrid     = 0.
+    
+    ! loop through tile space
+    
+    do n=1,N_tile
+       
+       i = tile_coord(n)%i_indg - off_i
+       j = tile_coord(n)%j_indg - off_j
+       
+       w = tile_coord(n)%frac_cell
+       
+       if (abs(tile_data(n)-no_data)>tol) then
+          
+          grid_data(i,j) = grid_data(i,j) + w*tile_data(n)
+          
+          wgrid(i,j) = wgrid(i,j) + w
+          
+       end if
+       
+    end do
+    
+    ! normalize and set no-data-value
+    
+    do i=1,tile_grid%N_lon
+       do j=1,tile_grid%N_lat
+          
+          if (wgrid(i,j)>0.) then
+             
+             grid_data(i,j) = grid_data(i,j)/wgrid(i,j)
+             
+          else
+             
+             grid_data(i,j) = no_data
+             
+          end if
+          
+       end do
+    end do
+    
+  end subroutine tile2grid_full
+  
+  ! *******************************************************************
+
   subroutine tile_mask_grid( tile_grid, N_tile, i_indgs,j_indgs, grid_data)
     
     ! set grid cell to no value if there is no tile in it
@@ -1570,16 +1730,16 @@ contains
 
   end subroutine tile_mask_grid
 
+  ! **********************************************************************
+
   subroutine grid2tile_real( tile_grid, N_tile, i_indgs,j_indgs, grid_data, tile_data)
     
-    ! map from tile definition grid to tile space
-    !
-    ! NOTE: tile_coord must match tile_data
+    ! map from grid to tile space
     !
     ! The indices tile_coord%i_indg and tile_coord%j_indg refer to the *global*
     ! tile definition grid (as obtained from the tile_coord_file).
     ! Integers "off_i" and "off_j" describe the offset between the global 
-    ! "tile_grid_g" and a smaller "tile_grid_d" for the domaim of interest.  
+    ! "tile_grid_g" and a smaller "tile_grid_d" for the domain of interest.  
     ! With these offsets grid2tile() can be used to map from a
     ! subgrid of "tile_grid_g" to tile space
     !
@@ -1603,10 +1763,15 @@ contains
     
     integer :: n, i, j, off_i, off_j
 
-    character(len=*), parameter :: Iam = 'grid2tile_new'
+    character(len=*), parameter :: Iam = 'grid2tile_real'
     character(len=400) :: err_msg
     
     ! ------------------------------------
+    
+    if (size(i_indgs)/=N_tile .or. size(j_indgs)/=N_tile) then
+       err_msg = '[i,j]_indg and tile_data do not match.'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    end if
     
     ! adjust for 0-based indexing (eg., EASE grids)
     
@@ -1623,10 +1788,12 @@ contains
     end do
     
   end subroutine grid2tile_real
+
+  ! **********************************************************************
   
   subroutine grid2tile_real8( tile_grid, N_tile, i_indgs,j_indgs, grid_data_8, tile_data_8)
     
-    ! map from tile definition grid to tile space for real*8
+    ! same as grid2tile_real but for real*8
     !
     ! reichle,  3 Feb 2014
     
@@ -1651,8 +1818,8 @@ contains
 
     ! ------------------------------------
     
-    if (size(i_indgs)/=N_tile) then
-       err_msg = 'tile_coord and tile_data do not match.'
+    if (size(i_indgs)/=N_tile .or. size(j_indgs)/=N_tile) then
+       err_msg = '[i,j]_indg and tile_data do not match.'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
         
@@ -1671,6 +1838,8 @@ contains
     end do
     
   end subroutine grid2tile_real8
+
+  ! **********************************************************************
   
   subroutine read_black_or_whitelist(N_cat, fname, blacklist, N_black)
 
@@ -1768,7 +1937,7 @@ contains
 
   end subroutine read_black_or_whitelist
 
-
+  ! **********************************************************************
 
 end module LDAS_TileCoordRoutines
 
