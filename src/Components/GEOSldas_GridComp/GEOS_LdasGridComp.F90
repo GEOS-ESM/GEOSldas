@@ -165,7 +165,8 @@ contains
     VERIFY_(status)
 
     allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
-    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"   ! BUG? only works for ens_id_width<10)    (reichle, 11 Jun 2020)
+    _ASSERT( ens_id_width < 10, "need 1 billion ensemble members? increase ens_id_width first")
+    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")" 
     do i=1,NUM_ENSEMBLE
        ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
        if(NUM_ENSEMBLE == 1 ) then
