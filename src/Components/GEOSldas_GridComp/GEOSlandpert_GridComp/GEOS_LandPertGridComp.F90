@@ -1519,7 +1519,7 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: chk_fname
-    character(len=4)           :: id_string    ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
+    character(len=ESMF_MAXSTR) :: id_string
     character(len=14)          :: datestamp
 
     ! ESMF variables
@@ -1543,7 +1543,7 @@ contains
     type(ESMF_VM) :: vm
     logical :: IAmRoot
     integer, allocatable :: pert_rseed(:)
-    integer :: m,n_lon,n_lat, land_nt_local
+    integer :: m,n_lon,n_lat, land_nt_local, ens_id_width
 
     integer :: nfpert, nppert, n_tile
     type(tile_coord_type), pointer :: tile_coord_f(:)=>null()    
@@ -1591,7 +1591,8 @@ contains
     VERIFY_(status)
     call ESMF_ClockGetAlarm(clock, 'PrognPert', PrognPertAlarm, rc=status)
     VERIFY_(status)
-
+    call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+    VERIFY_(status)
     ! Pointers to mapl internals
 
     if( internal%isCubedSphere) then
@@ -1672,8 +1673,11 @@ contains
           call MAPL_DateStampGet(clock, datestamp, rc=status)
           VERIFY_(STATUS)
 
-          write(id_string,'(I4.4)') internal%ens_id    ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
-          if(internal%NUM_ENSEMBLE ==1 ) id_string=''
+          id_string=''
+          if (internal%NUM_ENSEMBLE > 1) then
+            m = len(trim(COMP_NAME))
+            id_string = COMP_NAME(m-ens_id_width+1:m)
+          endif
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp//'.nc4'
 
@@ -2692,7 +2696,7 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: chk_fname
-    character(len=4)           :: id_string   ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
+    character(len=ESMF_MAXSTR) :: id_string
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -2702,7 +2706,7 @@ contains
     type(LANDPERT_WRAP) :: wrap
     type(MAPL_LocStream) :: locstream
     type(TILECOORD_WRAP) :: tcwrap
-    integer :: m,n_lon,n_lat, land_nt_local
+    integer :: m,n_lon,n_lat, land_nt_local, ens_id_width
 
     integer :: nfpert, nppert, n_tile
     type(tile_coord_type), pointer :: tile_coord_f(:)=>null()
@@ -2721,7 +2725,8 @@ contains
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
 
-
+    call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+    VERIFY_(status)
     ! Get component's private internal state
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
@@ -2787,8 +2792,11 @@ contains
           enddo
 
         ! 4) writing
-          write(id_string,'(I4.4)') internal%ens_id     ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
-          if(internal%NUM_ENSEMBLE ==1 ) id_string=''
+          id_string=''
+          if (internal%NUM_ENSEMBLE > 1) then
+            m = len(trim(COMP_NAME))
+            id_string = COMP_NAME(m-ens_id_width+1:m)
+          endif
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint'
           call write_pert_checkpoint(trim(chk_fname),internal%fpert_ntrmdt, internal%ppert_ntrmdt, internal%pert_rseed_r8)
