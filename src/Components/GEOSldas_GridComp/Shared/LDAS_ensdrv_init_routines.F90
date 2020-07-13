@@ -38,8 +38,7 @@ module LDAS_ensdrv_init_routines
        
   use LDAS_TileCoordRoutines,           ONLY:     & 
        is_cat_in_box,                             &
-       get_tile_grid,                             &
-       read_til_file
+       get_tile_grid
   
   use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
@@ -196,11 +195,6 @@ contains
        write (logunit,*) 'Domain successfully defined from existing files above.'
        write (logunit,*)
 
-       ! assume that tile_coord and d2g have been reordered previously,
-       ! just get number of tiles on each continent 
-       
-       !call reorder_tiles(.false., N_cat_domain, tile_coord, d2g, N_catd_cont)        
-
     else           
        
        print*, "Creating domain..., reading white and black lists if present..." 
@@ -284,12 +278,6 @@ contains
        
        tile_coord          = tile_coord_global(d2g)
               
-       ! reorder tile_coord and d2g to fix dateline issue and for domain decomposition
-       ! No need to reorder in GEOSldas because it devides domain among processors first and then assign tiles
-       ! In old LDAS, it dedvides the tile vector among processors.
-
-        !call reorder_tiles(.true., N_cat_domain, tile_coord, d2g, N_catd_cont) 
-       
        ! finalize extent of actual domain:
        !  determine smallest subgrid of tile_grid_d that contains all
        !  catchments/tiles in domain

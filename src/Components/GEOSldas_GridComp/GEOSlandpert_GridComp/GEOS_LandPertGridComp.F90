@@ -40,7 +40,6 @@ module GEOS_LandPertGridCompMod
   use LDAS_PertRoutinesMod, only: GEOSldas_NUM_ENSEMBLE
   use LDAS_PertRoutinesMod, only: GEOSldas_FIRST_ENS_ID
   use LDAS_TileCoordRoutines, only: grid2tile, tile2grid_simple, tile_mask_grid
-  use LDAS_TileCoordRoutines, only: get_ij_ind_from_latlon
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
   !use catch_types, only: cat_param_type
@@ -1427,8 +1426,6 @@ contains
        !     rc=status                                                           &
        !     )
        !VERIFY_(status)
-       !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, fpert_grid(:,:,ipert), &
-       !         internal%ForcePert%DataPrv(:,ipert))
        call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 fpert_grid(:,:,ipert), internal%ForcePert%DataPrv(:,ipert))
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -1466,8 +1463,6 @@ contains
        !     rc=status                                                           &
        !     )
        !VERIFY_(status)
-       !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, ppert_grid(:,:,ipert), &
-       !         internal%PrognPert%DataPrv(:,ipert))
        call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataPrv(:,ipert))
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -1661,12 +1656,12 @@ contains
          VERIFY_(STATUS)
        enddo
        if (IamRoot) then
-       ! 3) tile2grid. simple reverser of grid2tile without weighted
+       ! 3) tile2grid. simple reverser of grid2tile without weighted averaging/no-data-handling
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
        
        ! 4) writing
@@ -1981,8 +1976,6 @@ contains
              !     rc=status                                                        &
              !     )
              !VERIFY_(status)
-             !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, fpert_grid(:,:,ipert), &
-             !     internal%ForcePert%DataNxt(:,ipert))
              call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_grid(:,:,ipert), &
                   internal%ForcePert%DataNxt(:,ipert))
              call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -2490,8 +2483,6 @@ contains
           !     rc=status                                                        &
           !     )
           !VERIFY_(status)
-          !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, ppert_grid(:,:,ipert), &
-          !      internal%PrognPert%DataNxt(:,ipert))
           call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataNxt(:,ipert))
           call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -2785,10 +2776,10 @@ contains
        ! 3) tile2grid 
             ! this step is simply a reverse of grid2tile without any weighted   
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
 
         ! 4) writing
