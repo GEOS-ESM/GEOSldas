@@ -25,7 +25,6 @@ module LDAS_ensdrv_init_routines
        tile_coord_type,                           &
        grid_def_type,                             &
        operator (==),                             &
-       N_cont_max,                                &
        io_tile_coord_type,                        &
        io_grid_def_type
   
@@ -71,11 +70,10 @@ contains
   subroutine domain_setup(                                             &
        N_cat_global, tile_coord_global,                                &
        tile_grid_g,                                                    &
-       black_path, black_file, white_path, white_file,                 &
+       exclude_path, exclude_file, include_path, include_file,         &
        work_path, exp_domain, exp_id,                                  &
        minlon, minlat, maxlon, maxlat,                                 &
-       N_cat_domain, d2g, tile_coord, tile_grid_d,                     &
-       N_catd_cont )
+       N_cat_domain, d2g, tile_coord, tile_grid_d )
     
     ! Set up modeling domain and determine index vectors mapping from the
     ! domain to global catchment space.
@@ -84,14 +82,15 @@ contains
     !
     ! -----------------------
     !
-    ! The domain is set up using (if present) a "blacklist" of catchments 
-    ! to be excluded, a "whitelist" (if present) of catchments to be included,
+    ! The domain is set up using (if present) an "ExcludeList" of catchments 
+    ! to be excluded, an "IncludeList" (if present) of catchments to be included,
     ! and the bounding box of a rectangular "zoomed" area (as specified
-    ! in driver_inputs). 
+    ! in the "exeinp" file used in ldas_setup). 
     !
     ! order of precedence:
-    !  exclude blacklisted catchments and catchments outside continent
-    !  include whitelisted catchments or catchments within rectangular domain
+    !  1. exclude catchments in ExcludeList
+    !  2. include catchments in IncludeList or catchments within rectangular domain
+    ! (i.e., catchments in ExcludeList are *always* excluded)
     !
     ! input: 
     !
@@ -102,7 +101,7 @@ contains
     !                        latitude -90:90
     !
     ! output:
-    !  N_cat_domain = number of catchments in zoomed/whitelisted domain
+    !  N_cat_domain = number of catchments in zoomed domain
     !                   (for which model integration is conducted) 
     !  d2g          = index from domain to global tiles
     !  tile_coord_d = tile_coord vector for domain 
@@ -131,12 +130,12 @@ contains
     
     type(grid_def_type),   intent(in)            :: tile_grid_g
     
-    character(*),        intent(in)            :: black_path, white_path
-    character(*),        intent(in)            :: black_file, white_file
+    character(*),          intent(in)            :: exclude_path, include_path
+    character(*),          intent(in)            :: exclude_file, include_file
     
-    character(*),        intent(in)            :: work_path
+    character(*),          intent(in)            :: work_path
     
-    character(*),         intent(in)            :: exp_domain, exp_id
+    character(*),          intent(in)            :: exp_domain, exp_id
     
     real,                  intent(in)            :: minlon, minlat  ! from nml inputs
     real,                  intent(in)            :: maxlon, maxlat  ! from nml inputs
@@ -149,17 +148,15 @@ contains
     
     type(grid_def_type),   intent(out)           :: tile_grid_d
 
-    integer, dimension(N_cont_max), intent(out)  :: N_catd_cont
-
     ! locals 
     
-    integer :: n, this_tileid, this_catpfaf, N_black, N_white, indomain, rc
+    integer :: n, this_tileid, this_catpfaf, N_exclude, N_include, indomain, rc
     
-    integer, dimension(N_cat_global) :: blacklist, whitelist, tmp_d2g
+    integer, dimension(N_cat_global) :: ExcludeList, IncludeList, tmp_d2g
     
     real :: this_minlon, this_minlat, this_maxlon, this_maxlat
     
-    logical :: this_cat_black, this_cat_white, this_cat_in_box
+    logical :: this_cat_exclude, this_cat_include, this_cat_in_box
     
     integer :: this_i_indg, this_j_indg
     
@@ -197,21 +194,21 @@ contains
 
     else           
        
-       print*, "Creating domain..., reading white and black lists if present..." 
+       print*, "Creating domain..., reading IncludeList and ExludeList if present..." 
        ! ------------------------------------------------------------
        !
-       ! load blacklist: catchments listed in this file will be excluded
+       ! load ExcludeList: catchments listed in this file will *always* be excluded
        
-       fname = trim(black_path) // '/' // trim(black_file)
+       fname = trim(exclude_path) // '/' // trim(exclude_file)
 
-       call read_black_or_whitelist(N_cat_global, fname, blacklist, N_black) 
+       call read_exclude_or_includelist(N_cat_global, fname, ExcludeList, N_exclude) 
        
-       ! load whitelist: catchments listed in this file will be included
-       ! (unless excluded via blacklist)
+       ! load IncludeList: catchments listed in this file will be included
+       ! (unless excluded via ExcludeList)
        
-       fname = trim(white_path) // '/' // trim(white_file)
+       fname = trim(include_path) // '/' // trim(include_file)
        
-       call read_black_or_whitelist(N_cat_global, fname, whitelist, N_white) 
+       call read_exclude_or_includelist(N_cat_global, fname, IncludeList, N_include) 
        ! -----------------
        !
        ! find and count catchments that are in the domain
@@ -238,15 +235,15 @@ contains
           endif
           
           
-          this_cat_black = is_in_list(N_black,blacklist(1:N_black),this_tileid)
-          this_cat_white = is_in_list(N_white,whitelist(1:N_white),this_tileid)
+          this_cat_exclude = is_in_list( N_exclude, ExcludeList(1:N_exclude), this_tileid )
+          this_cat_include = is_in_list( N_include, IncludeList(1:N_include), this_tileid )
           
           this_cat_in_box =                                                     &
                is_cat_in_box(this_minlon,this_minlat,this_maxlon,this_maxlat,   &
                minlon, minlat, maxlon, maxlat        )
            
-          if (is_in_domain(                                                 &
-               this_cat_black, this_cat_white, this_cat_in_box ))  then
+          if (is_in_domain(                                                     &
+               this_cat_exclude, this_cat_include, this_cat_in_box ))  then
              
              indomain = indomain + 1
              tmp_d2g(indomain) = n
@@ -1088,13 +1085,13 @@ contains
 
   ! *************************************************************************
   
-  subroutine read_black_or_whitelist(N_cat, fname, blacklist, N_black) 
+  subroutine read_exclude_or_includelist(N_cat, fname, MyList, N_list) 
     
-    ! read numbers/IDs of blacklisted catchments 
+    ! read numbers/IDs of catchments in MyList (ExcludeList or IncludeList)
     !
-    ! format of blacklist file: ASCII list of "Pfafstetter+3" numbers
+    ! format of MyList file: ASCII list of tile IDs
     !
-    ! N_black = number of blacklisted catchments
+    ! N_list = number of catchments in MyList
     !
     ! reichle, 2 May 2003
     !
@@ -1105,12 +1102,12 @@ contains
     ! N_cat = max number of catchments allowed in list 
     !         (use N_cat_global when calling this subroutine)
     
-    integer,        intent(in)  :: N_cat     
+    integer,      intent(in)  :: N_cat     
     character(*), intent(in)  :: fname
     
-    integer,        intent(out) :: N_black   
+    integer,      intent(out) :: N_list   
     
-    integer, dimension(N_cat), intent(out) :: blacklist
+    integer, dimension(N_cat), intent(out) :: MyList
     
     ! locals
     
@@ -1118,12 +1115,12 @@ contains
     
     logical :: file_exists
     
-    character(len=*), parameter :: Iam = 'read_black_or_whitelist'
+    character(len=*), parameter :: Iam = 'read_exclude_or_includelist'
     character(len=400) :: err_msg
 
     ! -----------------------------------------------------------
     
-    N_black = 0
+    N_list = 0
         
     inquire( file=fname, exist=file_exists)
     
@@ -1135,29 +1132,29 @@ contains
        if (istat==0) then
           
           if (logit) write (logunit,*) &
-               'reading black- or whitelist from ', trim(fname)
+               'reading ExcludeList or IncludeList from ', trim(fname)
           if (logit) write (logunit,*) 
 
           do
              read(10,*,iostat=istat) tmpint
              
              if (istat==-1) then
-                if (logit) write (logunit,*) ' found ', N_black, ' catchments on list'
+                if (logit) write (logunit,*) ' found ', N_list, ' catchments on list'
                 exit
              else if (istat/=0) then
                 err_msg = 'read error other than end-of-file'
                 call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
              else
-                N_black = N_black+1
-                blacklist(N_black) = tmpint
+                N_list = N_list+1
+                MyList(N_list) = tmpint
              end if
              
-             if (N_black>N_cat) then
+             if (N_list>N_cat) then
                 
                 write (tmpstring10,*) N_cat
-                write (tmpstring40,*) N_black
+                write (tmpstring40,*) N_list
                 
-                err_msg = 'N_black=' // trim(tmpstring40) &
+                err_msg = 'N_list=' // trim(tmpstring40) &
                      // ' > N_cat=' // trim(tmpstring10)
                 call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
 
@@ -1169,20 +1166,20 @@ contains
        else
           
           if (logit) write (logunit,*) &
-               'could not open black- or whitelist file ', trim(fname)
+               'could not open ExcludeList or IncludeList file ', trim(fname)
           
        end if
        
     else
        
        if (logit) write (logunit,*) &
-            'black- or whitelist file does not exist: ', trim(fname)
+            'ExcludeList or IncludeList file does not exist: ', trim(fname)
        
     end if
     
     if (logit) write (logunit,*) 
        
-  end subroutine read_black_or_whitelist
+  end subroutine read_exclude_or_includelist
   
   ! ***********************************************************************
 
