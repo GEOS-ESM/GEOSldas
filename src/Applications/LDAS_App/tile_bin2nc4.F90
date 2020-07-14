@@ -253,7 +253,7 @@ PROGRAM tile_bin2nc4
     case ('Psurf');      LONG_NAME = 'surface_pressure';                                                 UNITS = 'Pa'
     case ('PS');         LONG_NAME = 'surface_pressure';                                                 UNITS = 'Pa'
     case ('Rainf_C');    LONG_NAME = 'convective_rainfall';                                              UNITS = 'kg m-2 s-1'
-    case ('Rainf');      LONG_NAME = 'liquid_water_large_scale_precipitation';                           UNITS = 'kg m-2 s-1'
+    case ('Rainf');      LONG_NAME = 'liquid_water_precipitation';                                       UNITS = 'kg m-2 s-1'
     case ('Snowf');      LONG_NAME = 'total_snowfall';                                                   UNITS = 'kg m-2 s-1'
     case ('RainfSnowf'); LONG_NAME = 'RainfSnowf';                                                       UNITS = 'kg m-2 s-1'
     case ('SWnet');      LONG_NAME = 'downward_net_shortwave_radiation';                                 UNITS = 'W m-2'
