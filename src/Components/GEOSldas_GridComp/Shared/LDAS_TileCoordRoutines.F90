@@ -18,8 +18,7 @@ module LDAS_TileCoordRoutines
        init_grid_def_type,                        &
        io_grid_def_type,                          &
        io_tile_coord_type,                        &
-       tile_typ_land,                             &
-       N_cont_max
+       tile_typ_land
 
   use LDAS_ensdrv_Globals,              ONLY:     &
        logit,                                     &
@@ -1838,104 +1837,6 @@ contains
     end do
     
   end subroutine grid2tile_real8
-
-  ! **********************************************************************
-  
-  subroutine read_black_or_whitelist(N_cat, fname, blacklist, N_black)
-
-    ! read numbers/IDs of blacklisted catchments 
-    !
-    ! format of blacklist file: ASCII list of "Pfafstetter+3" numbers
-    !
-    ! N_black = number of blacklisted catchments
-    !
-    ! reichle, 2 May 2003
-    !
-    ! --------------------------------------------------------------
-
-    implicit none
-
-    ! N_cat = max number of catchments allowed in list 
-    !         (use N_cat_global when calling this subroutine)
-
-    integer,        intent(in)  :: N_cat
-    character(*), intent(in)  :: fname
-
-    integer,        intent(out) :: N_black
-
-    integer, dimension(N_cat), intent(out) :: blacklist
-
-    ! locals
-
-    integer :: istat, tmpint
-
-    logical :: file_exists
-
-    character(len=*), parameter :: Iam = 'read_black_or_whitelist'
-    character(len=400) :: err_msg
-
-    ! -----------------------------------------------------------
-
-    N_black = 0
-
-    inquire( file=fname, exist=file_exists)
-
-    if (file_exists) then
-
-       open(10, file=fname, form='formatted', action='read', &
-            status='old', iostat=istat)
-
-       if (istat==0) then
-
-          if (logit) write (logunit,*) &
-               'reading black- or whitelist from ', trim(fname)
-          if (logit) write (logunit,*)
-
-          do
-             read(10,*,iostat=istat) tmpint
-
-             if (istat==-1) then
-                if (logit) write (logunit,*) ' found ', N_black, ' catchments on list'
-                exit
-             else if (istat/=0) then
-                err_msg = 'read error other than end-of-file'
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-             else
-                N_black = N_black+1
-                blacklist(N_black) = tmpint
-             end if
-
-             if (N_black>N_cat) then
-
-                write (tmpstring10,*) N_cat
-                write (tmpstring40,*) N_black
-
-                err_msg = 'N_black=' // trim(tmpstring40) &
-                     // ' > N_cat=' // trim(tmpstring10)
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-             end if
-          end do
-
-          close(10,status='keep')
-
-       else
-
-          if (logit) write (logunit,*) &
-               'could not open black- or whitelist file ', trim(fname)
-
-       end if
-
-    else
-
-       if (logit) write (logunit,*) &
-            'black- or whitelist file does not exist: ', trim(fname)
-
-    end if
-
-    if (logit) write (logunit,*)
-
-  end subroutine read_black_or_whitelist
 
   ! **********************************************************************
 
