@@ -484,12 +484,12 @@ contains
 
        do I = 1,size(centerX,1)
           call ease_inverse(gridname,1.0*(I+I1-2),0.0,lat,lon)
-          centerX(I,:) = lon
+          centerX(I,:) = lon * MAPL_DEGREES_TO_RADIANS
        enddo
 
        do J = 1,size(centerY,2)
           call ease_inverse(gridname,0.0,1.0*(J+J1-2),lat,lon)
-          centerY(:,J) = lat
+          centerY(:,J) = lat * MAPL_DEGREES_TO_RADIANS
        enddo
 
     endif
