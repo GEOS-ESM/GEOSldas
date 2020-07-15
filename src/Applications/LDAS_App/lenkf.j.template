@@ -607,12 +607,6 @@ EOF
           set old_rst = `/usr/bin/readlink -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /bin/ln -s $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
-          set pert_rst = `grep -o "LANDPERT_INTERNAL_RESTART_FILE" LDAS.rc`
-          if ( $pert_rst == '' ) then
-             echo "LANDPERT_INTERNAL_RESTART_FILE: ../input/restart/landpert%s_internal_rst" >> LDAS.rc
-             /bin/mv ../run/LDAS.rc ../run/LDAS.rc.sgmt0
-             /bin/cp LDAS.rc ../run/LDAS.rc 
-          endif 
           /usr/bin/gzip $old_rst &
        endif
    
