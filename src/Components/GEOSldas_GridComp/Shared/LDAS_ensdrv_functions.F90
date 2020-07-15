@@ -1,17 +1,17 @@
 
 module LDAS_ensdrv_functions
  
-  use LDAS_DateTimeMod,                   ONLY:     &
+  use LDAS_DateTimeMod,                   ONLY:   &
        date_time_type,                            &
        get_dofyr_pentad,                          &
        augment_date_time,                         &
        is_leap_year
 
-  use LDAS_ensdrv_Globals,           ONLY:     &
+  use LDAS_ensdrv_Globals,                ONLY:   &
        logit,                                     &
        logunit
 
-  use LDAS_ExceptionsMod,                  ONLY:     &
+  use LDAS_ExceptionsMod,                 ONLY:   &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
   
@@ -457,18 +457,19 @@ contains
   ! ******************************************************************
   
   logical function is_in_domain(                                               &
-       this_cat_black, this_cat_white, this_cat_in_box )
+       this_cat_exclude, this_cat_include, this_cat_in_box )
     
     ! determine whether catchment is in domain
     !
-    ! The domain is set up using (if present) a "blacklist" of catchments 
-    ! to be excluded, a "whitelist" (if present) of catchments to be included,
+    ! The domain is set up using (if present) an "ExcludeList" of catchments 
+    ! to be excluded, an "IncludeList" (if present) of catchments to be included,
     ! and the bounding box of a rectangular "zoomed" area (as specified
-    ! in driver_inputs). 
+    ! in the "exeinp" file used in ldas_setup). 
     !
     ! order of precedence:
-    !  exclude blacklisted catchments 
-    !  include whitelisted catchments or catchments within rectangular domain
+    !  1. exclude catchments on ExcludeList
+    !  2. include catchments on IncludeList or catchments within rectangular domain
+    ! (i.e., catchments in ExcludeList are *always* excluded)    
     !
     ! reichle, 7 May 2003
     ! reichle, 9 May 2005 - redesign (no more continents)
@@ -477,17 +478,17 @@ contains
     
     implicit none
     
-    logical :: this_cat_white, this_cat_black, this_cat_in_box
+    logical :: this_cat_include, this_cat_exclude, this_cat_in_box
     
     is_in_domain = .false.
     
-    ! if catchment is NOT blacklisted 
+    ! if catchment is NOT in ExcludeList 
     
-    if (.not. this_cat_black)  then     
+    if (.not. this_cat_exclude)  then     
        
-       ! if catchment is within bounding box OR whitelisted
+       ! if catchment is within bounding box OR in IncludeList
        
-       if ((this_cat_in_box) .or. (this_cat_white)) then
+       if ((this_cat_in_box) .or. (this_cat_include)) then
         
           is_in_domain = .true.
           

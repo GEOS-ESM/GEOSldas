@@ -31,14 +31,15 @@ LSM_CHOICE: 1
 # ---- Domain definition
 #
 #      The domain is determined by specifying a lat/lon rectangle in conjunction
-#      with blacklist and whitelist files.  The files contain the IDs of tiles to
+#      with ExcludeList and IncludeList files.  The files contain the IDs of tiles to
 #      be excluded and included in the domain.
-#      Included are all tiles within the rectangle or the whitelist but not in the blacklist.
-#      Default is GLOBAL domain.
+#      Included are all tiles within the rectangle or the IncludeList but not in the ExcludeList.
+#      In case of conflict, the ExcludeList takes precedence.
+#      The default is a GLOBAL (land) domain.
 #
 #      Specify extremities of lat/lon rectangle:
 #         Max lat/lon range: lon=-180:180, lat=-90:90.
-#      If only whitelist should be used, specify dummy values such that:
+#      If only IncludeList should be used, specify dummy values such that:
 #         MINLON > MAXLON and MINLAT > MAXLAT.
 #
 # MINLON: -180.
@@ -46,11 +47,11 @@ LSM_CHOICE: 1
 # MINLAT:  -90.
 # MAXLAT:   90.
 #
-#      Path and filenames for blacklist and whitelist files.
+#      Path and filenames for ExcludeList and IncludeList files.
 #      (May leave blank.)
 #
-# BLACK_FILE: '' 
-# WHITE_FILE: '' 
+# EXCLUDE_FILE: '' 
+# INCLUDE_FILE: '' 
 
 
 # ---- Surface meteorological forcing: Horizonal interpolation 

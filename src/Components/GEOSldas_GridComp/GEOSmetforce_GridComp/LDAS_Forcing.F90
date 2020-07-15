@@ -5311,20 +5311,20 @@ contains
     
     real :: tol 
     
-    integer :: i, i_next, N_black
+    integer :: i, i_next, N_exclude
     
-    ! set the following logical to .true. to generate a blacklist
+    ! set the following logical to .true. to generate an ExcludeList
     ! for a given forcing data set (it will end up in the file
     ! "fort.9999")
     
-    logical, parameter :: create_blacklist = .false.
+    logical, parameter :: create_ExcludeList = .false.
     
     character(len=*), parameter :: Iam = 'check_forcing_nodata_2'
     character(len=400) :: err_msg
     
     ! ------------------------------------------------------------
     
-    N_black = 0
+    N_exclude = 0
     
     tol = abs(nodata_forcing*nodata_tolfrac_generic)    
 
@@ -5336,9 +5336,9 @@ contains
        
        if (abs(force_vec(i)-nodata_forcing)<tol) then
           
-          if (create_blacklist) then
+          if (create_ExcludeList) then
              
-             N_black = N_black + 1
+             N_exclude = N_exclude + 1
 
              write (9999,*) tile_coord(i)%tile_id
              
@@ -5363,10 +5363,10 @@ contains
        
     end do
     
-    if (create_blacklist) then
+    if (create_ExcludeList) then
        if(root_logit)  write (logunit,*) '---------------------------------------------------------------'
-       if(root_logit)  write (logunit,*) ' found N_black = ',N_black, ' tiles that should be blacklisted'
-       err_msg = 'blacklist now in file fort.9999'
+       if(root_logit)  write (logunit,*) ' found N_exclude = ',N_exclude, ' tiles that should be in ExcludeList'
+       err_msg = 'ExcludeList now in file fort.9999'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
     

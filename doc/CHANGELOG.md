@@ -33,6 +33,18 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
+[v17.9.0-beta.8](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.8) - 2020-06-26
+------------------------------
+
+- Zero-diff vs. v17.9.0-beta.7.
+
+- Bug fixes and other minor changes:
+
+  - SLES12 bug fix for reading LAI, GRN, NIRDF, VISDF and NDVI in (LDAS) ensemble mode.  Climatology files in ../input directory no longer contain ensemble ID string.
+
+  - mepo updates.
+
+------------------------------
 [v17.9.0-beta.7](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.7) - 2020-06-11
 ------------------------------
 

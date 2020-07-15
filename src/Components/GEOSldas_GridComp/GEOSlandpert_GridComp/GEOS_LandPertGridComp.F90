@@ -40,7 +40,6 @@ module GEOS_LandPertGridCompMod
   use LDAS_PertRoutinesMod, only: GEOSldas_NUM_ENSEMBLE
   use LDAS_PertRoutinesMod, only: GEOSldas_FIRST_ENS_ID
   use LDAS_TileCoordRoutines, only: grid2tile, tile2grid_simple, tile_mask_grid
-  use LDAS_TileCoordRoutines, only: get_ij_ind_from_latlon
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
   !use catch_types, only: cat_param_type
@@ -1427,8 +1426,6 @@ contains
        !     rc=status                                                           &
        !     )
        !VERIFY_(status)
-       !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, fpert_grid(:,:,ipert), &
-       !         internal%ForcePert%DataPrv(:,ipert))
        call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 fpert_grid(:,:,ipert), internal%ForcePert%DataPrv(:,ipert))
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -1466,8 +1463,6 @@ contains
        !     rc=status                                                           &
        !     )
        !VERIFY_(status)
-       !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, ppert_grid(:,:,ipert), &
-       !         internal%PrognPert%DataPrv(:,ipert))
        call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataPrv(:,ipert))
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -1519,7 +1514,7 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: chk_fname
-    character(len=4)           :: id_string    ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
+    character(len=ESMF_MAXSTR) :: id_string
     character(len=14)          :: datestamp
 
     ! ESMF variables
@@ -1543,7 +1538,7 @@ contains
     type(ESMF_VM) :: vm
     logical :: IAmRoot
     integer, allocatable :: pert_rseed(:)
-    integer :: m,n_lon,n_lat, land_nt_local
+    integer :: m,n_lon,n_lat, land_nt_local, ens_id_width
 
     integer :: nfpert, nppert, n_tile
     type(tile_coord_type), pointer :: tile_coord_f(:)=>null()    
@@ -1591,7 +1586,8 @@ contains
     VERIFY_(status)
     call ESMF_ClockGetAlarm(clock, 'PrognPert', PrognPertAlarm, rc=status)
     VERIFY_(status)
-
+    call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+    VERIFY_(status)
     ! Pointers to mapl internals
 
     if( internal%isCubedSphere) then
@@ -1660,20 +1656,23 @@ contains
          VERIFY_(STATUS)
        enddo
        if (IamRoot) then
-       ! 3) tile2grid. simple reverser of grid2tile without weighted
+       ! 3) tile2grid. simple reverser of grid2tile without weighted averaging/no-data-handling
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
        
        ! 4) writing
           call MAPL_DateStampGet(clock, datestamp, rc=status)
           VERIFY_(STATUS)
 
-          write(id_string,'(I4.4)') internal%ens_id    ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
-          if(internal%NUM_ENSEMBLE ==1 ) id_string=''
+          id_string=''
+          if (internal%NUM_ENSEMBLE > 1) then
+            m = len(trim(COMP_NAME))
+            id_string = COMP_NAME(m-ens_id_width+1:m)
+          endif
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp//'.nc4'
 
@@ -1977,8 +1976,6 @@ contains
              !     rc=status                                                        &
              !     )
              !VERIFY_(status)
-             !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, fpert_grid(:,:,ipert), &
-             !     internal%ForcePert%DataNxt(:,ipert))
              call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_grid(:,:,ipert), &
                   internal%ForcePert%DataNxt(:,ipert))
              call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -2486,8 +2483,6 @@ contains
           !     rc=status                                                        &
           !     )
           !VERIFY_(status)
-          !call grid2tile( internal%pgrid_l, land_nt_local, tile_coord, ppert_grid(:,:,ipert), &
-          !      internal%PrognPert%DataNxt(:,ipert))
           call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataNxt(:,ipert))
           call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -2692,7 +2687,7 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: chk_fname
-    character(len=4)           :: id_string   ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
+    character(len=ESMF_MAXSTR) :: id_string
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -2702,7 +2697,7 @@ contains
     type(LANDPERT_WRAP) :: wrap
     type(MAPL_LocStream) :: locstream
     type(TILECOORD_WRAP) :: tcwrap
-    integer :: m,n_lon,n_lat, land_nt_local
+    integer :: m,n_lon,n_lat, land_nt_local, ens_id_width
 
     integer :: nfpert, nppert, n_tile
     type(tile_coord_type), pointer :: tile_coord_f(:)=>null()
@@ -2721,7 +2716,8 @@ contains
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
 
-
+    call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+    VERIFY_(status)
     ! Get component's private internal state
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
@@ -2780,15 +2776,18 @@ contains
        ! 3) tile2grid 
             ! this step is simply a reverse of grid2tile without any weighted   
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%i_indg, tile_coord_f%j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
 
         ! 4) writing
-          write(id_string,'(I4.4)') internal%ens_id     ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
-          if(internal%NUM_ENSEMBLE ==1 ) id_string=''
+          id_string=''
+          if (internal%NUM_ENSEMBLE > 1) then
+            m = len(trim(COMP_NAME))
+            id_string = COMP_NAME(m-ens_id_width+1:m)
+          endif
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint'
           call write_pert_checkpoint(trim(chk_fname),internal%fpert_ntrmdt, internal%ppert_ntrmdt, internal%pert_rseed_r8)

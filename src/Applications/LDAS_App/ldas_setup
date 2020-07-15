@@ -44,7 +44,7 @@ class LDASsetup:
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
-            'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE','GRIDNAME']
+            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME']
 
 
         # ------
@@ -303,8 +303,8 @@ class LDASsetup:
         _domain_dic['MAXLON']= 180.
         _domain_dic['MINLAT']= -90.
         _domain_dic['MAXLAT']=  90.
-        _domain_dic['BLACK_FILE']= "''"
-        _domain_dic['WHITE_FILE']= "''"
+        _domain_dic['EXCLUDE_FILE']= "''"
+        _domain_dic['INCLUDE_FILE']= "''"
          
         for key,val in _domain_dic.iteritems() :
             if key in self.rqdExeInp :
