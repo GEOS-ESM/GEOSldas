@@ -536,29 +536,30 @@ contains
     ! reichle, 25 Jul 2013 - removed LAI, GRN, and albedo inputs, renamed subroutine
     !                        from "read_land_parameters()" to "read_cat_param()"
     ! reichle, 16 Nov 2015 - read static (JPL) veg height from boundary condition file
+    ! reichle, 14 Jul 2020 - work around for new "peat fraction" column in Icarus-NLv4 (ignore for now)
     ! 
     ! -------------------------------------------------------------------
 
     implicit none
 
-    integer,                                    intent(in)  :: N_catg, N_catf
+    integer,                                  intent(in)  :: N_catg, N_catf
 
-    type(tile_coord_type), dimension(:),   pointer :: tile_coord_f ! intent(in)
+    type(tile_coord_type), dimension(:),      pointer     :: tile_coord_f ! intent(in)
 
-    real,                                       intent(in)  :: dzsf
+    real,                                     intent(in)  :: dzsf
 
-    integer,               dimension(N_catf),   intent(in)  :: f2g
+    integer,               dimension(N_catf), intent(in)  :: f2g
 
     character(*),                             intent(in)  :: veg_path
     character(*),                             intent(in)  :: soil_path
     character(*),                             intent(in)  :: top_path
 
-    type(cat_param_type),  dimension(N_catf),   intent(out) :: cp
+    type(cat_param_type),  dimension(N_catf), intent(out) :: cp
 
     ! local variables
 
     integer, parameter :: N_search_dir_max =  5
-    integer, parameter :: N_col_max        = 18  ! "v15" soil_param.dat had 22 columns 
+    integer, parameter :: N_col_real_max   = 18  ! "v15" soil_param.dat had 22 columns (incl. first 4 columns with integers)
 
     character( 80) :: fname
     character(999) :: tmpstr999
@@ -567,18 +568,18 @@ contains
 
     integer :: n, k, m, dummy_int, dummy_int2, istat, N_search_dir, N_col
 
-    integer, dimension(N_catg)           :: tmpint, tmpint2, tmptileid
+    integer, dimension(N_catg)                  :: tmpint, tmpint2, tmptileid
 
-    real,    dimension(N_catg,N_col_max) :: tmpreal
+    real,    dimension(N_catg,N_col_real_max)   :: tmpreal
 
     real    :: dummy_real, dummy_real2, z_in_m, term1, term2
 
     logical :: dummy_logical
 
-    character(len=*), parameter          :: Iam = 'read_cat_param'
-    character(len=400)                   :: err_msg
+    character(len=*), parameter                 :: Iam = 'read_cat_param'
+    character(len=400)                          :: err_msg
 
-    real,    dimension(NTYPS)            :: VGZ2
+    real,    dimension(NTYPS)                   :: VGZ2
 
     ! legacy vegetation height look-up table (for backward compatibility)
     !
@@ -731,6 +732,8 @@ contains
 
     tmptileid = 0
 
+    tmpreal   = nodata_generic
+    
     do n=1,N_catg
 
        ! "SiB2_V2" version  
@@ -770,11 +773,13 @@ contains
 
     select case (N_col)
 
-    case (19)
+    case (19,20)
 
        ! starting with "v16" (De Lannoy et al., 2014, doi:10.1002/2014MS000330),
        !  soil_param.dat has 19 columns
 
+       ! "Icarus-NLv4" has 20 columns (new, last column is peat fraction, ignore for now)
+       
        do k=1,N_catf
 
           cp(k)%gravel30 = tmpreal(f2g(k), 7)
@@ -820,6 +825,8 @@ contains
 
     tmptileid = 0
 
+    tmpreal   = nodata_generic
+    
     do n=1,N_catg
 
        read (10,*) tmptileid(n), dummy_int, (tmpreal(n,m), m=1,4)
@@ -886,6 +893,8 @@ contains
 
     tmptileid = 0
 
+    tmpreal   = nodata_generic
+
     do n=1,N_catg
 
        read (10,*) tmptileid(n), dummy_int, (tmpreal(n,m), m=1,12)
@@ -932,6 +941,8 @@ contains
 
     tmptileid = 0
 
+    tmpreal   = nodata_generic
+
     do n=1,N_catg
 
        read (10,*) tmptileid(n), dummy_int, (tmpreal(n,m), m=1,4)
@@ -974,6 +985,8 @@ contains
          10, .true., dummy_logical, N_search_dir, fname, top_path, search_dir)
 
     tmptileid = 0
+
+    tmpreal   = nodata_generic
 
     do n=1,N_catg
 
