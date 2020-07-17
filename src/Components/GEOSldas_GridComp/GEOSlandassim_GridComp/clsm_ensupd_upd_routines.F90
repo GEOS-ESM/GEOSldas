@@ -3328,7 +3328,7 @@ contains
 
     call get_pert(                                                        &
          N_assim_species, N_ens,                                          &
-         pert_grid_f, pert_grid_lH,                                       &
+         pert_grid_lH, pert_grid_f,                                       &  ! switched order (reichle, 17 Jul 2020)
          dtstep,                                                          &
          obs_pert_param,                                                  &
          Pert_rseed,                                                      &
