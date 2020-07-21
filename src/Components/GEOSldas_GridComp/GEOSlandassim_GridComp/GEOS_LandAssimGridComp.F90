@@ -206,6 +206,15 @@ contains
          )
     _VERIFY(status)
     
+    !phase 4: output_smapl4smlmc
+    call MAPL_GridCompSetEntryPoint(                                            &
+         gc,                                                                    &
+         ESMF_METHOD_RUN,                                                       &
+         OUTPUT_SMAPL4SMLMC,                                                          &
+         rc=status                                                              &
+         )
+    _VERIFY(status)
+    
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_FINALIZE,                                                  &
@@ -1452,10 +1461,11 @@ contains
     
     ! Pointers to internals
     !----------------------
-    if (mwRTM) then
-       call get_mwrtm_param(INTERNAL, N_catl, rc=STATUS)
-       _VERIFY(STATUS)
-    endif
+    !if (mwRTM) then
+    !   call get_mwrtm_param(INTERNAL, N_catl, rc=STATUS)
+    !   _VERIFY(STATUS)
+    !endif
+
     ! assert mwRTM parameters are not nodata for all tiles
     if (mwRTM_all_nodata) then
        _ASSERT(.false., "Tb innovations or assimilation requested but all mwRTM parameters are nodata")
@@ -1463,9 +1473,9 @@ contains
     
     if (firsttime) then
        firsttime = .false.
-       if (mwRTM) &
-            call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
-            N_catl, tile_coord_l, cat_param, mwRTM_param )
+       !if (mwRTM) &
+       !     call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
+       !     N_catl, tile_coord_l, cat_param, mwRTM_param )
        if (root_proc) then 
           ! for out put
           call read_cat_bias_inputs(  trim(out_path), trim(exp_id), start_time, update_type, &
@@ -2260,7 +2270,75 @@ contains
     
     RETURN_(_SUCCESS)
   end subroutine CALC_LAND_TB
-  
+
+  subroutine OUTPUT_SMAPL4SMLMC(gc, import, export, clock, rc)
+     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
+     type(ESMF_State),    intent(inout) :: import ! Import state
+     ! this import is from land grid component
+     type(ESMF_State),    intent(inout) :: export ! Export state
+     type(ESMF_Clock),    intent(inout) :: clock  ! The clock
+     integer, optional,   intent(  out) :: rc     ! Error code
+
+     integer                      :: status
+     character(len=ESMF_MAXSTR)   :: Iam='Output_smapL4SMlmc'
+     character(len=ESMF_MAXSTR)   :: comp_name
+     ! MAPL variables
+     type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
+     type(ESMF_State)             :: INTERNAL
+     type(T_TILECOORD_STATE), pointer :: tcinternal
+     type(TILECOORD_WRAP)             :: tcwrap
+     type(tile_coord_type), dimension(:), pointer :: tile_coord_l => null()
+     character(len=300)           :: out_path
+     character(len=ESMF_MAXSTR)   :: exp_id
+     integer :: N_catl
+     type(MAPL_LocStream) :: locstream
+     type(ESMF_Time)      :: ModelTimeCur 
+     type(date_time_type) :: start_time
+     logical, save :: first_time = .true.
+
+     if (.not. first_time) then
+        _RETURN(_SUCCESS)
+     endif
+
+     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+     _VERIFY(STATUS)
+     
+     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
+     _VERIFY(status)
+     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
+     _VERIFY(status)
+     call MAPL_LocStreamGet(locstream, NT_LOCAL=N_catl,rc=status)
+     _VERIFY(status)
+
+     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
+     _VERIFY(status)
+     tcinternal   =>tcwrap%ptr
+     tile_coord_l =>tcinternal%tile_coord
+
+     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
+     _VERIFY(status)
+
+     call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
+     _VERIFY(STATUS)
+     call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
+     _VERIFY(STATUS)
+     ! Get current time
+     call ESMF_ClockGet(clock, currTime=ModelTimeCur, rc=status)
+     _VERIFY(status)
+     call esmf2ldas(ModelTimeCur, start_time, rc=status)
+     _VERIFY(status)
+
+     call get_mwrtm_param(INTERNAL, N_catl, rc=status)
+     _VERIFY(status)
+
+     call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
+            N_catl, tile_coord_l, cat_param, mwRTM_param )
+     first_time = .false.
+
+     _RETURN(_SUCCESS)
+
+  end subroutine OUTPUT_SMAPL4SMLMC 
+ 
   ! ******************************************************************************
   
   subroutine read_pert_rseed(id_string,seed_fname,pert_rseed_r8)

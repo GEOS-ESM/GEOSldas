@@ -887,6 +887,12 @@ contains
 
     enddo
 
+    if ( mwRTM .and. LSM_CHOICE == 1 ) then
+       ! output_smapl4smlmc
+       call ESMF_GridCompRun(gcs(LANDASSIM), importState=gim(LANDASSIM), exportState=gex(LANDASSIM), clock=clock,phase=4, userRC=status)
+       VERIFY_(status)
+    endif
+
     ! Run land analysis
     if (land_assim) then 
        igc = LANDASSIM
