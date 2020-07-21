@@ -19,8 +19,6 @@ module LDAS_TileCoordType
   implicit none
   
   private
-
-  public :: N_cont_max
     
   public :: tile_typ_ocean        
   public :: tile_typ_inlandwater  
@@ -43,8 +41,6 @@ module LDAS_TileCoordType
   
   ! maximum number of continents defined in Pfafstetter IDs
   
-  integer, parameter :: N_cont_max = 6
-
   ! constants that define the kinds (types) of tiles in *.til file
   ! (see field "typ" in tile_coord_type)
   

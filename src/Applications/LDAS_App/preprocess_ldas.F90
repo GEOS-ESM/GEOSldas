@@ -8,8 +8,7 @@ module preprocess_module
        tile_coord_type,                         &
        grid_def_type,                           &
        io_grid_def_type,                        &
-       tile_typ_land,                           &
-       N_cont_max
+       tile_typ_land
    use nr_ran2_gasdev,                  ONLY:   &
        NRANDSEED
    use LDAS_DateTimeMod, only: date_time_type
@@ -19,7 +18,7 @@ module preprocess_module
    use catch_types, only: cat_param_type,N_gt
    use LDAS_TileCoordRoutines,          ONLY:   &
        LDAS_read_land_tile
-   use LDAS_ensdrv_functions,            ONLY:     &
+   use LDAS_ensdrv_functions,           ONLY:   &
        get_io_filename
    use LDAS_ensdrv_init_routines,       ONLY:   &
        domain_setup, &
@@ -148,7 +147,7 @@ subroutine createf2g(orig_tile,domain_def,out_path,catch_def_file,exp_id,ymdhm, 
    character(*) :: SURFLAY
 
    real :: minlon,maxlon,minlat,maxlat
-   character(len=200):: black_file,white_file
+   character(len=200):: exclude_file,include_file
    character(len=300):: bcs_path
    logical :: file_exist
    logical :: d_exist,c_exist
@@ -163,13 +162,12 @@ subroutine createf2g(orig_tile,domain_def,out_path,catch_def_file,exp_id,ymdhm, 
    integer, dimension(:), pointer     :: d2f => null()
    integer :: N_catg, N_catd,n1,n2,N_catf
 
-   integer, dimension(N_cont_max)     :: N_catf_cont
    type(cat_param_type),  dimension(:), allocatable :: cp
    real :: dzsf
 
    namelist / domain_inputs /                              &
          minlon, maxlon,minlat,maxlat,                     &
-         black_file,white_file
+         exclude_file,include_file
 
    inquire(file=trim(orig_tile),exist=file_exist)
    if( .not. file_exist) stop ("original tile file not exist")
@@ -194,23 +192,23 @@ subroutine createf2g(orig_tile,domain_def,out_path,catch_def_file,exp_id,ymdhm, 
        maxlon = 180.
        minlat = -90.
        maxlat = 90.
-       black_file = ' '
-       white_file = ' '
+       exclude_file = ' '
+       include_file = ' '
    endif
 
    call LDAS_read_land_tile(orig_tile,catch_def_file,tile_grid_g,tile_coord_g,f2g)
    N_catg=size(tile_coord_g)
 
-   ! white and black files are absolute
+   ! include and exclude files are absolute
 
    call domain_setup(                                               &
        N_catg, tile_coord_g,                                        &
        tile_grid_g,                                                 &
-      ' ', black_file, ' ', white_file,                             &
+      ' ', exclude_file, ' ', include_file,                         &
        trim(out_path), 'exp_domain ', trim(exp_id),                 &
        minlon, minlat, maxlon, maxlat,                              &
        N_catd, d2g, tile_coord_d,                                   &
-       tile_grid_d, N_catf_cont )
+       tile_grid_d )
 
    allocate(cp(N_catd))
 

@@ -67,6 +67,7 @@ module land_pert_routines
   interface propagate_pert
      module procedure GEOSldas_propagate_pert, LDASsa_propagate_pert
   end interface
+  
   ! **********************************************************************
 
 contains
@@ -101,8 +102,8 @@ contains
     
     integer, intent(in) :: N_pert   ! # different perturbations
     
-    type(grid_def_type), intent(in) :: pert_grid_f
     type(grid_def_type), intent(in) :: pert_grid_l
+    type(grid_def_type), intent(in) :: pert_grid_f
     
     real, intent(in) :: dtstep        ! perturbation time step in seconds
     
@@ -316,7 +317,7 @@ contains
   
   subroutine LDASsa_get_pert(                         &
        N_pert, N_ens,                                 &
-       pert_grid_f, pert_grid_l,                      &
+       pert_grid_l, pert_grid_f,                      &
        dtstep,                                        &
        pert_param,                                    &
        Pert_rseed,                                    &
@@ -329,7 +330,9 @@ contains
     ! get perturbations
     !
     ! reichle, 22 Jun 2005
-
+    ! reichle, 17 Jul 2020 - switched order of input arguments pert_grid_f and pert_grid_l
+    !                         for consistency with other subroutines
+    
     implicit none
 
     ! N_pert is the number of *perturbation* fields and is not 
@@ -344,8 +347,8 @@ contains
 
     integer, intent(in) :: N_ens  ! # ensemble members
 
-    type(grid_def_type), intent(in) :: pert_grid_f
     type(grid_def_type), intent(in) :: pert_grid_l
+    type(grid_def_type), intent(in) :: pert_grid_f
 
     real, intent(in) :: dtstep        ! perturbation time step in seconds
 

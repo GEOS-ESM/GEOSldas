@@ -68,8 +68,7 @@ module clsm_ensupd_enkf_update
   use LDAS_TilecoordRoutines,           ONLY:     &
        get_number_of_tiles_in_cell_ij,            &
        get_tile_num_in_cell_ij,                   &
-       grid2tile,                                 &
-       grid2tile_real8
+       grid2tile
 
   use nr_ran2_gasdev,                   ONLY:     &
        NRANDSEED
@@ -2739,10 +2738,10 @@ contains
                 data_h_9km_tile_8 = real(nodata_generic,kind(0.0D0)) ! init (not in grid2tile!)
                 data_v_9km_tile_8 = real(nodata_generic,kind(0.0D0)) ! init (not in grid2tile!)
 
-                call grid2tile_real8( tile_grid_g, N_catf, tile_coord_f, data_h_9km_grid_8, &
+                call grid2tile( tile_grid_g, N_catf, tile_coord_f%i_indg, tile_coord_f%j_indg, data_h_9km_grid_8, &
                      data_h_9km_tile_8 )
 
-                call grid2tile_real8( tile_grid_g, N_catf, tile_coord_f, data_v_9km_grid_8, &
+                call grid2tile( tile_grid_g, N_catf, tile_coord_f%i_indg, tile_coord_f%j_indg, data_v_9km_grid_8, &
                      data_v_9km_tile_8 )
 
                 ! write into file
