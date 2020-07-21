@@ -1210,7 +1210,7 @@ contains
     ! -Now-check-pert-dtstep-
     call check_pert_dtstep(                                                     &
          model_dtstep,                                                          &
-         start_time, stop_time,                                                 &
+         current_time, stop_time,                                                 &
          internal%PrognPert%npert, internal%ForcePert%npert,                    &
          internal%PrognPert%dtstep, internal%ForcePert%dtstep                   &
          )
