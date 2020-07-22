@@ -846,13 +846,13 @@ contains
     ! ESMF variables
     type(ESMF_VM) :: vm
     type(ESMF_TimeInterval) :: ModelTimeStep
-    type(ESMF_Time) :: CurrentTime, StartTime, StopTime
+    type(ESMF_Time) :: CurrentTime, StopTime
     type(ESMF_Alarm) :: ForcePertAlarm, PrognPertAlarm
     type(ESMF_TimeInterval) :: ForcePert_DT, PrognPert_DT
     type(ESMF_State) :: MINTERNAL
 
     ! LDAS variables
-    type(date_time_type) :: start_time, stop_time, current_time
+    type(date_time_type) :: stop_time, current_time
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -1185,7 +1185,6 @@ contains
          clock,                                                                 &
          currTime=CurrentTime,                                                  &
          timeStep=ModelTimeStep,                                                &
-         startTime=StartTime,                                                   &
          stopTime=StopTime                                                      &
          )
     VERIFY_(status)
@@ -1193,8 +1192,6 @@ contains
     call ESMF_TimeIntervalGet(ModelTimeStep, s=model_dtstep)
     VERIFY_(status)
     ! -model-times-in-LDAS-datetime-format-
-    call esmf2ldas(StartTime, start_time, rc=status)
-    VERIFY_(status)
     call esmf2ldas(StopTime, stop_time, rc=status)
     VERIFY_(status)
     call esmf2ldas(CurrentTime, current_time, rc=status)
@@ -1210,7 +1207,7 @@ contains
     ! -Now-check-pert-dtstep-
     call check_pert_dtstep(                                                     &
          model_dtstep,                                                          &
-         start_time, stop_time,                                                 &
+         current_time, stop_time,                                                 &
          internal%PrognPert%npert, internal%ForcePert%npert,                    &
          internal%PrognPert%dtstep, internal%ForcePert%dtstep                   &
          )
