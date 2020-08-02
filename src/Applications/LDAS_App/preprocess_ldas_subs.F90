@@ -6,7 +6,11 @@ module preprocess_ldas_subs
 
   use MAPL_BaseMod,                     ONLY:     &
        MAPL_Land
-
+  
+  use LDAS_TileCoordType,               ONLY:     &	
+       tile_coord_type,                           &	
+       grid_def_type
+  
   use LDAS_TileCoordRoutines,           ONLY:     &
        LDAS_create_grid_g
   
