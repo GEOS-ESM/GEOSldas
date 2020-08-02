@@ -15,8 +15,7 @@ module LDAS_TileCoordRoutines
        grid_def_type,                             &
        init_grid_def_type,                        &
        io_grid_def_type,                          &
-       io_tile_coord_type,                        &
-       tile_typ_land
+       io_tile_coord_type
 
   use LDAS_ensdrv_Globals,              ONLY:     &
        logit,                                     &

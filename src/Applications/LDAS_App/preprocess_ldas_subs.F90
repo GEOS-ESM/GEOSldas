@@ -58,9 +58,8 @@ contains
     ! subroutine to match order of tiles in *.til file
     ! - reichle, 22 Aug 2013
     !
-    ! minor bug fixes:
-    ! * work-around for bug in some EASE *.til files (header says N_grid=1 but has two grid defs)
-    ! * removed unknown tile type "1100"; use "MAPL_Land" instead of "100"
+    ! improved documentation of bug in some EASE *.til files (header says N_grid=1 but has two grid defs)
+    ! and minor clean-up
     ! - reichle,  2 Aug 2020
     !
     ! -------------------------------------------------------------
@@ -106,21 +105,21 @@ contains
     read (10,*) n_lon
     read (10,*) n_lat
 
-    ! work around for bug in Icarus-NLv3 *.til files (and possibly others):
-    !   some EASE *.til files have N_grid=1 but also three lines for second grid in header
+    ! NOTE:
+    !  There is a bug in at least some EASE *.til files through at least Icarus-NLv4.
+    !  Affected files state "N_grid=1" in line 2 of the header, but the header still includes
+    !  three additional lines for a second grid.
+    !  LDAS pre-processing corrects for this bug through subroutine correctEase() in
+    !  preprocess_LDAS.F90, which creates a second, corrected version of the *.til file during
+    !  ldas_setup.  Here, this corrected *.til file is read!
     
-    if (index(gridname,"EASE") /=0) then
-       ease_grid = .true.
-    else
-       ease_grid = .false.
-    end if
-    
-    if(N_grid==2 .or. ease_grid) then
+    if(N_grid==2) then
        read (10,*)          ! some string describing ocean grid                   (?)
        read (10,*)          ! # ocean grid cells in longitude direction (N_i_ocn) (?)
        read (10,*)          ! # ocean grid cells in latitude direction (N_j_ocn)  (?)
     endif
-    
+
+    ease_grid = .false.
     col_order = 0
     
     call LDAS_create_grid_g( gridname, n_lon, n_lat,                        &
@@ -143,7 +142,9 @@ contains
        read(10,'(A)')  tmpline 
        read(tmpline,*) typ
 
-       if (typ==MAPL_Land) then
+       ! tile type "1100" identifies land tiles to exclude when non-global domain is created (?)
+
+       if (typ==MAPL_Land .or. typ==1100) then     ! land
 
           i=i+1
           tile_coord(i)%tile_id = k

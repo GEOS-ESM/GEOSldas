@@ -7,11 +7,17 @@ module preprocess_module
   
   use MAPL
   
+  use MAPL_BaseMod,                    ONLY:   &
+       MAPL_Land
+  
+  use LDAS_ensdrv_Globals,             ONLY:   &
+       logit,                                  &
+       logunit
+  
   use LDAS_TileCoordType,              ONLY:   &
        tile_coord_type,                        &
        grid_def_type,                          &
-       io_grid_def_type,                       &
-       tile_typ_land
+       io_grid_def_type
   
   use nr_ran2_gasdev,                  ONLY:   &
        NRANDSEED
@@ -45,6 +51,8 @@ module preprocess_module
   use pFIO
   
 end module preprocess_module
+
+! ********************************************************************
 
 program main
    use preprocess_module
@@ -137,20 +145,25 @@ program main
        print*, " wrong preprocess option:",option
    end if
 
-   contains
-      function upcase(string) result(upper)
-         character(len=*), intent(in) :: string
-         character(len=len(string)) :: upper
-         integer :: j
-         do j = 1,len(string)
-            if(string(j:j) >= "a" .and. string(j:j) <= "z") then
-               upper(j:j) = achar(iachar(string(j:j)) - 32)
-            else
-               upper(j:j) = string(j:j)
-            end if
-         end do
-      end function upcase
-end program
+ contains
+   
+   ! ********************************************************************
+
+   function upcase(string) result(upper)
+     character(len=*), intent(in) :: string
+     character(len=len(string)) :: upper
+     integer :: j
+     do j = 1,len(string)
+        if(string(j:j) >= "a" .and. string(j:j) <= "z") then
+           upper(j:j) = achar(iachar(string(j:j)) - 32)
+        else
+           upper(j:j) = string(j:j)
+        end if
+     end do
+   end function upcase
+end program main
+ 
+! ********************************************************************
 
 subroutine createf2g(orig_tile,domain_def,out_path,catch_def_file,exp_id,ymdhm, SURFLAY)
    use preprocess_module
@@ -273,6 +286,8 @@ subroutine createf2g(orig_tile,domain_def,out_path,catch_def_file,exp_id,ymdhm, 
 
 contains
 
+  ! ********************************************************************
+
    subroutine write_cat_param(cat_param, N_catd)
     type(cat_param_type), intent(in) :: cat_param(:)
     integer,intent(in) :: N_catd
@@ -363,6 +378,8 @@ contains
 
 end subroutine createf2g
 
+! ********************************************************************
+
 subroutine readsize(N_catg,N_catf)
    use preprocess_module
    implicit none
@@ -381,6 +398,8 @@ subroutine readsize(N_catg,N_catf)
       print*, " wrong, no f2g.txt"
    endif
 end subroutine readsize
+
+! ********************************************************************
 
 subroutine readf2g(N_catf,f2g)
    use preprocess_module
@@ -416,6 +435,8 @@ subroutine readf2g(N_catf,f2g)
    
 end subroutine readf2g
 
+! ********************************************************************
+
 subroutine createLocalTilefile(orig_tile,new_tile)
    use preprocess_module
    implicit none
@@ -430,7 +451,7 @@ subroutine createLocalTilefile(orig_tile,new_tile)
    integer :: N_tile,N_grid,g_id
 
    inquire(file=trim(orig_tile),exist=file_exist)
-   if( .not. file_exist) stop ("original tile file not exist")
+   if( .not. file_exist) stop ("original tile file does not exist")
 
    ! Set default local tile file name
    call readsize(N_catg,N_catf)
@@ -444,7 +465,9 @@ subroutine createLocalTilefile(orig_tile,new_tile)
    open(40,file=trim(orig_tile),action="read")
    open(50,file=trim(new_tile),action="write")
 
-   ! put the head back for tile file
+   ! copy the header back into the output tile file
+   ! (also corrects bug in EASE *.til files that have "N_grid=1" in line 2 but
+   !  still contain three additional lines for second grid definition)
    do n=1,5
        read(40,'(A)') line
        if(n==1) then
@@ -455,7 +478,7 @@ subroutine createLocalTilefile(orig_tile,new_tile)
        endif
        write(50,'(A)') trim(line)
    enddo
-   if (N_grid ==2) then
+   if (N_grid==2) then
        do n=1,3
           read(40,'(A)') line
           write(50,'(A)') trim(line)
@@ -466,11 +489,11 @@ subroutine createLocalTilefile(orig_tile,new_tile)
    do while(.true.)
        read(40,'(A)',IOSTAT=stat) line
        if(IS_IOSTAT_END(stat)) exit
-       ! just read the first four
+       ! just read the first four   ["four" what?, reichle 2 Aug 2020]
        read(line,*) ty
-       if( ty == tile_typ_land ) then
-           n=index(line,'100')
-       ! here g_id is the global land tiles
+       if( ty == MAPL_Land ) then
+           n=index(line,'100')    ! [would need to create string from MAPL_Land...]
+       ! here g_id is [the id of?] the global land tiles
            g_id=g_id+1
            if(.not. any( f2g(:) == g_id)) then
        ! add 1000 to it so it will be excluded
@@ -483,6 +506,8 @@ subroutine createLocalTilefile(orig_tile,new_tile)
    close(50)
 
 end subroutine createLocalTilefile
+
+! ********************************************************************
 
 subroutine createLocalBC(orig_BC, new_BC)
    use preprocess_module
@@ -515,6 +540,8 @@ subroutine createLocalBC(orig_BC, new_BC)
    close(20)
    deallocate(tmpvec)
 end subroutine createLocalBC
+
+! ********************************************************************
 
 subroutine createLocalCatchRestart(orig_catch, new_catch)
    use preprocess_module
@@ -645,6 +672,8 @@ subroutine createLocalCatchRestart(orig_catch, new_catch)
    print*, "done create local catchment restart"
 end subroutine createLocalCatchRestart
 
+! ********************************************************************
+
 subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
    use preprocess_module
    implicit none
@@ -695,6 +724,8 @@ subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
    deallocate(f2g,tmp1)
          
 end subroutine createLocalmwRTMRestart
+
+! ********************************************************************
 
 subroutine createLocalVegRestart(orig_veg, new_veg)
    use preprocess_module
@@ -771,7 +802,21 @@ subroutine createLocalVegRestart(orig_veg, new_veg)
 
 end subroutine createLocalVegRestart
 
+! ********************************************************************
+
 subroutine correctEase(orig_ease,new_ease)
+
+  ! This subroutine corrects for a bug that is present in some EASE *.til files
+  ! through at least Icarus-NLv4.
+  ! Affected files state "N_grid=1" in line 2 of the header, but the header still includes
+  ! three additional lines for a second grid, which throws off the canonical *.til reader
+  ! (subroutine LDAS_read_til_file()).
+  !
+  ! This subroutine creates a second, corrected version of the *.til file that can be
+  ! read with the canonical reader during ldas_setup.
+  !
+  ! - reichle,  2 Aug 2020
+  
    implicit none
    character(*),intent(in) :: orig_ease
    character(*),intent(in) :: new_ease
@@ -792,7 +837,7 @@ subroutine correctEase(orig_ease,new_ease)
    close(55)
 
    is_oldEASE= .false.
-   if(N_grid ==1 .and. index(tmpline,'OCEAN')/=0) is_oldEASE=.true.
+   if(N_grid==1 .and. index(tmpline,'OCEAN')/=0) is_oldEASE=.true.
 
    if( is_oldEASE) then
       open(55,file=trim(orig_ease),action='read')
@@ -813,6 +858,8 @@ subroutine correctEase(orig_ease,new_ease)
    end if
 end subroutine correctEase
 
+! ********************************************************************
+
 ! This program optimized the domain setup by producing 
 !
 ! NX: N_proc
@@ -822,6 +869,7 @@ end subroutine correctEase
 ! ./a.out tile_file N_proc
 
 subroutine optimize_latlon(fname,arg)
+   use preprocess_module
    implicit none
    character(*) :: fname,arg
    integer :: N_proc
@@ -853,7 +901,7 @@ subroutine optimize_latlon(fname,arg)
    read (10,*) N_lon
    read (10,*) n_lat
 
-   if (index(gridname,"CF") /=0) then
+   if (index(gridname,"CF") /=0) then    ! cube-sphere tile space
 
       IMGLOB = N_lon
       JMGLOB = N_lat
@@ -862,8 +910,8 @@ subroutine optimize_latlon(fname,arg)
       allocate(landPosition(JMGLOB))
       landPosition = 0
       total_land   = 0
-
-      if(N_grid == 2) then
+      
+      if(N_grid==2) then
          read (10,*)          ! some string describing ocean grid                   (?)
          read (10,*)          ! # ocean grid cells in longitude direction (N_i_ocn) (?)
          read (10,*)
@@ -883,13 +931,27 @@ subroutine optimize_latlon(fname,arg)
            !tmpint,        &   ! 10
            !tmpreal,       &   ! 11
            !tmpint       ! 12  * (previously "tile_id")
-         if(typ==100) then
+         if(typ==MAPL_Land) then
            total_land=total_land+1
            landPosition(j) = landPosition(j)+1
          endif
-         ! assume all lands are at the beginning 
-         if(typ /= 100 .and. typ /= 1100 ) exit
 
+         ! assume all land tiles are at the beginning
+         ! UNSAFE ASSUMPTION! - reichle, 2 Aug 2020
+         
+         if (typ/=MAPL_Land .and. typ/=1100) then                      ! exit if not land
+                      
+            if (logit) then
+               write (logunit,*) 'WARNING: Encountered first non-land tile in *.til file.'
+               write (logunit,*) '         Stop reading *.til file under the assumption that'
+               write (logunit,*) '           land tiles are first in *.til file.'
+               write (logunit,*) '         This is NOT a safe assumption beyond Icarus-NLv[x] tile spaces!!'
+            end if
+            
+            exit ! assuming land comes first in the til file
+
+         end if
+            
       enddo
       close(10)
 
@@ -1030,8 +1092,21 @@ subroutine optimize_latlon(fname,arg)
       allocate(local_land(N_Proc))
       IMS=0
       local_land = 0
-   
-      if(N_grid == 2) then
+      
+      ! NOTE:
+      !  There is a bug in at least some EASE *.til files through at least Icarus-NLv4.
+      !  Affected files state "N_grid=1" in line 2 of the header, but the header still includes
+      !  three additional lines for a second grid.
+      !
+      !  The "else" block below corrects for this bug.
+      !
+      !  Elsewhere, LDAS pre-processing corrects for this bug through subroutine correctEase() in
+      !  preprocess_LDAS.F90, which creates a second, corrected version of the *.til file during
+      !  ldas_setup.
+      !
+      ! -reichle, 2 Aug 2020
+
+      if(N_grid==2) then
          read (10,*)          ! some string describing ocean grid                   (?)
          read (10,*)          ! # ocean grid cells in longitude direction (N_i_ocn) (?)
          read (10,*)   
@@ -1066,7 +1141,7 @@ subroutine optimize_latlon(fname,arg)
         tmpreal,       &   !  3
         tmpreal,       &   !  4
         i !,             &   !  5
-      if(typ==100) then
+      if(typ==MAPL_Land) then
          total_land=total_land+1
          landPosition(i) = landPosition(i)+1
       endif
@@ -1085,12 +1160,27 @@ subroutine optimize_latlon(fname,arg)
            !tmpint,        &   ! 10
            !tmpreal,       &   ! 11
            !tmpint       ! 12  * (previously "tile_id")
-         if(typ==100) then
+         if(typ==MAPL_Land) then
            total_land=total_land+1
            landPosition(i) = landPosition(i)+1
          endif
-         ! assume all lands are at the beginning 
-         if(typ /= 100 .and. typ /=1100 ) exit
+
+         ! assume all land tiles are at the beginning
+         ! UNSAFE ASSUMPTION! - reichle, 2 Aug 2020
+         
+         if (typ/=MAPL_Land .and. typ/=1100) then                      ! exit if not land
+                      
+            if (logit) then
+               write (logunit,*) 'WARNING: Encountered first non-land tile in *.til file.'
+               write (logunit,*) '         Stop reading *.til file under the assumption that'
+               write (logunit,*) '           land tiles are first in *.til file.'
+               write (logunit,*) '         This is NOT a safe assumption beyond Icarus-NLv[x] tile spaces!!'
+            end if
+            
+            exit ! assuming land comes first in the til file
+
+         end if
+
       enddo
 
       close(10)
@@ -1161,8 +1251,10 @@ subroutine optimize_latlon(fname,arg)
 
    endif
 
-   contains 
+ contains 
 
+   ! ***************************************************************************
+   
       elemental function rms(rates) result (f)
          real :: f
          real,intent(in) :: rates
@@ -1195,6 +1287,8 @@ subroutine optimize_latlon(fname,arg)
          enddo
          deallocate(local_land)
       end function
+
+      ! ***************************************************************************
 
       elemental function rms_cs(rates) result (f)
          real :: f
@@ -1240,6 +1334,8 @@ subroutine optimize_latlon(fname,arg)
 
 end subroutine optimize_latlon
 
+! ********************************************************************
+
 subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
     use preprocess_module
     implicit none
@@ -1274,7 +1370,9 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
 
    contains 
 
-       subroutine i_pert_ldas(rc)
+     ! ***************************************************************************
+
+     subroutine i_pert_ldas(rc)
           integer,intent(inout),optional :: rc
 
           integer :: nrandseed_tmp
@@ -1349,6 +1447,8 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
           deallocate(real_tmp)
           rc = 0
       end subroutine i_pert_ldas
+
+      ! ********************************************************************
 
       subroutine o_pert_GEOSldas(rc)
          integer,intent(inout) :: rc
@@ -1438,4 +1538,8 @@ subroutine convert_pert_rst(pfile_name,pfile_nc4,in_path,exp_id)
 
          rc = status
       end subroutine o_pert_GEOSldas
+
+
 end subroutine convert_pert_rst
+
+! ====================== EOF =======================================================
