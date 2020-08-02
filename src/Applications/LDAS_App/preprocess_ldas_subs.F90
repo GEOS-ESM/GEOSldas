@@ -1,141 +1,162 @@
 
-! This file is part of orginal LDAS_TileCoordRoutines.F90
-! It contains the subroutineis used only in LDAS_app directory
+! Subroutines needed for LDAS pre-processing. Moved from LDAS_TileCoordRoutines.F90.
+! - wjiang, reichle, 2 Aug 2020
 
-module LDAS_help_subs
-   use LDAS_TileCoordType,               ONLY:     &
-       tile_coord_type,                           &
-       grid_def_type
+module preprocess_ldas_subs
 
-   use LDAS_TileCoordRoutines,           only:     &
-         LDAS_create_grid_g
+  use MAPL_BaseMod,                     ONLY:     &
+       MAPL_Land
 
-   use LDAS_ensdrv_Globals,              ONLY:     &
+  use LDAS_TileCoordRoutines,           ONLY:     &
+       LDAS_create_grid_g
+  
+  use LDAS_ensdrv_Globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
        nodata_tol_generic
   
-   use MAPL_ConstantsMod,                ONLY:     &
+  use MAPL_ConstantsMod,                ONLY:     &
        MAPL_RADIUS                                    ! Earth radius
   
-   use LDAS_ExceptionsMod,               ONLY:     &
+  use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
-
-   implicit none
-
-   private
   
-   public :: LDAS_read_land_tile
+  implicit none
 
+  private
+  
+  public :: LDAS_read_til_file
+  
 contains
-
-  subroutine LDAS_read_land_tile( tile_file,catch_file, tile_grid_g, tile_coord_land,f2g )
-    ! inputs:
+  
+  subroutine LDAS_read_til_file( tile_file, catch_file, tile_grid_g, tile_coord_land, f2g )
+    
+    ! read land tile information from *.til file
     !
-    !  tile_file : full path + name 
+    ! This is the GEOSldas version of the LDASsa subroutine read_til_file().
+    !
+    ! inputs:
+    !  tile_file       : *.til tile definition file (full path + name)
+    !  catch_file      : catchment.def file         (full path + name) 
     !
     ! outputs:
-    !
-    !  tile_grid   : parameters of tile definition grid
-    !
-    !  tile_coord : coordinates of tiles (see tile_coord_type),
-    !               implemented as pointer which is allocated in 
-    !               this subroutine
-    !               NOTE: number of tiles can be diagnosed 
-    !                     with size(tile_coord)
+    !  tile_grid_g     : parameters of tile definition grid
+    !  tile_coord_land : coordinates of tiles (see tile_coord_type),
+    !                    implemented as pointer which is allocated in 
+    !                    this subroutine
+    !                    NOTE: number of *land* tiles can be diagnosed with size(tile_coord)
     ! optional:
-    !    if the tile file type 1100 ,which is land excluded
-    !    f2g  : the full domain id to the global id
+    !    f2g           : the full domain id to the global id
+    !
     ! "tile_id" is no longer read from *.til file and is now set in this 
     ! subroutine to match order of tiles in *.til file
     ! - reichle, 22 Aug 2013
+    !
+    ! minor bug fixes:
+    ! * work-around for bug in some EASE *.til files (header says N_grid=1 but has two grid defs)
+    ! * removed unknown tile type "1100"; use "MAPL_Land" instead of "100"
+    ! - reichle,  2 Aug 2020
     !
     ! -------------------------------------------------------------
 
     implicit none
 
-    character(*), intent(in) :: tile_file
-    character(*), intent(in) :: catch_file
-    type(grid_def_type), intent(inout):: tile_grid_g
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_land ! out
-    integer, dimension(:), optional,pointer :: f2g ! out
+    character(*),                                          intent(in)   :: tile_file
+    character(*),                                          intent(in)   :: catch_file
+    type(grid_def_type),                                   intent(inout):: tile_grid_g
+    type(tile_coord_type), dimension(:),           pointer              :: tile_coord_land ! out
+    integer,               dimension(:), optional, pointer              :: f2g ! out
 
     ! locals
-    type(tile_coord_type),dimension(:),allocatable :: tile_coord
-    integer, dimension(:), allocatable :: f2g_tmp  ! out
+    type(tile_coord_type), dimension(:), allocatable :: tile_coord
+    integer,               dimension(:), allocatable :: f2g_tmp  ! out
 
     real    :: ease_cell_area
-    integer :: i, N_tile,N_grid,tmpint1, tmpint2, tmpint3, tmpint4
+    integer :: i, N_tile, N_grid,tmpint1, tmpint2, tmpint3, tmpint4
     integer :: i_indg_offset, j_indg_offset, col_order
-    integer :: N_tile_land,n_lon,n_lat
-
-    logical ::  ease_grid
+    integer :: N_tile_land, n_lon, n_lat
+    logical :: ease_grid
     integer :: typ,k,fid
+    
     character(200) :: tmpline,gridname
     character(300) :: fname
 
-    character(len=*), parameter :: Iam = 'LDAS_read_tile_file'
+    character(len=*), parameter :: Iam = 'LDAS_read_til_file'
 
     ! ---------------------------------------------------------------
 
     i_indg_offset = 0
     j_indg_offset = 0
-
-   ! call LDAS_create_grid(tile_file,tile_grid_g,i_indg_offset,j_indg_offset)
-
-   ! read file header 
-
-    if (logit) write (logunit,'(400A)') 'LDAS_read_tile_file(): reading from' // trim(tile_file)
-
-
+    
+    ! read *.til file header 
+    
+    if (logit) write (logunit,'(400A)') trim(Iam), '(): reading from ' // trim(tile_file)
+    
     open (10, file=trim(tile_file), form='formatted', action='read')
-
-    read (10,*) N_tile
-    read (10,*) N_grid          ! some number (?)
-    read (10,*) gridname         ! some string describing tile definition grid (?)
+    
+    read (10,*) N_tile      ! number of all tiles in *.til file, incl non-land types
+    read (10,*) N_grid          
+    read (10,*) gridname        
     read (10,*) n_lon
     read (10,*) n_lat
-    if(N_grid == 2) then
+
+    ! work around for bug in Icarus-NLv3 *.til files (and possibly others):
+    !   some EASE *.til files have N_grid=1 but also three lines for second grid in header
+    
+    if (index(gridname,"EASE") /=0) then
+       ease_grid = .true.
+    else
+       ease_grid = .false.
+    end if
+    
+    if(N_grid==2 .or. ease_grid) then
        read (10,*)          ! some string describing ocean grid                   (?)
        read (10,*)          ! # ocean grid cells in longitude direction (N_i_ocn) (?)
        read (10,*)          ! # ocean grid cells in latitude direction (N_j_ocn)  (?)
     endif
-
-    ease_grid = .false.
+    
     col_order = 0
     
-    call LDAS_create_grid_g(gridname,n_lon,n_lat,tile_grid_g,i_indg_offset,j_indg_offset,ease_cell_area)
-
+    call LDAS_create_grid_g( gridname, n_lon, n_lat,                        &
+         tile_grid_g, i_indg_offset, j_indg_offset, ease_cell_area )
+    
     if (index(tile_grid_g%gridtype,'EASE')/=0)  ease_grid = .true.  ! 'EASE' and 'EASEv2'
-    if (index(tile_grid_g%gridtype,'SiB2')/=0)  col_order=1  ! Weiyuan note: grid name for SiB2??
+    if (index(tile_grid_g%gridtype,'SiB2')/=0)  col_order=1         ! old bcs
+    
     allocate(tile_coord(N_tile))
     allocate(f2g_tmp(N_tile))
-    i= 0
+    
+    i   = 0
     fid = 0
-
+    
     ! WJ notes: i and k are the same---global ids
     !           fid --- num in simulation domain
+    
     do k=1,N_tile
        
-        read(10,'(A)') tmpline 
-        read(tmpline,*) typ
-        if(typ == 100 .or. typ ==1100) then ! if it is land
-           i=i+1
-           tile_coord(i)%tile_id   = k
+       read(10,'(A)')  tmpline 
+       read(tmpline,*) typ
 
-           if (typ == 100) then
-              fid=fid+1
-              f2g_tmp(fid) = k
-           endif
+       if (typ==MAPL_Land) then
 
-           if(ease_grid .or. N_grid ==1) then
+          i=i+1
+          tile_coord(i)%tile_id = k
+          
+          fid=fid+1
+          f2g_tmp(fid) = k
 
+          ! Not sure ".or. N_grid==1" will always work in the following conditional.
+          ! Some Tripolar grid *.til files may have N_grid=1.
+          ! - reichle, 2 Aug 2020
+          
+          if (ease_grid .or. N_grid==1) then  
+             
              ! EASE grid til file has fewer columns 
              ! (excludes "tile_id", "frac_pfaf", and "area")
-
-             read (tmpline,*)                          &
+             
+             read (tmpline,*)                     &
                   tile_coord(i)%typ,              &   !  1
                   tile_coord(i)%pfaf,             &   !  2
                   tile_coord(i)%com_lon,          &   !  3
@@ -143,15 +164,17 @@ contains
                   tile_coord(i)%i_indg,           &   !  5
                   tile_coord(i)%j_indg,           &   !  6
                   tile_coord(i)%frac_cell             !  7
-
+             
              tile_coord(i)%frac_pfaf = nodata_generic
              tile_coord(i)%area      = ease_cell_area*tile_coord(i)%frac_cell
-
-           else ! not ease grid
-
+             
+          else ! not ease grid
+             
              if (col_order==1) then
+                
                 ! old "SiB2_V2" file format
-                read (tmpline,*)                       &
+
+                read (tmpline,*)                  &
                      tile_coord(i)%typ,           &   !  1  
                      tile_coord(i)%pfaf,          &   !  2  *
                      tile_coord(i)%com_lon,       &   !  3
@@ -165,10 +188,10 @@ contains
                      tile_coord(i)%frac_pfaf,     &   ! 11
                      tmpint4,                     &   ! 12  (previously "tile_id")
                      tile_coord(i)%area               ! 13
-
+                
              else
-
-                read (tmpline,*)                       &
+                
+                read (tmpline,*)                  &
                      tile_coord(i)%typ,           &   !  1
                      tile_coord(i)%area,          &   !  2  *
                      tile_coord(i)%com_lon,       &   !  3
@@ -181,71 +204,91 @@ contains
                      tmpint2,                     &   ! 10
                      tile_coord(i)%frac_pfaf,     &   ! 11
                      tmpint3                          ! 12  * (previously "tile_id")
-
+                
                 ! change units of area to [km^2]  - 23 Sep 2010: fixed units, reichle
-
+                
                 tile_coord(i)%area = tile_coord(i)%area*MAPL_RADIUS*MAPL_RADIUS/1000./1000.
-
+                
              end if ! col_order 1
-
-           end if  ! (ease_grid)
-
+             
+          end if  ! (ease_grid)
+          
           ! fix i_indg and j_indg such that they refer to a global grid
           ! (see above)
+          
+          tile_coord(i)%i_indg = tile_coord(i)%i_indg + i_indg_offset
+          tile_coord(i)%j_indg = tile_coord(i)%j_indg + j_indg_offset
 
-           tile_coord(i)%i_indg = tile_coord(i)%i_indg + i_indg_offset
-           tile_coord(i)%j_indg = tile_coord(i)%j_indg + j_indg_offset
-        else
-          exit ! land comes first in the til file
-        endif
+       else
+
+          ! exit if not land
+          
+          if (logit) then
+             write (logunit,*) 'WARNING: Encountered first non-land tile in *.til file.'
+             write (logunit,*) '         Stop reading *.til file under the assumption that'
+             write (logunit,*) '           land tiles are first in *.til file.'
+             write (logunit,*) '         This is NOT a safe assumption beyond Icarus-NLv[x] tile spaces!!'
+          end if
+          
+          exit ! assuming land comes first in the til file
+          
+       endif
+
     end do
-    close(10)
 
+    close(10)
+    
     N_tile_land=i
     allocate(tile_coord_land(N_tile_land))
     tile_coord_land=tile_coord(1:N_tile_land)
-
+    
     if(present(f2g)) then
        allocate(f2g(fid))
        f2g = f2g_tmp(1:fid)
     endif
-
+    
     call read_catchment_def( catch_file, N_tile_land, tile_coord_land )
-
+    
     ! ----------------------------------------------------------------------
     !
-    ! if still needed read gridded elevation (check only first tile!)
-
+    ! if elevation info is still needed, read *gridded* elevation data (check only first tile!)
+    
+    ! gridded elevation file is NOT available for EASE grids, where elevation information
+    !  is in catchment.def file
+    
     if ( abs(tile_coord_land(1)%elev-nodata_generic)<nodata_tol_generic ) then
-
+       
        i=index(catch_file,'/clsm/')
        fname = catch_file(1:i)//'topo_DYN_ave_*.data'
        call Execute_command_line('ls '//trim(fname) // ' >topo_DYN_ave.file')
        open(10,file='topo_DYN_ave.file', action='read')
        fname= ''
        read(10,'(A)') fname
-       !close(10,status='DELETE')
        close(10)
        call read_grid_elev( trim(fname), tile_grid_g, N_tile_land, tile_coord_land )
-    end if
 
+    end if
     
     if ( abs(tile_coord_land(1)%elev-nodata_generic)<nodata_tol_generic ) then
-
+       
        if (logit) write (logunit,*) 'WARNING: tile elevation NOT avaialable'
-
+       
     end if
+
     ! ----------------------------------------------------------------------
     !
     ! fix dateline bug that existed up to and including MERRA version of
     !  *.til and catchment.def files
-
+    
     call fix_dateline_bug_in_tilecoord( N_tile_land, tile_grid_g, tile_coord_land ) 
+
     deallocate(tile_coord)
     deallocate(f2g_tmp)
+    
+  end subroutine LDAS_read_til_file
 
-  end subroutine LDAS_read_land_tile
-
+  ! *************************************************************************************
+  
   subroutine read_grid_elev( fname, tile_grid, N_tile, tile_coord )
 
     ! read gridded elevation file (for GEOS-5 discretizations; NOT available
@@ -255,7 +298,7 @@ contains
 
     implicit none
     
-    character(*),      intent(in) :: fname
+    character(*),        intent(in) :: fname
     
     type(grid_def_type), intent(in) :: tile_grid
         
@@ -323,7 +366,7 @@ contains
 
     implicit none
     
-    integer, intent(in) :: N_tile
+    integer,             intent(in) :: N_tile
     
     type(grid_def_type), intent(in) :: tile_grid
     
@@ -404,7 +447,7 @@ contains
     
     character(*), intent(in) :: catchment_def_file
     
-    integer, intent(in) :: N_tile
+    integer,      intent(in) :: N_tile
     
     type(tile_coord_type), dimension(:), pointer :: tile_coord ! inout
     
@@ -412,10 +455,10 @@ contains
     
     integer :: i, istat, tmpint1, sweep
     
-    integer, dimension(N_tile) :: tmp_tileid, tmp_pfaf
+    integer, dimension(N_tile)  :: tmp_tileid, tmp_pfaf
     
     character(len=*), parameter :: Iam = 'read_catchment_def'
-    character(len=400) :: err_msg
+    character(len=400)          :: err_msg
     
     ! ---------------------------------------------------------------
     
@@ -504,8 +547,8 @@ contains
        
     end do      ! loop through sweeps
     
-    if ( any(tile_coord(1:N_tile)%tile_id/=tmp_tileid) .or.       &
-         any(tile_coord(1:N_tile)%pfaf   /=tmp_pfaf)            ) then
+    if ( any(tile_coord(1:N_tile)%tile_id/=tmp_tileid) .or.          &
+         any(tile_coord(1:N_tile)%pfaf   /=tmp_pfaf)         ) then
 
        err_msg = 'tile_coord_file and catchment_def_file mismatch. (2)'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
@@ -516,4 +559,6 @@ contains
     
   end subroutine read_catchment_def
   
-end module LDAS_help_subs
+end module preprocess_ldas_subs
+
+! ==================================== EOF =====================================

@@ -58,226 +58,239 @@ module LDAS_TileCoordRoutines
 
   interface grid2tile
     module procedure grid2tile_real, grid2tile_real8
-  end interface  
+  end interface grid2tile
+   
 contains
 
-  subroutine LDAS_create_grid_g( gridname,n_lon,n_lat, tile_grid,i_indg_offset,j_indg_offset,cell_area)
+  ! *******************************************************************
+  
+  subroutine LDAS_create_grid_g( gridname, n_lon, n_lat,       &
+       tile_grid, i_indg_offset, j_indg_offset, cell_area)
     
     ! inputs:
-    !  grid name, n_lon, n_lat
-    ! outputs:
+    !  gridname, n_lon, n_lat
     !
-    !  tile_grid   : parameters of tile definition grid
+    ! inouts:
+    !  tile_grid   : parameters of tile definition grid  
+    ! 
+    ! outputs:
     !  offsets
+    !  cell_area  (optional, for EASE  grids only)
+    
     implicit none
     
-    character(*),intent(in) :: gridname
-    integer,intent(in) :: n_lon,n_lat
-    type(grid_def_type), intent(inout) :: tile_grid
-    integer,intent(out) :: i_indg_offset, j_indg_offset
-    real,optional,intent(out)    :: cell_area
+    character(*),                  intent(in)    :: gridname
+    integer,                       intent(in)    :: n_lon, n_lat
+    type(grid_def_type),           intent(inout) :: tile_grid
+    integer,                       intent(out)   :: i_indg_offset, j_indg_offset
+    real,                optional, intent(out)   :: cell_area
     
     ! locals
 
     real    :: ease_cell_area
     logical :: date_line_on_center, pole_on_center
-    logical :: ease_grid,c3_grid,latlon_grid
+    logical :: ease_grid, c3_grid, latlon_grid
     logical :: file_exist
-
-    character(len=*), parameter :: Iam = 'create global ldas_grid '
-    character(len=400) :: err_msg
-
-
+    
+    character(len=*),  parameter :: Iam = 'create global ldas_grid '
+    character(len=400)           :: err_msg
+    
     ! initialize all fields to no-data values
-
-     i_indg_offset = 0
-     j_indg_offset = 0
-
-     call init_grid_def_type(tile_grid)
-       
-     tile_grid%N_lon = N_lon
-     tile_grid%N_lat = N_lat
-       
-     tile_grid%i_offg = 0  ! tile_grid refers to *global* grid
-     tile_grid%j_offg = 0  ! tile_grid refers to *global* grid
-
-     date_line_on_center = .false.
-     pole_on_center      = .false.
-     ease_grid           = .false.
-     c3_grid             = .false.
-     latlon_grid         = .true.
-
-     if (index(gridname,"DC") /=0) then
-        date_line_on_center = .true.
-     endif
- 
-     if (index(gridname,"PC") /=0) then
-        pole_on_center      = .true.
-     endif
-
-     if( index(gridname,"FV") /=0 ) then
-        pole_on_center      = .true.
-     endif
-
-     if (index(gridname,"EASE") /=0) then
-        ease_grid      = .true.
-        latlon_grid    = .false.
-     endif
-     if (index(gridname,"CF") /=0) then
-        c3_grid        = .true.
-        latlon_grid    = .false.
-     endif
-     ! special cases , inconsistent of naming
-     ! find out whether date line is on edge or through center of grid cell
-     if( index(gridname,"FV_380x180") /=0) then
-        pole_on_center      = .false.
-     endif
-
+    
+    i_indg_offset = 0
+    j_indg_offset = 0
+    
+    call init_grid_def_type(tile_grid)
+    
+    tile_grid%N_lon = N_lon
+    tile_grid%N_lat = N_lat
+    
+    tile_grid%i_offg = 0  ! tile_grid refers to *global* grid
+    tile_grid%j_offg = 0  ! tile_grid refers to *global* grid
+    
+    date_line_on_center = .false.
+    pole_on_center      = .false.
+    ease_grid           = .false.
+    c3_grid             = .false.
+    latlon_grid         = .true.
+    
+    if (index(gridname,"DC") /=0) then
+       date_line_on_center = .true.
+    endif
+    
+    if (index(gridname,"PC") /=0) then
+       pole_on_center      = .true.
+    endif
+    
+    if( index(gridname,"FV") /=0 ) then
+       pole_on_center      = .true.
+    endif
+    
+    if (index(gridname,"EASE") /=0) then
+       ease_grid      = .true.
+       latlon_grid    = .false.
+    endif
+    
+    if (index(gridname,"CF") /=0) then
+       c3_grid        = .true.
+       latlon_grid    = .false.
+    endif
+    
+    ! special cases , inconsistent of naming
+    ! find out whether date line is on edge or through center of grid cell
+    if( index(gridname,"FV_380x180") /=0) then
+       pole_on_center      = .false.
+    endif
+    
     ! Weiyuan Note, we should fix the tile file and the naming 
-     if( index(gridname,"PE_720x360_DE") /=0) then
-        i_indg_offset = 110
-        j_indg_offset = 230
-     endif
-     if( index(gridname,"PE_2880x1440_DE") /=0) then
-        i_indg_offset = 440
-        j_indg_offset = 920
-     endif
-
-! ----------------
+    if( index(gridname,"PE_720x360_DE") /=0) then
+       i_indg_offset = 110
+       j_indg_offset = 230
+    endif
+    if( index(gridname,"PE_2880x1440_DE") /=0) then
+       i_indg_offset = 440
+       j_indg_offset = 920
+    endif
+    
+    ! ----------------
+    
+    if (ease_grid) then
        
-     if (ease_grid) then
-
-          tile_grid%ind_base = 0
-             
-        ! global cylindrical EASE grid 
-             
-          tile_grid%ll_lon = -180.
-          tile_grid%ur_lon =  180.
-             
-          tile_grid%i_dir  = +1
-          tile_grid%j_dir  = -1
-          ! It is sloopy that the name may be EASEv2-M36 or EASEv2_M36
-          if (index(gridname, 'EASEv2_M36')/=0 .or. index(gridname, 'EASEv2-M36')/=0) then  ! version *2*
-                
-             tile_grid%gridtype = 'EASEv2_M36'                          
-                
-             tile_grid%ll_lat =  -85.04456
-             tile_grid%ur_lat =   85.04456
-
-             ease_cell_area   = 1298.320938704616
-              
-          elseif (index(gridname, 'EASEv2_M09')/=0 .or. index(gridname, 'EASEv2-M09')/=0) then  ! version *2*
-
-             tile_grid%gridtype = 'EASEv2_M09'  
-
-             tile_grid%ll_lat =  -85.04456
-             tile_grid%ur_lat =   85.04456
-               
-             ease_cell_area   =   81.145058669038477
-
-          elseif (index(gridname, 'EASE_M36')/=0 .or. index(gridname, 'EASE-M36')/=0) then
-                
-             tile_grid%gridtype = 'EASE_M36'                          
-                
-             tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
-             tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
-
-             ease_cell_area   = 1296.029001087600 
-                
-          elseif (index(gridname, 'EASE_M09')/=0 .or. index(gridname, 'EASE-M09')/=0) then
-
-             tile_grid%gridtype = 'EASE_M09'                          
-
-             tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
-             tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
-                
-             ease_cell_area   =   81.001812568020028
-
-          elseif (index(gridname, 'EASE_M25')/=0 .or. index(gridname, 'EASE-M25')/=0 ) then
-
-             tile_grid%gridtype = 'EASE_M25'                          
-
-             tile_grid%ll_lat =  -86.7167 ! need to double-check (reichle, 11 May 2011)
-             tile_grid%ur_lat =   86.7167 ! need to double-check (reichle, 11 May 2011)
-                
-             ease_cell_area   =   628.38080962
-                
-          else
-               
-              err_msg = 'unknown EASE grid tile defs, grid name = ' &
-                     // trim( gridname)
-              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                
-          end if
-             
-          tile_grid%dlon   = 360./real(tile_grid%N_lon) 
-          tile_grid%dlat   = &
-                (tile_grid%ur_lat-tile_grid%ll_lat)/real(tile_grid%N_lat) ! *avg* dlat!
-          if(present(cell_area)) then
-             cell_area=ease_cell_area
-          endif
+       tile_grid%ind_base = 0
+       
+       ! global cylindrical EASE grid 
+       
+       tile_grid%ll_lon = -180.
+       tile_grid%ur_lon =  180.
+       
+       tile_grid%i_dir  = +1
+       tile_grid%j_dir  = -1
+       
+       ! It is sloppy that the name may be EASEv2-M36 or EASEv2_M36
+       
+       if     (index(gridname, 'EASEv2_M36')/=0 .or. index(gridname, 'EASEv2-M36')/=0) then  ! version *2*
           
-      endif ! EASE grid
-     
-      if (latlon_grid) then !  regular LatLon grid
-
-         tile_grid%gridtype = 'LatLon'
-
-         tile_grid%ind_base = 1
-
-         tile_grid%dlon = 360./real(tile_grid%N_lon)
+          tile_grid%gridtype = 'EASEv2_M36'                          
           
-         tile_grid%i_dir = +1
-         tile_grid%j_dir = +1
-             
-         if (pole_on_center) then
-             
-             tile_grid%dlat   = 180./real(tile_grid%N_lat-1)
-
-             tile_grid%ll_lat = -90. - tile_grid%dlat/2.
-             tile_grid%ur_lat =  90. + tile_grid%dlat/2.
-
-         else
-             
-             tile_grid%dlat = 180./real(tile_grid%N_lat)
-
-             tile_grid%ll_lat = -90. 
-             tile_grid%ur_lat =  90. 
-
-         end if
+          tile_grid%ll_lat =  -85.04456
+          tile_grid%ur_lat =   85.04456
           
-         if (date_line_on_center) then
-             
-             tile_grid%ll_lon = -180. - tile_grid%dlon/2.
-             tile_grid%ur_lon =  180. - tile_grid%dlon/2.  ! fixed 20 sep 2010, reichle
-             
-         else
-             
-             tile_grid%ll_lon = -180. 
-             tile_grid%ur_lon =  180. 
+          ease_cell_area   = 1298.320938704616
           
-         end if
+       elseif (index(gridname, 'EASEv2_M09')/=0 .or. index(gridname, 'EASEv2-M09')/=0) then  ! version *2*
           
-       end if ! lat lon grid
+          tile_grid%gridtype = 'EASEv2_M09'  
+          
+          tile_grid%ll_lat =  -85.04456
+          tile_grid%ur_lat =   85.04456
+          
+          ease_cell_area   =   81.145058669038477
+          
+       elseif (index(gridname, 'EASE_M36')/=0 .or. index(gridname, 'EASE-M36')/=0) then
+          
+          tile_grid%gridtype = 'EASE_M36'                          
+          
+          tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
+          tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
+          
+          ease_cell_area   = 1296.029001087600 
+          
+       elseif (index(gridname, 'EASE_M09')/=0 .or. index(gridname, 'EASE-M09')/=0) then
+          
+          tile_grid%gridtype = 'EASE_M09'                          
+          
+          tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
+          tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
+          
+          ease_cell_area   =   81.001812568020028
+          
+       elseif (index(gridname, 'EASE_M25')/=0 .or. index(gridname, 'EASE-M25')/=0 ) then
+          
+          tile_grid%gridtype = 'EASE_M25'                          
+          
+          tile_grid%ll_lat =  -86.7167 ! need to double-check (reichle, 11 May 2011)
+          tile_grid%ur_lat =   86.7167 ! need to double-check (reichle, 11 May 2011)
+          
+          ease_cell_area   =   628.38080962
+          
+       else
+          
+          err_msg = 'unknown EASE grid tile defs, grid name = ' // trim( gridname)
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+          
+       end if
+       
+       tile_grid%dlon   = 360./real(tile_grid%N_lon) 
+       tile_grid%dlat   = (tile_grid%ur_lat-tile_grid%ll_lat)/real(tile_grid%N_lat) ! *avg* dlat!
 
-       if( c3_grid) then
-
-          tile_grid%gridtype ='c3'
-          tile_grid%ind_base = 1
-          tile_grid%i_dir = +1
-          tile_grid%j_dir = +1
-          tile_grid%ll_lon = -180. 
-          tile_grid%ur_lon =  180. 
+       if(present(cell_area)) then
+          cell_area=ease_cell_area
+       endif
+       
+    endif ! EASE grid
+    
+    if (latlon_grid) then !  regular LatLon grid
+       
+       tile_grid%gridtype = 'LatLon'
+       
+       tile_grid%ind_base = 1
+       
+       tile_grid%dlon = 360./real(tile_grid%N_lon)
+       
+       tile_grid%i_dir = +1
+       tile_grid%j_dir = +1
+       
+       if (pole_on_center) then
+          
+          tile_grid%dlat   = 180./real(tile_grid%N_lat-1)
+          
+          tile_grid%ll_lat = -90. - tile_grid%dlat/2.
+          tile_grid%ur_lat =  90. + tile_grid%dlat/2.
+          
+       else
+          
+          tile_grid%dlat = 180./real(tile_grid%N_lat)
+          
           tile_grid%ll_lat = -90. 
           tile_grid%ur_lat =  90. 
-          ! dlon and dlat are approximate
-          tile_grid%dlon = 360./real(4*tile_grid%N_lon)
-          tile_grid%dlat = tile_grid%dlon
           
-       endif
-
+       end if
+       
+       if (date_line_on_center) then
+          
+          tile_grid%ll_lon = -180. - tile_grid%dlon/2.
+          tile_grid%ur_lon =  180. - tile_grid%dlon/2.  ! fixed 20 sep 2010, reichle
+          
+       else
+          
+          tile_grid%ll_lon = -180. 
+          tile_grid%ur_lon =  180. 
+          
+       end if
+       
+    end if ! lat lon grid
+    
+    if( c3_grid) then
+       
+       tile_grid%gridtype = 'c3'
+       tile_grid%ind_base =    1
+       tile_grid%i_dir    =   +1
+       tile_grid%j_dir    =   +1
+       tile_grid%ll_lon   = -180. 
+       tile_grid%ur_lon   =  180. 
+       tile_grid%ll_lat   =  -90. 
+       tile_grid%ur_lat   =   90.
+       
+       ! dlon and dlat are approximate!
+       tile_grid%dlon     = 360./real(4*tile_grid%N_lon)
+       tile_grid%dlat     = tile_grid%dlon
+       
+    endif
+    
   end subroutine LDAS_create_grid_g
-
+  
+  ! *******************************************************************
+  
   subroutine get_tile_grid( N_tile, tile_coord, tile_grid_g, tile_grid )     
     
     ! get matching tile_grid for given tile_coord and (global) tile_grid_g
@@ -321,27 +334,33 @@ contains
     ind_i_max = -1
     ind_j_max = -1
 
-    ! for c3 grid, only get the ll_,ur_ lat and lon, the index is meaning less
+    ! THIS COMMENT SEEMS OUTDATED (reichle, 2 Aug 2020)
+    ! for c3 grid, only get the ll_,ur_ lat and lon, the index is meaningless;
     ! it will be used in creating the lat_lon pert_grid
+    
     if(index(tile_grid_g%gridtype,"c3") /=0) then
- 
-      ! do n=1,N_tile
-      ! 
-      !    this_minlon  = tile_coord(n)%com_lon
-      !    this_minlat  = tile_coord(n)%com_lat
-      !    this_maxlon  = tile_coord(n)%com_lon
-      !    this_maxlat  = tile_coord(n)%com_lat
-      !    min_min_lon = min( min_min_lon, this_minlon)
-      !    min_min_lat = min( min_min_lat, this_minlat)
-      !    max_max_lon = max( max_max_lon, this_maxlon)
-      !    max_max_lat = max( max_max_lat, this_maxlat)
-      ! enddo
+       
+       ! do n=1,N_tile
+       ! 
+       !    this_minlon  = tile_coord(n)%com_lon
+       !    this_minlat  = tile_coord(n)%com_lat
+       !    this_maxlon  = tile_coord(n)%com_lon
+       !    this_maxlat  = tile_coord(n)%com_lat
+       !    min_min_lon = min( min_min_lon, this_minlon)
+       !    min_min_lat = min( min_min_lat, this_minlat)
+       !    max_max_lon = max( max_max_lon, this_maxlon)
+       !    max_max_lat = max( max_max_lat, this_maxlat)
+       ! enddo
+
        tile_grid=tile_grid_g
-      ! tile_grid%ll_lon= min_min_lon
-      ! tile_grid%ur_lon= max_max_lon
-      ! tile_grid%ll_lat= min_min_lat
-      ! tile_grid%ur_lat= max_max_lat
+
+       ! tile_grid%ll_lon= min_min_lon
+       ! tile_grid%ur_lon= max_max_lon
+       ! tile_grid%ll_lat= min_min_lat
+       ! tile_grid%ur_lat= max_max_lat
+       
        return
+       
     endif   
 
     do n=1,N_tile
@@ -539,7 +558,9 @@ contains
     end do
     
   end subroutine get_tile_num_in_cell_ij
-
+  
+  ! *******************************************************************
+  
   subroutine get_tile_num_from_latlon(N_catd, tile_coord,                      &
        tile_grid, N_tile_in_cell_ij, tile_num_in_cell_ij, N_latlon, lat, lon,  &
        tile_num, max_dist_x, max_dist_y )
@@ -1346,3 +1367,4 @@ contains
 end module LDAS_TileCoordRoutines
 
 
+! ================================= EOF =======================================

@@ -1,33 +1,50 @@
 ! how to use :
 ! ./preprocess_ldas option arg1 arg2 arg3
-!
+
 module preprocess_module
-   use netcdf
-   use MAPL
-   use LDAS_TileCoordType,              ONLY:   &
-       tile_coord_type,                         &
-       grid_def_type,                           &
-       io_grid_def_type,                        &
+  
+  use netcdf
+  
+  use MAPL
+  
+  use LDAS_TileCoordType,              ONLY:   &
+       tile_coord_type,                        &
+       grid_def_type,                          &
+       io_grid_def_type,                       &
        tile_typ_land
-   use nr_ran2_gasdev,                  ONLY:   &
+  
+  use nr_ran2_gasdev,                  ONLY:   &
        NRANDSEED
-   use LDAS_DateTimeMod, only: date_time_type
-   use force_and_cat_progn_pert_types,  ONLY:   &
-       N_progn_pert_max,                        &
+  
+  use LDAS_DateTimeMod,                ONLY:   &
+       date_time_type
+  
+  use force_and_cat_progn_pert_types,  ONLY:   &
+       N_progn_pert_max,                       &
        N_force_pert_max
-   use catch_types, only: cat_param_type,N_gt
-   use LDAS_help_subs,          ONLY:   &
-       LDAS_read_land_tile
-   use LDAS_ensdrv_functions,           ONLY:   &
+  
+  use catch_types,                     ONLY:   &
+       cat_param_type,                         &
+       N_gt
+  
+  use preprocess_ldas_subs,            ONLY:   &
+       LDAS_read_til_file
+  
+  use LDAS_ensdrv_functions,           ONLY:   &
        get_io_filename
-   use LDAS_ensdrv_init_routines,       ONLY:   &
-       domain_setup, &
+  
+  use LDAS_ensdrv_init_routines,       ONLY:   &
+       domain_setup,                           &
        read_cat_param
-   use LDAS_ensdrv_init_routines, only: io_domain_files
-   use gFTL_StringVector
-   use pFIO
-   integer,parameter :: excluded_tile_typ_land=1100
-end module
+  
+  use LDAS_ensdrv_init_routines,       ONLY:   &
+       io_domain_files
+  
+  use gFTL_StringVector
+  
+  use pFIO
+  
+end module preprocess_module
 
 program main
    use preprocess_module
@@ -196,7 +213,8 @@ subroutine createf2g(orig_tile,domain_def,out_path,catch_def_file,exp_id,ymdhm, 
        include_file = ' '
    endif
 
-   call LDAS_read_land_tile(orig_tile,catch_def_file,tile_grid_g,tile_coord_g,f2g)
+   call LDAS_read_til_file(orig_tile,catch_def_file,tile_grid_g,tile_coord_g,f2g)
+
    N_catg=size(tile_coord_g)
 
    ! include and exclude files are absolute
