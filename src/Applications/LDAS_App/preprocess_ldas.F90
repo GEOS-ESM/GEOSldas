@@ -9,6 +9,9 @@ module preprocess_module
   
   use MAPL_BaseMod,                    ONLY:   &
        MAPL_Land
+
+  use preprocess_ldas_subs,            ONLY:   &
+       MAPL_Land_ExcludeFromDomain
   
   use LDAS_ensdrv_Globals,             ONLY:   &
        logit,                                  &
@@ -45,6 +48,10 @@ module preprocess_module
   
   use LDAS_ensdrv_init_routines,       ONLY:   &
        io_domain_files
+
+  use LDAS_ExceptionsMod,              ONLY:   &
+       ldas_abort,                             &
+       LDAS_GENERIC_ERROR
   
   use gFTL_StringVector
   
@@ -440,15 +447,43 @@ end subroutine readf2g
 subroutine createLocalTilefile(orig_tile,new_tile)
    use preprocess_module
    implicit none
-   character(*) :: orig_tile
-   character(*) :: new_tile
-   character(len=200):: line
+   character(*), intent(in) :: orig_tile
+   character(*), intent(in) :: new_tile
+
+   character(len=200) :: line
+   character(len=3)   :: MAPL_Land_STRING
+   character(len=4)   :: MAPL_Land_ExcludeFromDomain_STRING
+   character(len=400) :: err_msg
 
    logical :: file_exist
 
    integer, dimension(:),allocatable :: f2g 
    integer :: N_catg, N_catf,n,stat, ty
    integer :: N_tile,N_grid,g_id
+
+   character(len=*), parameter :: Iam = 'createLocalTilefile'
+
+   ! string handling below relies on MAPL_Land and MAPL_Land_ExcludeFromDomain
+   !  falling into a certain range
+   
+   ! verify that MAPL_Land has three digits
+   
+   if (MAPL_Land<100 .or. MAPL_Land>999) then   
+      err_msg = 'string handling implemented only for 100<=MAPL_Land<=999'
+      call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+   end if
+   
+   ! verify that MAPL_Land_ExcludeFromDomain has four digits
+
+   if (MAPL_Land_ExcludeFromDomain<1000 .or. MAPL_Land_ExcludeFromDomain>9999) then   
+      err_msg = 'string handling implemented only for 1000<=MAPL_Land_ExcludeFromDomain<=9999'
+      call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+   end if
+      
+   ! convert integer to string
+
+   write (MAPL_Land_STRING,                  *) MAPL_Land   
+   write (MAPL_Land_ExcludeFromDomain_STRING,*) MAPL_Land_ExcludeFromDomain
 
    inquire(file=trim(orig_tile),exist=file_exist)
    if( .not. file_exist) stop ("original tile file does not exist")
@@ -487,20 +522,28 @@ subroutine createLocalTilefile(orig_tile,new_tile)
 
    g_id = 0
    do while(.true.)
-       read(40,'(A)',IOSTAT=stat) line
-       if(IS_IOSTAT_END(stat)) exit
-       ! just read the first four   ["four" what?, reichle 2 Aug 2020]
-       read(line,*) ty
-       if( ty == MAPL_Land ) then
-           n=index(line,'100')    ! [would need to create string from MAPL_Land...]
-       ! here g_id is [the id of?] the global land tiles
-           g_id=g_id+1
-           if(.not. any( f2g(:) == g_id)) then
-       ! add 1000 to it so it will be excluded
-               line(n-1:n+2)='1100'
-           endif
-       endif
-       write(50,'(A)') trim(line)
+      ! read one line of *.til file
+      read(40,'(A)',IOSTAT=stat) line
+      if(IS_IOSTAT_END(stat)) exit
+      ! extract first "integer" in "line" and put into "ty"
+      read(line,*) ty
+      if( ty == MAPL_Land ) then
+         ! find index where MAPL_Land ("100") starts in "line"
+         n=index(line,MAPL_Land_STRING)
+         ! make sure that a space is available in front of MAPL_Land ("100")
+         if (n<=1) then   
+            err_msg = 'string handling requires at least one blank space in first column of *.til file'
+            call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+         end if
+         ! here g_id is (consecutive) id of the global *land* tiles
+         g_id=g_id+1
+         if(.not. any( f2g(:) == g_id)) then
+            ! if tile is not in local domain, replace " 100" in "line" with "1100"
+            line(n-1:n+2)=MAPL_Land_ExcludeFromDomain_STRING
+         endif
+      endif
+      ! write "line" into the output tile file
+      write(50,'(A)') trim(line)
    enddo
    close(40)
    close(50)
@@ -939,7 +982,7 @@ subroutine optimize_latlon(fname,arg)
          ! assume all land tiles are at the beginning
          ! UNSAFE ASSUMPTION! - reichle, 2 Aug 2020
          
-         if (typ/=MAPL_Land .and. typ/=1100) then                      ! exit if not land
+         if (typ/=MAPL_Land .and. typ/=MAPL_Land_ExcludeFromDomain) then   ! exit if not land
                       
             if (logit) then
                write (logunit,*) 'WARNING: Encountered first non-land tile in *.til file.'
@@ -1168,7 +1211,7 @@ subroutine optimize_latlon(fname,arg)
          ! assume all land tiles are at the beginning
          ! UNSAFE ASSUMPTION! - reichle, 2 Aug 2020
          
-         if (typ/=MAPL_Land .and. typ/=1100) then                      ! exit if not land
+         if (typ/=MAPL_Land .and. typ/=MAPL_Land_ExcludeFromDomain) then   ! exit if not land
                       
             if (logit) then
                write (logunit,*) 'WARNING: Encountered first non-land tile in *.til file.'

@@ -32,6 +32,16 @@ module preprocess_ldas_subs
   private
   
   public :: LDAS_read_til_file
+  public :: MAPL_Land_ExcludeFromDomain
+
+  ! Tile type for land that is to be excluded from the simulation domain.
+  ! (GEOSldas  allows for non-global simulations and repeated "zooming"
+  !  of the domain while MAPL generally assumes a complete (global) tile
+  !  space.  The *_ExcludeFromDomain tile type makes it possible to work
+  !  with complete (global) tile files (ie, make use of MAPL functionality)
+  !  and also maintain GEOSldas functionality.
+  
+  integer, parameter :: MAPL_Land_ExcludeFromDomain = 1100
   
 contains
   
@@ -142,16 +152,21 @@ contains
        read(10,'(A)')  tmpline 
        read(tmpline,*) typ
 
-       ! tile type "1100" identifies land tiles to exclude when non-global domain is created (?)
+       ! tile type "MAPL_Land_ExcludeFromDomain" identifies land tiles to exclude
+       !  when non-global domain is created
 
-       if (typ==MAPL_Land .or. typ==1100) then     ! land
+       if (typ==MAPL_Land .or. typ==MAPL_Land_ExcludeFromDomain) then     ! all land
 
           i=i+1
           tile_coord(i)%tile_id = k
-          
-          fid=fid+1
-          f2g_tmp(fid) = k
 
+          ! now keep only tiles that are not excluded by way of MAPL_Land_ExcludeFromDomain
+          
+          if (typ==MAPL_Land) then
+             fid=fid+1
+             f2g_tmp(fid) = k
+          end if
+             
           ! Not sure ".or. N_grid==1" will always work in the following conditional.
           ! Some Tripolar grid *.til files may have N_grid=1.
           ! - reichle, 2 Aug 2020
