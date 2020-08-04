@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set (srcs
-  preprocess_ldas_subs.F90
+  preprocess_ldas_routines.F90
   )
 esma_add_library(${this} SRCS ${srcs} DEPENDENCIES GEOSldas_GridComp MAPL)
 

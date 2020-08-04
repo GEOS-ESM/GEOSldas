@@ -33,7 +33,8 @@ module LDAS_TileCoordRoutines
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
 
- use LDAS_ensdrv_functions,             ONLY:     &
+  use LDAS_ensdrv_functions,            ONLY:     &
+       get_io_filename,                           &
        is_in_list,                                &
        is_in_domain 
   
@@ -52,6 +53,7 @@ module LDAS_TileCoordRoutines
   public :: tile_mask_grid
   public :: is_cat_in_box
   public :: LDAS_create_grid_g
+  public :: io_domain_files
 
   character(10) :: tmpstring10
   character(40) :: tmpstring40
@@ -61,9 +63,214 @@ module LDAS_TileCoordRoutines
   end interface grid2tile
    
 contains
-
-  ! *******************************************************************
   
+  ! **********************************************************************  
+  
+  subroutine io_domain_files( action, work_path, exp_id,               &
+       N_cat_domain, d2g, tile_coord, tile_grid_g, tile_grid_d, rc )
+    
+    ! reichle, 23 July 2010
+    ! reichle,  7 Jan  2014 - changed tile_coord and tile_grids I/O to binary
+    ! reichle,  3 Aug  2020 - moved here from LDAS_ensdrv_init_routines.F90
+    
+    implicit none
+    
+    character,                          intent(in)    :: action
+    
+    character(*),                       intent(in)    :: work_path
+    character(*),                       intent(in)    :: exp_id
+
+    integer,                             intent(inout) :: N_cat_domain
+    
+    integer,               dimension(:), pointer       :: d2g
+
+    type(tile_coord_type), dimension(:), pointer       :: tile_coord  ! inout
+
+    type(grid_def_type),                 intent(inout) :: tile_grid_g
+    type(grid_def_type),                 intent(inout) :: tile_grid_d
+
+    integer,                             intent(  out) :: rc
+
+    ! local 
+
+    integer, parameter  :: unitnumber = 10
+    
+    integer             :: n, istat
+    
+    logical             :: writing
+    
+    character(300)      :: fname
+    character( 40)      :: file_tag, dir_name, file_ext, tmp_action, tmp_status
+
+    character(len=*), parameter :: Iam = 'io_domain_files'
+    character(len=400) :: err_msg
+
+    ! -----------------------------------------------------------    
+    !
+    ! read or write? 
+    
+    select case (action)
+       
+    case ('w','W')
+       
+       tmp_action = 'write'
+       tmp_status = 'unknown'
+
+       writing    = .true.
+
+    case ('r','R')
+       
+       tmp_action = 'read'
+       tmp_status = 'old'
+       
+       writing    = .false.
+       
+    case default
+       
+       err_msg = 'io_domain_files: unknown action ' // action
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       
+    end select
+    
+    ! -----------------------------------------------------------    
+    !
+    !  *.ldas_domain*txt file
+    
+    file_tag = 'ldas_domain'
+    dir_name = 'rc_out'
+    file_ext = '.txt'
+ 
+    fname = get_io_filename( trim(work_path), trim(exp_id), file_tag, &
+         dir_name=dir_name, option=1, file_ext=file_ext )
+ 
+    if (logit) write (logunit,'(400A)') '  ' // trim(tmp_action) // ' ' // trim(fname)
+
+    open(unitnumber, file=fname, form='formatted', action=trim(tmp_action), &
+         iostat=istat, status=trim(tmp_status))
+    
+    if (istat/=0) then
+       
+       if (logit) write (logunit,*) 'cannot open for ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+
+       rc = 1
+       
+       return
+       
+    else
+       
+       if (writing) then
+          
+          write (unitnumber,*) N_cat_domain
+          
+          do n=1,N_cat_domain
+             write (unitnumber,*) tile_coord(n)%tile_id, d2g(n)
+          end do
+          
+       else
+          
+          read  (unitnumber,*) N_cat_domain
+
+          allocate(tile_coord(N_cat_domain))
+          allocate(d2g(       N_cat_domain))
+
+          do n=1,N_cat_domain
+             read  (unitnumber,*) tile_coord(n)%tile_id, d2g(n)
+          end do
+          
+       end if
+       
+       close (unitnumber,status='keep')
+       
+       if (logit) write (logunit,*) 'done with ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+       
+    end if
+    
+    ! -----------------------------------------------------------    
+    !
+    ! *.ldas_tile_coord.txt file
+    
+    file_tag = 'ldas_tilecoord'
+    dir_name = 'rc_out'
+    file_ext = '.bin'
+    
+    fname = get_io_filename( work_path, exp_id, file_tag, &
+         dir_name=dir_name, option=1, file_ext=file_ext )
+    
+    if (logit) write (logunit,'(400A)') ' ' // trim(tmp_action) // ' ' // trim(fname)
+
+    open(unitnumber, file=fname, form='unformatted', action=trim(tmp_action), &
+         iostat=istat, status=trim(tmp_status))
+    
+    if (istat/=0) then
+       
+       if (logit) write (logunit,*) 'cannot open for ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+
+       rc = 2
+       
+       return
+       
+    else
+
+       call io_tile_coord_type( action, unitnumber, N_cat_domain, tile_coord )
+       
+       close (unitnumber,status='keep')
+       
+       if (logit) write (logunit,*) 'done with ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+       
+    end if
+
+    ! -----------------------------------------------------------    
+    !
+    ! *.ldas_tilegrids.txt file
+    
+    file_tag = 'ldas_tilegrids'
+    dir_name = 'rc_out'
+    file_ext = '.bin'
+    
+    fname = get_io_filename( work_path, exp_id, file_tag, &
+         dir_name=dir_name, option=1, file_ext=file_ext )
+
+    if (logit) write (logunit,'(400A)') ' ' // trim(tmp_action) // ' ' // trim(fname)
+    
+    open(unitnumber, file=fname, form='unformatted', action=trim(tmp_action), &
+         iostat=istat, status=trim(tmp_status))
+    
+    if (istat/=0) then
+       
+       if (logit) write (logunit,*) 'cannot open for ', trim(tmp_action)
+       if (logit) write (logunit,*)        
+
+       rc = 3
+       
+       return
+       
+    else
+       
+       ! read/write 'tile_grid_g'
+       call io_grid_def_type( action, unitnumber, tile_grid_g )
+       
+       ! read/write 'tile_grid_d'
+       call io_grid_def_type( action, unitnumber, tile_grid_d )
+       
+       close (unitnumber,status='keep')
+       
+       if (logit) write (logunit,*) 'done with ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+
+    end if
+    
+    ! ------------------------------------------------------------------------
+    
+    rc = 0    ! successful read or write of all files
+    
+  end subroutine io_domain_files
+
+  ! **********************************************************************
+
   subroutine LDAS_create_grid_g( gridname, n_lon, n_lat,       &
        tile_grid, i_indg_offset, j_indg_offset, cell_area)
     
