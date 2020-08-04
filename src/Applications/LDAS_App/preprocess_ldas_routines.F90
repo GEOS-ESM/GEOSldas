@@ -1332,10 +1332,10 @@ contains
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
     
-    ! convert integer to string
+    ! convert integers to appropriate-length strings
     
-    write (MAPL_Land_STRING,                  *) MAPL_Land   
-    write (MAPL_Land_ExcludeFromDomain_STRING,*) MAPL_Land_ExcludeFromDomain
+    write (MAPL_Land_STRING,                  '(i3)') MAPL_Land   
+    write (MAPL_Land_ExcludeFromDomain_STRING,'(i4)') MAPL_Land_ExcludeFromDomain
     
     inquire(file=trim(orig_tile),exist=file_exist)
     if( .not. file_exist) stop ("original tile file does not exist")
