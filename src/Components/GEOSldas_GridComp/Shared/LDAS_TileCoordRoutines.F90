@@ -34,9 +34,7 @@ module LDAS_TileCoordRoutines
        LDAS_GENERIC_ERROR
 
   use LDAS_ensdrv_functions,            ONLY:     &
-       get_io_filename,                           &
-       is_in_list,                                &
-       is_in_domain 
+       get_io_filename
   
   implicit none
 
@@ -51,7 +49,6 @@ module LDAS_TileCoordRoutines
   public :: tile2grid_simple
   public :: grid2tile
   public :: tile_mask_grid
-  public :: is_cat_in_box
   public :: LDAS_create_grid_g
   public :: io_domain_files
 
@@ -967,30 +964,6 @@ contains
     end do
         
   end subroutine get_tile_num_from_latlon
-
-  ! *******************************************************************
-
-  logical function is_cat_in_box(                                &
-       this_minlon, this_minlat, this_maxlon, this_maxlat,       &
-       minlon, minlat, maxlon, maxlat        )
-    
-    ! determine whether catchment is within bounding box - reichle, 7 May 2003
-    
-    implicit none
-    
-    real :: this_minlon, this_minlat, this_maxlon, this_maxlat
-    real :: minlon, minlat, maxlon, maxlat
-    
-    if ( (this_minlon >= minlon) .and.        &
-         (this_maxlon <= maxlon) .and.        &
-         (this_minlat >= minlat) .and.        & 
-         (this_maxlat <= maxlat)       )    then
-       is_cat_in_box = .true. 
-    else
-       is_cat_in_box = .false.
-    end if
-    
-  end function is_cat_in_box
   
   ! *******************************************************************
   

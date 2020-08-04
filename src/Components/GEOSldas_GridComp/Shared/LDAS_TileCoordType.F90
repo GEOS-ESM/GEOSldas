@@ -149,8 +149,11 @@ module LDAS_TileCoordType
      real(kind=8), dimension(:,:,:), pointer :: LatEdge =>null()
           
   end type grid_def_type
-   
-  ! Wrapper to the tile_coord variable
+
+  ! ------------------------------------------------------------
+  
+  ! Wrapper for tile_coord structure
+  
   type T_TILECOORD_STATE
      type(tile_coord_type), pointer, contiguous :: tile_coord(:)=>null()
      type(tile_coord_type), pointer, contiguous :: tile_coord_f(:)=>null()
