@@ -18,7 +18,7 @@ module GEOS_LdasGridCompMod
   use LDAS_EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
   use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type
-  use LDAS_TileCoordRoutines, only: get_tile_grid, get_ij_ind_from_latlon
+  use LDAS_TileCoordRoutines, only: get_tile_grid, get_ij_ind_from_latlon, io_domain_files
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_PertRoutinesMod, only: get_pert_grid
   use LDAS_ensdrv_functions,ONLY:  get_io_filename 
@@ -26,7 +26,6 @@ module GEOS_LdasGridCompMod
   use LDAS_ensdrv_mpi, only: MPI_tile_coord_type, MPI_grid_def_type
   use LDAS_ensdrv_mpi, only: init_MPI_types,mpicomm,numprocs,myid 
   use LDAS_ensdrv_mpi, only: root_proc
-  use LDAS_ensdrv_init_routines, only: io_domain_files
   use LDAS_ensdrv_Globals, only: logunit,logit,root_logit,echo_clsm_ensdrv_glob_param
   use lsm_routines,  only: lsmroutines_echo_constants  
   use StieglitzSnow, only: StieglitzSnow_echo_constants
