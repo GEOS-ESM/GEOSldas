@@ -314,9 +314,11 @@ class LDASsetup:
         for key,val in _domain_dic.iteritems() :
             keyn=(key+"  = ").ljust(16)
             valn = str(val)
-            fout.write(keyn+ valn +'\n')
+            if '_FILE' in key:
+               fout.write(keyn+ "'"+valn+"'"+'\n')
+            else :
+               fout.write(keyn+ valn +'\n')
         fout.write('/\n')
-
         
         # make sure bcs files exist
         if self.rqdExeInp['RESTART'].isdigit() :
