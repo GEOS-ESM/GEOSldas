@@ -1,3 +1,10 @@
+esma_set_this ()
+
+set (srcs
+  preprocess_ldas_routines.F90
+  )
+esma_add_library(${this} SRCS ${srcs} DEPENDENCIES GEOSldas_GridComp MAPL)
+
 ecbuild_add_executable (
    TARGET GEOSldas.x 
    SOURCES GEOSldas.F90
@@ -13,7 +20,7 @@ foreach (prog ${executables})
    ecbuild_add_executable (
       TARGET ${prog}.x 
       SOURCES ${prog}.F90
-      LIBS GEOSldas_GridComp mk_restarts)
+      LIBS ${this} GEOSldas_GridComp mk_restarts)
 endforeach ()
 
 install(

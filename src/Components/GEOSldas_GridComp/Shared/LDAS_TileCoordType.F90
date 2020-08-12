@@ -2,8 +2,9 @@
 ! type definitions for tile coordinates and domain 
 !
 ! reichle, 26 Jan 2005
-! reichle,  14 Apr 2006 - split tile_coord.F90 into 2 files to avoid 
+! reichle, 14 Apr 2006 - split tile_coord.F90 into 2 files to avoid 
 !                         having more than one module per file
+! reichle,  2 Aug 2020 - removed tile_typ_* (use MAPL_Ocean, MAPL_Land, etc instead) 
 !
 ! ========================================================================
 !
@@ -11,19 +12,17 @@
 
 module LDAS_TileCoordType
   
-  ! TODO: Replace ldas_abort by MAPL_ABORT
+  ! TODO: Replace ldas_abort with MAPL_ABORT
   use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
 
+  use LDAS_ensdrv_Globals,              ONLY:     &
+       nodata_generic
+  
   implicit none
   
   private
-    
-  public :: tile_typ_ocean        
-  public :: tile_typ_inlandwater  
-  public :: tile_typ_ice          
-  public :: tile_typ_land         
 
   public :: tile_coord_type
   public :: grid_def_type
@@ -34,21 +33,7 @@ module LDAS_TileCoordType
   public :: T_TILECOORD_STATE
   public :: TILECOORD_WRAP
   
-
   public :: operator (==) 
-  
-  ! ------------------------------------------------------------
-  
-  ! maximum number of continents defined in Pfafstetter IDs
-  
-  ! constants that define the kinds (types) of tiles in *.til file
-  ! (see field "typ" in tile_coord_type)
-  
-  integer, parameter :: tile_typ_ocean        =   0
-  integer, parameter :: tile_typ_inlandwater  =  19 
-  integer, parameter :: tile_typ_ice          =  20
-  integer, parameter :: tile_typ_land         = 100 
-  real,    parameter :: nodata_generic        = -9999.
   
   ! ------------------------------------------------------------
 
@@ -62,7 +47,7 @@ module LDAS_TileCoordType
      
      integer :: tile_id    ! unique tile ID
      integer :: f_num      ! full domain ID
-     integer :: typ        ! (0=ocean, 100=land, 19=inland water, 20=ice)
+     integer :: typ        ! (0=MAPL_Ocean, 100=MAPL_Land, 19=MAPL_Lake, 20=MAPL_LandIce) 
      integer :: pfaf       ! Pfafstetter number (for land tiles, NOT unique)
      real    :: com_lon    ! center-of-mass longitude
      real    :: com_lat    ! center-of-mass latitude
@@ -164,8 +149,11 @@ module LDAS_TileCoordType
      real(kind=8), dimension(:,:,:), pointer :: LatEdge =>null()
           
   end type grid_def_type
-   
-  ! Wrapper to the tile_coord variable
+
+  ! ------------------------------------------------------------
+  
+  ! Wrapper for tile_coord structure
+  
   type T_TILECOORD_STATE
      type(tile_coord_type), pointer, contiguous :: tile_coord(:)=>null()
      type(tile_coord_type), pointer, contiguous :: tile_coord_f(:)=>null()

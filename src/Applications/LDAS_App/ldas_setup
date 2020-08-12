@@ -314,9 +314,11 @@ class LDASsetup:
         for key,val in _domain_dic.iteritems() :
             keyn=(key+"  = ").ljust(16)
             valn = str(val)
-            fout.write(keyn+ valn +'\n')
+            if '_FILE' in key:
+               fout.write(keyn+ "'"+valn+"'"+'\n')
+            else :
+               fout.write(keyn+ valn +'\n')
         fout.write('/\n')
-
         
         # make sure bcs files exist
         if self.rqdExeInp['RESTART'].isdigit() :
@@ -642,7 +644,7 @@ class LDASsetup:
         if self.islocal:
             newlocalTile = tile+'.domain'
             print "\nCreating local tile file :"+ newlocalTile
-            print "\nwith land type 1100 excluded....\n"
+            print "\n by excluding land type MAPL_Land_ExcludeFromDomain=1100...\n"
             cmd = './preprocess_ldas.x c_localtile ' + tile + ' ' + newlocalTile 
             print "cmd:   " + cmd
             sp.call(cmd,shell=True)

@@ -24,7 +24,6 @@ module mwRTM_routines
  
   use mwRTM_types,                      ONLY:     &
        mwRTM_param_type,                          &
-       io_mwRTM_param_type,                       &
        mwRTM_param_nodata_check,                  &
        assignment (=)
     
@@ -33,9 +32,6 @@ module mwRTM_routines
        logunit,                                   &
        nodata_generic,                            &
        nodata_tol_generic
-  
-  use LDAS_ensdrv_functions,            ONLY:     &
-       open_land_param_file
 
   use LDAS_exceptionsMod,               ONLY:     &
        ldas_abort,                                &
@@ -47,7 +43,7 @@ module mwRTM_routines
   
   private
   
-  public :: mwRTM_get_Tb, mwRTM_get_param, catch2mwRTM_vars
+  public :: mwRTM_get_Tb, catch2mwRTM_vars
   
   ! ---------------------------------------------------------
   
@@ -64,126 +60,134 @@ module mwRTM_routines
                                                  ! (Klein and Swift 1977)
 
   real,    parameter :: rho_soil    = 2.66       ! soil specific density   [g/cm3]
-  
     
 contains
 
   ! **********************************************************************
 
-  subroutine mwRTM_get_param( N_catg, N_tile, d2g, tile_id, mwRTM_param_path, &
-       need_mwRTM_param, mwp)
-    
-    ! Read microwave RTM parameters from file.
-    !
-    ! reichle, 17 May 2011    
-    ! reichle, 21 Oct 2011 - added input of mwRTM_param from file
-    ! reichle, 23 Oct 2012 - removed look-up table option (too complicated with 
-    !                          "new" (200+) soil classes)
-    !                      - added tile_id check when reading mwRTM params from file
-     
-    implicit none
-    
-    integer,                                   intent(in)  :: N_catg, N_tile
-    
-    integer,                dimension(N_tile), intent(in)  :: d2g, tile_id
-
-    character(200),                            intent(in)  :: mwRTM_param_path    
-
-    logical,                                   intent(in)  :: need_mwRTM_param
-
-    type(mwRTM_param_type), dimension(N_tile), intent(out) :: mwp  ! mwRTM parameters
-    
-    ! local variables
-    
-    integer, parameter                          :: N_search_dir_max = 5
-    
-    integer                                     :: n, N_search_dir, istat
-    
-    character( 80)                              :: fname
-    
-    character(100), dimension(N_search_dir_max) :: search_dir
-
-    logical                                     :: all_nodata, mwp_nodata
-    
-    character(len=*), parameter :: Iam = 'mwRTM_get_param'
-    character(len=400) :: err_msg
-
-    ! ----------------------------------------------------------------------
-    !
-    ! initialize
-    
-    do n=1,N_tile
-       mwp(n) = nodata_generic  
-    end do
-    
-    ! read mwRTM parameters from file
-    
-    if (logit) write (logunit,*) 'Reading microwave RTM parameters from file'
-    
-    fname = '/mwRTM_param.bin'
-    
-    N_search_dir = 2  ! specify sub-dirs of mwRTM_param_path to search for file "fname"
-    
-    search_dir(1) = 'mwRTM'
-    search_dir(2) = '.'
-    
-    ! when called with optional argument "istat" subroutine "open_land_param_file()" 
-    ! will *NOT* stop upon failure to open the file 
-    
-    istat = open_land_param_file( 10, .false., .true., N_search_dir, fname, &
-         mwRTM_param_path, search_dir, ignore_stop=.true.)
-    
-    if (istat==0) then
-       
-       call io_mwRTM_param_type( 'r', 10, N_tile, mwp, N_catg, tile_id, d2g )
-       
-       close (10,status='keep')
-       
-       if (logit) write (logunit,*) 'done reading'
-       if (logit) write (logunit,*)
-       
-    else
-       
-       if (logit) write (logunit,*) 'WARNING: Could not open file!'
-       if (logit) write (logunit,*)
-       
-    end if
-    
-    ! check for no-data-values in parameters
-    ! if any field is a nodata value, set all fields to nodata value
-
-    all_nodata = .true.
-    
-    do n=1,N_tile
-       
-       call mwRTM_param_nodata_check( mwp(n), mwp_nodata )
-       
-       if (.not. mwp_nodata) all_nodata = .false.
-       
-    end do
-
-    ! stop if mwRTM parameters needed but not available (ie, all are no-data)
-
-    if (all_nodata .and. need_mwRTM_param) then
-       err_msg = 'mwRTM params needed but all are no-data!'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-    end if
-
-    ! warn if mwRTM parameters are all no-data (may not be needed)
-
-    if (all_nodata .and. logit) then
-       
-       write (logunit,*) '#########################################################'
-       write (logunit,*)
-       write (logunit,*) '  WARNING: *All* parameters for the microwave radiative  '
-       write (logunit,*) '           transfer model (mwRTM) are no-data values!!!  '
-       write (logunit,*)
-       write (logunit,*) '#########################################################'
-       write (logunit,*)
-
-    end if
-    
-  end subroutine mwRTM_get_param
+  ! Subroutine mwRTM_get_param() reads binary mwRTM files and is no longer used.
+  !
+  ! The subroutine has been replaced by:
+  ! - Applications/LDAS_App/mwrtm_bin2nc4.F90 converts mwRTM files from binary to nc4
+  ! - get_mwrtm_param() in GEOS_LandAssimGridComp.F90 converts the internal state
+  !    variables of the Land Assim GridComp into the mwRTM structure.
+  !
+  ! reichle, 4 Aug 2020
+  
+!  subroutine mwRTM_get_param( N_catg, N_tile, d2g, tile_id, mwRTM_param_path, &
+!       need_mwRTM_param, mwp)
+!    
+!    ! Read microwave RTM parameters from file.
+!    !
+!    ! reichle, 17 May 2011    
+!    ! reichle, 21 Oct 2011 - added input of mwRTM_param from file
+!    ! reichle, 23 Oct 2012 - removed look-up table option (too complicated with 
+!    !                          "new" (200+) soil classes)
+!    !                      - added tile_id check when reading mwRTM params from file
+!     
+!    implicit none
+!    
+!    integer,                                   intent(in)  :: N_catg, N_tile
+!    
+!    integer,                dimension(N_tile), intent(in)  :: d2g, tile_id
+!
+!    character(200),                            intent(in)  :: mwRTM_param_path    
+!
+!    logical,                                   intent(in)  :: need_mwRTM_param
+!
+!    type(mwRTM_param_type), dimension(N_tile), intent(out) :: mwp  ! mwRTM parameters
+!    
+!    ! local variables
+!    
+!    integer, parameter                          :: N_search_dir_max = 5
+!    
+!    integer                                     :: n, N_search_dir, istat
+!    
+!    character( 80)                              :: fname
+!    
+!    character(100), dimension(N_search_dir_max) :: search_dir
+!
+!    logical                                     :: all_nodata, mwp_nodata
+!    
+!    character(len=*), parameter :: Iam = 'mwRTM_get_param'
+!    character(len=400) :: err_msg
+!
+!    ! ----------------------------------------------------------------------
+!    !
+!    ! initialize
+!    
+!    do n=1,N_tile
+!       mwp(n) = nodata_generic  
+!    end do
+!    
+!    ! read mwRTM parameters from file
+!    
+!    if (logit) write (logunit,*) 'Reading microwave RTM parameters from file'
+!    
+!    fname = '/mwRTM_param.bin'
+!    
+!    N_search_dir = 2  ! specify sub-dirs of mwRTM_param_path to search for file "fname"
+!    
+!    search_dir(1) = 'mwRTM'
+!    search_dir(2) = '.'
+!    
+!    ! when called with optional argument "istat" subroutine "open_land_param_file()" 
+!    ! will *NOT* stop upon failure to open the file 
+!    
+!    istat = open_land_param_file( 10, .false., .true., N_search_dir, fname, &
+!         mwRTM_param_path, search_dir, ignore_stop=.true.)
+!    
+!    if (istat==0) then
+!       
+!       call io_mwRTM_param_type( 'r', 10, N_tile, mwp, N_catg, tile_id, d2g )
+!       
+!       close (10,status='keep')
+!       
+!       if (logit) write (logunit,*) 'done reading'
+!       if (logit) write (logunit,*)
+!       
+!    else
+!       
+!       if (logit) write (logunit,*) 'WARNING: Could not open file!'
+!       if (logit) write (logunit,*)
+!       
+!    end if
+!    
+!    ! check for no-data-values in parameters
+!    ! if any field is a nodata value, set all fields to nodata value
+!
+!    all_nodata = .true.
+!    
+!    do n=1,N_tile
+!       
+!       call mwRTM_param_nodata_check( mwp(n), mwp_nodata )
+!       
+!       if (.not. mwp_nodata) all_nodata = .false.
+!       
+!    end do
+!
+!    ! stop if mwRTM parameters needed but not available (ie, all are no-data)
+!
+!    if (all_nodata .and. need_mwRTM_param) then
+!       err_msg = 'mwRTM params needed but all are no-data!'
+!       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+!    end if
+!
+!    ! warn if mwRTM parameters are all no-data (may not be needed)
+!
+!    if (all_nodata .and. logit) then
+!       
+!       write (logunit,*) '#########################################################'
+!       write (logunit,*)
+!       write (logunit,*) '  WARNING: *All* parameters for the microwave radiative  '
+!       write (logunit,*) '           transfer model (mwRTM) are no-data values!!!  '
+!       write (logunit,*)
+!       write (logunit,*) '#########################################################'
+!       write (logunit,*)
+!
+!    end if
+!    
+!  end subroutine mwRTM_get_param
   
   ! ****************************************************************
 
