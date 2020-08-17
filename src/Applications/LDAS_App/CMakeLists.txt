@@ -1,28 +1,29 @@
-esma_set_this ()
-
-set (srcs
-  preprocess_ldas_routines.F90
-  )
-esma_add_library(${this} SRCS ${srcs} DEPENDENCIES GEOSldas_GridComp MAPL)
 
 ecbuild_add_executable (
    TARGET GEOSldas.x 
    SOURCES GEOSldas.F90
    LIBS GEOSldas_GridComp MAPL)
 
-set(executables 
-   preprocess_ldas 
-   tile_bin2nc4 
-   mwrtm_bin2nc4
-   mk_GEOSldasRestarts)
+ecbuild_add_executable (
+   TARGET preprocess_ldas 
+   SOURCES preprocess_ldas.F90 preprocess_ldas_routines.F90
+   LIBS GEOSldas_GridComp MAPL)
 
-foreach (prog ${executables})
-   ecbuild_add_executable (
-      TARGET ${prog}.x 
-      SOURCES ${prog}.F90
-      LIBS ${this} GEOSldas_GridComp mk_restarts)
-endforeach ()
+ecbuild_add_executable (
+   TARGET tile_bin2nc4.x 
+   SOURCES tile_bin2nc4.F90
+   LIBS MAPL)
 
+ecbuild_add_executable (
+   TARGET mwrtm_bin2nc4 
+   SOURCES mwrtm_bin2nc4.F90
+   LIBS GEOSlandassim_GridComp)
+
+ecbuild_add_executable (
+   TARGET mk_GEOSldasRestarts.x
+   SOURCES mk_GEOSldasRestarts.F90
+   LIBS GEOSldas_GridComp mk_restarts)
+   
 install(
    PROGRAMS ldas_setup process_hist.csh process_rst.csh
    DESTINATION bin
