@@ -435,8 +435,6 @@ while ( $counter <= ${NUM_SGMT} )
        cd $THISMONTH
        
        foreach ThisCol ($collections)
-
-          set ref_t = `cat HISTORY.rc | grep ${ThisCol}.ref_time: | cut -d':' -f2 | cut -d',' -f1`  
           # if monthly exists, move on to the next collection
           if (-f $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4) continue
 
