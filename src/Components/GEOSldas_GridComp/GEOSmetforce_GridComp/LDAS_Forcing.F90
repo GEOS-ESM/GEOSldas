@@ -4674,8 +4674,8 @@ contains
           if( isCubed ) then ! cs grid
              ! i_indg and j_indg are changed to LatLon grid
              do k=1,N_cat
-                i1(k) = tile_coord(k)%hash_i_indg
-                j1(k) = tile_coord(k)%hash_j_indg
+                i1(k) = tile_coord(k)%i_indg
+                j1(k) = tile_coord(k)%j_indg
              enddo
           else
              do k=1,N_cat
