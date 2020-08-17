@@ -574,8 +574,8 @@ contains
        this_maxlon  = tile_coord(n)%max_lon
        this_maxlat  = tile_coord(n)%max_lat
        
-       this_i_indg  = tile_coord(n)%i_indg
-       this_j_indg  = tile_coord(n)%j_indg
+       this_i_indg  = tile_coord(n)%hash_i_indg
+       this_j_indg  = tile_coord(n)%hash_j_indg
        
        min_min_lon = min( min_min_lon, this_minlon)
        min_min_lat = min( min_min_lat, this_minlat)
@@ -675,8 +675,8 @@ contains
     
     do n=1,N_tile
        
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
+       i = tile_coord(n)%hash_i_indg - off_i
+       j = tile_coord(n)%hash_j_indg - off_j
        
        N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
        
@@ -750,8 +750,8 @@ contains
     
     do n=1,N_tile
        
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
+       i = tile_coord(n)%hash_i_indg - off_i
+       j = tile_coord(n)%hash_j_indg - off_j
        
        N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
        
@@ -1355,8 +1355,8 @@ contains
     
     do n=1,N_tile
        
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
+       i = tile_coord(n)%hash_i_indg - off_i
+       j = tile_coord(n)%hash_j_indg - off_j
        
        w = tile_coord(n)%frac_cell
        

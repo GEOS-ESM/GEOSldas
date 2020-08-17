@@ -57,10 +57,10 @@ module LDAS_TileCoordType
      real    :: max_lat    ! maximum latitude (bounding box for tile)
      integer :: i_indg     ! i index (w.r.t. *global* grid that cuts tiles) 
      integer :: j_indg     ! j index (w.r.t. *global* grid that cuts tiles)
-     !if it is Cubed-Sphere grid, the index will be saved here for forcing
-     !i_indg and j_indg will be changed to index that related to latlon grid
-     integer :: cs_i_indg     ! i index (w.r.t. *global* grid that cuts tiles) 
-     integer :: cs_j_indg     ! j index (w.r.t. *global* grid that cuts tiles)
+     !If it is Cubed-Sphere grid, the index will the index of a lat-lon grid created for pert and assim
+     !Otherwise ( EASE, latLon ), the hash indgs are the same as indg
+     integer :: hash_i_indg     ! i index (w.r.t. *global* grid that tile locates) 
+     integer :: hash_j_indg     ! j index (w.r.t. *global* grid that tile_locatas)
      real    :: frac_cell  ! area fraction of grid cell covered by tile
      real    :: frac_pfaf  ! fraction of Pfafstetter catchment for land tiles 
      real    :: area       ! area [km^2]
@@ -461,6 +461,9 @@ contains
        read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        tile_coord(:)%elev= tmp_real(:)
 
+       !if it is cs grid, hash indg will be redefined
+       tile_coord%hash_i_indg = tile_coord%i_indg
+       tile_coord%hash_j_indg = tile_coord%j_indg
        tile_coord%f_num = -9999 ! not assigned values yet
        deallocate(tmp_int, tmp_real)
     case default
