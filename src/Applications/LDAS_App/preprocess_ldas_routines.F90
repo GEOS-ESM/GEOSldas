@@ -2907,7 +2907,8 @@ contains
     N_tile_land=i
     allocate(tile_coord_land(N_tile_land))
     tile_coord_land=tile_coord(1:N_tile_land)
-    
+    tile_coord_land%hash_i_indg = tile_coord_land%i_indg
+    tile_coord_land%hash_j_indg = tile_coord_land%j_indg 
     if(present(f2g)) then
        allocate(f2g(fid))
        f2g = f2g_tmp(1:fid)

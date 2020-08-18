@@ -462,9 +462,9 @@ contains
        tile_coord(:)%elev= tmp_real(:)
 
        !if it is cs grid, hash indg will be redefined
-       tile_coord%hash_i_indg = tile_coord%i_indg
-       tile_coord%hash_j_indg = tile_coord%j_indg
-       tile_coord%f_num = -9999 ! not assigned values yet
+       tile_coord(:)%hash_i_indg = tile_coord(:)%i_indg
+       tile_coord(:)%hash_j_indg = tile_coord(:)%j_indg
+       tile_coord(:)%f_num = -9999 ! not assigned values yet
        deallocate(tmp_int, tmp_real)
     case default
        
