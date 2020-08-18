@@ -5,7 +5,7 @@ ecbuild_add_executable (
    LIBS GEOSldas_GridComp MAPL)
 
 ecbuild_add_executable (
-   TARGET preprocess_ldas 
+   TARGET preprocess_ldas.x 
    SOURCES preprocess_ldas.F90 preprocess_ldas_routines.F90
    LIBS GEOSldas_GridComp MAPL)
 
@@ -15,7 +15,7 @@ ecbuild_add_executable (
    LIBS MAPL)
 
 ecbuild_add_executable (
-   TARGET mwrtm_bin2nc4 
+   TARGET mwrtm_bin2nc4.x
    SOURCES mwrtm_bin2nc4.F90
    LIBS GEOSlandassim_GridComp)
 
