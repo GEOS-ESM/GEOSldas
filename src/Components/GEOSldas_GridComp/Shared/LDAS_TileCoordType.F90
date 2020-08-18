@@ -365,7 +365,8 @@ contains
     ! reichle, 24 July 2010
     ! reichle,  2 May  2013 - changed N_tile to intent(in)
     ! reichle,  7 Jan  2014 - changed to binary (unformatted) I/O
-    
+    ! wjiang, reichle, 18 Aug 2020 - Added initialization of %hash_[x]_indg during read.
+    !                                Note that %hash_[x]_indg is NOT written out.
 
     implicit none
     
