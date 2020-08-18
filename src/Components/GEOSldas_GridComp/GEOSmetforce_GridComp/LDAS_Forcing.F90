@@ -4672,7 +4672,7 @@ contains
        ! compute indices for nearest neighbor interpolation from GEOSgcm grid
        ! to tile space
           if( isCubed ) then ! cs grid
-             ! i_indg and j_indg are changed to LatLon grid
+             ! cube-sphere grid of forcing data must match cube-sphere grid associated with tile space
              do k=1,N_cat
                 i1(k) = tile_coord(k)%i_indg
                 j1(k) = tile_coord(k)%j_indg
