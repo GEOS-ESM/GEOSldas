@@ -92,6 +92,45 @@ if( ${LSMCHOICE} == 2 ) then # CatchCN Only
 endif
 
 #######################################################################
+#              Create HISTORY Collection Directories
+#######################################################################
+   
+set collections = ''
+foreach line ("`cat HISTORY.rc`")
+   set firstword  = `echo $line | awk '{print $1}'`
+   set firstchar  = `echo $firstword | cut -c1`
+   set secondword = `echo $line | awk '{print $2}'`
+
+   if ( $firstword == "::" ) goto done
+
+   if ( $firstchar != "#" ) then
+      set collection  = `echo $firstword | sed -e "s/'//g"`
+      set collections = `echo $collections $collection`
+      if ( $secondword == :: ) goto done
+   endif
+
+   if ( $firstword == COLLECTIONS: ) then
+      set collections = `echo $secondword | sed -e "s/'//g"`
+   endif
+end
+
+done:
+
+@ n_c = 0 
+if ($POSTPROC_HIST > 0) then
+   foreach ThisCol ($collections)
+      set ref_t = `cat HISTORY.rc | grep ${ThisCol}.ref_time: | cut -d':' -f2 | cut -d',' -f1`
+      if ( $ref_t != '000000' ) then
+         echo ${ThisCol}.ref_time should be '000000'
+         @ n_c = $n_c + 1
+      endif
+   end
+endif
+if ($n_c >= 1) then
+   exit
+endif
+
+#######################################################################
 #                      Domain Decomposition
 #######################################################################
 
@@ -368,30 +407,6 @@ while ( $counter <= ${NUM_SGMT} )
       endif
    end
    wait 
-   #######################################################################
-   #              Create HISTORY Collection Directories
-   #######################################################################
-   
-   set collections = ''
-   foreach line ("`cat HISTORY.rc`")
-      set firstword  = `echo $line | awk '{print $1}'`
-      set firstchar  = `echo $firstword | cut -c1`
-      set secondword = `echo $line | awk '{print $2}'`
-   
-      if ( $firstword == "::" ) goto done
-   
-      if ( $firstchar != "#" ) then
-         set collection  = `echo $firstword | sed -e "s/'//g"`
-         set collections = `echo $collections $collection`
-         if ( $secondword == :: ) goto done
-      endif
-   
-      if ( $firstword == COLLECTIONS: ) then
-         set collections = `echo $secondword | sed -e "s/'//g"`
-      endif
-   end
-   
-   done:
    
    #######################################################################
    #              Post-Process model diagnostic output
@@ -420,7 +435,6 @@ while ( $counter <= ${NUM_SGMT} )
        cd $THISMONTH
        
        foreach ThisCol ($collections)
-   
           # if monthly exists, move on to the next collection
           if (-f $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4) continue
 
