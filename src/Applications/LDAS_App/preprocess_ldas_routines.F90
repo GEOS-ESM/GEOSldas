@@ -535,7 +535,7 @@ contains
          !  determine smallest subgrid of tile_grid_d that contains all
          !  catchments/tiles in domain
          
-         call get_tile_grid( N_cat_domain, tile_coord, tile_grid_g, tile_grid_d ) 
+         call get_tile_grid( N_cat_domain, tile_coord, tile_grid_g, tile_grid_d, tile_coord%i_indg, tile_coord%j_indg) 
          
          ! output domain files
          

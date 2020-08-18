@@ -495,7 +495,7 @@ contains
   
   ! *******************************************************************
   
-  subroutine get_tile_grid( N_tile, tile_coord, tile_grid_g, tile_grid )     
+  subroutine get_tile_grid( N_tile, tile_coord, tile_grid_g, tile_grid, i_indg, j_indg )     
     
     ! get matching tile_grid for given tile_coord and (global) tile_grid_g
     !
@@ -510,6 +510,9 @@ contains
     
     type(grid_def_type),   intent(in)            :: tile_grid_g
     type(grid_def_type),   intent(out)           :: tile_grid
+    integer, optional, intent(in) :: i_indg(:)
+    integer, optional, intent(in) :: j_indg(:)
+
     
     ! local variables
     
@@ -522,6 +525,7 @@ contains
     integer :: ind_i_min, ind_i_max, ind_j_min, ind_j_max
     
     integer :: this_i_indg, this_j_indg
+    integer , allocatable :: i_indg_(:), j_indg_(:)
     logical :: c3_grid 
     character(len=*), parameter :: Iam = 'get_tile_grid'
     character(len=400) :: err_msg
@@ -567,6 +571,19 @@ contains
        
     endif   
 
+    if (present(i_indg)) then
+       allocate(i_indg_ , source = i_indg)
+    else
+       allocate(i_indg_, source = tile_coord%hash_i_indg)
+    endif
+
+    if (present(j_indg)) then
+       allocate(j_indg_ , source = j_indg)
+    else
+       allocate(j_indg_, source = tile_coord%hash_j_indg)
+    endif
+    
+
     do n=1,N_tile
        
        this_minlon  = tile_coord(n)%min_lon
@@ -574,8 +591,8 @@ contains
        this_maxlon  = tile_coord(n)%max_lon
        this_maxlat  = tile_coord(n)%max_lat
        
-       this_i_indg  = tile_coord(n)%hash_i_indg
-       this_j_indg  = tile_coord(n)%hash_j_indg
+       this_i_indg  = i_indg_(n)
+       this_j_indg  = j_indg_(n)
        
        min_min_lon = min( min_min_lon, this_minlon)
        min_min_lat = min( min_min_lat, this_minlat)
