@@ -688,8 +688,8 @@ contains
     
     do n=1,N_tile
        
-       i = tc_i_indg - off_i
-       j = tc_j_indg - off_j
+       i = tc_i_indg(n) - off_i
+       j = tc_j_indg(n) - off_j
        
        N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
        
@@ -776,8 +776,8 @@ contains
     
     do n=1,N_tile
        
-       i = tc_i_indg - off_i
-       j = tc_j_indg - off_j
+       i = tc_i_indg(n) - off_i
+       j = tc_j_indg(n) - off_j
        
        N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
        
