@@ -574,13 +574,15 @@ contains
     if (present(i_indg)) then
        allocate(i_indg_ , source = i_indg)
     else
-       allocate(i_indg_, source = tile_coord%hash_i_indg)
+       allocate(i_indg_(size(tile_coord)))
+       i_indg_(:) = tile_coord(:)%hash_i_indg
     endif
 
     if (present(j_indg)) then
        allocate(j_indg_ , source = j_indg)
     else
-       allocate(j_indg_, source = tile_coord%hash_j_indg)
+       allocate(j_indg_(size(tile_coord)))
+       j_indg_(:) = tile_coord(:)%hash_j_indg
     endif
     
 
