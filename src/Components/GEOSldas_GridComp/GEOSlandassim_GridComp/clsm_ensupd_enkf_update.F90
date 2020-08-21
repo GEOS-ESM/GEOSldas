@@ -413,7 +413,7 @@ contains
           ! second call: find out which tiles are in each tile_grid_f cell
 
           call get_tile_num_in_cell_ij( N_catf,                                  &
-               tile_coord_f%hash_i_indg, tile_coord_f%hash_i_indg,               &
+               tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
                tile_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
        end if
 
