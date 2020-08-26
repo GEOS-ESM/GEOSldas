@@ -943,10 +943,10 @@ contains
           
           ! get mean and std in tile space 
           
-          call grid2tile( pert_grid, N_catd, tile_coord%i_indg,tile_coord%j_indg, & !tile_coord,       &
+          call grid2tile( pert_grid, N_catd, tile_coord%hash_i_indg,tile_coord%hash_j_indg, & !tile_coord,       &
                pert_param(n)%mean, mu )
 
-          call grid2tile( pert_grid, N_catd, tile_coord%i_indg,tile_coord%j_indg, & !tile_coord,       &
+          call grid2tile( pert_grid, N_catd, tile_coord%hash_i_indg,tile_coord%hash_j_indg, & !tile_coord,       &
                pert_param(n)%std,  sg )
           
           select case (pert_param(n)%typ)

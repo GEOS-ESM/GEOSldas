@@ -495,21 +495,35 @@ contains
   
   ! *******************************************************************
   
-  subroutine get_tile_grid( N_tile, tile_coord, tile_grid_g, tile_grid )     
+  subroutine get_tile_grid( N_tile, tc_i_indg, tc_j_indg, tc_minlon, tc_minlat, tc_maxlon, tc_maxlat, &
+       tile_grid_g, tile_grid )     
     
     ! get matching tile_grid for given tile_coord and (global) tile_grid_g
+    !
+    ! make sure to pass in consistent tile_coord (tc) and tile_grid_g inputs:
+    !
+    !   iff tile_grid_g is the grid that is associated with the tile space definition,
+    !   then tc_[x]_indg must be tile_coord%[x]_indg
+    !
+    !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
+    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
     !
     ! reichle, 20 June 2012 -- moved from within domain_setup() 
     !                           for re-use in get_obs_pred() 
     !
+    ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
+    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !
     ! -------------------------------------------------------------------
     
-    integer,               intent(in)            :: N_tile
+    integer,               intent(in)                    :: N_tile
+
+    integer,               intent(in), dimension(N_tile) :: tc_i_indg, tc_j_indg
+    real,                  intent(in), dimension(N_tile) :: tc_minlon, tc_minlat
+    real,                  intent(in), dimension(N_tile) :: tc_maxlon, tc_maxlat
     
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! in
-    
-    type(grid_def_type),   intent(in)            :: tile_grid_g
-    type(grid_def_type),   intent(out)           :: tile_grid
+    type(grid_def_type),   intent(in)                    :: tile_grid_g
+    type(grid_def_type),   intent(out)                   :: tile_grid
     
     ! local variables
     
@@ -522,6 +536,7 @@ contains
     integer :: ind_i_min, ind_i_max, ind_j_min, ind_j_max
     
     integer :: this_i_indg, this_j_indg
+    integer , allocatable :: i_indg_(:), j_indg_(:)
     logical :: c3_grid 
     character(len=*), parameter :: Iam = 'get_tile_grid'
     character(len=400) :: err_msg
@@ -543,25 +558,10 @@ contains
     ! it will be used in creating the lat_lon pert_grid
     
     if(index(tile_grid_g%gridtype,"c3") /=0) then
+
+       ! for cube-sphere grids, do NOT zoom in 
        
-       ! do n=1,N_tile
-       ! 
-       !    this_minlon  = tile_coord(n)%com_lon
-       !    this_minlat  = tile_coord(n)%com_lat
-       !    this_maxlon  = tile_coord(n)%com_lon
-       !    this_maxlat  = tile_coord(n)%com_lat
-       !    min_min_lon = min( min_min_lon, this_minlon)
-       !    min_min_lat = min( min_min_lat, this_minlat)
-       !    max_max_lon = max( max_max_lon, this_maxlon)
-       !    max_max_lat = max( max_max_lat, this_maxlat)
-       ! enddo
-
        tile_grid=tile_grid_g
-
-       ! tile_grid%ll_lon= min_min_lon
-       ! tile_grid%ur_lon= max_max_lon
-       ! tile_grid%ll_lat= min_min_lat
-       ! tile_grid%ur_lat= max_max_lat
        
        return
        
@@ -569,13 +569,13 @@ contains
 
     do n=1,N_tile
        
-       this_minlon  = tile_coord(n)%min_lon
-       this_minlat  = tile_coord(n)%min_lat
-       this_maxlon  = tile_coord(n)%max_lon
-       this_maxlat  = tile_coord(n)%max_lat
+       this_minlon  = tc_minlon(n)
+       this_minlat  = tc_minlat(n)
+       this_maxlon  = tc_maxlon(n)
+       this_maxlat  = tc_maxlat(n)
        
-       this_i_indg  = tile_coord(n)%i_indg
-       this_j_indg  = tile_coord(n)%j_indg
+       this_i_indg  = tc_i_indg(n)
+       this_j_indg  = tc_j_indg(n)
        
        min_min_lon = min( min_min_lon, this_minlon)
        min_min_lat = min( min_min_lat, this_minlat)
@@ -640,21 +640,34 @@ contains
 
   ! **********************************************************************
 
-  subroutine get_number_of_tiles_in_cell_ij( N_tile, tile_coord, tile_grid, &
+  subroutine get_number_of_tiles_in_cell_ij( N_tile, tc_i_indg, tc_j_indg, tile_grid, &
        N_tile_in_cell_ij)
     
     ! find out how many tiles are in a given tile definition grid cell
     ! reichle, 22 Jul 2005
-    ! split for the old get_tile_num_in_cell_ij
+    !
+    ! make sure to pass in consistent tile_coord (tc) and tile_grid_g inputs:
+    !
+    !   iff tile_grid_g is the grid that is associated with the tile space definition,
+    !   then tc_[x]_indg must be tile_coord%[x]_indg
+    !
+    !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
+    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !
+    ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
+    !
+    ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
+    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !
     ! ----------------------------------------------------------
     
     implicit none
     
-    integer, intent(in) :: N_tile
+    integer,             intent(in)                    :: N_tile
     
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! input
+    integer,             intent(in), dimension(N_tile) :: tc_i_indg, tc_j_indg
     
-    type(grid_def_type), intent(in) :: tile_grid
+    type(grid_def_type), intent(in)                    :: tile_grid
         
     integer, dimension(tile_grid%N_lon,tile_grid%N_lat), intent(inout) :: &
          N_tile_in_cell_ij
@@ -675,8 +688,8 @@ contains
     
     do n=1,N_tile
        
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
+       i = tc_i_indg(n) - off_i
+       j = tc_j_indg(n) - off_j
        
        N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
        
@@ -690,7 +703,7 @@ contains
 
   ! **********************************************************************
 
-  subroutine get_tile_num_in_cell_ij( N_tile, tile_coord, tile_grid, &
+  subroutine get_tile_num_in_cell_ij( N_tile, tc_i_indg, tc_j_indg, tile_grid, &
        max_N_tile_in_cells, tile_num_in_cell_ij )
     
     ! find out tile_num in given cells
@@ -698,23 +711,36 @@ contains
     ! The indices tile_coord%i_indg and tile_coord%j_indg refer to the *global*
     ! tile definition grid (as obtained from the tile_coord_file).
     ! Integers "off_i" and "off_j" describe the offset between the global 
-    ! "tile_grid_g" and a smaller "tile_grid_d" for the domaim of interest.  
+    ! "tile_grid_g" and a smaller "tile_grid_d" for the domain of interest.  
     ! With these offsets tile2grid() can be used to map from a
     ! subgrid of "tile_grid_g" to tile space
     !
     ! reichle, 22 Jul 2005
     !
+    ! make sure to pass in consistent tile_coord (tc) and tile_grid_g inputs:
+    !
+    !   iff tile_grid_g is the grid that is associated with the tile space definition,
+    !   then tc_[x]_indg must be tile_coord%[x]_indg
+    !
+    !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
+    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !
+    ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
+    !
+    ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
+    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !
     ! ----------------------------------------------------------
     
     implicit none
     
-    integer, intent(in) :: N_tile
+    integer,             intent(in)                    :: N_tile
     
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! input
+    integer,             intent(in), dimension(N_tile) :: tc_i_indg, tc_j_indg
     
-    type(grid_def_type), intent(in) :: tile_grid
+    type(grid_def_type), intent(in)                    :: tile_grid
         
-    integer, intent(in) ::  max_N_tile_in_cells
+    integer,             intent(in)                    ::  max_N_tile_in_cells
     
     ! the pointer is an output arguments that is allocated here
     
@@ -750,8 +776,8 @@ contains
     
     do n=1,N_tile
        
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
+       i = tc_i_indg(n) - off_i
+       j = tc_j_indg(n) - off_j
        
        N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
        

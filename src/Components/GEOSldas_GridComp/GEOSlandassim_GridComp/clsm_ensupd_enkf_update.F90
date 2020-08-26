@@ -401,18 +401,20 @@ contains
        ! from lat/lon to tiles.  This needs to be done:
        ! - by root process (because of call to read_obs() in collect_obs())
        ! - by all processes if FOV>~0 ("tile_num_in_circle" needed in get_obs_pred())
-       if ( (root_proc)                                        .or.            &
+       if ( (root_proc)                                        .or.              &
             (any(obs_param(1:N_obs_param)%FOV>FOV_threshold))        )  then
 
           allocate(N_tile_in_cell_ij_f(tile_grid_f%N_lon,tile_grid_f%N_lat))
 
           ! first call: count how many tiles are in each tile_grid_f cell
-          call get_number_of_tiles_in_cell_ij( N_catf, tile_coord_f, tile_grid_f,    &
-               N_tile_in_cell_ij_f )
+          call get_number_of_tiles_in_cell_ij( N_catf,                           &
+               tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
+               tile_grid_f, N_tile_in_cell_ij_f )
           ! second call: find out which tiles are in each tile_grid_f cell
 
-          call get_tile_num_in_cell_ij( N_catf, tile_coord_f, tile_grid_f,    &
-               maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
+          call get_tile_num_in_cell_ij( N_catf,                                  &
+               tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
+               tile_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
        end if
 
        ! *********************************************************************
