@@ -1,17 +1,17 @@
 
 module LDAS_ensdrv_functions
  
-  use LDAS_DateTimeMod,                   ONLY:     &
+  use LDAS_DateTimeMod,                   ONLY:   &
        date_time_type,                            &
        get_dofyr_pentad,                          &
        augment_date_time,                         &
        is_leap_year
 
-  use LDAS_ensdrv_Globals,           ONLY:     &
+  use LDAS_ensdrv_Globals,                ONLY:   &
        logit,                                     &
        logunit
 
-  use LDAS_ExceptionsMod,                  ONLY:     &
+  use LDAS_ExceptionsMod,                 ONLY:   &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
   
@@ -20,11 +20,7 @@ module LDAS_ensdrv_functions
   private
 
   public :: get_io_filename
-  public :: open_land_param_file
-  public :: is_in_list
   public :: is_in_rectangle
-  public :: is_in_domain
-  public :: word_count
 
   character(300), private :: tmpstring300
 
@@ -211,223 +207,74 @@ contains
   end function get_io_filename
 
   ! ****************************************************************
-  
-  integer function open_land_param_file( unitnumber, formatted_file, is_big_endian, &
-       N_search_dir, fname, pathname, search_dir, ignore_stop )
     
-    ! reichle, 13 Dec 2010
-    ! reichle, 21 Oct 2011 - added optional output "istat" 
-    ! reichle, 11 Dec 2013 - moved from "clsm_ensdrv_drv_routines.F90"
-    !                         and converted to function
-    
-    ! try reading land or mwRTM parameter files from various sub-dirs for
-    ! compatibility with old and new parameter directory structures
-
-    ! fname      = file name (without path) of parameter file
-    ! pathname   = path to parameter file
-    ! search_dir = vector (length N_search_dir) of subdirectories to search 
-    !               for file fname
-
-    ! ignore_stop = optional input, if present and .true., skip call to "stop_it()" 
-
-    implicit none
-
-    integer                                  :: unitnumber, N_search_dir
-
-    logical                                  :: formatted_file
-
-    logical                                  :: is_big_endian
-    
-    character(*)                           :: fname
-    
-    character(*)                           :: pathname
-    
-    character(*), dimension(:)  :: search_dir
-
-    logical,        optional                 :: ignore_stop
-    
-    ! local variables
-    
-    character(len=400) :: filename
-
-    integer :: i, istat
-
-    logical :: ignore_stop_tmp
-
-    character(len=*), parameter :: Iam = 'open_land_param_file'
-    character(len=400) :: err_msg
-        
-    ! ------------------------------------------------------------------
-    !
-    ! try opening file
-    do i=1,N_search_dir
-       
-       filename = trim(pathname) // '/' // trim(search_dir(i)) // '/' // trim(fname)
-
-       if (formatted_file) then
-          
-          open(unitnumber, file=filename, form='formatted',           &
-               action='read', status='old', iostat=istat)
-          
-       else
-          
-          if (is_big_endian) then
-             
-             open(unitnumber, file=filename, form='unformatted',      &
-                  convert='big_endian',                               &
-                  action='read', status='old', iostat=istat)
-             
-          else
-             
-             open(unitnumber, file=filename, form='unformatted',      &
-                  convert='little_endian',                            &
-                  action='read', status='old', iostat=istat)
-             
-          end if
-
-       end if
-       
-       if (istat==0) exit  ! exit loop when first successful
-       
-    end do
-    
-    ! report back opened filename or stop (unless requested otherwise)
-    
-    if (istat==0) then
-       
-       if (logit) write (logunit,'(400A)') 'Reading from: ' // trim(filename)     
-       
-    else
-       
-       if (logit) then
-          
-          write (logunit,*) 'Cannot find file ', trim(fname), ' in: '
-          
-          do i=1,N_search_dir
-             write (logunit,*) trim(pathname) // '/' // trim(search_dir(i))
-          end do
-          
-       end if
-       
-       ! figure out whether to stop 
-       
-       ignore_stop_tmp = .false.  ! default: stop if file not opened successfully
-       
-       if (present(ignore_stop))  ignore_stop_tmp = ignore_stop
-       
-       if (.not. ignore_stop_tmp)  then
-          err_msg = 'ERROR opening file'
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       end if
-              
-    end if
-    
-    if (logit) write (logunit,*) 
-    
-    open_land_param_file = istat
-    
-  end function open_land_param_file
-  
-  ! *****************************************************************
-  
-  character(2) function int2char2(int_in)
-    
-    ! Generates a length-2 character from an integer
-    
-    implicit none
-    
-    integer :: int_in
-    
-    write(int2char2,  '(i2.2)') int_in
-    
-  end function int2char2
+!  character(2) function int2char2(int_in)
+!    
+!    ! Generates a length-2 character from an integer
+!    
+!    implicit none
+!    
+!    integer :: int_in
+!    
+!    write(int2char2,  '(i2.2)') int_in
+!    
+!  end function int2char2
 
   ! *****************************************************************
   
-  character(2) function int2char4(int_in)
-    
-    ! Generates a length-4 character from an integer
-    
-    implicit none
-    
-    integer :: int_in
-    
-    write(int2char4,  '(i4.4)') int_in
-    
-  end function int2char4
+!  character(2) function int2char4(int_in)
+!    
+!    ! Generates a length-4 character from an integer
+!    
+!    implicit none
+!    
+!    integer :: int_in
+!    
+!    write(int2char4,  '(i4.4)') int_in
+!    
+!  end function int2char4
   
   ! ********************************************************************  
     
-  character(7) function timetag(int_day,int_hour)
-    
-    ! Generates a character time tag from an integer day and integer hour
-    
-    implicit none
-    integer :: int_day, int_hour
-    
-    character(3) :: char_day
-    character(4) :: char_hour
-    
-    write(char_day,  '(i3.3)') int_day
-    write(char_hour, '(i4.4)') int_hour
-    
-    timetag = char_day//char_hour
-    
-    return
-    
-  end function timetag
-  
+!  character(7) function timetag(int_day,int_hour)
+!    
+!    ! Generates a character time tag from an integer day and integer hour
+!    
+!    implicit none
+!    integer :: int_day, int_hour
+!    
+!    character(3) :: char_day
+!    character(4) :: char_hour
+!    
+!    write(char_day,  '(i3.3)') int_day
+!    write(char_hour, '(i4.4)') int_hour
+!    
+!    timetag = char_day//char_hour
+!    
+!    return
+!    
+!  end function timetag
   
   ! ********************************************************************
   
-  
-  character(6) function my_date(month,year)
-    
-    ! Generates a character date tag from an integer year and integer month
-    
-    implicit none
-    integer month,year
-    
-    character(4) :: char_year
-    character(2) :: char_month
-    
-    write(char_year,  '(i4.4)') year
-    write(char_month, '(i2.2)') month
-    
-    my_date = char_year//char_month
-    
-    return
-    
-  end function my_date
-  
-  ! ******************************************************************
-  
-  logical function is_in_list(N_list, list, this_one)
-    
-    ! checks whether "this_one" is element of list
-    
-    ! reichle, 2 May 2003
-    
-    implicit none
-    
-    integer :: N_list, this_one
-    integer, dimension(N_list) :: list
-    
-    integer :: n
-    
-    ! ------------------------------------
-    
-    is_in_list = .false.
-    
-    do n=1,N_list
-       
-       if (list(n)==this_one) then
-          is_in_list = .true.
-          exit
-       end if
-    end do
-    
-  end function is_in_list
+!  character(6) function my_date(month,year)
+!    
+!    ! Generates a character date tag from an integer year and integer month
+!    
+!    implicit none
+!    integer month,year
+!    
+!    character(4) :: char_year
+!    character(2) :: char_month
+!    
+!    write(char_year,  '(i4.4)') year
+!    write(char_month, '(i2.2)') month
+!    
+!    my_date = char_year//char_month
+!    
+!    return
+!    
+!  end function my_date
   
   ! ******************************************************************
 
@@ -456,117 +303,12 @@ contains
 
   ! ******************************************************************
   
-  logical function is_in_domain(                                               &
-       this_cat_black, this_cat_white, this_cat_in_box )
-    
-    ! determine whether catchment is in domain
-    !
-    ! The domain is set up using (if present) a "blacklist" of catchments 
-    ! to be excluded, a "whitelist" (if present) of catchments to be included,
-    ! and the bounding box of a rectangular "zoomed" area (as specified
-    ! in driver_inputs). 
-    !
-    ! order of precedence:
-    !  exclude blacklisted catchments 
-    !  include whitelisted catchments or catchments within rectangular domain
-    !
-    ! reichle, 7 May 2003
-    ! reichle, 9 May 2005 - redesign (no more continents)
-    !
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    logical :: this_cat_white, this_cat_black, this_cat_in_box
-    
-    is_in_domain = .false.
-    
-    ! if catchment is NOT blacklisted 
-    
-    if (.not. this_cat_black)  then     
-       
-       ! if catchment is within bounding box OR whitelisted
-       
-       if ((this_cat_in_box) .or. (this_cat_white)) then
-        
-          is_in_domain = .true.
-          
-       end if
-    end if
-    
-  end function is_in_domain
-
-  ! ****************************************************************
-  
-  integer function word_count( mystring )
-    
-    ! count number of words in "mystring" (delimited by space)
-    !
-    ! - reichle, 31 Mar 2015
-
-    implicit none
-
-    character(len=*) :: mystring
-    
-    integer :: N_words, N_string, ii
-
-    logical :: current_is_space, next_is_space
-
-    N_words = 0
-    
-    current_is_space = (mystring(1:1)==' ')
-    
-    if (.not. current_is_space)  N_words = N_words + 1
-    
-    do ii=2,len(mystring)
-       
-       next_is_space = (mystring(ii:ii)==' ')
-       
-       if (current_is_space .and. .not. next_is_space)  N_words = N_words + 1
-       
-       current_is_space = next_is_space
-
-    end do
-
-    word_count = N_words
-
-  end function word_count
-  
-  ! **************************
-
 end module LDAS_ensdrv_functions
 
 
 ! ******************************************************************
 
 ! driver routines for testing
-
-#if 0
-
-program test_is_in_list
-
-  implicit none
-
-  integer, parameter :: N_list = 10
-  
-  integer, dimension(N_list) :: list
-  
-  integer :: this_one, i, k
-  logical :: is_in_list
-  
-  do i=1,N_list
-     list(i) = i
-  end do
-
-  write (*,*) is_in_list(0,list,i)
-
-  do i=-5,15,2
-     write (*,*) i, is_in_list(N_list,list,i)
-  end do
-
-end program test_is_in_list
-
-#endif
 
 #if 0
 

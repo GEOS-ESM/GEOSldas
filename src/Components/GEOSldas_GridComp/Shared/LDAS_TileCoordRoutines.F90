@@ -10,17 +10,14 @@
 
 module LDAS_TileCoordRoutines
 
-  use MAPL_BaseMod, only: MAPL_GetHorzIJIndex
-  use LDAS_TileCoordType,                 ONLY:     &
+  use LDAS_TileCoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type,                             &
        init_grid_def_type,                        &
        io_grid_def_type,                          &
-       io_tile_coord_type,                        &
-       tile_typ_land,                             &
-       N_cont_max
+       io_tile_coord_type
 
-  use LDAS_ensdrv_Globals,           ONLY:     &
+  use LDAS_ensdrv_Globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
@@ -29,949 +26,504 @@ module LDAS_TileCoordRoutines
   use MAPL_ConstantsMod,                ONLY:     &
        MAPL_RADIUS                                    ! Earth radius
   
-  use LDAS_EASE_conv,                      ONLY:     &
+  use LDAS_EASE_conv,                   ONLY:     &
        easev1_convert,easev2_convert
 
   use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
 
- use LDAS_ensdrv_functions,            ONLY:     &
-       is_in_list,                                &
-       is_in_domain 
+  use LDAS_ensdrv_functions,            ONLY:     &
+       get_io_filename
   
   implicit none
 
   private
   
-  public :: read_til_file
   public :: get_tile_grid
-  public :: get_land_tile_info
   public :: get_number_of_tiles_in_cell_ij
   public :: get_tile_num_in_cell_ij
   public :: get_tile_num_in_ellipse
   public :: get_tile_num_from_latlon
   public :: get_ij_ind_from_latlon
-  public :: tile2grid
   public :: tile2grid_simple
+  public :: grid2tile
   public :: tile_mask_grid
-  public :: grid2tile, grid2tile_real8
-  public :: is_cat_in_box
-  public :: reorder_tiles
-  public :: get_is_land
   public :: LDAS_create_grid_g
-  public :: LDAS_read_land_tile
+  public :: io_domain_files
+
   character(10) :: tmpstring10
   character(40) :: tmpstring40
 
   interface grid2tile
-    module procedure grid2tile_new, grid2tile_old
-  end interface  
+    module procedure grid2tile_real, grid2tile_real8
+  end interface grid2tile
+   
 contains
-
-  subroutine LDAS_create_grid_g( gridname,n_lon,n_lat, tile_grid,i_indg_offset,j_indg_offset,cell_area)
+  
+  ! **********************************************************************  
+  
+  subroutine io_domain_files( action, work_path, exp_id,               &
+       N_cat_domain, d2g, tile_coord, tile_grid_g, tile_grid_d, rc )
     
-    ! inputs:
-    !  grid name, n_lon, n_lat
-    ! outputs:
-    !
-    !  tile_grid   : parameters of tile definition grid
-    !  offsets
+    ! reichle, 23 July 2010
+    ! reichle,  7 Jan  2014 - changed tile_coord and tile_grids I/O to binary
+    ! reichle,  3 Aug  2020 - moved here from LDAS_ensdrv_init_routines.F90
+    
     implicit none
     
-    character(*),intent(in) :: gridname
-    integer,intent(in) :: n_lon,n_lat
-    type(grid_def_type), intent(inout) :: tile_grid
-    integer,intent(out) :: i_indg_offset, j_indg_offset
-    real,optional,intent(out)    :: cell_area
+    character,                          intent(in)    :: action
+    
+    character(*),                       intent(in)    :: work_path
+    character(*),                       intent(in)    :: exp_id
+
+    integer,                             intent(inout) :: N_cat_domain
+    
+    integer,               dimension(:), pointer       :: d2g
+
+    type(tile_coord_type), dimension(:), pointer       :: tile_coord  ! inout
+
+    type(grid_def_type),                 intent(inout) :: tile_grid_g
+    type(grid_def_type),                 intent(inout) :: tile_grid_d
+
+    integer,                             intent(  out) :: rc
+
+    ! local 
+
+    integer, parameter  :: unitnumber = 10
+    
+    integer             :: n, istat
+    
+    logical             :: writing
+    
+    character(300)      :: fname
+    character( 40)      :: file_tag, dir_name, file_ext, tmp_action, tmp_status
+
+    character(len=*), parameter :: Iam = 'io_domain_files'
+    character(len=400) :: err_msg
+
+    ! -----------------------------------------------------------    
+    !
+    ! read or write? 
+    
+    select case (action)
+       
+    case ('w','W')
+       
+       tmp_action = 'write'
+       tmp_status = 'unknown'
+
+       writing    = .true.
+
+    case ('r','R')
+       
+       tmp_action = 'read'
+       tmp_status = 'old'
+       
+       writing    = .false.
+       
+    case default
+       
+       err_msg = 'io_domain_files: unknown action ' // action
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       
+    end select
+    
+    ! -----------------------------------------------------------    
+    !
+    !  *.ldas_domain*txt file
+    
+    file_tag = 'ldas_domain'
+    dir_name = 'rc_out'
+    file_ext = '.txt'
+ 
+    fname = get_io_filename( trim(work_path), trim(exp_id), file_tag, &
+         dir_name=dir_name, option=1, file_ext=file_ext )
+ 
+    if (logit) write (logunit,'(400A)') '  ' // trim(tmp_action) // ' ' // trim(fname)
+
+    open(unitnumber, file=fname, form='formatted', action=trim(tmp_action), &
+         iostat=istat, status=trim(tmp_status))
+    
+    if (istat/=0) then
+       
+       if (logit) write (logunit,*) 'cannot open for ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+
+       rc = 1
+       
+       return
+       
+    else
+       
+       if (writing) then
+          
+          write (unitnumber,*) N_cat_domain
+          
+          do n=1,N_cat_domain
+             write (unitnumber,*) tile_coord(n)%tile_id, d2g(n)
+          end do
+          
+       else
+          
+          read  (unitnumber,*) N_cat_domain
+
+          allocate(tile_coord(N_cat_domain))
+          allocate(d2g(       N_cat_domain))
+
+          do n=1,N_cat_domain
+             read  (unitnumber,*) tile_coord(n)%tile_id, d2g(n)
+          end do
+          
+       end if
+       
+       close (unitnumber,status='keep')
+       
+       if (logit) write (logunit,*) 'done with ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+       
+    end if
+    
+    ! -----------------------------------------------------------    
+    !
+    ! *.ldas_tile_coord.txt file
+    
+    file_tag = 'ldas_tilecoord'
+    dir_name = 'rc_out'
+    file_ext = '.bin'
+    
+    fname = get_io_filename( work_path, exp_id, file_tag, &
+         dir_name=dir_name, option=1, file_ext=file_ext )
+    
+    if (logit) write (logunit,'(400A)') ' ' // trim(tmp_action) // ' ' // trim(fname)
+
+    open(unitnumber, file=fname, form='unformatted', action=trim(tmp_action), &
+         iostat=istat, status=trim(tmp_status))
+    
+    if (istat/=0) then
+       
+       if (logit) write (logunit,*) 'cannot open for ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+
+       rc = 2
+       
+       return
+       
+    else
+
+       call io_tile_coord_type( action, unitnumber, N_cat_domain, tile_coord )
+       
+       close (unitnumber,status='keep')
+       
+       if (logit) write (logunit,*) 'done with ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+       
+    end if
+
+    ! -----------------------------------------------------------    
+    !
+    ! *.ldas_tilegrids.txt file
+    
+    file_tag = 'ldas_tilegrids'
+    dir_name = 'rc_out'
+    file_ext = '.bin'
+    
+    fname = get_io_filename( work_path, exp_id, file_tag, &
+         dir_name=dir_name, option=1, file_ext=file_ext )
+
+    if (logit) write (logunit,'(400A)') ' ' // trim(tmp_action) // ' ' // trim(fname)
+    
+    open(unitnumber, file=fname, form='unformatted', action=trim(tmp_action), &
+         iostat=istat, status=trim(tmp_status))
+    
+    if (istat/=0) then
+       
+       if (logit) write (logunit,*) 'cannot open for ', trim(tmp_action)
+       if (logit) write (logunit,*)        
+
+       rc = 3
+       
+       return
+       
+    else
+       
+       ! read/write 'tile_grid_g'
+       call io_grid_def_type( action, unitnumber, tile_grid_g )
+       
+       ! read/write 'tile_grid_d'
+       call io_grid_def_type( action, unitnumber, tile_grid_d )
+       
+       close (unitnumber,status='keep')
+       
+       if (logit) write (logunit,*) 'done with ', trim(tmp_action)
+       if (logit) write (logunit,*) 
+
+    end if
+    
+    ! ------------------------------------------------------------------------
+    
+    rc = 0    ! successful read or write of all files
+    
+  end subroutine io_domain_files
+
+  ! **********************************************************************
+
+  subroutine LDAS_create_grid_g( gridname, n_lon, n_lat,       &
+       tile_grid, i_indg_offset, j_indg_offset, cell_area)
+    
+    ! inputs:
+    !  gridname, n_lon, n_lat
+    !
+    ! inouts:
+    !  tile_grid   : parameters of tile definition grid  
+    ! 
+    ! outputs:
+    !  offsets
+    !  cell_area  (optional, for EASE  grids only)
+    
+    implicit none
+    
+    character(*),                  intent(in)    :: gridname
+    integer,                       intent(in)    :: n_lon, n_lat
+    type(grid_def_type),           intent(inout) :: tile_grid
+    integer,                       intent(out)   :: i_indg_offset, j_indg_offset
+    real,                optional, intent(out)   :: cell_area
     
     ! locals
 
     real    :: ease_cell_area
     logical :: date_line_on_center, pole_on_center
-    logical :: ease_grid,c3_grid,latlon_grid
+    logical :: ease_grid, c3_grid, latlon_grid
     logical :: file_exist
-
-    character(len=*), parameter :: Iam = 'create global ldas_grid '
-    character(len=400) :: err_msg
-
-
+    
+    character(len=*),  parameter :: Iam = 'create global ldas_grid '
+    character(len=400)           :: err_msg
+    
     ! initialize all fields to no-data values
-
-     i_indg_offset = 0
-     j_indg_offset = 0
-
-     call init_grid_def_type(tile_grid)
-       
-     tile_grid%N_lon = N_lon
-     tile_grid%N_lat = N_lat
-       
-     tile_grid%i_offg = 0  ! tile_grid refers to *global* grid
-     tile_grid%j_offg = 0  ! tile_grid refers to *global* grid
-
-     date_line_on_center = .false.
-     pole_on_center      = .false.
-     ease_grid           = .false.
-     c3_grid             = .false.
-     latlon_grid         = .true.
-
-     if (index(gridname,"DC") /=0) then
-        date_line_on_center = .true.
-     endif
- 
-     if (index(gridname,"PC") /=0) then
-        pole_on_center      = .true.
-     endif
-
-     if( index(gridname,"FV") /=0 ) then
-        pole_on_center      = .true.
-     endif
-
-     if (index(gridname,"EASE") /=0) then
-        ease_grid      = .true.
-        latlon_grid    = .false.
-     endif
-     if (index(gridname,"CF") /=0) then
-        c3_grid        = .true.
-        latlon_grid    = .false.
-     endif
-     ! special cases , inconsistent of naming
-     ! find out whether date line is on edge or through center of grid cell
-     if( index(gridname,"FV_380x180") /=0) then
-        pole_on_center      = .false.
-     endif
-
+    
+    i_indg_offset = 0
+    j_indg_offset = 0
+    
+    call init_grid_def_type(tile_grid)
+    
+    tile_grid%N_lon = N_lon
+    tile_grid%N_lat = N_lat
+    
+    tile_grid%i_offg = 0  ! tile_grid refers to *global* grid
+    tile_grid%j_offg = 0  ! tile_grid refers to *global* grid
+    
+    date_line_on_center = .false.
+    pole_on_center      = .false.
+    ease_grid           = .false.
+    c3_grid             = .false.
+    latlon_grid         = .true.
+    
+    if (index(gridname,"DC") /=0) then
+       date_line_on_center = .true.
+    endif
+    
+    if (index(gridname,"PC") /=0) then
+       pole_on_center      = .true.
+    endif
+    
+    if( index(gridname,"FV") /=0 ) then
+       pole_on_center      = .true.
+    endif
+    
+    if (index(gridname,"EASE") /=0) then
+       ease_grid      = .true.
+       latlon_grid    = .false.
+    endif
+    
+    if (index(gridname,"CF") /=0) then
+       c3_grid        = .true.
+       latlon_grid    = .false.
+    endif
+    
+    ! special cases , inconsistent of naming
+    ! find out whether date line is on edge or through center of grid cell
+    if( index(gridname,"FV_380x180") /=0) then
+       pole_on_center      = .false.
+    endif
+    
     ! Weiyuan Note, we should fix the tile file and the naming 
-     if( index(gridname,"PE_720x360_DE") /=0) then
-        i_indg_offset = 110
-        j_indg_offset = 230
-     endif
-     if( index(gridname,"PE_2880x1440_DE") /=0) then
-        i_indg_offset = 440
-        j_indg_offset = 920
-     endif
-
-! ----------------
-       
-     if (ease_grid) then
-
-          tile_grid%ind_base = 0
-             
-        ! global cylindrical EASE grid 
-             
-          tile_grid%ll_lon = -180.
-          tile_grid%ur_lon =  180.
-             
-          tile_grid%i_dir  = +1
-          tile_grid%j_dir  = -1
-          ! It is sloopy that the name may be EASEv2-M36 or EASEv2_M36
-          if (index(gridname, 'EASEv2_M36')/=0 .or. index(gridname, 'EASEv2-M36')/=0) then  ! version *2*
-                
-             tile_grid%gridtype = 'EASEv2_M36'                          
-                
-             tile_grid%ll_lat =  -85.04456
-             tile_grid%ur_lat =   85.04456
-
-             ease_cell_area   = 1298.320938704616
-              
-          elseif (index(gridname, 'EASEv2_M09')/=0 .or. index(gridname, 'EASEv2-M09')/=0) then  ! version *2*
-
-             tile_grid%gridtype = 'EASEv2_M09'  
-
-             tile_grid%ll_lat =  -85.04456
-             tile_grid%ur_lat =   85.04456
-               
-             ease_cell_area   =   81.145058669038477
-
-          elseif (index(gridname, 'EASE_M36')/=0 .or. index(gridname, 'EASE-M36')/=0) then
-                
-             tile_grid%gridtype = 'EASE_M36'                          
-                
-             tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
-             tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
-
-             ease_cell_area   = 1296.029001087600 
-                
-          elseif (index(gridname, 'EASE_M09')/=0 .or. index(gridname, 'EASE-M09')/=0) then
-
-             tile_grid%gridtype = 'EASE_M09'                          
-
-             tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
-             tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
-                
-             ease_cell_area   =   81.001812568020028
-
-          elseif (index(gridname, 'EASE_M25')/=0 .or. index(gridname, 'EASE-M25')/=0 ) then
-
-             tile_grid%gridtype = 'EASE_M25'                          
-
-             tile_grid%ll_lat =  -86.7167 ! need to double-check (reichle, 11 May 2011)
-             tile_grid%ur_lat =   86.7167 ! need to double-check (reichle, 11 May 2011)
-                
-             ease_cell_area   =   628.38080962
-                
-          else
-               
-              err_msg = 'unknown EASE grid tile defs, grid name = ' &
-                     // trim( gridname)
-              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                
-          end if
-             
-          tile_grid%dlon   = 360./real(tile_grid%N_lon) 
-          tile_grid%dlat   = &
-                (tile_grid%ur_lat-tile_grid%ll_lat)/real(tile_grid%N_lat) ! *avg* dlat!
-          if(present(cell_area)) then
-             cell_area=ease_cell_area
-          endif
-          
-      endif ! EASE grid
-     
-      if (latlon_grid) then !  regular LatLon grid
-
-         tile_grid%gridtype = 'LatLon'
-
-         tile_grid%ind_base = 1
-
-         tile_grid%dlon = 360./real(tile_grid%N_lon)
-          
-         tile_grid%i_dir = +1
-         tile_grid%j_dir = +1
-             
-         if (pole_on_center) then
-             
-             tile_grid%dlat   = 180./real(tile_grid%N_lat-1)
-
-             tile_grid%ll_lat = -90. - tile_grid%dlat/2.
-             tile_grid%ur_lat =  90. + tile_grid%dlat/2.
-
-         else
-             
-             tile_grid%dlat = 180./real(tile_grid%N_lat)
-
-             tile_grid%ll_lat = -90. 
-             tile_grid%ur_lat =  90. 
-
-         end if
-          
-         if (date_line_on_center) then
-             
-             tile_grid%ll_lon = -180. - tile_grid%dlon/2.
-             tile_grid%ur_lon =  180. - tile_grid%dlon/2.  ! fixed 20 sep 2010, reichle
-             
-         else
-             
-             tile_grid%ll_lon = -180. 
-             tile_grid%ur_lon =  180. 
-          
-         end if
-          
-       end if ! lat lon grid
-
-       if( c3_grid) then
-
-          tile_grid%gridtype ='c3'
-          tile_grid%ind_base = 1
-          tile_grid%i_dir = +1
-          tile_grid%j_dir = +1
-          tile_grid%ll_lon = -180. 
-          tile_grid%ur_lon =  180. 
-          tile_grid%ll_lat = -90. 
-          tile_grid%ur_lat =  90. 
-          ! dlon and dlat are approximate
-          tile_grid%dlon = 360./real(4*tile_grid%N_lon)
-          tile_grid%dlat = tile_grid%dlon
-          
-       endif
-
-  end subroutine LDAS_create_grid_g
-
-  subroutine LDAS_read_land_tile( tile_file,catch_file, tile_grid_g, tile_coord_land,f2g )
-    ! inputs:
-    !
-    !  tile_file : full path + name 
-    !
-    ! outputs:
-    !
-    !  tile_grid   : parameters of tile definition grid
-    !
-    !  tile_coord : coordinates of tiles (see tile_coord_type),
-    !               implemented as pointer which is allocated in 
-    !               this subroutine
-    !               NOTE: number of tiles can be diagnosed 
-    !                     with size(tile_coord)
-    ! optional:
-    !    if the tile file type 1100 ,which is land excluded
-    !    f2g  : the full domain id to the global id
-    ! "tile_id" is no longer read from *.til file and is now set in this 
-    ! subroutine to match order of tiles in *.til file
-    ! - reichle, 22 Aug 2013
-    !
-    ! -------------------------------------------------------------
-
-    implicit none
-
-    character(*), intent(in) :: tile_file
-    character(*), intent(in) :: catch_file
-    type(grid_def_type), intent(inout):: tile_grid_g
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_land ! out
-    integer, dimension(:), optional,pointer :: f2g ! out
-
-    ! locals
-    type(tile_coord_type),dimension(:),allocatable :: tile_coord
-    integer, dimension(:), allocatable :: f2g_tmp  ! out
-
-    real    :: ease_cell_area
-    integer :: i, N_tile,N_grid,tmpint1, tmpint2, tmpint3, tmpint4
-    integer :: i_indg_offset, j_indg_offset, col_order
-    integer :: N_tile_land,n_lon,n_lat
-
-    logical ::  ease_grid
-    integer :: typ,k,fid
-    character(200) :: tmpline,gridname
-    character(300) :: fname
-
-    character(len=*), parameter :: Iam = 'LDAS_read_tile_file'
-    character(len=400) :: err_msg
-
-    ! ---------------------------------------------------------------
-
-    i_indg_offset = 0
-    j_indg_offset = 0
-
-   ! call LDAS_create_grid(tile_file,tile_grid_g,i_indg_offset,j_indg_offset)
-
-   ! read file header 
-
-    if (logit) write (logunit,'(400A)') 'LDAS_read_tile_file(): reading from' // trim(tile_file)
-
-
-    open (10, file=trim(tile_file), form='formatted', action='read')
-
-    read (10,*) N_tile
-    read (10,*) N_grid          ! some number (?)
-    read (10,*) gridname         ! some string describing tile definition grid (?)
-    read (10,*) n_lon
-    read (10,*) n_lat
-    if(N_grid == 2) then
-       read (10,*)          ! some string describing ocean grid                   (?)
-       read (10,*)          ! # ocean grid cells in longitude direction (N_i_ocn) (?)
-       read (10,*)          ! # ocean grid cells in latitude direction (N_j_ocn)  (?)
+    if( index(gridname,"PE_720x360_DE") /=0) then
+       i_indg_offset = 110
+       j_indg_offset = 230
     endif
-
-    ease_grid = .false.
-    col_order = 0
-    
-    call LDAS_create_grid_g(gridname,n_lon,n_lat,tile_grid_g,i_indg_offset,j_indg_offset,ease_cell_area)
-
-    if (index(tile_grid_g%gridtype,'EASE')/=0)  ease_grid = .true.  ! 'EASE' and 'EASEv2'
-    if (index(tile_grid_g%gridtype,'SiB2')/=0)  col_order=1  ! Weiyuan note: grid name for SiB2??
-    allocate(tile_coord(N_tile))
-    allocate(f2g_tmp(N_tile))
-    i= 0
-    fid = 0
-
-    ! WJ notes: i and k are the same---global ids
-    !           fid --- num in simulation domain
-    do k=1,N_tile
-       
-        read(10,'(A)') tmpline 
-        read(tmpline,*) typ
-        if(typ == 100 .or. typ ==1100) then ! if it is land
-           i=i+1
-           tile_coord(i)%tile_id   = k
-
-           if (typ == 100) then
-              fid=fid+1
-              f2g_tmp(fid) = k
-           endif
-
-           if(ease_grid .or. N_grid ==1) then
-
-             ! EASE grid til file has fewer columns 
-             ! (excludes "tile_id", "frac_pfaf", and "area")
-
-             read (tmpline,*)                          &
-                  tile_coord(i)%typ,              &   !  1
-                  tile_coord(i)%pfaf,             &   !  2
-                  tile_coord(i)%com_lon,          &   !  3
-                  tile_coord(i)%com_lat,          &   !  4
-                  tile_coord(i)%i_indg,           &   !  5
-                  tile_coord(i)%j_indg,           &   !  6
-                  tile_coord(i)%frac_cell             !  7
-
-             tile_coord(i)%frac_pfaf = nodata_generic
-             tile_coord(i)%area      = ease_cell_area*tile_coord(i)%frac_cell
-
-           else ! not ease grid
-
-             if (col_order==1) then
-                ! old "SiB2_V2" file format
-                read (tmpline,*)                       &
-                     tile_coord(i)%typ,           &   !  1  
-                     tile_coord(i)%pfaf,          &   !  2  *
-                     tile_coord(i)%com_lon,       &   !  3
-                     tile_coord(i)%com_lat,       &   !  4
-                     tile_coord(i)%i_indg,        &   !  5
-                     tile_coord(i)%j_indg,        &   !  6
-                     tile_coord(i)%frac_cell,     &   !  7
-                     tmpint1,                     &   !  8
-                     tmpint2,                     &   !  9  *
-                     tmpint3,                     &   ! 10
-                     tile_coord(i)%frac_pfaf,     &   ! 11
-                     tmpint4,                     &   ! 12  (previously "tile_id")
-                     tile_coord(i)%area               ! 13
-
-             else
-
-                read (tmpline,*)                       &
-                     tile_coord(i)%typ,           &   !  1
-                     tile_coord(i)%area,          &   !  2  *
-                     tile_coord(i)%com_lon,       &   !  3
-                     tile_coord(i)%com_lat,       &   !  4
-                     tile_coord(i)%i_indg,        &   !  5
-                     tile_coord(i)%j_indg,        &   !  6
-                     tile_coord(i)%frac_cell,     &   !  7
-                     tmpint1,                     &   !  8
-                     tile_coord(i)%pfaf,          &   !  9  *
-                     tmpint2,                     &   ! 10
-                     tile_coord(i)%frac_pfaf,     &   ! 11
-                     tmpint3                          ! 12  * (previously "tile_id")
-
-                ! change units of area to [km^2]  - 23 Sep 2010: fixed units, reichle
-
-                tile_coord(i)%area = tile_coord(i)%area*MAPL_RADIUS*MAPL_RADIUS/1000./1000.
-
-             end if ! col_order 1
-
-           end if  ! (ease_grid)
-
-          ! fix i_indg and j_indg such that they refer to a global grid
-          ! (see above)
-
-           tile_coord(i)%i_indg = tile_coord(i)%i_indg + i_indg_offset
-           tile_coord(i)%j_indg = tile_coord(i)%j_indg + j_indg_offset
-        else
-          exit ! land comes first in the til file
-        endif
-    end do
-    close(10)
-
-    N_tile_land=i
-    allocate(tile_coord_land(N_tile_land))
-    tile_coord_land=tile_coord(1:N_tile_land)
-
-    if(present(f2g)) then
-       allocate(f2g(fid))
-       f2g = f2g_tmp(1:fid)
+    if( index(gridname,"PE_2880x1440_DE") /=0) then
+       i_indg_offset = 440
+       j_indg_offset = 920
     endif
-
-    call read_catchment_def( catch_file, N_tile_land, tile_coord_land )
-
-    ! ----------------------------------------------------------------------
-    !
-    ! if still needed read gridded elevation (check only first tile!)
-
-    if ( abs(tile_coord_land(1)%elev-nodata_generic)<nodata_tol_generic ) then
-
-       i=index(catch_file,'/clsm/')
-       fname = catch_file(1:i)//'topo_DYN_ave_*.data'
-       call Execute_command_line('ls '//trim(fname) // ' >topo_DYN_ave.file')
-       open(10,file='topo_DYN_ave.file', action='read')
-       fname= ''
-       read(10,'(A)') fname
-       !close(10,status='DELETE')
-       close(10)
-       call read_grid_elev( trim(fname), tile_grid_g, N_tile_land, tile_coord_land )
-    end if
-
     
-    if ( abs(tile_coord_land(1)%elev-nodata_generic)<nodata_tol_generic ) then
-
-       if (logit) write (logunit,*) 'WARNING: tile elevation NOT avaialable'
-
-    end if
-    ! ----------------------------------------------------------------------
-    !
-    ! fix dateline bug that existed up to and including MERRA version of
-    !  *.til and catchment.def files
-
-    call fix_dateline_bug_in_tilecoord( N_tile_land, tile_grid_g, tile_coord_land ) 
-    deallocate(tile_coord)
-    deallocate(f2g_tmp)
-
-  end subroutine LDAS_read_land_tile
-
-  subroutine read_til_file( tile_coord_path, tile_coord_file, tile_grid, tile_coord )
+    ! ----------------
     
-    ! read tile coordinates from GEOS5 *.til file 
-    ! optionally assemble parameters of tile definition grid
-    !
-    ! IMPORTANT: overlaying grid must be *global*
-    !            (with matching i_indg and j_indg entries in til file)
-    !
-    ! inputs:
-    !
-    !  tile_coord_file : full path to *.til file
-    !  tile_coord_file : name of *.til file
-    !
-    ! outputs:
-    !
-    !  tile_grid   : parameters of tile definition grid
-    !
-    !  tile_coord : coordinates of tiles (see tile_coord_type),
-    !               implemented as pointer which is allocated in 
-    !               this subroutine
-    !               NOTE: number of tiles can be diagnosed 
-    !                     with size(tile_coord)
-    !
-    !
-    ! "tile_id" is no longer read from *.til file and is now set in this 
-    ! subroutine to match order of tiles in *.til file
-    ! - reichle, 22 Aug 2013
-    !
-    ! -------------------------------------------------------------
-    
-    implicit none
-    
-    character(*), intent(in) :: tile_coord_path
-    character(*), intent(in) :: tile_coord_file
-    
-    type(grid_def_type), intent(out), optional :: tile_grid
-    
-    type(tile_coord_type), dimension(:), pointer, optional :: tile_coord ! out
-    
-    ! locals
-
-    real    :: ease_cell_area
-    
-    integer :: i, N_tile, tmpint1, tmpint2, tmpint3, tmpint4
-    integer :: i_indg_offset, j_indg_offset, col_order
-
-    logical :: date_line_on_center, pole_on_center, ease_grid
-
-    character(300) :: fname
-
-    character(len=*), parameter :: Iam = 'read_til_file'
-    character(len=400) :: err_msg
-
-    ! ---------------------------------------------------------------
-
-    fname = trim(tile_coord_path) // '/' // trim(tile_coord_file)
-
-    i_indg_offset = 0
-    j_indg_offset = 0
-    
-    ! read file header 
-    
-    if (logit) write (logunit,'(400A)') 'read_til_file(): reading from' // trim(fname)
-    if (logit) write (logunit,*)
-    
-    open (10, file=trim(fname), form='formatted', action='read') 
-    
-    read (10,*) N_tile
-    read (10,*)          ! some number (?)
-    read (10,*)          ! some string describing tile definition grid (?)
-    read (10,*) tmpint1
-    read (10,*) tmpint2
-    read (10,*)          ! some string describing ocean grid                   (?)
-    read (10,*)          ! # ocean grid cells in longitude direction (N_i_ocn) (?)
-    read (10,*)          ! # ocean grid cells in latitude direction (N_j_ocn)  (?)
-    
-    if (logit) write (logunit,*) 'file contains coordinates for ', N_tile, ' tiles' 
-    if (logit) write (logunit,*)
-        
-    ! ---------------------------------------------------------------
-    
-    ! find out order of columns in *.til file
-    
-    col_order = 0      ! default: "Fortuna-2" and newer CVS tags
-    
-    if (index(tile_coord_path, 'SiB2_V2')/=0)  col_order=1  ! prior to "Fortuna-2"
-    
-    ! find out grid type (default: assume LatLon grid)
-
-    ease_grid = .false.
-    
-    if (index(tile_coord_file, 'EASE')/=0)  ease_grid = .true.  ! 'EASE' and 'EASEv2'
-    
-    ! ---------------------------------------------------------------
-    !
-    ! determine tile_grid 
-    
-    if (present(tile_grid)) then       
+    if (ease_grid) then
        
-       ! initialize all fields to no-data values
-
-       call init_grid_def_type(tile_grid)
+       tile_grid%ind_base = 0
        
-       tile_grid%N_lon = tmpint1
-       tile_grid%N_lat = tmpint2
+       ! global cylindrical EASE grid 
        
-       tile_grid%i_offg = 0  ! tile_grid refers to *global* grid
-       tile_grid%j_offg = 0  ! tile_grid refers to *global* grid
-
-       ! ----------------
-       !
-       ! find out whether date line is on edge or through center of grid cell
-
-       select case (trim(tile_coord_file))
+       tile_grid%ll_lon = -180.
+       tile_grid%ur_lon =  180.
+       
+       tile_grid%i_dir  = +1
+       tile_grid%j_dir  = -1
+       
+       ! It is sloppy that the name may be EASEv2-M36 or EASEv2_M36
+       
+       if     (index(gridname, 'EASEv2_M36')/=0 .or. index(gridname, 'EASEv2-M36')/=0) then  ! version *2*
           
-       case('FV_144x91_DC_360x180_DE.til',   &  ! 2   deg by 2.5  deg
-            'FV_144x91_DC_576x540_DE.til',   &  ! 2   deg by 2.5  deg
-            'FV_288x181_DC_360x180_DE.til',  &  ! 1   deg by 1.25 deg
-            'FV_540x361_DC_360x180_DE.til',  &  ! 1/2 deg by 2/3  deg
-            'FV_576x361_DC_360x180_DE.til',  &  ! 1/2 deg by 5/8  deg
-            'FV_1152x721_DC_360x180_DE.til'  &  ! 1/4 deg by 5/16 deg
-            )
-
-          ! Fortuna and before
-
-          date_line_on_center = .true.
-          pole_on_center      = .true.
-
-       case('DC0144xPC0091_DE0360xPE0180-Pfafstetter.til', & ! 2   deg by 2.5  deg 
-            'DC0144xPC0091_DE1440xPE0720-Pfafstetter.til', & ! 2   deg by 2.5  deg 
-            'DC0144xPC0091_DE2880xPE1440-Pfafstetter.til', & ! 2   deg by 2.5  deg 
-            'DC0288xPC0181_DE0360xPE0180-Pfafstetter.til', & ! 1   deg by 1.25 deg
-            'DC0288xPC0181_DE1440xPE0720-Pfafstetter.til', & ! 1   deg by 1.25 deg
-            'DC0288xPC0181_DE2880xPE1440-Pfafstetter.til', & ! 1   deg by 1.25 deg
-            'DC0540xPC0361_DE0360xPE0180-Pfafstetter.til', & ! 1/2 deg by 2/3  deg
-            'DC0576xPC0361_DE0360xPE0180-Pfafstetter.til', & ! 1/2 deg by 5/8  deg
-            'DC0576xPC0361_DE1440xPE0720-Pfafstetter.til', & ! 1/2 deg by 5/8  deg
-            'DC0576xPC0361_DE2880xPE1440-Pfafstetter.til', & ! 1/2 deg by 5/8  deg
-            'DC1152xPC0721_DE0360xPE0180-Pfafstetter.til', & ! 1/4 deg by 5/16 deg
-            'DC1152xPC0721_DE1440xPE0720-Pfafstetter.til', & ! 1/4 deg by 5/16 deg
-            'DC1152xPC0721_DE2880xPE1440-Pfafstetter.til'  & ! 1/4 deg by 5/16 deg
-            )
-
-          ! Ganymed
-
-          date_line_on_center = .true.
-          pole_on_center      = .true.
-
-       case('tile.data') ! GEOS5 GCM/DAS convention for tile coord file in work directory
+          tile_grid%gridtype = 'EASEv2_M36'                          
           
-          date_line_on_center = .true.
-          pole_on_center      = .true.
+          tile_grid%ll_lat =  -85.04456
+          tile_grid%ur_lat =   85.04456
           
-       case('FV_144x91_DE_360x180_DE.til')     ! GEOS-5 2 deg by 2.5 deg DE grid
+          ease_cell_area   = 1298.320938704616
           
-          date_line_on_center = .false.
-          pole_on_center      = .true.
+       elseif (index(gridname, 'EASEv2_M09')/=0 .or. index(gridname, 'EASEv2-M09')/=0) then  ! version *2*
           
-       case('FV_360x180_DE_360x180_DE.til', &  ! GSWP2 1 deg by 1 deg (orig GSWP-2 resolution)
-            'PE_360x180_DE_288x270_DE.til'  &  ! GSWP2 1 deg by 1 deg w/ irregular tiles
-            )
+          tile_grid%gridtype = 'EASEv2_M09'  
           
-          date_line_on_center = .false.
-          pole_on_center      = .false.
+          tile_grid%ll_lat =  -85.04456
+          tile_grid%ur_lat =   85.04456
           
-       case('PE_720x360_DE_115x48_US.til')     ! CONUS 0.5-degree grid
+          ease_cell_area   =   81.145058669038477
           
-          date_line_on_center = .false.
-          pole_on_center      = .false.
+       elseif (index(gridname, 'EASE_M36')/=0 .or. index(gridname, 'EASE-M36')/=0) then
           
-          ! fix i_indg and j_indg (in the *.til file, i_indg and j_indg are NOT 
-          ! relative to the global grid, contrary to the convention in the LDASsa
-          ! driver)
-
-          ! fix i_indg and j_indg:
-          ! in the *.til file, i_indg and j_indg are relative to the a grid with
-          !    ll_lon = -125 
-          !    ll_lat =   25
-          ! contrary to the convention in the LDASsa driver that needs i_indg and
-          ! j_indg relative to a global grid
+          tile_grid%gridtype = 'EASE_M36'                          
           
-          i_indg_offset = 110
-          j_indg_offset = 230
+          tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
+          tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
           
-       case('PE_2880x1440_DE_464x224_NLDAS.til')  ! NLDAS 1/8-degree grid
+          ease_cell_area   = 1296.029001087600 
           
-          date_line_on_center = .false.
-          pole_on_center      = .false.
+       elseif (index(gridname, 'EASE_M09')/=0 .or. index(gridname, 'EASE-M09')/=0) then
           
-          ! fix i_indg and j_indg:
-          ! in the *.til file, i_indg and j_indg are relative to the a grid with
-          !    ll_lon = -125 
-          !    ll_lat =   25
-          ! contrary to the convention in the LDASsa driver that needs i_indg and
-          ! j_indg relative to a global grid
+          tile_grid%gridtype = 'EASE_M09'                          
           
-          i_indg_offset = 440
-          j_indg_offset = 920
+          tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
+          tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
           
-       case('SMAP_EASEv2_M36_964x406.til',   &  ! SMAP 'M36' cylindrical EASEv2 grid 
-            'SMAP_EASEv2_M09_3856x1624.til', &  ! SMAP 'M09' cylindrical EASEv2 grid 
-            'SMAP_EASE_M36_963x408.til' ,    &  ! SMAP 'M36' cylindrical EASE   grid
-            'SMAP_EASE_M09_3852x1632.til',   &  ! SMAP 'M09' cylindrical EASE   grid
-            'EASE_M25_1383x586.til'          &  !      'M25' cylindrical EASE   grid
-            )
+          ease_cell_area   =   81.001812568020028
           
-          date_line_on_center = .false.
-          pole_on_center      = .false.
-
-       case default
+       elseif (index(gridname, 'EASE_M25')/=0 .or. index(gridname, 'EASE-M25')/=0 ) then
           
-          err_msg = 'unknown tile definitions, filename='//trim(tile_coord_file)
+          tile_grid%gridtype = 'EASE_M25'                          
+          
+          tile_grid%ll_lat =  -86.7167 ! need to double-check (reichle, 11 May 2011)
+          tile_grid%ur_lat =   86.7167 ! need to double-check (reichle, 11 May 2011)
+          
+          ease_cell_area   =   628.38080962
+          
+       else
+          
+          err_msg = 'unknown EASE grid tile defs, grid name = ' // trim( gridname)
           call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
           
-       end select
-       
-       ! ----------------
-       
-       if (ease_grid) then
-
-          tile_grid%ind_base = 0
-          
-          if   (                                                       &
-               (index(tile_coord_file, 'EASE_M')  /=0) .or.            &
-               (index(tile_coord_file, 'EASEv2_M')/=0)       )  then   
-
-             
-             ! global cylindrical EASE grid 
-             
-             tile_grid%ll_lon = -180.
-             tile_grid%ur_lon =  180.
-             
-             tile_grid%i_dir  = +1
-             tile_grid%j_dir  = -1
-             
-             if     (index(tile_coord_file, 'EASEv2_M36')/=0) then  ! version *2*
-                
-                tile_grid%gridtype = 'EASEv2_M36'                          
-                
-                tile_grid%ll_lat =  -85.04456
-                tile_grid%ur_lat =   85.04456
-
-                ease_cell_area   = 1298.320938704616
-                
-             elseif (index(tile_coord_file, 'EASEv2_M09')/=0) then  ! version *2*
-
-                tile_grid%gridtype = 'EASEv2_M09'  
-
-                tile_grid%ll_lat =  -85.04456
-                tile_grid%ur_lat =   85.04456
-                
-                ease_cell_area   =   81.145058669038477
-
-             elseif (index(tile_coord_file, 'EASE_M36')/=0) then
-                
-                tile_grid%gridtype = 'EASE_M36'                          
-                
-                tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
-                tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
-
-                ease_cell_area   = 1296.029001087600 
-                
-             elseif (index(tile_coord_file, 'EASE_M09')/=0) then
-
-                tile_grid%gridtype = 'EASE_M09'                          
-
-                tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
-                tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
-                
-                ease_cell_area   =   81.001812568020028
-
-             elseif (index(tile_coord_file, 'EASE_M25')/=0) then
-
-                tile_grid%gridtype = 'EASE_M25'                          
-
-                tile_grid%ll_lat =  -86.7167 ! need to double-check (reichle, 11 May 2011)
-                tile_grid%ur_lat =   86.7167 ! need to double-check (reichle, 11 May 2011)
-                
-                ease_cell_area   =   628.38080962
-                
-             else
-                
-                err_msg = 'unknown EASE grid tile defs, file= ' &
-                     // trim(tile_coord_file)
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                
-             end if
-             
-             tile_grid%dlon   = 360./real(tile_grid%N_lon) 
-             tile_grid%dlat   = &
-                  (tile_grid%ur_lat-tile_grid%ll_lat)/real(tile_grid%N_lat) ! *avg* dlat!
-             
-          else
-             
-             err_msg = 'unknown EASE grid tile defs, file= ' &
-                  //trim(tile_coord_file)
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-          end if
-          
-       else ! assume regular LatLon grid
-
-          tile_grid%gridtype = 'LatLon'
-
-          tile_grid%ind_base = 1
-
-          tile_grid%dlon = 360./real(tile_grid%N_lon)
-          
-          tile_grid%i_dir = +1
-          tile_grid%j_dir = +1
-             
-          if (pole_on_center) then
-             
-             tile_grid%dlat   = 180./real(tile_grid%N_lat-1)
-
-             tile_grid%ll_lat = -90. - tile_grid%dlat/2.
-             tile_grid%ur_lat =  90. + tile_grid%dlat/2.
-
-          else
-             
-             tile_grid%dlat = 180./real(tile_grid%N_lat)
-
-             tile_grid%ll_lat = -90. 
-             tile_grid%ur_lat =  90. 
-
-          end if
-          
-          if (date_line_on_center) then
-             
-             tile_grid%ll_lon = -180. - tile_grid%dlon/2.
-             tile_grid%ur_lon =  180. - tile_grid%dlon/2.  ! fixed 20 sep 2010, reichle
-             
-          else
-             
-             tile_grid%ll_lon = -180. 
-             tile_grid%ur_lon =  180. 
-          
-          end if
-          
        end if
+       
+       tile_grid%dlon   = 360./real(tile_grid%N_lon) 
+       tile_grid%dlat   = (tile_grid%ur_lat-tile_grid%ll_lat)/real(tile_grid%N_lat) ! *avg* dlat!
 
-       if (logit) then
+       if(present(cell_area)) then
+          cell_area=ease_cell_area
+       endif
+       
+    endif ! EASE grid
+    
+    if (latlon_grid) then !  regular LatLon grid
+       
+       tile_grid%gridtype = 'LatLon'
+       
+       tile_grid%ind_base = 1
+       
+       tile_grid%dlon = 360./real(tile_grid%N_lon)
+       
+       tile_grid%i_dir = +1
+       tile_grid%j_dir = +1
+       
+       if (pole_on_center) then
           
-          write (logunit,*) 'tile definition grid:'
-          if (date_line_on_center) then
-             write (logunit,*) '  date line on center'
-          else
-             write (logunit,*) '  date line on edge'
-          end if
-          if (pole_on_center) then
-             write (logunit,*) '  pole on center'
-          else
-             write (logunit,*) '  pole on edge'
-          end if
+          tile_grid%dlat   = 180./real(tile_grid%N_lat-1)
           
-          tmpstring40 = 'tile_grid_g'
-
-          call io_grid_def_type( 'w', logunit, tile_grid, tmpstring40 )
+          tile_grid%ll_lat = -90. - tile_grid%dlat/2.
+          tile_grid%ur_lat =  90. + tile_grid%dlat/2.
+          
+       else
+          
+          tile_grid%dlat = 180./real(tile_grid%N_lat)
+          
+          tile_grid%ll_lat = -90. 
+          tile_grid%ur_lat =  90. 
           
        end if
        
-    end if
-    
-    ! -----------------------------------------------------------------
-    
-    if (present(tile_coord)) then        ! read body of file
-
-       allocate(tile_coord(N_tile))
+       if (date_line_on_center) then
+          
+          tile_grid%ll_lon = -180. - tile_grid%dlon/2.
+          tile_grid%ur_lon =  180. - tile_grid%dlon/2.  ! fixed 20 sep 2010, reichle
+          
+       else
+          
+          tile_grid%ll_lon = -180. 
+          tile_grid%ur_lon =  180. 
+          
+       end if
        
-       do i=1,N_tile
-          
-          ! set "tile_id" to match order in which tiles are read from *.til file
-
-          tile_coord(i)%tile_id   = i
-          
-          if (ease_grid) then
-                
-             ! EASE grid til file has fewer columns 
-             ! (excludes "tile_id", "frac_pfaf", and "area")
-             
-             read (10,*)                          &   
-                  tile_coord(i)%typ,              &   !  1
-                  tile_coord(i)%pfaf,             &   !  2
-                  tile_coord(i)%com_lon,          &   !  3
-                  tile_coord(i)%com_lat,          &   !  4
-                  tile_coord(i)%i_indg,           &   !  5
-                  tile_coord(i)%j_indg,           &   !  6
-                  tile_coord(i)%frac_cell             !  7
-                
-             tile_coord(i)%frac_pfaf = nodata_generic
-             tile_coord(i)%area      = ease_cell_area*tile_coord(i)%frac_cell
-                
-          else
-
-             if (col_order==1) then
-             
-                ! old "SiB2_V2" file format
-                
-                read (10,*)                       &   
-                     tile_coord(i)%typ,           &   !  1  
-                     tile_coord(i)%pfaf,          &   !  2  *
-                     tile_coord(i)%com_lon,       &   !  3
-                     tile_coord(i)%com_lat,       &   !  4
-                     tile_coord(i)%i_indg,        &   !  5
-                     tile_coord(i)%j_indg,        &   !  6
-                     tile_coord(i)%frac_cell,     &   !  7
-                     tmpint1,                     &   !  8
-                     tmpint2,                     &   !  9  *
-                     tmpint3,                     &   ! 10
-                     tile_coord(i)%frac_pfaf,     &   ! 11
-                     tmpint4,                     &   ! 12  (previously "tile_id")
-                     tile_coord(i)%area	              ! 13
-             
-             else
-             
-                read (10,*)                       &   
-                     tile_coord(i)%typ,           &   !  1
-                     tile_coord(i)%area,          &   !  2  *
-                     tile_coord(i)%com_lon,       &   !  3
-                     tile_coord(i)%com_lat,       &   !  4
-                     tile_coord(i)%i_indg,        &   !  5
-                     tile_coord(i)%j_indg,        &   !  6
-                     tile_coord(i)%frac_cell,     &   !  7
-                     tmpint1,                     &   !  8
-                     tile_coord(i)%pfaf,          &   !  9  *
-                     tmpint2,                     &   ! 10
-                     tile_coord(i)%frac_pfaf,     &   ! 11
-                     tmpint3                          ! 12  * (previously "tile_id")
-                
-                ! change units of area to [km^2]  - 23 Sep 2010: fixed units, reichle
-                
-                tile_coord(i)%area = tile_coord(i)%area*MAPL_RADIUS*MAPL_RADIUS/1000./1000.
-                
-             end if
-             
-          end if  ! (ease_grid)
-                    
-          ! fix i_indg and j_indg such that they refer to a global grid
-          ! (see above)
-          
-          tile_coord(i)%i_indg = tile_coord(i)%i_indg + i_indg_offset
-          tile_coord(i)%j_indg = tile_coord(i)%j_indg + j_indg_offset
-
-       end do
-       
-    end if
-
-    ! -----------------------------------------------------------------
-
-    close(10, status='keep')
+    end if ! lat lon grid
     
-  end subroutine read_til_file
-
-  ! **********************************************************************
+    if( c3_grid) then
+       
+       tile_grid%gridtype = 'c3'
+       tile_grid%ind_base =    1
+       tile_grid%i_dir    =   +1
+       tile_grid%j_dir    =   +1
+       tile_grid%ll_lon   = -180. 
+       tile_grid%ur_lon   =  180. 
+       tile_grid%ll_lat   =  -90. 
+       tile_grid%ur_lat   =   90.
+       
+       ! dlon and dlat are approximate!
+       tile_grid%dlon     = 360./real(4*tile_grid%N_lon)
+       tile_grid%dlat     = tile_grid%dlon
+       
+    endif
+    
+  end subroutine LDAS_create_grid_g
   
-  subroutine get_tile_grid( N_tile, tile_coord, tile_grid_g, tile_grid )     
+  ! *******************************************************************
+  
+  subroutine get_tile_grid( N_tile, tc_i_indg, tc_j_indg, tc_minlon, tc_minlat, tc_maxlon, tc_maxlat, &
+       tile_grid_g, tile_grid )     
     
     ! get matching tile_grid for given tile_coord and (global) tile_grid_g
+    !
+    ! make sure to pass in consistent tile_coord (tc) and tile_grid_g inputs:
+    !
+    !   iff tile_grid_g is the grid that is associated with the tile space definition,
+    !   then tc_[x]_indg must be tile_coord%[x]_indg
+    !
+    !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
+    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
     !
     ! reichle, 20 June 2012 -- moved from within domain_setup() 
     !                           for re-use in get_obs_pred() 
     !
+    ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
+    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !
     ! -------------------------------------------------------------------
     
-    integer,               intent(in)            :: N_tile
+    integer,               intent(in)                    :: N_tile
+
+    integer,               intent(in), dimension(N_tile) :: tc_i_indg, tc_j_indg
+    real,                  intent(in), dimension(N_tile) :: tc_minlon, tc_minlat
+    real,                  intent(in), dimension(N_tile) :: tc_maxlon, tc_maxlat
     
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! in
-    
-    type(grid_def_type),   intent(in)            :: tile_grid_g
-    type(grid_def_type),   intent(out)           :: tile_grid
+    type(grid_def_type),   intent(in)                    :: tile_grid_g
+    type(grid_def_type),   intent(out)                   :: tile_grid
     
     ! local variables
     
@@ -984,6 +536,7 @@ contains
     integer :: ind_i_min, ind_i_max, ind_j_min, ind_j_max
     
     integer :: this_i_indg, this_j_indg
+    integer , allocatable :: i_indg_(:), j_indg_(:)
     logical :: c3_grid 
     character(len=*), parameter :: Iam = 'get_tile_grid'
     character(len=400) :: err_msg
@@ -1000,38 +553,29 @@ contains
     ind_i_max = -1
     ind_j_max = -1
 
-    ! for c3 grid, only get the ll_,ur_ lat and lon, the index is meaning less
+    ! THIS COMMENT SEEMS OUTDATED (reichle, 2 Aug 2020)
+    ! for c3 grid, only get the ll_,ur_ lat and lon, the index is meaningless;
     ! it will be used in creating the lat_lon pert_grid
+    
     if(index(tile_grid_g%gridtype,"c3") /=0) then
- 
-      ! do n=1,N_tile
-      ! 
-      !    this_minlon  = tile_coord(n)%com_lon
-      !    this_minlat  = tile_coord(n)%com_lat
-      !    this_maxlon  = tile_coord(n)%com_lon
-      !    this_maxlat  = tile_coord(n)%com_lat
-      !    min_min_lon = min( min_min_lon, this_minlon)
-      !    min_min_lat = min( min_min_lat, this_minlat)
-      !    max_max_lon = max( max_max_lon, this_maxlon)
-      !    max_max_lat = max( max_max_lat, this_maxlat)
-      ! enddo
+
+       ! for cube-sphere grids, do NOT zoom in 
+       
        tile_grid=tile_grid_g
-      ! tile_grid%ll_lon= min_min_lon
-      ! tile_grid%ur_lon= max_max_lon
-      ! tile_grid%ll_lat= min_min_lat
-      ! tile_grid%ur_lat= max_max_lat
+       
        return
+       
     endif   
 
     do n=1,N_tile
        
-       this_minlon  = tile_coord(n)%min_lon
-       this_minlat  = tile_coord(n)%min_lat
-       this_maxlon  = tile_coord(n)%max_lon
-       this_maxlat  = tile_coord(n)%max_lat
+       this_minlon  = tc_minlon(n)
+       this_minlat  = tc_minlat(n)
+       this_maxlon  = tc_maxlon(n)
+       this_maxlat  = tc_maxlat(n)
        
-       this_i_indg  = tile_coord(n)%i_indg
-       this_j_indg  = tile_coord(n)%j_indg
+       this_i_indg  = tc_i_indg(n)
+       this_j_indg  = tc_j_indg(n)
        
        min_min_lon = min( min_min_lon, this_minlon)
        min_min_lat = min( min_min_lat, this_minlat)
@@ -1095,21 +639,35 @@ contains
   end subroutine get_tile_grid
 
   ! **********************************************************************
-  subroutine get_number_of_tiles_in_cell_ij( N_tile, tile_coord, tile_grid, &
+
+  subroutine get_number_of_tiles_in_cell_ij( N_tile, tc_i_indg, tc_j_indg, tile_grid, &
        N_tile_in_cell_ij)
     
     ! find out how many tiles are in a given tile definition grid cell
     ! reichle, 22 Jul 2005
-    ! split for the old get_tile_num_in_cell_ij
+    !
+    ! make sure to pass in consistent tile_coord (tc) and tile_grid_g inputs:
+    !
+    !   iff tile_grid_g is the grid that is associated with the tile space definition,
+    !   then tc_[x]_indg must be tile_coord%[x]_indg
+    !
+    !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
+    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !
+    ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
+    !
+    ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
+    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !
     ! ----------------------------------------------------------
     
     implicit none
     
-    integer, intent(in) :: N_tile
+    integer,             intent(in)                    :: N_tile
     
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! input
+    integer,             intent(in), dimension(N_tile) :: tc_i_indg, tc_j_indg
     
-    type(grid_def_type), intent(in) :: tile_grid
+    type(grid_def_type), intent(in)                    :: tile_grid
         
     integer, dimension(tile_grid%N_lon,tile_grid%N_lat), intent(inout) :: &
          N_tile_in_cell_ij
@@ -1130,8 +688,8 @@ contains
     
     do n=1,N_tile
        
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
+       i = tc_i_indg(n) - off_i
+       j = tc_j_indg(n) - off_j
        
        N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
        
@@ -1143,7 +701,9 @@ contains
 
   end subroutine get_number_of_tiles_in_cell_ij
 
-  subroutine get_tile_num_in_cell_ij( N_tile, tile_coord, tile_grid, &
+  ! **********************************************************************
+
+  subroutine get_tile_num_in_cell_ij( N_tile, tc_i_indg, tc_j_indg, tile_grid, &
        max_N_tile_in_cells, tile_num_in_cell_ij )
     
     ! find out tile_num in given cells
@@ -1151,23 +711,36 @@ contains
     ! The indices tile_coord%i_indg and tile_coord%j_indg refer to the *global*
     ! tile definition grid (as obtained from the tile_coord_file).
     ! Integers "off_i" and "off_j" describe the offset between the global 
-    ! "tile_grid_g" and a smaller "tile_grid_d" for the domaim of interest.  
+    ! "tile_grid_g" and a smaller "tile_grid_d" for the domain of interest.  
     ! With these offsets tile2grid() can be used to map from a
     ! subgrid of "tile_grid_g" to tile space
     !
     ! reichle, 22 Jul 2005
     !
+    ! make sure to pass in consistent tile_coord (tc) and tile_grid_g inputs:
+    !
+    !   iff tile_grid_g is the grid that is associated with the tile space definition,
+    !   then tc_[x]_indg must be tile_coord%[x]_indg
+    !
+    !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
+    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !
+    ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
+    !
+    ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
+    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !
     ! ----------------------------------------------------------
     
     implicit none
     
-    integer, intent(in) :: N_tile
+    integer,             intent(in)                    :: N_tile
     
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! input
+    integer,             intent(in), dimension(N_tile) :: tc_i_indg, tc_j_indg
     
-    type(grid_def_type), intent(in) :: tile_grid
+    type(grid_def_type), intent(in)                    :: tile_grid
         
-    integer, intent(in) ::  max_N_tile_in_cells
+    integer,             intent(in)                    ::  max_N_tile_in_cells
     
     ! the pointer is an output arguments that is allocated here
     
@@ -1203,8 +776,8 @@ contains
     
     do n=1,N_tile
        
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
+       i = tc_i_indg(n) - off_i
+       j = tc_j_indg(n) - off_j
        
        N_tile_in_cell_ij(i,j) = N_tile_in_cell_ij(i,j) + 1
        
@@ -1215,799 +788,6 @@ contains
     end do
     
   end subroutine get_tile_num_in_cell_ij
-
-  ! *******************************************************************
-  
-  subroutine extract_land_tiles( N_tile_global, tile_coord_global, &
-       N_tile_land, tile_coord_land )
-    
-    ! extract land tiles from tile_coord_global
-    !
-    ! When called without optional arguments only counts number of tiles.
-    ! When called with optional arguments allocates and fills pointer.
-    !
-    ! reichle, 28 Jan 2005
-    ! reichle, 22 Jul 2005
-    !
-    ! ----------------------------------------------------------
-    
-    implicit none
-    
-    integer, intent(in) :: N_tile_global
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_global ! input
-    
-    integer, intent(inout) :: N_tile_land
-    
-    ! the pointer is an output arguments that is allocated here
-    
-    type(tile_coord_type), dimension(:), pointer, optional :: tile_coord_land
-    
-    ! locals 
-    
-    integer :: n
-    
-    ! -----------------------------------------------------------------
-    !
-    ! allocate and initialize pointers if present
-    
-    if (present(tile_coord_land)) allocate(tile_coord_land(N_tile_land))
-    
-    ! (re-)initialize
-    
-    N_tile_land           = 0
-    
-    do n=1,N_tile_global
-       
-       ! count number of land tiles
-       
-       if (tile_coord_global(n)%typ == tile_typ_land) then
-          
-          N_tile_land = N_tile_land + 1
-          
-          if (present(tile_coord_land)) &          
-               tile_coord_land(N_tile_land) = tile_coord_global(n)
-          
-       end if
-       
-    end do
-    
-    if (logit) write (logunit,*) 'Number of land tiles = ', N_tile_land 
-    if (logit) write (logunit,*)
-    
-  end subroutine extract_land_tiles
-  
-  ! *******************************************************************
-
-  subroutine get_land_tile_info( tile_coord_path, tile_coord_file,     &
-       catchment_def_path, catchment_def_file, res_ftag,               &
-       tile_grid, N_tile, tile_coord )
-    
-    ! get land tile coordinates, parameters of tile definition grid, and 
-    ! grid-to-tile mapping from GEOS5 *.til file
-    !
-    ! note use of optional inout arguments
-    !
-    ! reichle, 28 Jan 2005
-    !
-    ! ----------------------------------------------------------
-    
-    implicit none
-    
-    character(*), intent(in) :: tile_coord_path, catchment_def_path
-    character(*), intent(in) :: tile_coord_file
-    character(*), intent(in) :: catchment_def_file, res_ftag
-
-    type(grid_def_type), intent(out) :: tile_grid
-    
-    integer, intent(out) :: N_tile
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! out
-    
-    ! locals
-
-    character(300) :: fname
-
-    integer :: N_tile_tmp
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_tmp
-
-    logical :: file_exists
-
-    ! --------------------------------------------------------------
-    
-    nullify(tile_coord_tmp)
-    
-    ! get parameters of tile definition grid and global tiles
-        
-    call read_til_file( tile_coord_path, tile_coord_file,  &
-         tile_grid=tile_grid, tile_coord=tile_coord_tmp )
-    
-    N_tile_tmp = size(tile_coord_tmp)
-    
-    ! first call counts land tiles in tile_coord_file
-    
-    call extract_land_tiles( N_tile_tmp, tile_coord_tmp, N_tile )
-    
-    ! second call allocates and fills tile_coord with land tiles
-    
-    call extract_land_tiles( N_tile_tmp, tile_coord_tmp, N_tile, tile_coord )
-    
-    deallocate(tile_coord_tmp)
-    
-    ! ----------------------------------------------------------------------
-    !
-    ! add lat-lon bounding box and (possibly elevation) for each tile 
-    ! from "catchment.def" file
-    ! 
-
-    fname = trim(catchment_def_path) // '/' // trim(catchment_def_file)
-    
-    inquire(file=fname, exist=file_exists)
-    
-    if (.not. file_exists) then
-    
-       fname = trim(catchment_def_path) // '/clsm/' // trim(catchment_def_file)
-       
-       inquire(file=fname, exist=file_exists)
-       
-       if (.not. file_exists) then
-          
-          if (logit) write(logunit,*) 'cannot find catchment def file'
-          if (logit) write(logunit,*) 'catchment_def_path = ', trim(catchment_def_path)
-          if (logit) write(logunit,*) 'catchment_def_file = ', trim(catchment_def_file)
-          
-       end if
-       
-    end if
-    
-    call read_catchment_def( fname, N_tile, tile_coord )
-    
-    ! ----------------------------------------------------------------------
-    !
-    ! if still needed read gridded elevation (check only first tile!)
-    
-    if ( abs(tile_coord(1)%elev-nodata_generic)<nodata_tol_generic ) then
-       
-       fname = trim(tile_coord_path) 
-       
-       fname = trim(fname) // '/' // 'topo_DYN_ave_' // trim(res_ftag) // '.data'
-       
-       call read_grid_elev( fname, tile_grid, N_tile, tile_coord )    
-       
-    end if
-    
-    ! check whether elevation data is now available
-
-    if ( abs(tile_coord(1)%elev-nodata_generic)<nodata_tol_generic ) then
-    
-       if (logit) write (logunit,*) 'WARNING: tile elevation NOT avaialable'
-       
-    end if
-    
-    ! ----------------------------------------------------------------------
-    !
-    ! fix dateline bug that existed up to and including MERRA version of
-    !  *.til and catchment.def files
-    
-    call fix_dateline_bug_in_tilecoord( N_tile, tile_grid, tile_coord )
-   
-  end subroutine get_land_tile_info
-
-  ! *******************************************************************
-  
-  subroutine read_grid_elev( fname, tile_grid, N_tile, tile_coord )
-
-    ! read gridded elevation file (for GEOS-5 discretizations; NOT available
-    ! for EASE grids, where elevation information is in catchment.def file)
-    
-    ! reichle,  8 Dec 2011: bug fix -- bin elev data is stored in single record
-
-    implicit none
-    
-    character(*),      intent(in) :: fname
-    
-    type(grid_def_type), intent(in) :: tile_grid
-        
-    integer,             intent(in) :: N_tile
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! inout
-    
-    ! local variables
-    
-    integer :: istat, i, j
-
-    real, dimension(tile_grid%N_lon,tile_grid%N_lat) :: grid_elev
-    
-    ! ---------------------------------------------------------------
-    
-    if (logit) write (logunit,'(400A)') 'read_grid_elev(): reading from' // trim(fname)
-    if (logit) write (logunit,*)
-    
-    ! open, read, and close file
-    
-    open(10, file=fname, form='unformatted', status='old', &
-         convert='little_endian', action='read', iostat=istat)
- 
-    if (istat/=0) then
-       
-       if (logit) write (logunit,*) 'WARNING: cannot open file, returning'
-
-       grid_elev = nodata_generic
-
-    else
-       
-       !  binary elevation data is stored in single Fortran record
-       
-       read (10) (( grid_elev(i,j), i=1,tile_grid%N_lon), j=1,tile_grid%N_lat)
-       
-       close (10,status='keep')
-
-       if (logit) write (logunit,*) 'done reading file'
-       if (logit) write (logunit,*)    
-       
-    end if
-
-    ! ---------------------------
-    
-    ! map elevation to tiles
-    
-    do i=1,N_tile
-       
-       tile_coord(i)%elev = grid_elev( tile_coord(i)%i_indg, tile_coord(i)%j_indg )
-       
-    end do
-    
-  end subroutine read_grid_elev
-  
-  ! *******************************************************************
-
-  subroutine fix_dateline_bug_in_tilecoord( N_tile, tile_grid, tile_coord )
-
-    ! bug in com_lon and minlon/maxlon for tiles straddling the dateline
-    ! existed through (and including) MERRA tag
-    !
-    ! for now do not to allow any tiles that straddle the dateline
-    !
-    ! reichle,  5 Feb 2008
-
-    implicit none
-    
-    integer, intent(in) :: N_tile
-    
-    type(grid_def_type), intent(in) :: tile_grid
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! inout
-    
-    ! locals
-
-    real, parameter :: latlon_tol = 1e-4
-    
-    integer :: k
-    
-    real :: this_minlon, this_maxlon
-    
-    ! --------------------------------------------
-    !
-    ! check whether there could be tiles crossing the dateline
-    
-    if ( (tile_grid%ll_lon<-180.) .and.  &
-         (.not. (tile_grid%ll_lon-nodata_generic)<nodata_tol_generic) ) then
-       
-       do k=1,N_tile
-          
-          ! min/max longitude of tile definition grid cell
-          
-          this_minlon = &
-               tile_grid%ll_lon + real(tile_coord(k)%i_indg-1)*tile_grid%dlon
-          
-          this_maxlon = this_minlon + tile_grid%dlon
-          
-          ! fix min/max lon
-          
-          if (abs(tile_coord(k)%max_lon-tile_coord(k)%min_lon)>tile_grid%dlon+latlon_tol) then
-             
-             if (logit) write (logunit,*) &
-                  'resetting min/maxlon in tile_id=', tile_coord(k)%tile_id
-             
-             ! "push" tile to the east of the dateline
-             
-             tile_coord(k)%min_lon = -180.
-             tile_coord(k)%max_lon = -180. + 0.5*tile_grid%dlon
-             
-          end if
-          
-          
-          ! check that com_lon is within tile definition grid cell
-          
-          if ( .not. (  &
-               (tile_coord(k)%com_lon >= this_minlon) .and.                 &
-               (tile_coord(k)%com_lon <= this_maxlon)        ) ) then
-             if (logit) write (logunit,*) &
-                  'resetting com_lon in tile_id=', tile_coord(k)%tile_id
-             
-             tile_coord(k)%com_lon = &
-                  0.5*(tile_coord(k)%min_lon + tile_coord(k)%max_lon)
-             
-          end if
-          
-       end do
-    end if
-    
-  end subroutine fix_dateline_bug_in_tilecoord
-
-  ! **************************************************************
-
-  subroutine reorder_tiles( reorder, pfaf_system, N_tile, tile_coord, d2g, N_tiles_cont )
-    
-    ! Re-order tile_coord (and d2g) for more optimal domain decomposition and 
-    ! to address the date-line issue (subroutine get_obs_pred() requires that 
-    ! local domains must not have tiles on both sides of the dateline).
-    !
-    ! If input argument "reorder" is ".false." and "pfaf_system=0", assume that tiles have 
-    ! already been reordered.  Check for obvious violations and only return "N_tiles_cont".
-    ! 
-    ! Typically done only by the root process (because the re-ordering requires
-    ! a second copy of the full domain tile coord structure).
-    !
-    ! reichle, 26 June 2012
-    ! reichle, 14 June 2013 - L1bas bug fix
-    ! reichle, 31 Oct  2017 - added functionality for SRTM-based tiles
-    !
-    ! ---------------------------------------------------------------
-        
-    implicit none
-    
-    logical,                                      intent(in)    :: reorder
-    
-    integer,                                      intent(in)    :: pfaf_system, N_tile
-    
-    type(tile_coord_type), dimension(N_tile),     intent(inout) :: tile_coord  
-    
-    integer,               dimension(N_tile),     intent(inout) :: d2g
-
-    integer,               dimension(N_cont_max), intent(out)   :: N_tiles_cont
-    
-    ! local variables
-    
-    ! (max) number of Level 1 Pfafstetter basins per continent    
-    
-    integer, parameter :: N_L1bas_per_cont = 10   
-    
-    integer                                          :: i, j, j_prev, ii, jj, kk
-
-    integer, dimension(N_cont_max)                   :: cont_beg, cont_end, jj_cont
-    
-    integer, dimension(N_cont_max*N_L1bas_per_cont)  :: N_tiles_L1bas, j_L1bas
-    integer, dimension(N_cont_max*N_L1bas_per_cont)  :: jstart_L1bas, jend_L1bas
-    
-    integer, dimension(N_tile)                       :: cont, L1bas, d2g_tmp
-    
-    type(tile_coord_type), dimension(:), pointer     :: tc_tmp => null()    
-    
-    character(len=*), parameter :: Iam = 'reorder_tiles'
-    character(len=400) :: err_msg
-    character(len=9)   :: tmpstr9
-    character(len=3)   :: tmpstr3
-
-    ! -----------------------------------------------------------------------------
-
-    select case (pfaf_system)
-       
-    case (0)    
-       
-       ! Level 6 Pfafstetter numbers based on Hydro-1k
-       !
-       ! - for boundary condition files through ~2016
-       ! - tile_coord%pfaf is actual Level-6 Pfafstetter number
-
-    ! -----------------------------------------------------------------------------
-    !
-    ! Step 1: Count tiles on each continent and re-assign "problem" tiles 
-    !         to continents that are on the same side of the dateline.
-    !         Also process Level 1 basin information for later use
-    
-    N_tiles_cont  = 0
-    N_tiles_L1bas = 0
-    
-    j_prev = 0
-    
-    do i=1,N_tile
-       
-       ! definition of continents
-       
-       !  NAMER  = 1
-       !  SAMER  = 2
-       !  EUROPE = 3
-       !  AFRICA = 4
-       !  ASIA   = 5
-       !  AUST   = 6
-       
-       cont( i) =  (tile_coord(i)%pfaf/1000000)      + 1;
-       
-       ! definition of Level 1 basins
-       !
-       ! bug fix - reichle, 14 Jun 2013 
-
-       L1bas(i) = ((tile_coord(i)%pfaf/ 100000) - (cont(i)-1)*10) + 1;
-
-       ! -------------
-       
-       ! reassign some islands to make bounding boxes more reasonable
-       
-       ! if SAMER and west of 20W reassign to AFRICA (S Atlantic)
-       
-       if (cont(i)==2 .and. tile_coord(i)%com_lon>-20.) then
-          
-          cont( i) = 4
-          L1bas(i) = 6 
-          
-       end if
-       
-       ! if AUST and west of dateline reassign to NAMER (Hawaii)
-       
-       if ( cont(i)==6                 .and. &
-            tile_coord(i)%com_lon< 0.  .and. &
-            tile_coord(i)%com_lat>15.)       &
-            cont(i) = 1
-       
-       ! NOTE: could introduce additional "continents", eg., for
-       !       the Pacific islands
-       
-       ! -------------
-       
-       ! reassignments to address dateline issue
-       
-       ! if NAMER and west of dateline reassign to ASIA
-       
-       if (cont(i)==1 .and. tile_coord(i)%com_lon>0.)  cont(i) = 5
-       
-       ! if SAMER and west of dateline reassign to AUST
-       
-       if (cont(i)==2 .and. tile_coord(i)%com_lon>0.)  cont(i) = 6
-       
-       ! if ASIA and east of dateline reassign to NAMER
-       
-       if (cont(i)==5 .and. tile_coord(i)%com_lon<0.) then
-          
-          cont(i)  = 1
-          L1bas(i) = 2
-          
-       end if
-       
-       ! if AUST and east of dateline reassign to SAMER
-       
-       if (cont(i)==6 .and. tile_coord(i)%com_lon<0.) then
-          
-          cont(i)  = 2
-          L1bas(i) = 2
-          
-       end if
-       
-       ! count number of tiles on each continent
-       
-       N_tiles_cont(cont(i)) = N_tiles_cont(cont(i)) + 1
-       
-       ! count number of tiles in each basin
-       
-       j = (cont(i)-1)*N_L1bas_per_cont + L1bas(i)
-       
-       N_tiles_L1bas(j) = N_tiles_L1bas(j) + 1
-
-       ! check for obvious violations of the assumption that tiles have already
-       ! been reordered
-       
-       if (.not. reorder) then
-          
-          if (j<j_prev) then
-             err_msg = 'tiles cannot have been reordered'
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          end if
-          
-          j_prev = j
-          
-       end if
-       
-    end do
-    
-    ! ---------------------------------------------------------------
-    !
-    ! Step 2: Re-arrange tile_coord in order of revised continent and
-    !         Level 1 basin IDs
-    
-    if (reorder) then
-       
-       jstart_L1bas(1)                         = 1
-       jend_L1bas(N_cont_max*N_L1bas_per_cont) = N_tile
-       
-       do j=1,(N_cont_max*N_L1bas_per_cont-1)
-          
-          jend_L1bas(j)     = jstart_L1bas(j) + N_tiles_L1bas(j) - 1
-          jstart_L1bas(j+1) = jend_L1bas(j) + 1
-          
-       end do
-       
-       j_L1bas = jstart_L1bas
-       
-       allocate(tc_tmp(N_tile))
-       
-       do i=1,N_tile
-          
-          j = (cont(i)-1)*N_L1bas_per_cont + L1bas(i)
-          
-          tc_tmp( j_L1bas(j)) = tile_coord(i)
-          
-          d2g_tmp(j_L1bas(j)) = d2g(       i)
-          
-          j_L1bas(j) = j_L1bas(j) + 1
-          
-       end do
-       
-       tile_coord = tc_tmp
-       
-       d2g        = d2g_tmp       
-       
-       deallocate(tc_tmp)
-       
-    end if
-
-       ! ------------------------------------------------------------
-
-       
-    case (1)   
-
-       ! Level 12 Pfafstetter catchments based on SRTM
-       !
-       ! - for boundary condition files from ~2017
-       ! - tile_coord%pfaf is a consecutive number (not the actual Level-12 Pfafstetter number)
-       
-       ! -----------------------------------------------------------------------------
-       !
-       ! Step 1: Count tiles on each continent and re-assign "problem" tiles 
-       !         to continents that are on the same side of the dateline.
-       
-       N_tiles_cont  = 0
-       
-       do i=1,N_tile
-          
-          ! definition of continents (retain order of continents from pfaf_system=0)
-          
-          ! Asia   :      1- 75368  -->  continent = 5
-          ! Africa :  75369-140751  -->  continent = 4
-          ! NA     : 140752-189105  -->  continent = 1
-          ! Europe : 189106-229074  -->  continent = 3
-          ! SA     : 229075-267083  -->  continent = 2
-          ! AU     : 267084-291284  -->  continent = 6
-          
-          select case (tile_coord(i)%pfaf)
-             
-          case (      1 :  75368);  cont(i) = 5
-          case (  75369 : 140751);  cont(i) = 4
-          case ( 140752 : 189105);  cont(i) = 1
-          case ( 189106 : 229074);  cont(i) = 3
-          case ( 229075 : 267083);  cont(i) = 2
-          case ( 267084 : 291284);  cont(i) = 6
-             
-          case default          
-             
-             write(tmpstr9,'(i9)') tile_coord(i)%pfaf
-             write(tmpstr3,'(i3)') pfaf_system
-             
-             err_msg = 'unknown tile_coord(i)%pfaf for i=' // tmpstr9 // ', pfaf_system=' // tmpstr3 
-             
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-             
-          end select
-          
-          
-          ! -------------
-             
-          ! reassignments to address dateline issue
-          
-          ! if ASIA and east of dateline reassign to NAMER
-          
-          if (cont(i)==5 .and. tile_coord(i)%com_lon<0.)  cont(i)  = 1
-          
-          ! if AUST and east of dateline reassign to SAMER
-          
-          if (cont(i)==6 .and. tile_coord(i)%com_lon<0.)  cont(i)  = 2
-
-          ! -------------
-                    
-          ! count number of tiles on each continent
-          
-          N_tiles_cont(cont(i)) = N_tiles_cont(cont(i)) + 1
-          
-       end do
-       
-       ! ---------------------------------------------------------------
-       !
-       ! Step 2: ALWAYS reorder tile_coord such that "continents"
-       !                are arranged in contiguous chunks
-       
-       ! find index range for each continent
-       !
-       ! NOTE: if N_cont(kk)=0, then cont_beg(kk) and cont_end(kk) are not used 
-       !                             (and cont_beg(kk)=cont_end(kk)+1)
-
-       cont_beg(1) = 1;
-       cont_end(1) = N_tiles_cont(1);
-       
-       do kk=2,N_cont_max
-          
-          cont_end(kk) = cont_end(kk-1) + N_tiles_cont(kk);
-          
-          cont_beg(kk) = cont_end(kk)   - N_tiles_cont(kk) + 1;
-          
-       end do
-       
-       ! re-arrange order by continent (order within continent is unchanged)
-
-       allocate(tc_tmp(N_tile))
-
-       jj_cont = cont_beg
-       
-       do ii=1,N_tile
-          
-          jj = jj_cont( cont(ii) )
-          
-          tc_tmp( jj) = tile_coord(ii)
-          
-          d2g_tmp(jj) = d2g(       ii)
-          
-          jj_cont( cont(ii) ) = jj_cont( cont(ii) ) + 1
-          
-       end do
-       
-       tile_coord = tc_tmp
-       
-       d2g        = d2g_tmp       
-       
-       deallocate(tc_tmp)
-              
-       ! ------------------------------------------------------------
-
-    case default
-                    
-       write(tmpstr3,'(i3)') pfaf_system
-       
-       err_msg = 'unknown pfaf_system=' // tmpstr3 
-       
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       
-    end select
-   
-  end subroutine reorder_tiles
-  
-  ! *******************************************************************
-  
-  subroutine read_catchment_def( catchment_def_file, N_tile, tile_coord )
-    
-    ! reichle, 17 May 2011: read elevation data if available
-    
-    ! format of catchment.def file
-    !
-    ! Header line: N_tile
-    !
-    ! Columns: tile_id, Pfaf, min_lon, max_lon, min_lat, max_lat, [elev]
-    !
-    ! Elevation [m] is ONLY available for EASE grid tile definitions
-
-    implicit none
-    
-    character(*), intent(in) :: catchment_def_file
-    
-    integer, intent(in) :: N_tile
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! inout
-    
-    ! locals
-    
-    integer :: i, istat, tmpint1, sweep
-    
-    integer, dimension(N_tile) :: tmp_tileid, tmp_pfaf
-    
-    character(len=*), parameter :: Iam = 'read_catchment_def'
-    character(len=400) :: err_msg
-    
-    ! ---------------------------------------------------------------
-    
-    ! read file header 
-    
-    if (logit) write (logunit,'(400A)') &
-         'read_catchment_def(): reading from' // trim(catchment_def_file)
-    if (logit) write (logunit,*)
-    
-    ! sweep=1: Try reading 7 columns.  If this fails, try again.
-    ! sweep=2: Read only 6 columns.
-    
-    do sweep=1,2
-       
-       if (logit) write (logunit,*) 'starting sweep ', sweep
-
-       open (10, file=trim(catchment_def_file), form='formatted', action='read') 
-       
-       read (10,*) tmpint1
-       
-       if (logit) write (logunit,*) 'file contains coordinates for ', tmpint1, ' tiles' 
-       if (logit) write (logunit,*)
-       
-       if (N_tile/=tmpint1) then
-          print*,"need :", N_tile,"but have: ",tmpint1
-          err_msg = 'tile_coord_file and catchment_def_file mismatch. (1)'
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       end if
-       
-       do i=1,N_tile
-          
-          if (sweep==1) then
-             
-             ! read 7 columns, avoid using exact format specification
-             
-             read (10,*, iostat=istat) tmp_tileid(i), tmp_pfaf(i), &
-                  tile_coord(i)%min_lon,    &
-                  tile_coord(i)%max_lon,    &
-                  tile_coord(i)%min_lat,    &
-                  tile_coord(i)%max_lat,    &
-                  tile_coord(i)%elev
-             
-          else
-
-             ! read 6 columns, avoid using exact format specification
-             
-             read (10,*, iostat=istat) tmp_tileid(i), tmp_pfaf(i), &
-                  tile_coord(i)%min_lon,    &
-                  tile_coord(i)%max_lon,    &
-                  tile_coord(i)%min_lat,    &
-                  tile_coord(i)%max_lat
-             
-             tile_coord(i)%elev = nodata_generic
-             
-          end if
-          
-          if (istat/=0) then   ! read error
-             
-             if (sweep==1) then
-                
-                close(10,status='keep')
-                
-                if (logit) write (logunit,*) 'sweep 1 failed, trying sweep 2'
-                
-                exit  ! exit sweep 1, try sweep 2
-                
-             else
-                
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'sweep 2 failed')
-                
-             end if
-             
-          end if
-          
-          if (i==N_tile) then  ! reached end of tile loop w/o read error
-             
-             close(10,status='keep')
-             
-             if (logit) write (logunit,*) 'sweep ', sweep, 'successfully completed'
-             
-             return
-             
-          end if
-          
-       end do   ! loop through tiles
-       
-    end do      ! loop through sweeps
-    
-    if ( any(tile_coord(1:N_tile)%tile_id/=tmp_tileid) .or.       &
-         any(tile_coord(1:N_tile)%pfaf   /=tmp_pfaf)            ) then
-
-       err_msg = 'tile_coord_file and catchment_def_file mismatch. (2)'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-    end if
-    
-    ! -----------------------------------------------------------------
-    
-  end subroutine read_catchment_def
   
   ! *******************************************************************
   
@@ -2210,30 +990,6 @@ contains
     end do
         
   end subroutine get_tile_num_from_latlon
-
-  ! *******************************************************************
-
-  logical function is_cat_in_box(                                &
-       this_minlon, this_minlat, this_maxlon, this_maxlat,       &
-       minlon, minlat, maxlon, maxlat        )
-    
-    ! determine whether catchment is within bounding box - reichle, 7 May 2003
-    
-    implicit none
-    
-    real :: this_minlon, this_minlat, this_maxlon, this_maxlat
-    real :: minlon, minlat, maxlon, maxlat
-    
-    if ( (this_minlon >= minlon) .and.        &
-         (this_maxlon <= maxlon) .and.        &
-         (this_minlat >= minlat) .and.        & 
-         (this_maxlat <= maxlat)       )    then
-       is_cat_in_box = .true. 
-    else
-       is_cat_in_box = .false.
-    end if
-    
-  end function is_cat_in_box
   
   ! *******************************************************************
   
@@ -2468,11 +1224,68 @@ contains
     N_tile_in_ellipse = mm
     
   end subroutine get_tile_num_in_ellipse
+
+  ! **********************************************************************
   
-  
+  subroutine tile2grid_simple( N_tile, i_indgs, j_indgs, tile_grid, tile_data, grid_data)
+
+    ! Interpolate from tile space to grid space without interpolation/weighted/no-data-handling.
+    ! Simply assign the tile value to the grid cell (last assignment prevails)
+
+    implicit none
+    
+    integer, intent(in) :: N_tile
+
+    integer, intent(in) :: i_indgs(:)     ! dimension(N_tile)
+    integer, intent(in) :: j_indgs(:)     ! dimension(N_tile)
+     
+    type(grid_def_type), intent(in) :: tile_grid
+    
+    real, dimension(N_tile), intent(in) :: tile_data
+    
+    real, dimension(tile_grid%N_lon,tile_grid%N_lat), intent(out) :: grid_data
+        
+    ! local variables
+    
+    integer :: n, i, j, off_i, off_j
+    real, parameter :: no_data= -9999.   
+    character(len=*), parameter :: Iam = 'tile2grid_simple'
+    character(len=400) :: err_msg
+
+    ! ------------------------------------
+    
+    if (size(i_indgs)/=N_tile .or. size(j_indgs)/=N_tile) then
+       err_msg = '[i,j]_indg and tile_data do not match.'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    end if
+    !
+    ! adjust for 0-based indexing (eg., EASE grids)
+    !
+    off_i = tile_grid%i_offg + (tile_grid%ind_base - 1)
+    off_j = tile_grid%j_offg + (tile_grid%ind_base - 1)
+    
+    ! loop through tile space
+
+    grid_data = no_data
+    do n=1,N_tile
+       i = i_indgs(n) - off_i
+       j = j_indgs(n) - off_j
+       grid_data(i,j) = tile_data(n)
+    end do
+    
+  end subroutine tile2grid_simple
+
   ! *******************************************************************
-  
-  subroutine tile2grid( N_tile, tile_coord, tile_grid, tile_data,    &
+  !
+  ! The subroutine tile2grid_full() is the original LDASsa tile2grid() 
+  !  subroutine with weighted averaging and no-data-handling.
+  !
+  ! This subroutine should no longer be used and is provided here for
+  !   reference only.  Use MAPL LocationStream instead.
+  !
+  ! - reichle, 13 July 2020
+
+  subroutine tile2grid_full( N_tile, tile_coord, tile_grid, tile_data,    &
        grid_data, no_data_value, no_data_tol, echo )
     
     ! map from tile space to tile definition grid
@@ -2601,53 +1414,10 @@ contains
        end do
     end do
     
-  end subroutine tile2grid
+  end subroutine tile2grid_full
   
-  subroutine tile2grid_simple( N_tile, tile_coord, tile_grid, tile_data, grid_data)
-    ! no interpolation or weighted. simply assign the tile value to grid
-    implicit none
-    
-    integer, intent(in) :: N_tile
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
-    
-    type(grid_def_type), intent(in) :: tile_grid
-    
-    real, dimension(N_tile), intent(in) :: tile_data
-    
-    real, dimension(tile_grid%N_lon,tile_grid%N_lat), intent(out) :: grid_data
-        
-    ! local variables
-    
-    integer :: n, i, j, off_i, off_j
-    real, parameter :: no_data= -9999.   
-    character(len=*), parameter :: Iam = 'tile2grid_simple'
-    character(len=400) :: err_msg
-
-    ! ------------------------------------
-    
-    if (size(tile_coord)/=N_tile) then
-       err_msg = 'tile_coord and tile_data do not match.'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-    end if
-    !
-    ! adjust for 0-based indexing (eg., EASE grids)
-    !
-    off_i = tile_grid%i_offg + (tile_grid%ind_base - 1)
-    off_j = tile_grid%j_offg + (tile_grid%ind_base - 1)
-    
-    ! loop through tile space
-
-    grid_data = no_data
-    do n=1,N_tile
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
-       grid_data(i,j) = tile_data(n)
-    end do
-    
-  end subroutine tile2grid_simple
-
   ! *******************************************************************
+
   subroutine tile_mask_grid( tile_grid, N_tile, i_indgs,j_indgs, grid_data)
     
     ! set grid cell to no value if there is no tile in it
@@ -2689,16 +1459,16 @@ contains
 
   end subroutine tile_mask_grid
 
-  subroutine grid2tile_new( tile_grid, N_tile, i_indgs,j_indgs, grid_data, tile_data)
+  ! **********************************************************************
+
+  subroutine grid2tile_real( tile_grid, N_tile, i_indgs,j_indgs, grid_data, tile_data)
     
-    ! map from tile definition grid to tile space
-    !
-    ! NOTE: tile_coord must match tile_data
+    ! map from grid to tile space
     !
     ! The indices tile_coord%i_indg and tile_coord%j_indg refer to the *global*
     ! tile definition grid (as obtained from the tile_coord_file).
     ! Integers "off_i" and "off_j" describe the offset between the global 
-    ! "tile_grid_g" and a smaller "tile_grid_d" for the domaim of interest.  
+    ! "tile_grid_g" and a smaller "tile_grid_d" for the domain of interest.  
     ! With these offsets grid2tile() can be used to map from a
     ! subgrid of "tile_grid_g" to tile space
     !
@@ -2722,10 +1492,15 @@ contains
     
     integer :: n, i, j, off_i, off_j
 
-    character(len=*), parameter :: Iam = 'grid2tile_new'
+    character(len=*), parameter :: Iam = 'grid2tile_real'
     character(len=400) :: err_msg
     
     ! ------------------------------------
+    
+    if (size(i_indgs)/=N_tile .or. size(j_indgs)/=N_tile) then
+       err_msg = '[i,j]_indg and tile_data do not match.'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    end if
     
     ! adjust for 0-based indexing (eg., EASE grids)
     
@@ -2741,71 +1516,13 @@ contains
        
     end do
     
-  end subroutine grid2tile_new
-  
-  subroutine grid2tile_old( tile_grid, N_tile, tile_coord, grid_data, tile_data)
-    
-    ! map from tile definition grid to tile space
-    !
-    ! NOTE: tile_coord must match tile_data
-    !
-    ! The indices tile_coord%i_indg and tile_coord%j_indg refer to the *global*
-    ! tile definition grid (as obtained from the tile_coord_file).
-    ! Integers "off_i" and "off_j" describe the offset between the global 
-    ! "tile_grid_g" and a smaller "tile_grid_d" for the domaim of interest.  
-    ! With these offsets grid2tile() can be used to map from a
-    ! subgrid of "tile_grid_g" to tile space
-    !
-    ! reichle, 28 Jan 2005
-    ! reichle, 16 May 2005 - added offset for "domain" grid
-    
-    implicit none
-    
-    type(grid_def_type), intent(in) :: tile_grid
-    
-    integer, intent(in) :: N_tile
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
-    
-    real, dimension(tile_grid%N_lon,tile_grid%N_lat), intent(in) :: grid_data
-    
-    real, dimension(N_tile), intent(out) :: tile_data
-        
-    ! local variables
-    
-    integer :: n, i, j, off_i, off_j
+  end subroutine grid2tile_real
 
-    character(len=*), parameter :: Iam = 'grid2tile_Old'
-    character(len=400) :: err_msg
-    
-    ! ------------------------------------
-    
-    if (size(tile_coord)/=N_tile) then
-       err_msg = 'tile_coord and tile_data do not match.'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-    end if
-       
-    ! adjust for 0-based indexing (eg., EASE grids)
-    
-    off_i = tile_grid%i_offg + (tile_grid%ind_base - 1)
-    off_j = tile_grid%j_offg + (tile_grid%ind_base - 1)
-        
-    do n=1,N_tile
-       
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
-       
-       tile_data(n) = grid_data(i,j)
-       
-    end do
-    
-  end subroutine grid2tile_old
+  ! **********************************************************************
   
-  ! *******************************************************************
-  
-  subroutine grid2tile_real8( tile_grid, N_tile, tile_coord, grid_data_8, tile_data_8)
+  subroutine grid2tile_real8( tile_grid, N_tile, i_indgs,j_indgs, grid_data_8, tile_data_8)
     
-    ! map from tile definition grid to tile space for real*8
+    ! same as grid2tile_real but for real*8
     !
     ! reichle,  3 Feb 2014
     
@@ -2814,8 +1531,8 @@ contains
     type(grid_def_type), intent(in) :: tile_grid
     
     integer, intent(in) :: N_tile
-    
-    type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+    integer, intent(in) :: i_indgs(:)
+    integer, intent(in) :: j_indgs(:)
     
     real*8, dimension(tile_grid%N_lon,tile_grid%N_lat), intent(in) :: grid_data_8
     
@@ -2830,8 +1547,8 @@ contains
 
     ! ------------------------------------
     
-    if (size(tile_coord)/=N_tile) then
-       err_msg = 'tile_coord and tile_data do not match.'
+    if (size(i_indgs)/=N_tile .or. size(j_indgs)/=N_tile) then
+       err_msg = '[i,j]_indg and tile_data do not match.'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
         
@@ -2842,160 +1559,18 @@ contains
         
     do n=1,N_tile
        
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
+       i = i_indgs(n) - off_i
+       j = j_indgs(n) - off_j
        
        tile_data_8(n) = grid_data_8(i,j)
        
     end do
     
   end subroutine grid2tile_real8
-  
-  ! *************************************************************************
 
-  subroutine get_is_land(tile_coord, tile_grid, is_land, rc)
-
-    ! return the logical array is_land with
-    !    is_land(i,j) = .true.     if the cell (i,j) has land
-    !    is_land(i,j) = .false.    otherwise
-
-    implicit none
-
-    ! input
-    type(tile_coord_type), dimension(:), pointer, intent(in) :: tile_coord
-    type(grid_def_type), intent(in) :: tile_grid
-
-    ! output
-    logical, dimension(tile_grid%N_lon, tile_grid%N_lat), intent(out) :: is_land
-    integer, intent(out), optional :: rc
-
-    ! local
-    real :: no_land_tol, dummy, w
-    integer :: N_tile, n, i, j, off_i, off_j
-
-    ! status report
-    if (present(rc)) rc = 1
-
-    no_land_tol = 10.0*epsilon(dummy)
-
-    ! adjust for 0-based indexing (e.g EASE grids)
-    off_i = tile_grid%i_offg + (tile_grid%ind_base - 1)
-    off_j = tile_grid%j_offg + (tile_grid%ind_base - 1)
-    
-    
-    N_tile = size(tile_coord)
-    is_land = .false.
-    do n=1,N_tile
-       i = tile_coord(n)%i_indg - off_i
-       j = tile_coord(n)%j_indg - off_j
-
-       w = tile_coord(n)%frac_cell
-       if (w>no_land_tol) is_land(i,j) = .true.
-    end do
-       
-    ! status report - all is well
-    if (present(rc)) rc = 0
-
-  end subroutine get_is_land
-
-  subroutine read_black_or_whitelist(N_cat, fname, blacklist, N_black)
-
-    ! read numbers/IDs of blacklisted catchments 
-    !
-    ! format of blacklist file: ASCII list of "Pfafstetter+3" numbers
-    !
-    ! N_black = number of blacklisted catchments
-    !
-    ! reichle, 2 May 2003
-    !
-    ! --------------------------------------------------------------
-
-    implicit none
-
-    ! N_cat = max number of catchments allowed in list 
-    !         (use N_cat_global when calling this subroutine)
-
-    integer,        intent(in)  :: N_cat
-    character(*), intent(in)  :: fname
-
-    integer,        intent(out) :: N_black
-
-    integer, dimension(N_cat), intent(out) :: blacklist
-
-    ! locals
-
-    integer :: istat, tmpint
-
-    logical :: file_exists
-
-    character(len=*), parameter :: Iam = 'read_black_or_whitelist'
-    character(len=400) :: err_msg
-
-    ! -----------------------------------------------------------
-
-    N_black = 0
-
-    inquire( file=fname, exist=file_exists)
-
-    if (file_exists) then
-
-       open(10, file=fname, form='formatted', action='read', &
-            status='old', iostat=istat)
-
-       if (istat==0) then
-
-          if (logit) write (logunit,*) &
-               'reading black- or whitelist from ', trim(fname)
-          if (logit) write (logunit,*)
-
-          do
-             read(10,*,iostat=istat) tmpint
-
-             if (istat==-1) then
-                if (logit) write (logunit,*) ' found ', N_black, ' catchments on list'
-                exit
-             else if (istat/=0) then
-                err_msg = 'read error other than end-of-file'
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-             else
-                N_black = N_black+1
-                blacklist(N_black) = tmpint
-             end if
-
-             if (N_black>N_cat) then
-
-                write (tmpstring10,*) N_cat
-                write (tmpstring40,*) N_black
-
-                err_msg = 'N_black=' // trim(tmpstring40) &
-                     // ' > N_cat=' // trim(tmpstring10)
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-             end if
-          end do
-
-          close(10,status='keep')
-
-       else
-
-          if (logit) write (logunit,*) &
-               'could not open black- or whitelist file ', trim(fname)
-
-       end if
-
-    else
-
-       if (logit) write (logunit,*) &
-            'black- or whitelist file does not exist: ', trim(fname)
-
-    end if
-
-    if (logit) write (logunit,*)
-
-  end subroutine read_black_or_whitelist
-
-
+  ! **********************************************************************
 
 end module LDAS_TileCoordRoutines
 
 
+! ================================= EOF =======================================

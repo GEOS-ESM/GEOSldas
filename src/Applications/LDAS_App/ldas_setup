@@ -44,7 +44,7 @@ class LDASsetup:
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
-            'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE','GRIDNAME']
+            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME']
 
 
         # ------
@@ -303,8 +303,8 @@ class LDASsetup:
         _domain_dic['MAXLON']= 180.
         _domain_dic['MINLAT']= -90.
         _domain_dic['MAXLAT']=  90.
-        _domain_dic['BLACK_FILE']= "''"
-        _domain_dic['WHITE_FILE']= "''"
+        _domain_dic['EXCLUDE_FILE']= "''"
+        _domain_dic['INCLUDE_FILE']= "''"
          
         for key,val in _domain_dic.iteritems() :
             if key in self.rqdExeInp :
@@ -314,9 +314,11 @@ class LDASsetup:
         for key,val in _domain_dic.iteritems() :
             keyn=(key+"  = ").ljust(16)
             valn = str(val)
-            fout.write(keyn+ valn +'\n')
+            if '_FILE' in key:
+               fout.write(keyn+ "'"+valn+"'"+'\n')
+            else :
+               fout.write(keyn+ valn +'\n')
         fout.write('/\n')
-
         
         # make sure bcs files exist
         if self.rqdExeInp['RESTART'].isdigit() :
@@ -642,7 +644,7 @@ class LDASsetup:
         if self.islocal:
             newlocalTile = tile+'.domain'
             print "\nCreating local tile file :"+ newlocalTile
-            print "\nwith land type 1100 excluded....\n"
+            print "\n by excluding land type MAPL_Land_ExcludeFromDomain=1100...\n"
             cmd = './preprocess_ldas.x c_localtile ' + tile + ' ' + newlocalTile 
             print "cmd:   " + cmd
             sp.call(cmd,shell=True)
@@ -1033,9 +1035,6 @@ class LDASsetup:
         
                 rstkey=[catch_,'VEGDYN']
                 rstval=[self.catch,'vegdyn']
-                if((self.has_ldassa_pert or self.has_geos_pert) and self.perturb == 1) :
-                   rstkey=[catch_,'VEGDYN','LANDPERT']
-                   rstval=[self.catch,'vegdyn','landpert']
 
                 if self.has_mwrtm : # and _assim ==1 :
                    keyn='LANDASSIM_INTERNAL_RESTART_FILE'
@@ -1072,6 +1071,9 @@ class LDASsetup:
                 if('-CF' not in self.rqdExeInp['GRIDNAME'] and self.perturb == 1):
                     keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
                     valn = 'landpert'+tmpl_+'_internal_checkpoint'
+                    ldasrcInp[keyn]= valn
+                    keyn = 'LANDPERT_INTERNAL_RESTART_FILE'
+                    valn = '../input/restart/landpert'+tmpl_+'_internal_rst'
                     ldasrcInp[keyn]= valn
                     
     
