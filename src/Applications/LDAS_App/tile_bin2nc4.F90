@@ -14,6 +14,7 @@ PROGRAM tile_bin2nc4
   real, allocatable, dimension (:)    :: lons, lats, var
   integer, allocatable, dimension (:) :: tileid, i_index, j_index 
   integer       :: myunit1, myunit2
+  real :: undef
   ! processing command line agruments
 
   I = iargc()
@@ -68,6 +69,7 @@ PROGRAM tile_bin2nc4
   open (newunit=myunit1, file = trim(DESCRIPTOR), form ='formatted', action = 'read')
   nVars = 0
 
+  undef = 0.100000E+16
   k = 0
   do
      read(myunit1, '(a)', iostat=status) buf
@@ -76,6 +78,10 @@ PROGRAM tile_bin2nc4
      if(buf(1:index(buf,' ') -1) == 'vars') then
         i =  index(buf,' ') 
         read (buf(i:),*, IOSTAT = n) nVars
+     endif
+     if(buf(1:index(buf,' ') -1) == 'undef') then
+        i =  index(buf,' ') 
+        read (buf(i:),*, IOSTAT = n) undef
      endif
      if(nVars /= 0) exit
 
@@ -107,7 +113,7 @@ PROGRAM tile_bin2nc4
      status = NF_PUT_ATT_TEXT(NCFOutID, vid, 'units',                   &
           LEN_TRIM(getAttribute(buf(1:index(buf,' ') -1), UNT = 1)),    &
           getAttribute(buf(1:index(buf,' ') -1), UNT = 1))     
-     
+     status = nf_put_att_real(NCFOutID, vid, '_FillValue',NF_FLOAT, 1, undef) 
   end do
 
 
@@ -253,7 +259,7 @@ PROGRAM tile_bin2nc4
     case ('Psurf');      LONG_NAME = 'surface_pressure';                                                 UNITS = 'Pa'
     case ('PS');         LONG_NAME = 'surface_pressure';                                                 UNITS = 'Pa'
     case ('Rainf_C');    LONG_NAME = 'convective_rainfall';                                              UNITS = 'kg m-2 s-1'
-    case ('Rainf');      LONG_NAME = 'liquid_water_large_scale_precipitation';                           UNITS = 'kg m-2 s-1'
+    case ('Rainf');      LONG_NAME = 'liquid_water_precipitation';                                       UNITS = 'kg m-2 s-1'
     case ('Snowf');      LONG_NAME = 'total_snowfall';                                                   UNITS = 'kg m-2 s-1'
     case ('RainfSnowf'); LONG_NAME = 'RainfSnowf';                                                       UNITS = 'kg m-2 s-1'
     case ('SWnet');      LONG_NAME = 'downward_net_shortwave_radiation';                                 UNITS = 'W m-2'

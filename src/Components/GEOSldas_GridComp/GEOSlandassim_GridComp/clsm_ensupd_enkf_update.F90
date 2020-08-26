@@ -68,8 +68,7 @@ module clsm_ensupd_enkf_update
   use LDAS_TilecoordRoutines,           ONLY:     &
        get_number_of_tiles_in_cell_ij,            &
        get_tile_num_in_cell_ij,                   &
-       grid2tile,                                 &
-       grid2tile_real8
+       grid2tile
 
   use nr_ran2_gasdev,                   ONLY:     &
        NRANDSEED
@@ -402,18 +401,20 @@ contains
        ! from lat/lon to tiles.  This needs to be done:
        ! - by root process (because of call to read_obs() in collect_obs())
        ! - by all processes if FOV>~0 ("tile_num_in_circle" needed in get_obs_pred())
-       if ( (root_proc)                                        .or.            &
+       if ( (root_proc)                                        .or.              &
             (any(obs_param(1:N_obs_param)%FOV>FOV_threshold))        )  then
 
           allocate(N_tile_in_cell_ij_f(tile_grid_f%N_lon,tile_grid_f%N_lat))
 
           ! first call: count how many tiles are in each tile_grid_f cell
-          call get_number_of_tiles_in_cell_ij( N_catf, tile_coord_f, tile_grid_f,    &
-               N_tile_in_cell_ij_f )
+          call get_number_of_tiles_in_cell_ij( N_catf,                           &
+               tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
+               tile_grid_f, N_tile_in_cell_ij_f )
           ! second call: find out which tiles are in each tile_grid_f cell
 
-          call get_tile_num_in_cell_ij( N_catf, tile_coord_f, tile_grid_f,    &
-               maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
+          call get_tile_num_in_cell_ij( N_catf,                                  &
+               tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
+               tile_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
        end if
 
        ! *********************************************************************
@@ -2739,10 +2740,10 @@ contains
                 data_h_9km_tile_8 = real(nodata_generic,kind(0.0D0)) ! init (not in grid2tile!)
                 data_v_9km_tile_8 = real(nodata_generic,kind(0.0D0)) ! init (not in grid2tile!)
 
-                call grid2tile_real8( tile_grid_g, N_catf, tile_coord_f, data_h_9km_grid_8, &
+                call grid2tile( tile_grid_g, N_catf, tile_coord_f%i_indg, tile_coord_f%j_indg, data_h_9km_grid_8, &
                      data_h_9km_tile_8 )
 
-                call grid2tile_real8( tile_grid_g, N_catf, tile_coord_f, data_v_9km_grid_8, &
+                call grid2tile( tile_grid_g, N_catf, tile_coord_f%i_indg, tile_coord_f%j_indg, data_v_9km_grid_8, &
                      data_v_9km_tile_8 )
 
                 ! write into file

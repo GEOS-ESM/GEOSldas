@@ -29,7 +29,6 @@ module mwRTM_types
   private
   
   public :: mwRTM_param_type
-  public :: io_mwRTM_param_type
   public :: mwRTM_param_nodata_check
   
   public :: assignment (=)
@@ -89,157 +88,166 @@ module mwRTM_types
 contains
 
   ! **********************************************************************
-  
-  subroutine io_mwRTM_param_type( action, unitnum, N_tile, mwp, N_catg, tile_id, d2g ) 
-    
-    ! read/write mwRTM_param for domain from/to file
-    !
-    ! write: write mwRTM params for N_tile tiles in domain
-    !
-    ! read:  read mwRTM params for 
-    
-    !
-    ! reichle, 1  Jun 2011
-    ! reichle, 21 Oct 2011 -- added "read" for mwRTM params
-    ! reichle, 22 Oct 2012 -- added check for tile_id to mwRTM param input
-    ! 
-    ! -------------------------------------------------------------------
-    
-    implicit none
-    
-    character,                                 intent(in)    :: action
-       
-    integer,                                   intent(in)    :: unitnum
-    
-    integer,                                   intent(in)    :: N_tile  ! =N_catd
-    
-    type(mwRTM_param_type), dimension(N_tile), intent(inout) :: mwp
 
-    integer, optional,                         intent(in)    :: N_catg    
+  ! Subroutine io_mwRTM_param_type() reads and writes binary mwRTM files and is no longer used.
+  !
+  ! The subroutine has been replaced by:
+  ! - Applications/LDAS_App/mwrtm_bin2nc4.F90 converts mwRTM files from binary to nc4
+  ! - get_mwrtm_param() in GEOS_LandAssimGridComp.F90 converts the internal state
+  !    variables of the Land Assim GridComp into the mwRTM structure.
+  !
+  ! reichle, 4 Aug 2020
 
-    integer, optional,      dimension(N_tile), intent(in)    :: tile_id, d2g
-
-    ! local variables
-    
-    integer :: n, N_tmp
-
-    integer, dimension(:), allocatable :: tmpint
-    real,    dimension(:), allocatable :: tmpreal
-
-    character(len=*), parameter :: Iam = 'io_mwRTM_param_type'
-    character(len=400) :: err_msg
-
-    ! ------------------------------------------------------------------
-
-    select case (action)
-       
-    case ('w','W')     ! write mwp for all tiles in domain
-       
-       write (unitnum) N_tile
-       
-       write (unitnum) (mwp(n)%vegcls    ,    n=1,N_tile)  ! integer
-       write (unitnum) (mwp(n)%soilcls   ,    n=1,N_tile)  ! integer
-       
-       write (unitnum) (mwp(n)%sand      ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%clay      ,    n=1,N_tile)  ! real 
-
-       write (unitnum) (mwp(n)%poros     ,    n=1,N_tile)  ! real 
-       
-       write (unitnum) (mwp(n)%wang_wt   ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%wang_wp   ,    n=1,N_tile)  ! real 
-       
-       write (unitnum) (mwp(n)%rgh_hmin  ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%rgh_hmax  ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%rgh_wmin  ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%rgh_wmax  ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%rgh_Nrh   ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%rgh_Nrv   ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%rgh_polmix,    n=1,N_tile)  ! real 
-       
-       write (unitnum) (mwp(n)%omega     ,    n=1,N_tile)  ! real 
-       
-       write (unitnum) (mwp(n)%bh        ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%bv        ,    n=1,N_tile)  ! real 
-       write (unitnum) (mwp(n)%lewt      ,    n=1,N_tile)  ! real 
-       
-    case ('r','R')
-
-       ! read the parameters for all global tiles (similar to read_land_parameters())
-       
-       ! optional inputs N_catg and d2g must be present
-       
-       if ( (.not. present(N_catg )) .or.      &
-            (.not. present(tile_id)) .or.      &
-            (.not. present(d2g    ))         ) then
-          err_msg = 'missing optional inputs N_catg, tile_id, d2g'
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       end if
-       
-       ! read how many tiles are in file and double-check against N_catg
-       
-       read (unitnum) N_tmp
-       
-       if (N_tmp .ne. N_catg) then
-          err_msg = 'number of tiles in file .ne. N_catg'
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       end if
-       
-       ! allocate tmp vectors
-       
-       allocate(tmpint( N_catg))
-       allocate(tmpreal(N_catg))
-       
-       ! read tile IDs (first record)
-       
-       read (unitnum) tmpint;
-
-       ! make sure tile IDs match (works only for "SiB2_V2" and newer versions)
-       
-       if (any(tile_id/=tmpint(d2g(1:N_tile)))) then
-          err_msg = 'mismatch of tile IDs for mwRTM_parameters'
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       end if
-       
-       ! read and subset from global tile space to domain
-       
-       read (unitnum) tmpint;   mwp(1:N_tile)%vegcls     =  tmpint( d2g(1:N_tile))
-       read (unitnum) tmpint;   mwp(1:N_tile)%soilcls    =  tmpint( d2g(1:N_tile))
-       
-       read (unitnum) tmpreal;  mwp(1:N_tile)%sand       =  tmpreal(d2g(1:N_tile))
-       read (unitnum) tmpreal;  mwp(1:N_tile)%clay       =  tmpreal(d2g(1:N_tile))
-       
-       read (unitnum) tmpreal;  mwp(1:N_tile)%poros      =  tmpreal(d2g(1:N_tile))
-       
-       read (unitnum) tmpreal;  mwp(1:N_tile)%wang_wt    =  tmpreal(d2g(1:N_tile)) 
-       read (unitnum) tmpreal;  mwp(1:N_tile)%wang_wp    =  tmpreal(d2g(1:N_tile))
-       
-       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_hmin   =  tmpreal(d2g(1:N_tile)) 
-       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_hmax   =  tmpreal(d2g(1:N_tile))
-       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_wmin   =  tmpreal(d2g(1:N_tile))
-       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_wmax   =  tmpreal(d2g(1:N_tile))
-       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_Nrh    =  tmpreal(d2g(1:N_tile))
-       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_Nrv    =  tmpreal(d2g(1:N_tile))
-       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_polmix =  tmpreal(d2g(1:N_tile))    
-       
-       read (unitnum) tmpreal;  mwp(1:N_tile)%omega      =  tmpreal(d2g(1:N_tile))
-       
-       read (unitnum) tmpreal;  mwp(1:N_tile)%bh         =  tmpreal(d2g(1:N_tile))
-       read (unitnum) tmpreal;  mwp(1:N_tile)%bv         =  tmpreal(d2g(1:N_tile))
-       read (unitnum) tmpreal;  mwp(1:N_tile)%lewt       =  tmpreal(d2g(1:N_tile))
-       
-       ! clean up
-
-       deallocate(tmpreal)
-       deallocate(tmpint)
-       
-    case default
-       
-       err_msg = 'unknown action ' // action
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       
-    end select
-    
-  end subroutine io_mwRTM_param_type
+!  subroutine io_mwRTM_param_type( action, unitnum, N_tile, mwp, N_catg, tile_id, d2g ) 
+!    
+!    ! read/write mwRTM_param for domain from/to file
+!    !
+!    ! write: write mwRTM params for N_tile tiles in domain
+!    !
+!    ! read:  read mwRTM params for 
+!    
+!    !
+!    ! reichle, 1  Jun 2011
+!    ! reichle, 21 Oct 2011 -- added "read" for mwRTM params
+!    ! reichle, 22 Oct 2012 -- added check for tile_id to mwRTM param input
+!    ! 
+!    ! -------------------------------------------------------------------
+!    
+!    implicit none
+!    
+!    character,                                 intent(in)    :: action
+!       
+!    integer,                                   intent(in)    :: unitnum
+!    
+!    integer,                                   intent(in)    :: N_tile  ! =N_catd
+!    
+!    type(mwRTM_param_type), dimension(N_tile), intent(inout) :: mwp
+!
+!    integer, optional,                         intent(in)    :: N_catg    
+!
+!    integer, optional,      dimension(N_tile), intent(in)    :: tile_id, d2g
+!
+!    ! local variables
+!    
+!    integer :: n, N_tmp
+!
+!    integer, dimension(:), allocatable :: tmpint
+!    real,    dimension(:), allocatable :: tmpreal
+!
+!    character(len=*), parameter :: Iam = 'io_mwRTM_param_type'
+!    character(len=400) :: err_msg
+!
+!    ! ------------------------------------------------------------------
+!
+!    select case (action)
+!       
+!    case ('w','W')     ! write mwp for all tiles in domain
+!       
+!       write (unitnum) N_tile
+!       
+!       write (unitnum) (mwp(n)%vegcls    ,    n=1,N_tile)  ! integer
+!       write (unitnum) (mwp(n)%soilcls   ,    n=1,N_tile)  ! integer
+!       
+!       write (unitnum) (mwp(n)%sand      ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%clay      ,    n=1,N_tile)  ! real 
+!
+!       write (unitnum) (mwp(n)%poros     ,    n=1,N_tile)  ! real 
+!       
+!       write (unitnum) (mwp(n)%wang_wt   ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%wang_wp   ,    n=1,N_tile)  ! real 
+!       
+!       write (unitnum) (mwp(n)%rgh_hmin  ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%rgh_hmax  ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%rgh_wmin  ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%rgh_wmax  ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%rgh_Nrh   ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%rgh_Nrv   ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%rgh_polmix,    n=1,N_tile)  ! real 
+!       
+!       write (unitnum) (mwp(n)%omega     ,    n=1,N_tile)  ! real 
+!       
+!       write (unitnum) (mwp(n)%bh        ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%bv        ,    n=1,N_tile)  ! real 
+!       write (unitnum) (mwp(n)%lewt      ,    n=1,N_tile)  ! real 
+!       
+!    case ('r','R')
+!
+!       ! read the parameters for all global tiles (similar to read_land_parameters())
+!       
+!       ! optional inputs N_catg and d2g must be present
+!       
+!       if ( (.not. present(N_catg )) .or.      &
+!            (.not. present(tile_id)) .or.      &
+!            (.not. present(d2g    ))         ) then
+!          err_msg = 'missing optional inputs N_catg, tile_id, d2g'
+!          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+!       end if
+!       
+!       ! read how many tiles are in file and double-check against N_catg
+!       
+!       read (unitnum) N_tmp
+!       
+!       if (N_tmp .ne. N_catg) then
+!          err_msg = 'number of tiles in file .ne. N_catg'
+!          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+!       end if
+!       
+!       ! allocate tmp vectors
+!       
+!       allocate(tmpint( N_catg))
+!       allocate(tmpreal(N_catg))
+!       
+!       ! read tile IDs (first record)
+!       
+!       read (unitnum) tmpint;
+!
+!       ! make sure tile IDs match (works only for "SiB2_V2" and newer versions)
+!       
+!       if (any(tile_id/=tmpint(d2g(1:N_tile)))) then
+!          err_msg = 'mismatch of tile IDs for mwRTM_parameters'
+!          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+!       end if
+!       
+!       ! read and subset from global tile space to domain
+!       
+!       read (unitnum) tmpint;   mwp(1:N_tile)%vegcls     =  tmpint( d2g(1:N_tile))
+!       read (unitnum) tmpint;   mwp(1:N_tile)%soilcls    =  tmpint( d2g(1:N_tile))
+!       
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%sand       =  tmpreal(d2g(1:N_tile))
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%clay       =  tmpreal(d2g(1:N_tile))
+!       
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%poros      =  tmpreal(d2g(1:N_tile))
+!       
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%wang_wt    =  tmpreal(d2g(1:N_tile)) 
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%wang_wp    =  tmpreal(d2g(1:N_tile))
+!       
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_hmin   =  tmpreal(d2g(1:N_tile)) 
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_hmax   =  tmpreal(d2g(1:N_tile))
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_wmin   =  tmpreal(d2g(1:N_tile))
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_wmax   =  tmpreal(d2g(1:N_tile))
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_Nrh    =  tmpreal(d2g(1:N_tile))
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_Nrv    =  tmpreal(d2g(1:N_tile))
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%rgh_polmix =  tmpreal(d2g(1:N_tile))    
+!       
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%omega      =  tmpreal(d2g(1:N_tile))
+!       
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%bh         =  tmpreal(d2g(1:N_tile))
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%bv         =  tmpreal(d2g(1:N_tile))
+!       read (unitnum) tmpreal;  mwp(1:N_tile)%lewt       =  tmpreal(d2g(1:N_tile))
+!       
+!       ! clean up
+!
+!       deallocate(tmpreal)
+!       deallocate(tmpint)
+!       
+!    case default
+!       
+!       err_msg = 'unknown action ' // action
+!       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+!       
+!    end select
+!    
+!  end subroutine io_mwRTM_param_type
   
   ! ************************************************************
   

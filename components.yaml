@@ -17,7 +17,7 @@ GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: git@github.com:GEOS-ESM/GMAO_Shared.git
   sparse: ./config/GMAO_Shared.sparse
-  tag: v1.1.3
+  tag: v1.1.8
 
 MAPL:
   local: ./src/Shared/@MAPL
@@ -28,6 +28,6 @@ GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: git@github.com:GEOS-ESM/GEOSgcm_GridComp.git
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
-  tag: v1.9.0
+  tag: v1.10.2
 
 

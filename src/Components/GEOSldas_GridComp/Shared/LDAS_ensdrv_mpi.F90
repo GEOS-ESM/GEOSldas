@@ -126,24 +126,27 @@ contains
     !
     !  type :: tile_coord_type
     !     
-    !     integer :: tile_id    ! unique tile ID
-    !     integer :: f_num      ! unique tile ID in full domain
-    !     integer :: typ        ! (0=ocean, 100=land, 19=inland water, 20=ice)
-    !     integer :: pfaf       ! Pfafstetter number (for land tiles, NOT unique)
-    !     real    :: com_lon    ! center-of-mass longitude
-    !     real    :: com_lat    ! center-of-mass latitude
-    !     real    :: min_lon    ! minimum longitude (bounding box for tile)
-    !     real    :: max_lon    ! maximum longitude (bounding box for tile)
-    !     real    :: min_lat    ! minimum latitude (bounding box for tile)
-    !     real    :: max_lat    ! maximum latitude (bounding box for tile)
-    !     integer :: i_indg     ! i index (w.r.t. *global* grid that cuts tiles) 
-    !     integer :: j_indg     ! j index (w.r.t. *global* grid that cuts tiles)
-    !     integer :: cs_i_indg  ! i index (w.r.t. *global* grid that cuts tiles) 
-    !     integer :: cs_j_indg  ! j index (w.r.t. *global* grid that cuts tiles)
-    !     real    :: frac_cell  ! area fraction of grid cell covered by tile
-    !     real    :: frac_pfaf  ! fraction of Pfafstetter catchment for land tiles 
-    !     real    :: area       ! area [km^2]
-    !     real    :: elev       ! elevation above sea level [m]
+    !     integer :: tile_id      ! unique tile ID
+    !     integer :: f_num        ! full domain ID
+    !     integer :: typ          ! (0=MAPL_Ocean, 100=MAPL_Land, 19=MAPL_Lake, 20=MAPL_LandIce) 
+    !     integer :: pfaf         ! Pfafstetter number (for land tiles, NOT unique)
+    !     real    :: com_lon      ! center-of-mass longitude
+    !     real    :: com_lat      ! center-of-mass latitude
+    !     real    :: min_lon      ! minimum longitude (bounding box for tile)
+    !     real    :: max_lon      ! maximum longitude (bounding box for tile)
+    !     real    :: min_lat      ! minimum latitude (bounding box for tile)
+    !     real    :: max_lat      ! maximum latitude (bounding box for tile)
+    !     integer :: i_indg       ! i index (w.r.t. *global* grid that cuts tiles) 
+    !     integer :: j_indg       ! j index (w.r.t. *global* grid that cuts tiles)
+    !     ! For cubed-sphere tile spaces, hash_[x]_indg refers to a lat-lon "hash" grid that will 
+    !     !   be created at runtime to support efficient mapping for perturbations and the EnKF analysis.
+    !     ! For EASE and LatLon tile spaces, hash_[x]_indg is identical to [x]_indg
+    !     integer :: hash_i_indg  ! i index (w.r.t. *global* "hash" grid for perts and EnKF) 
+    !     integer :: hash_j_indg  ! j index (w.r.t. *global* "hash" grid for perts and EnKF)
+    !     real    :: frac_cell    ! area fraction of grid cell covered by tile
+    !     real    :: frac_pfaf    ! fraction of Pfafstetter catchment for land tiles 
+    !     real    :: area         ! area [km^2]
+    !     real    :: elev         ! elevation above sea level [m]
 
     icount = 4
 
@@ -158,7 +161,7 @@ contains
     
     iblock(1) = 4
     iblock(2) = 6
-    iblock(3) = 4 ! add cs_i_indg and cs_j_indg
+    iblock(3) = 4 ! i_indg, j_indg, hash_i_indg and hash_j_indg
     iblock(4) = 4
     
     idisp(1)  = 0

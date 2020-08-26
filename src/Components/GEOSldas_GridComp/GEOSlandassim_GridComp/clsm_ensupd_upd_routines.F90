@@ -1527,22 +1527,26 @@ contains
        
        ! determine tile_grid_lH from tile_coord_lH
        
-       call get_tile_grid( N_catlH, tile_coord_lH, tile_grid_g, tile_grid_lH ) 
+       call get_tile_grid( N_catlH, tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,               &
+            tile_coord_lH%min_lon, tile_coord_lH%min_lat, tile_coord_lH%max_lon, tile_coord_lH%max_lat, &
+            tile_grid_g, tile_grid_lH ) 
        
        allocate(N_tile_in_cell_ij_lH(tile_grid_lH%N_lon,tile_grid_lH%N_lat))
        
        ! first call: count how many tiles are in each tile_grid_lH cell
 
-       call get_number_of_tiles_in_cell_ij( N_catlH, tile_coord_lH, tile_grid_lH,    &
-            N_tile_in_cell_ij_lH )
+       call get_number_of_tiles_in_cell_ij( N_catlH,                                   &
+            tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,                      &
+            tile_grid_lH, N_tile_in_cell_ij_lH )
        
        ! second call: find out which tiles are in each tile_grid_lH cell
        !              [tile numbers in "tile_num_in_cell_ij_lH" are relative
        !               to local halo ("lH") domain]
        
-       call get_tile_num_in_cell_ij( N_catlH, tile_coord_lH, tile_grid_lH,    &
-            maxval(N_tile_in_cell_ij_lH), tile_num_in_cell_ij_lH )
-
+       call get_tile_num_in_cell_ij( N_catlH,                                          &
+            tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,                      &
+            tile_grid_lH, maxval(N_tile_in_cell_ij_lH), tile_num_in_cell_ij_lH )
+       
     end if
     
     ! -----------------------
@@ -3328,7 +3332,7 @@ contains
 
     call get_pert(                                                        &
          N_assim_species, N_ens,                                          &
-         pert_grid_f, pert_grid_lH,                                       &
+         pert_grid_lH, pert_grid_f,                                       &  ! switched order (reichle, 17 Jul 2020)
          dtstep,                                                          &
          obs_pert_param,                                                  &
          Pert_rseed,                                                      &

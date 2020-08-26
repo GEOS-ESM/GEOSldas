@@ -18,7 +18,7 @@ module GEOS_LdasGridCompMod
   use LDAS_EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
   use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type
-  use LDAS_TileCoordRoutines, only: get_tile_grid, get_ij_ind_from_latlon
+  use LDAS_TileCoordRoutines, only: get_tile_grid, get_ij_ind_from_latlon, io_domain_files
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_PertRoutinesMod, only: get_pert_grid
   use LDAS_ensdrv_functions,ONLY:  get_io_filename 
@@ -26,7 +26,6 @@ module GEOS_LdasGridCompMod
   use LDAS_ensdrv_mpi, only: MPI_tile_coord_type, MPI_grid_def_type
   use LDAS_ensdrv_mpi, only: init_MPI_types,mpicomm,numprocs,myid 
   use LDAS_ensdrv_mpi, only: root_proc
-  use LDAS_ensdrv_init_routines, only: io_domain_files
   use LDAS_ensdrv_Globals, only: logunit,logit,root_logit,echo_clsm_ensdrv_glob_param
   use lsm_routines,  only: lsmroutines_echo_constants  
   use StieglitzSnow, only: StieglitzSnow_echo_constants
@@ -165,7 +164,8 @@ contains
     VERIFY_(status)
 
     allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
-    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"   ! BUG? only works for ens_id_width<10)    (reichle, 11 Jun 2020)
+    _ASSERT( ens_id_width < 10, "need 1 billion ensemble members? increase ens_id_width first")
+    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")" 
     do i=1,NUM_ENSEMBLE
        ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
        if(NUM_ENSEMBLE == 1 ) then
@@ -483,12 +483,12 @@ contains
 
        do I = 1,size(centerX,1)
           call ease_inverse(gridname,1.0*(I+I1-2),0.0,lat,lon)
-          centerX(I,:) = lon
+          centerX(I,:) = lon * MAPL_DEGREES_TO_RADIANS
        enddo
 
        do J = 1,size(centerY,2)
           call ease_inverse(gridname,0.0,1.0*(J+J1-2),lat,lon)
-          centerY(:,J) = lat
+          centerY(:,J) = lat * MAPL_DEGREES_TO_RADIANS
        enddo
 
     endif
@@ -590,21 +590,19 @@ contains
           if(trim(grid_type) == "Cubed-Sphere" ) then
 
             ASSERT_(index(tile_grid_g%gridtype, 'c3') /=0)
-            !1) save original index
-            tile_coord_f%cs_i_indg = tile_coord_f%i_indg 
-            tile_coord_f%cs_j_indg = tile_coord_f%j_indg 
             
-            !2) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
+            !1) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
             call get_pert_grid(tile_grid_g, latlon_tmp_g)
             tile_grid_g = latlon_tmp_g
-            !3) change the index
-            !   need to chang min_lon, max_lon, min_lat , max_lat? 
+            !2) get hash index
             do i = 1, N_catf
                call get_ij_ind_from_latlon(latlon_tmp_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
-                 tile_coord_f(i)%i_indg,tile_coord_f(i)%j_indg)
+                 tile_coord_f(i)%hash_i_indg,tile_coord_f(i)%hash_j_indg)
             enddo
             !3) re-generate tile_grid_f in Lat-Lon
-            call get_tile_grid(N_catf, tile_coord_f, tile_grid_g, tile_grid_f)
+            call get_tile_grid(N_catf, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
+                 tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
+                 tile_grid_g, tile_grid_f)
             
           endif
        end block 
@@ -647,7 +645,11 @@ contains
 
     allocate(tcinternal%tile_coord_f,source = tile_coord_f)
     
-    call get_tile_grid(land_nt_local,tcinternal%tile_coord,tile_grid_g,tile_grid_l)
+    call get_tile_grid(land_nt_local,                                            &
+         tcinternal%tile_coord%hash_i_indg, tcinternal%tile_coord%hash_j_indg,   &
+         tcinternal%tile_coord%min_lon,     tcinternal%tile_coord%min_lat,       &
+         tcinternal%tile_coord%max_lon,     tcinternal%tile_coord%max_lat,       &
+         tile_grid_g,tile_grid_l)
    
     ! re-arrange tile_coord_f
 
@@ -885,6 +887,12 @@ contains
        endif
 
     enddo
+
+    if ( mwRTM .and. LSM_CHOICE == 1 ) then
+       ! output_smapl4smlmc
+       call ESMF_GridCompRun(gcs(LANDASSIM), importState=gim(LANDASSIM), exportState=gex(LANDASSIM), clock=clock,phase=4, userRC=status)
+       VERIFY_(status)
+    endif
 
     ! Run land analysis
     if (land_assim) then 

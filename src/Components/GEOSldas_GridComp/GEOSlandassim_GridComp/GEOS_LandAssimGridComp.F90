@@ -206,6 +206,15 @@ contains
          )
     _VERIFY(status)
     
+    !phase 4: output_smapl4smlmc
+    call MAPL_GridCompSetEntryPoint(                                            &
+         gc,                                                                    &
+         ESMF_METHOD_RUN,                                                       &
+         OUTPUT_SMAPL4SMLMC,                                                          &
+         rc=status                                                              &
+         )
+    _VERIFY(status)
+    
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_FINALIZE,                                                  &
@@ -1026,7 +1035,7 @@ contains
     type(tile_coord_type), dimension(:), pointer :: tile_coord_f => null()
     type(tile_coord_type), dimension(:), pointer :: tile_coord_l => null()
 
-    integer :: land_nt_local,i,mpierr, ens
+    integer :: land_nt_local,i,mpierr, ens, ens_id_width
     ! mapping f to re-orderd f so it is continous for mpi_gather
     ! rf -- ordered by processors. Within the processor, ordered by MAPL grid
     integer, allocatable :: f2rf(:) ! mapping re-orderd rf to f for the LDASsa output
@@ -1035,7 +1044,7 @@ contains
     character(len=300)   :: seed_fname
     character(len=300)   :: fname_tpl
     character(len=14)    :: datestamp
-    character(len=4)     :: id_string        ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
+    character(len=ESMF_MAXSTR) :: id_string 
     integer              :: nymd, nhms
 
     !! from LDASsa
@@ -1130,7 +1139,8 @@ contains
     allocate(Pert_rseed_r8(NRANDSEED, NUM_ENSEMBLE), source = 0.0d0)
     
     if (root_proc) then
-       
+       call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+       _VERIFY(status)
        call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
        call MAPL_DateStampGet( clock, datestamp, rc=status)
@@ -1139,10 +1149,10 @@ contains
        read(datestamp(10:13),*) nhms
        nhms = nhms*100
        do ens = 0, NUM_ENSEMBLE-1
-          write(id_string,'(I4.4)') ens + FIRST_ENS_ID  ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
+          call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
           seed_fname = ""
-          call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
-          call read_pert_rseed(id_string,seed_fname,Pert_rseed_r8(:,ens+1))
+          call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(id_string), nymd=nymd,nhms=nhms,stat=status)
+          call read_pert_rseed(trim(id_string),seed_fname,Pert_rseed_r8(:,ens+1))
           
           Pert_rseed(:,ens+1) = nint(Pert_rseed_r8(:,ens+1))
           if (all(Pert_rseed(:,ens+1) == 0)) then
@@ -1391,8 +1401,8 @@ contains
     integer                    :: N_catbias
     character(len=300)         :: seed_fname
     character(len=300)         :: fname_tpl
-    character(len=4)           :: id_string        ! BUG! should be "len=ens_id_width" (reichle, 11 Jun 2020)
-    integer                    :: ens, nymd, nhms
+    character(len=ESMF_MAXSTR) :: id_string
+    integer                    :: ens, nymd, nhms, ens_id_width
 
 #ifdef DBG_LANDASSIM_INPUTS
     ! vars for debugging purposes
@@ -1451,10 +1461,11 @@ contains
     
     ! Pointers to internals
     !----------------------
-    if (mwRTM) then
-       call get_mwrtm_param(INTERNAL, N_catl, rc=STATUS)
-       _VERIFY(STATUS)
-    endif
+    !if (mwRTM) then
+    !   call get_mwrtm_param(INTERNAL, N_catl, rc=STATUS)
+    !   _VERIFY(STATUS)
+    !endif
+
     ! assert mwRTM parameters are not nodata for all tiles
     if (mwRTM_all_nodata) then
        _ASSERT(.false., "Tb innovations or assimilation requested but all mwRTM parameters are nodata")
@@ -1462,9 +1473,9 @@ contains
     
     if (firsttime) then
        firsttime = .false.
-       if (mwRTM) &
-            call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
-            N_catl, tile_coord_l, cat_param, mwRTM_param )
+       !if (mwRTM) &
+       !     call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
+       !     N_catl, tile_coord_l, cat_param, mwRTM_param )
        if (root_proc) then 
           ! for out put
           call read_cat_bias_inputs(  trim(out_path), trim(exp_id), start_time, update_type, &
@@ -1476,6 +1487,8 @@ contains
     if (MAPL_RecordAlarmIsRinging(MAPL)) then
        if (root_proc) then
           Pert_rseed_r8 = Pert_rseed
+          call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+          _VERIFY(status)
           call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
           _VERIFY(STATUS)
           fname_tpl = trim(fname_tpl) //".%y4%m2%d2_%h2%n2z.nc4"
@@ -1485,9 +1498,9 @@ contains
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
-             write(id_string,'(I4.4)') ens + FIRST_ENS_ID   ! BUG! format string should be '(I[ens_id_width].[ens_id_width])'  (reichle, 11 Jun 2020)
+             call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
              seed_fname = ""
-             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
+             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(id_string),nymd=nymd,nhms=nhms,stat=status)
              _VERIFY(STATUS)
              call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
           enddo
@@ -2257,7 +2270,75 @@ contains
     
     RETURN_(_SUCCESS)
   end subroutine CALC_LAND_TB
-  
+
+  subroutine OUTPUT_SMAPL4SMLMC(gc, import, export, clock, rc)
+     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
+     type(ESMF_State),    intent(inout) :: import ! Import state
+     ! this import is from land grid component
+     type(ESMF_State),    intent(inout) :: export ! Export state
+     type(ESMF_Clock),    intent(inout) :: clock  ! The clock
+     integer, optional,   intent(  out) :: rc     ! Error code
+
+     integer                      :: status
+     character(len=ESMF_MAXSTR)   :: Iam='Output_smapL4SMlmc'
+     character(len=ESMF_MAXSTR)   :: comp_name
+     ! MAPL variables
+     type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
+     type(ESMF_State)             :: INTERNAL
+     type(T_TILECOORD_STATE), pointer :: tcinternal
+     type(TILECOORD_WRAP)             :: tcwrap
+     type(tile_coord_type), dimension(:), pointer :: tile_coord_l => null()
+     character(len=300)           :: out_path
+     character(len=ESMF_MAXSTR)   :: exp_id
+     integer :: N_catl
+     type(MAPL_LocStream) :: locstream
+     type(ESMF_Time)      :: ModelTimeCur 
+     type(date_time_type) :: start_time
+     logical, save :: first_time = .true.
+
+     if (.not. first_time) then
+        _RETURN(_SUCCESS)
+     endif
+
+     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
+     _VERIFY(STATUS)
+     
+     call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
+     _VERIFY(status)
+     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
+     _VERIFY(status)
+     call MAPL_LocStreamGet(locstream, NT_LOCAL=N_catl,rc=status)
+     _VERIFY(status)
+
+     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
+     _VERIFY(status)
+     tcinternal   =>tcwrap%ptr
+     tile_coord_l =>tcinternal%tile_coord
+
+     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
+     _VERIFY(status)
+
+     call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
+     _VERIFY(STATUS)
+     call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="exp_id", RC=STATUS)
+     _VERIFY(STATUS)
+     ! Get current time
+     call ESMF_ClockGet(clock, currTime=ModelTimeCur, rc=status)
+     _VERIFY(status)
+     call esmf2ldas(ModelTimeCur, start_time, rc=status)
+     _VERIFY(status)
+
+     call get_mwrtm_param(INTERNAL, N_catl, rc=status)
+     _VERIFY(status)
+
+     call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
+            N_catl, tile_coord_l, cat_param, mwRTM_param )
+     first_time = .false.
+
+     _RETURN(_SUCCESS)
+
+  end subroutine OUTPUT_SMAPL4SMLMC 
+ 
   ! ******************************************************************************
   
   subroutine read_pert_rseed(id_string,seed_fname,pert_rseed_r8)
@@ -2458,7 +2539,18 @@ contains
          MPI_LAND, mpicomm, mpierr)
     _RETURN(_SUCCESS)
   end subroutine get_mwrtm_param
-  
+
+  subroutine get_id_string(id_string, id, ens_id_width)
+     character(*), intent(inout) :: id_string
+     integer, intent(in) :: id
+     integer, intent(in) :: ens_id_width
+
+     character(len=ESMF_MAXSTR) :: fmt_str
+
+     write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
+     write (id_string, fmt_str) id
+
+  end subroutine  
   ! ******************************************************************************
 
   !BOP
@@ -2485,9 +2577,9 @@ contains
     character(len=300)           :: fname_tpl
     character(len=300)           :: out_path
     character(len=ESMF_MAXSTR)   :: exp_id
-    character(len=4)             :: id_string    ! BUG!  should  be "len=ens_id_width" (reichle, 11 Jun 2020)
+    character(len=ESMF_MAXSTR)   :: id_string
     character(len=14)            :: datestamp
-    integer                      :: ens, nymd, nhms
+    integer                      :: ens, nymd, nhms, ens_id_width
     
     ! Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -2506,6 +2598,8 @@ contains
        if (root_proc) then
           if (out_obslog) call finalize_obslog()
           Pert_rseed_r8 = Pert_rseed
+          call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+          _VERIFY(status)
           call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", &
                DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
           _VERIFY(STATUS)
@@ -2516,9 +2610,9 @@ contains
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
-             write(id_string,'(I4.4)') ens + FIRST_ENS_ID       ! BUG! format string should depend on ens_id_width (reichle, 11 Jun 2020)
+             call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
              seed_fname = ""
-             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=id_string,nymd=nymd,nhms=nhms,stat=status)
+             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(id_string),nymd=nymd,nhms=nhms,stat=status)
              _VERIFY(STATUS)
              call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
           enddo
