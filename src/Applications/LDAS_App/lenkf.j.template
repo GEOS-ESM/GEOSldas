@@ -29,7 +29,9 @@ source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
 
-setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
+#change the sequence (required when coupling adas with different BASEDIR)
+setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${LD_LIBRARY_PATH} 
+# setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
 if ( -e /etc/os-release ) then
   module load nco/4.8.1
 else
@@ -47,6 +49,7 @@ setenv    MODEL          MY_MODEL
 @         NENS  =        MY_ENSEMBLE
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
 setenv    POSTPROC_HIST  MY_POSTPROC_HIST
+setenv    COUPLING       MY_COUPLING     # 1 -- coupling, 0 -- no  
 
 #
 # DEBUGGER : 0 -- no debugger
@@ -736,8 +739,15 @@ endif
 #                 Re-Submit Job
 #######################################################################
 
-if ( $rc == 0 ) then
+if ( $COUPLING == 1) then
+    /bin/rm -f $HOMDIR/lenkf_job_completed.txt
+   if ( $rc == 0 ) then
+      echo 'SUCCEEDED' > $HOMDIR/lenkf_job_completed.txt
+   endif
+else
+   if ( $rc == 0 ) then
    cd   $HOMDIR
    #don't change below line(not even extra space)
    if($capdate<$enddate) sbatch $HOMDIR/lenkf.j
+  endif
 endif

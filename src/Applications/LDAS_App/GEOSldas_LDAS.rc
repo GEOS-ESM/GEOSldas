@@ -59,6 +59,8 @@ LSM_CHOICE: 1
 #    1 :  bilinear interpolation (default)
 #    0 :  nearest neighbor
 #
+#   for adas-coupling exp, forcing in CS grid 
+#   set  MET_HINTERP: 0 
 MET_HINTERP: 1
 
 
@@ -114,6 +116,10 @@ FIRST_ENS_ID: 0
 #      Default is the entire simulation period (END_DATE minus BEG_DATE).
 #      Format:            yyyymmdd hhmmss
 #
+##  for adas-coupling exp ( COUPLING =1 )
+##  always use the fixed JOB_SGMT setting 6h ( as adas window) 
+##  JOB_SGMT: 00000000 060000
+
 # JOB_SGMT: 00000100 000000
 
 # ---- Job segments: Number
@@ -123,6 +129,9 @@ FIRST_ENS_ID: 0
 #      Low values for NUM_SGMT are recommended for run-time and storage efficiency.
 #      Default is 1.
 #
+##  for adas-coupling exp ( COUPLING =1 )
+##  always use the fixed  NUM_SGMT: 1 
+
 # NUM_SGMT: 1
 
 
