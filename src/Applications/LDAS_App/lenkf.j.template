@@ -49,7 +49,7 @@ setenv    MODEL          MY_MODEL
 @         NENS  =        MY_ENSEMBLE
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
 setenv    POSTPROC_HIST  MY_POSTPROC_HIST
-setenv    COUPLING       MY_COUPLING     # 1 -- coupling, 0 -- no  
+setenv    LADAS_COUPLING       MY_LADAS_COUPLING   # 1 --yes, 0 --no  
 
 #
 # DEBUGGER : 0 -- no debugger
@@ -80,6 +80,8 @@ set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 #######################################################################
 #        Move to Scratch Directory and Copy .rc .nml .rst files
 #######################################################################
+
+/bin/rm -f $HOMDIR/lenkf_job_completed.txt 
 
 cd $SCRDIR
 /bin/rm -rf *.*
@@ -739,8 +741,7 @@ endif
 #                 Re-Submit Job
 #######################################################################
 
-if ( $COUPLING == 1) then
-    /bin/rm -f $HOMDIR/lenkf_job_completed.txt
+if ( $LADAS_COUPLING == 1) then
    if ( $rc == 0 ) then
       echo 'SUCCEEDED' > $HOMDIR/lenkf_job_completed.txt
    endif

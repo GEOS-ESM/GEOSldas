@@ -106,7 +106,7 @@ class LDASsetup:
         self.nSegments = 1
         self.perturb = 0
         self.first_ens_id = 0
-        self.coupling = 0
+        self.ladas_coupling = 0
         # ------
         # Read exe input file which is required to set up the dir
         # ------
@@ -144,7 +144,7 @@ class LDASsetup:
         _mydir = self.exphome + '/' + self.rqdExeInp['EXP_ID']
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None 
-        self.coupling = int(self.rqdExeInp.get('COUPLING',0))
+        self.ladas_coupling = int(self.rqdExeInp.get('LADAS_COUPLING',0))
         self.first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
         self.perturb = int(self.rqdExeInp.get('PERTURBATIONS',0))
         if self.nens > 1:
@@ -294,8 +294,8 @@ class LDASsetup:
         if 'POSTPROC_HIST' not in self.rqdExeInp:
             self.rqdExeInp['POSTPROC_HIST'] = 0
 
-        if 'COUPLING' not in self.rqdExeInp:
-            self.rqdExeInp['COUPLING'] = 0
+        if 'LADAS_COUPLING' not in self.rqdExeInp:
+            self.rqdExeInp['LADAS_COUPLING'] = 0
 
         if 'RUN_IRRIG' not in self.rqdExeInp:
             self.rqdExeInp['RUN_IRRIG'] = 0  
@@ -1282,8 +1282,8 @@ class LDASsetup:
                         fout.write(line.replace('MY_POSTPROC_HIST',str(self.rqdExeInp['POSTPROC_HIST'])))                        
                     elif 'MY_FIRST_ENS_ID' in line :
                         fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
-                    elif 'MY_COUPLING' in line :
-                        fout.write(line.replace('MY_COUPLING',str(self.coupling)))
+                    elif 'MY_LADAS_COUPLING' in line :
+                        fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
                         
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
@@ -1324,10 +1324,6 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '# Format for start/end times is yyyymmdd hhmmss.           #'
     print '#                                                          #'
     print '############################################################'
-    print '# for adas-coupling exp (COUPLING =1 ) '
-    print '# BEG_DATE needs to be consistent with ${ADAS_exp}'
-    print '# first cycle date (21z, 3z, 9z or 15z) '
-    print '# EXP_DOMAIN needs to be  CS grid as that in ${ADAS_exp}'
     print 
 
     print 'EXP_ID:'
@@ -1336,15 +1332,38 @@ def _printExeInputKeys(rqdExeInpKeys):
     print 'BEG_DATE:'
     print 'END_DATE:'
 
+    print
     print '############################################################'
     print '#                                                          #'
-    print '#                COUPLING EXP INFO                         #'
+    print '#                LADAS COUPLING EXP INFO                   #'
     print '#                                                          #'
-    print '#    "COUPLING" option:  1 --  coupling exp, 0 -- not      #'
+    print '#    "LADAS_COUPLING" option:                              #'
+    print '#                1 -- ldas coupled with adas ${ADAS_exp}   #'
+    print '#                0 -- not coupled with adas                #'
+    print '#                                                          #'
+    print '#   Requirements for LADAS_COUPLING = 1 :                  #'
+    print '#  (i) BEG_DATE needs to be consistent with ${ADAS_exp}    #'
+    print '#                first cycle date(21z, 3z, 9z or 15z)      #'
+    print '#                                                          #'        
+    print '#  (ii) EXP_DOMAIN needs to be CS grid as in ${ADAS_exp}   #'
+    print '#                                                          #'
+    print '#  (iii) MET_TAG sets to   ${ADAS_exp}__Nx+-               #'
+    print '#        MET_PATH sets to  ${ADAS_exp}/lana/forc           #' 
+    print '#    after ldas exp setup, verify the following link       #'        
+    print '#    in ../input/met_forcing/forc -> ${ADAS_exp}/lana/forc #'
+    print '#                                                          #'
+    print '#  (iv) BCS_PATH needs to be consistent with that is set   #'
+    print '#        in ${ADAS_exp}/run/lnbcs                          #'
+    print '#                                                          #'
+    print '#  (v) JOB_SGMT needs to be set to  6h (as adas window)    #'
+    print '#                                                          #'
+    print '#  (vi) NUM_SGMT needs to be set to 1                      #'
+    print '#                                                          #'
+    print '#  (vii) "catch_progn_incr" needs to be in HIST collection #'
     print '#                                                          #'
     print '############################################################'
     print
-    print 'COUPLING:'
+    print 'LADAS_COUPLING:'
 
     print
     print '############################################################'
@@ -1428,11 +1447,6 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#  Surface meteorological forcing time step is in seconds. #'
     print '#                                                          #'     
     print '############################################################'
-    print '# for adas-coupling exp (COUPLING = 1) '
-    print '# MET_TAG:     ${ADAS_exp}__Nx+- '
-    print '# the following link needs to be created'
-    print '# after ldas exp setup: in ../input/met_forcing/'
-    print '# ln -s ${ADAS_exp}/lana/forc adas_coupled'
     print
     print 'MET_TAG:'
     print 'MET_PATH:'
@@ -1446,9 +1460,6 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#  See README files in ./src/Applications/LDAS_App/doc     #'
     print '#                                                          #'
     print '############################################################'
-    print '# for adas-coupling exp ( COUPLING = 1) '
-    print '# BCS_PATH needs to be consistent with that is defined '
-    print '# in ${ADAS_exp}/run/lnbcs'
     print
 
     print 'BCS_PATH:'
