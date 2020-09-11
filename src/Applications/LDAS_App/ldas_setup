@@ -201,7 +201,9 @@ class LDASsetup:
            self.rqdExeInp['NUM_SGMT'] = 1
         # hard set NUM_SGMT and NUM_SGMT
         if (self.ladas_coupling > 0) :
-           self.rqdExeInp['NUM_SGMT'] = 1
+           if self.rqdExeInp['NUM_SGMT'] != 1 :
+              print "WARNING: 'NUM_SGMT' is reset to 1"
+              self.rqdExeInp['NUM_SGMT'] = 1 
            if self.rqdExeInp['JOB_SGMT'] != "00000000 060000" :
               print "WARNING: 'JOB_SGMT' is reset to  00000000 060000"
               self.rqdExeInp['JOB_SGMT'] = "00000000 060000" 
