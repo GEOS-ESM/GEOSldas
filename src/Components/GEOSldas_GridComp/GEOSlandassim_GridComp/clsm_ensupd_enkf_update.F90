@@ -528,7 +528,7 @@ contains
                N_obsl, Observations_l, Obs_pred_l, obsbias_ok,    &
                fcsterr_inflation_fac )
 
-          deallocate(obsbias_ok)
+          if (allocated(obsbias_ok)) deallocate(obsbias_ok)
 
 
           ! IF NEEDED, INCLUDE WITHHOLDING SUBROUTINE HERE.
