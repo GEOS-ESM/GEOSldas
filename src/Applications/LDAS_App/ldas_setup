@@ -196,6 +196,14 @@ class LDASsetup:
                                                _datediff.minutes,
                                                _datediff.seconds)
             self.job_sgmt.append("JOB_SGMT: "+self.rqdExeInp['JOB_SGMT'])
+
+        if 'NUM_SGMT' not in self.rqdExeInp:
+           self.rqdExeInp['NUM_SGMT'] = 1
+        # hard set NUM_SGMT and NUM_SGMT
+        if (self.ladas_coupling > 0) :
+           self.rqdExeInp['NUM_SGMT'] = 1
+           self.rqdExeInp['JOB_SGMT'] = "00000000 060000" 
+
         _years  = int(self.rqdExeInp['JOB_SGMT'][0:4])
         _months = int(self.rqdExeInp['JOB_SGMT'][4:6])
         _days   = int(self.rqdExeInp['JOB_SGMT'][6:8])
@@ -204,8 +212,6 @@ class LDASsetup:
         _mins   = int(self.rqdExeInp['JOB_SGMT'][11:13])
         _seconds= int(self.rqdExeInp['JOB_SGMT'][13:15])
 
-        if 'NUM_SGMT' not in self.rqdExeInp:
-           self.rqdExeInp['NUM_SGMT'] = 1
 
         _difftime =timedelta(days = _years*365+_months*30+_days,hours = _hours,minutes=_mins,seconds=_seconds)
         _difftime = int(self.rqdExeInp['NUM_SGMT'])*_difftime
