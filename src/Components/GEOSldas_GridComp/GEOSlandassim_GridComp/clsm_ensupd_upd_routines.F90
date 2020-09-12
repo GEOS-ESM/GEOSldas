@@ -1075,6 +1075,8 @@ contains
 
     ! dimension "N_obsl" (as in N_obsl upon input)
     
+    logical, dimension(N_obsl) :: obsbias_ok_tmp
+
     real                       :: inflation_factor
 
     character(len=*), parameter :: Iam = 'get_obs_pred'
@@ -1085,11 +1087,15 @@ contains
     !
     ! deal with optional arguments
 
-    allocate(Obs_pred_l(N_obsl,N_ens))
+    if (present(obsbias_ok)) then
+       
+       obsbias_ok_tmp = obsbias_ok
+       
+    else
+       
+       obsbias_ok_tmp = .false.
 
-    if (N_obsl > 0) then
-       Obs_pred_l = nodata_generic
-    endif
+    end if
         
     if (present(fcsterr_inflation_fac) .and. beforeEnKFupdate) then
 
@@ -1108,8 +1114,14 @@ contains
     ! determine which diagnostics are needed (based on obs_param because
     ! observations on local proc may not reflect all obs)
     
+    ! allocate and initialize
+    
+    allocate(Obs_pred_l(N_obsl,N_ens))
+    
+    if (N_obsl > 0) Obs_pred_l = nodata_generic
+
     ! get_*_l : may include additional fields needed to compute observed fields
-   
+    
     get_sfmc_l   = .false. 
     get_rzmc_l   = .false. 
     get_tsurf_l  = .false.
@@ -1124,21 +1136,22 @@ contains
     get_tsurf_lH = .false.
     get_FT_lH    = .false.
     get_Tb_lH    = .false.
+
     ! loop through obs_param b/c obs on local proc may not reflect all obs
     
     ind_obsparam2Tbspecies = -999
     
-    j = 0
-    N_Tbspecies = j
+    j           = 0     ! initialize
+    N_Tbspecies = 0     ! initialize
 
     if (N_catl > 0) then 
-
+    
        do i=1,N_obs_param  
           
           select case (trim(obs_param(i)%varname))
-             
+          
           case ('sfmc')
-             
+          
              get_sfmc_l   = .true.
              get_sfmc_lH  = .true.
              get_tsurf_l  = .true.    ! needed for model-based QC
@@ -1155,7 +1168,7 @@ contains
              get_tsurf_lH = .true.
              get_tp_l     = .true.    ! needed for model-based QC
              get_sfmc_l   = .true.    ! needed to get ar1, ar2, and ar4
-   
+             
           case ('FT')
              
              get_FT_l     = .true.
@@ -1187,9 +1200,9 @@ contains
           end select
           
        end do
-   
+    
        N_Tbspecies = j
-   
+       
        ! determine unique combinations of Tb frequency, angle, and RTM_ID
        !
        ! Step 1:
@@ -1199,10 +1212,11 @@ contains
        !  always provides both polarizations and does not depend on the 
        !  orbit direction --> avoid computing and communicating redundant
        !  information)
-   
+       
        call unique_rows_3col(                                                        &
             N_Tbspecies, Tb_freq_ang_RTMid(1:N_Tbspecies,:),                         &
             N_TbuniqFreqAngRTMid, ind_Tbspecies2TbuniqFreqAngRTMid(1:N_Tbspecies) )
+
     endif ! N_catl > 0
         
     if (get_Tb_l)  allocate(Tb_h_l(N_catl,N_TbuniqFreqAngRTMid,N_ens))
@@ -1217,22 +1231,27 @@ contains
     
     ! for FOV_units in 'km', all processors need to know the xhalo of each processor, 
     !  which in turn depends on latitude
-    kk = 0 
+
+    kk = 0   ! counter to facilitate skipping over processors that have no tiles (N_catl_vec(jj)=0)
+
     do jj=1,numprocs
-       
+
+       if (N_catl_vec(jj) <=0 ) cycle   ! nothing to do for this processor
+              
        istart = low_ind(jj)
        iend   = istart + N_catl_vec(jj) - 1
        
        ! largest abs(lat) will have largest FOV
-       if (N_catl_vec(jj) <=0 ) cycle
-
+       
        kk = kk + 1
        tmplatvec(kk) = maxval( abs( tile_coord_f(istart:iend)%com_lat ))  
        
     end do
     
     ! find maximum FOV in units of [deg] across all obs params 
+
     if (N_catl > 0) then
+       
        do ii=1,N_obs_param
           
           if     ( trim(obs_param(ii)%FOV_units)=='deg' ) then
@@ -1244,7 +1263,7 @@ contains
              
              ! convert from [km] (FOV) to [deg] 
              
-             call dist_km2deg( obs_param(ii)%FOV, kk, tmplatvec, tmprx, r_y )
+             call dist_km2deg( obs_param(ii)%FOV, kk, tmplatvec(1:kk), tmprx(1:kk), r_y )
              
              xhalo = max( xhalo, tmprx(1:kk) )
              yhalo = max( yhalo, r_y   )
@@ -1256,7 +1275,9 @@ contains
           end if
           
        end do
+       
     endif ! N_catl > 0
+
     ! FOV is *radius*, leave some room
 
     xhalo = 2.5 * xhalo
@@ -1449,7 +1470,7 @@ contains
     ! determine N_catlH and tile_coord_lH  
 
     N_fields = 0  ! set to zero temporarily, not yet needed
-
+    
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
          N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
          N_catlH, tile_coord_lH=tile_coord_lH )
@@ -2865,13 +2886,14 @@ contains
     !  crosses the dateline!
     
     do i=1,numprocs
+
+       if (N_catl_vec(i) <=0 ) cycle   ! nothing to do for this processor
        
        istart = low_ind(i)
        iend   = istart + N_catl_vec(i) - 1
 
        ! use center-of-mass of tiles (rather than min/max_lon, min/max_lat)
-       if (N_catl_vec(i) <=0 ) cycle
- 
+       
        catl_minlon_vec(i) = minval( tile_coord_f(istart:iend)%com_lon )
        catl_maxlon_vec(i) = maxval( tile_coord_f(istart:iend)%com_lon )
        catl_minlat_vec(i) = minval( tile_coord_f(istart:iend)%com_lat )
@@ -2899,11 +2921,12 @@ contains
 
     end do
     
-    do i=1,numprocs            
+    do i=1,numprocs
+
+       if (N_catl_vec(i) <=0 ) cycle   ! nothing to do for this processor
 
        ! all tiles within the following rectangle are needed by proc i
-       if (N_catl_vec(i) <=0 ) cycle
-
+       
        ll_lon = halo_minlon_vec(i)
        ur_lon = halo_maxlon_vec(i)
        ll_lat = halo_minlat_vec(i)
