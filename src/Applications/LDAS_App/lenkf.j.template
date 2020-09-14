@@ -29,9 +29,10 @@ source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
 
-#change the sequence (required when coupling adas with different BASEDIR)
+#setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
+# reversed sequence for LADAS_COUPLING (Sep 2020)  (needed when coupling with ADAS using different BASEDIR)
 setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${LD_LIBRARY_PATH} 
-# setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
+
 if ( -e /etc/os-release ) then
   module load nco/4.8.1
 else
