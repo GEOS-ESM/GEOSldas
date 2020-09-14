@@ -1338,43 +1338,6 @@ def _printExeInputKeys(rqdExeInpKeys):
     print 'NUM_LDAS_ENSEMBLE:'
     print 'BEG_DATE:'
     print 'END_DATE:'
-
-    print
-    print '############################################################'
-    print '#                                                          #'
-    print '#                LADAS COUPLING EXP INFO                   #'
-    print '#                                                          #'
-    print '#    "LADAS_COUPLING" option:                              #'
-    print '#                1 -- ldas coupled with adas ${ADAS_exp}   #'
-    print '#                0 -- ldas not coupled with adas           #'
-    print '#                                                          #'
-    print '#  Requirements for LADAS_COUPLING = 1:                    #'
-    print '#                                                          #'
-    print '#  (1) BEG_DATE must be consistent with ${ADAS_exp}        #'
-    print '#                first cycle date(21z, 3z, 9z or 15z)      #'
-    print '#                                                          #'        
-    print '#  (2) EXP_DOMAIN must be global CS grid as in ${ADAS_exp} #'
-    print '#                                                          #'
-    print '#  (3) MET_TAG  must be set to  ${ADAS_exp}__Nx+-          #'
-    print '#      MET_PATH must be set to  ${ADAS_exp}/lana/forc      #' 
-    print '#    After ldas exp setup, verify the following link:      #'        
-    print '#    ../input/met_forcing/forc -> ${ADAS_exp}/lana/forc    #'
-    print '#                                                          #'
-    print '#  (4) BCS_PATH must be consistent with that of            #'
-    print '#      ${ADAS_exp}/run/lnbcs                               #'
-    print '#                                                          #'
-    print '#  (5) JOB_SGMT must be set to 6h (ADAS analysis window)   #'
-    print '#                                                          #'
-    print '#  (6) NUM_SGMT must be set to 1                           #'
-    print '#                                                          #'
-    print '#  (7) instantaneous "catch_progn_incr" must be in HIST    #'
-    print '#      collection; time step must match that of LDAS       #'
-    print '#      analysis                                            #'
-    print '#                                                          #'
-    print '############################################################'
-    print
-    print 'LADAS_COUPLING:'
-
     print
     print '############################################################'
     print '#                                                          #'
@@ -1440,13 +1403,11 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#   RESTART_DOMAIN is NOT required.                        #'
     print '#                                                          #'
     print '############################################################'
-
     print
     print 'RESTART:'
     print '#RESTART_ID:'
     print '#RESTART_PATH:'
     print '#RESTART_DOMAIN:'
-
     print
     print '############################################################'
     print '#                                                          #'
@@ -1457,12 +1418,10 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#  Surface meteorological forcing time step is in seconds. #'
     print '#                                                          #'     
     print '############################################################'
-    
     print
     print 'MET_TAG:'
     print 'MET_PATH:'
     print 'FORCE_DTSTEP:'
-
     print
     print '############################################################'
     print '#                                                          #'
@@ -1472,9 +1431,43 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '############################################################'
     print
-
     print 'BCS_PATH:'
     print
+    print '############################################################'
+    print '#                                                          #'
+    print '#                 LADAS COUPLING                           #'
+    print '#                                                          #'
+    print '# Coupling of LDAS to ADAS ("LADAS"):                      #'
+    print '#                                                          #'
+    print '#   0 -- LDAS not coupled with ADAS (default)              #'
+    print '#   1 -- LDAS coupled with ADAS ${ADAS_exp}                #'
+    print '#                                                          #'
+    print '#  Requirements for LADAS_COUPLING = 1:                    #'
+    print '#                                                          #'
+    print '#  (1) BEG_DATE must be consistent with ${ADAS_exp}        #'
+    print '#                first cycle date(21z, 3z, 9z or 15z)      #'
+    print '#                                                          #'        
+    print '#  (2) EXP_DOMAIN must be global CS grid as in ${ADAS_exp} #'
+    print '#                                                          #'
+    print '#  (3) MET_TAG  must be set to  ${ADAS_exp}__Nx+-          #'
+    print '#      MET_PATH must be set to  ${ADAS_exp}/lana/forc      #' 
+    print '#    After ldas exp setup, verify the following link:      #'        
+    print '#    ../input/met_forcing/forc -> ${ADAS_exp}/lana/forc    #'
+    print '#                                                          #'
+    print '#  (4) BCS_PATH must be consistent with that of            #'
+    print '#      ${ADAS_exp}/run/lnbcs                               #'
+    print '#                                                          #'
+    print '#  (5) JOB_SGMT must be set to 6h (ADAS analysis window)   #'
+    print '#                                                          #'
+    print '#  (6) NUM_SGMT must be set to 1                           #'
+    print '#                                                          #'
+    print '#  (7) instantaneous "catch_progn_incr" must be in HIST    #'
+    print '#      collection; time step must match that of LDAS       #'
+    print '#      analysis                                            #'
+    print '#                                                          #'
+    print '############################################################'
+    print
+    print 'LADAS_COUPLING: 0'
 
     _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from /bin directory
 
