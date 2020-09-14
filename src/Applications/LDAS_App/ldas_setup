@@ -202,11 +202,9 @@ class LDASsetup:
         # hard set NUM_SGMT and NUM_SGMT
         if (self.ladas_coupling > 0) :
            if self.rqdExeInp['NUM_SGMT'] != 1 :
-              print "WARNING: 'NUM_SGMT' is reset to 1"
-              self.rqdExeInp['NUM_SGMT'] = 1 
+              sys.exit("'NUM_SGMT' should be set to 1 with LADAS_COUPLING")
            if self.rqdExeInp['JOB_SGMT'] != "00000000 060000" :
-              print "WARNING: 'JOB_SGMT' is reset to  00000000 060000"
-              self.rqdExeInp['JOB_SGMT'] = "00000000 060000" 
+              sys.exit("'JOB_SGMT' should be set to  00000000 060000 with LADAS_COUPLING")
 
         _years  = int(self.rqdExeInp['JOB_SGMT'][0:4])
         _months = int(self.rqdExeInp['JOB_SGMT'][4:6])
