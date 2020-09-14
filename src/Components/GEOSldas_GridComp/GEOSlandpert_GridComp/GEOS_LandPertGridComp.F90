@@ -1065,9 +1065,9 @@ contains
     ! WARNING: get_force/progn_pert_param() calls allocate memory
 
     call get_force_pert_param(internal%pgrid_l, internal%ForcePert%npert, internal%ForcePert%param)
-    _ASSERT(internal%ForcePert%npert==size(internal%ForcePert%param), "param size should be consistent with force npert")
+    _ASSERT(internal%ForcePert%npert==size(internal%ForcePert%param), "ForcePert: param size does not match npert")
     call get_progn_pert_param(internal%pgrid_l, internal%PrognPert%npert, internal%PrognPert%param)
-    _ASSERT(internal%PrognPert%npert==size(internal%PrognPert%param), "param size should be consistent with progn npert")
+    _ASSERT(internal%PrognPert%npert==size(internal%PrognPert%param), "PrognPert: param size does not match npert")
 
     N_force_pert = internal%ForcePert%npert
     N_progn_pert = internal%PrognPert%npert
@@ -2527,7 +2527,7 @@ contains
           case ('srfexc')
              call apply_pert(PertParam, PROGNPERT(:,ipert), srfexcPert, dtmh)
           case ('snow')
-             _ASSERT(PertParam%typ/=1, "snow, type /=1")
+             _ASSERT(PertParam%typ==1, 'ONLY multiplicative snow perturbations implemented')
              call apply_pert(PertParam, PROGNPERT(:,ipert), wesnn1Pert, dtmh)
              call apply_pert(PertParam, PROGNPERT(:,ipert), wesnn2Pert, dtmh)
              call apply_pert(PertParam, PROGNPERT(:,ipert), wesnn3Pert, dtmh)

@@ -4631,17 +4631,17 @@ contains
       ! check if it is cs grid
       ierr =  nf90_inq_dimid(fid,"nf",nfid)
 
-      if (ierr == nf90_noerr) then ! it is cs grid if face dimension is found
+      if (ierr == nf90_noerr) then ! it is cubed-sphere grid if face dimension is found
 
          ierr  =  nf90_inq_dimid(fid,"Xdim",xdimid)
          _ASSERT( ierr == nf90_noerr, "nf90 error")
          ierr  =  nf90_Inquire_Dimension(fid,nfid,  len=N_f)
          _ASSERT( ierr == nf90_noerr, "nf90 error")
-         _ASSERT( n_f == 6, "6 faces for cubed")
+         _ASSERT( N_f == 6, "number of (cubed-sphere) faces not equal to 6")
          ierr  =  nf90_Inquire_Dimension(fid,xdimid,len=N_lon)
          _ASSERT( ierr == nf90_noerr, "nf90 error")
          N_lat = N_f*N_lon
-         _ASSERT( m_hinterp == 0, "cubed forccing requires m_hinterp = 0")
+         _ASSERT( m_hinterp == 0, "forcing on cubed-sphere grid requires m_hinterp = 0")
          isCubed = .true.       
       else
          ierr =  nf90_inq_dimid(fid,"lat",latid)

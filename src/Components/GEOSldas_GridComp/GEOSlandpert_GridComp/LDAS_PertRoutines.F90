@@ -724,7 +724,7 @@ contains
 
     ! -----------------------------------------------------------
 
-    _ASSERT(size(Pert)==size(F), "size pert and forcing should be equal")
+    _ASSERT(size(Pert)==size(F), "sizes of Pert and perturbed field do not match")
 
     select case (pert_param%typ)
 
