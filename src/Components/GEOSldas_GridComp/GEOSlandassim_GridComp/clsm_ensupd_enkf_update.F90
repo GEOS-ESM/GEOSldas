@@ -478,7 +478,7 @@ contains
 
           allocate(obsbias_ok(N_obsl))
 
-          obsbias_ok = .false.          ! initialize
+          if (N_obsl>0) obsbias_ok = .false.          ! initialize
 
 	  if ( (N_obsl>0) .and. (N_obsbias_max>0) ) then
 
