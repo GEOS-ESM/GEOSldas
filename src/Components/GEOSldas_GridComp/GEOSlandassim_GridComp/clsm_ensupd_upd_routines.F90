@@ -1087,14 +1087,9 @@ contains
     !
     ! deal with optional arguments
 
-    if (present(obsbias_ok)) then
-       
-       obsbias_ok_tmp = obsbias_ok
-       
-    else
-       
+    if (N_obsl > 0) then 
        obsbias_ok_tmp = .false.
-
+       if (present(obsbias_ok)) obsbias_ok_tmp = obsbias_ok
     end if
         
     if (present(fcsterr_inflation_fac) .and. beforeEnKFupdate) then
@@ -1830,7 +1825,7 @@ contains
              
              ! potentially eliminate obs (except if "bias_Npar>0" and "obsbias_ok==FALSE")
              
-             if ( obs_param(this_species)%bias_Npar>0  .and.  (.not. obsbias_ok(i)) ) then
+             if ( obs_param(this_species)%bias_Npar>0  .and.  (.not. obsbias_ok_tmp(i)) ) then
                 
                 ! do nothing (ie, keep obs), obs bias estimate is spinning up
                 
