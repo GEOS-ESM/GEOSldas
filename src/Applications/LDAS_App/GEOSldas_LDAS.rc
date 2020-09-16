@@ -59,6 +59,8 @@ LSM_CHOICE: 1
 #    1 :  bilinear interpolation (default)
 #    0 :  nearest neighbor
 #
+#   When forcing is on CS grid, must set MET_HINTERP: 0 
+#  
 MET_HINTERP: 1
 
 

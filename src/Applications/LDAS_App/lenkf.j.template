@@ -29,7 +29,10 @@ source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
 
-setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
+#setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
+# reversed sequence for LADAS_COUPLING (Sep 2020)  (needed when coupling with ADAS using different BASEDIR)
+setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${LD_LIBRARY_PATH} 
+
 if ( -e /etc/os-release ) then
   module load nco/4.8.1
 else
@@ -47,6 +50,7 @@ setenv    MODEL          MY_MODEL
 @         NENS  =        MY_ENSEMBLE
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
 setenv    POSTPROC_HIST  MY_POSTPROC_HIST
+setenv    LADAS_COUPLING       MY_LADAS_COUPLING   # 1 --yes, 0 --no  
 
 #
 # DEBUGGER : 0 -- no debugger
@@ -77,6 +81,8 @@ set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 #######################################################################
 #        Move to Scratch Directory and Copy .rc .nml .rst files
 #######################################################################
+
+/bin/rm -f $HOMDIR/lenkf_job_completed.txt 
 
 cd $SCRDIR
 /bin/rm -rf *.*
@@ -736,8 +742,14 @@ endif
 #                 Re-Submit Job
 #######################################################################
 
-if ( $rc == 0 ) then
+if ( $LADAS_COUPLING == 1) then
+   if ( $rc == 0 ) then
+      echo 'SUCCEEDED' > $HOMDIR/lenkf_job_completed.txt
+   endif
+else
+   if ( $rc == 0 ) then
    cd   $HOMDIR
    #don't change below line(not even extra space)
    if($capdate<$enddate) sbatch $HOMDIR/lenkf.j
+  endif
 endif

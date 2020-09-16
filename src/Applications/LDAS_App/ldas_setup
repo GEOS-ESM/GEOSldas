@@ -106,6 +106,7 @@ class LDASsetup:
         self.nSegments = 1
         self.perturb = 0
         self.first_ens_id = 0
+        self.ladas_coupling = 0
         # ------
         # Read exe input file which is required to set up the dir
         # ------
@@ -142,7 +143,8 @@ class LDASsetup:
         assert self.nens>0, 'NUM_LDAS_ENSEMBLE [%d] <= 0' % self.nens
         _mydir = self.exphome + '/' + self.rqdExeInp['EXP_ID']
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
-        _mydir = None
+        _mydir = None 
+        self.ladas_coupling = int(self.rqdExeInp.get('LADAS_COUPLING',0))
         self.first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
         self.perturb = int(self.rqdExeInp.get('PERTURBATIONS',0))
         if self.nens > 1:
@@ -194,6 +196,16 @@ class LDASsetup:
                                                _datediff.minutes,
                                                _datediff.seconds)
             self.job_sgmt.append("JOB_SGMT: "+self.rqdExeInp['JOB_SGMT'])
+
+        if 'NUM_SGMT' not in self.rqdExeInp:
+           self.rqdExeInp['NUM_SGMT'] = 1
+        # hard set NUM_SGMT and NUM_SGMT
+        if (self.ladas_coupling > 0) :
+           if self.rqdExeInp['NUM_SGMT'] != 1 :
+              sys.exit("'NUM_SGMT' should be set to 1 with LADAS_COUPLING")
+           if self.rqdExeInp['JOB_SGMT'] != "00000000 060000" :
+              sys.exit("'JOB_SGMT' should be set to  00000000 060000 with LADAS_COUPLING")
+
         _years  = int(self.rqdExeInp['JOB_SGMT'][0:4])
         _months = int(self.rqdExeInp['JOB_SGMT'][4:6])
         _days   = int(self.rqdExeInp['JOB_SGMT'][6:8])
@@ -202,8 +214,6 @@ class LDASsetup:
         _mins   = int(self.rqdExeInp['JOB_SGMT'][11:13])
         _seconds= int(self.rqdExeInp['JOB_SGMT'][13:15])
 
-        if 'NUM_SGMT' not in self.rqdExeInp:
-           self.rqdExeInp['NUM_SGMT'] = 1
 
         _difftime =timedelta(days = _years*365+_months*30+_days,hours = _hours,minutes=_mins,seconds=_seconds)
         _difftime = int(self.rqdExeInp['NUM_SGMT'])*_difftime
@@ -291,6 +301,9 @@ class LDASsetup:
 
         if 'POSTPROC_HIST' not in self.rqdExeInp:
             self.rqdExeInp['POSTPROC_HIST'] = 0
+
+        if 'LADAS_COUPLING' not in self.rqdExeInp:
+            self.rqdExeInp['LADAS_COUPLING'] = 0
 
         if 'RUN_IRRIG' not in self.rqdExeInp:
             self.rqdExeInp['RUN_IRRIG'] = 0  
@@ -1276,7 +1289,10 @@ class LDASsetup:
                     elif 'MY_POSTPROC_HIST' in line :
                         fout.write(line.replace('MY_POSTPROC_HIST',str(self.rqdExeInp['POSTPROC_HIST'])))                        
                     elif 'MY_FIRST_ENS_ID' in line :
-                        fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))                        
+                        fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
+                    elif 'MY_LADAS_COUPLING' in line :
+                        fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
+                        
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
                      
@@ -1316,13 +1332,12 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '# Format for start/end times is yyyymmdd hhmmss.           #'
     print '#                                                          #'
     print '############################################################'
-    print
+    print 
     print 'EXP_ID:'
     print 'EXP_DOMAIN:'
     print 'NUM_LDAS_ENSEMBLE:'
     print 'BEG_DATE:'
     print 'END_DATE:'
-    
     print
     print '############################################################'
     print '#                                                          #'
@@ -1388,13 +1403,11 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#   RESTART_DOMAIN is NOT required.                        #'
     print '#                                                          #'
     print '############################################################'
-
     print
     print 'RESTART:'
     print '#RESTART_ID:'
     print '#RESTART_PATH:'
     print '#RESTART_DOMAIN:'
-
     print
     print '############################################################'
     print '#                                                          #'
@@ -1405,12 +1418,10 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#  Surface meteorological forcing time step is in seconds. #'
     print '#                                                          #'     
     print '############################################################'
-
     print
     print 'MET_TAG:'
     print 'MET_PATH:'
     print 'FORCE_DTSTEP:'
-
     print
     print '############################################################'
     print '#                                                          #'
@@ -1422,6 +1433,41 @@ def _printExeInputKeys(rqdExeInpKeys):
     print
     print 'BCS_PATH:'
     print
+    print '############################################################'
+    print '#                                                          #'
+    print '#                 LADAS COUPLING                           #'
+    print '#                                                          #'
+    print '# Coupling of LDAS to ADAS ("LADAS"):                      #'
+    print '#                                                          #'
+    print '#   0 -- LDAS not coupled with ADAS (default)              #'
+    print '#   1 -- LDAS coupled with ADAS ${ADAS_exp}                #'
+    print '#                                                          #'
+    print '#  Requirements for LADAS_COUPLING = 1:                    #'
+    print '#                                                          #'
+    print '#  (1) BEG_DATE must be consistent with ${ADAS_exp}        #'
+    print '#                first cycle date(21z, 3z, 9z or 15z)      #'
+    print '#                                                          #'        
+    print '#  (2) EXP_DOMAIN must be global CS grid as in ${ADAS_exp} #'
+    print '#                                                          #'
+    print '#  (3) MET_TAG  must be set to  ${ADAS_exp}__Nx+-          #'
+    print '#      MET_PATH must be set to  ${ADAS_exp}/lana/forc      #' 
+    print '#    After ldas exp setup, verify the following link:      #'        
+    print '#    ../input/met_forcing/forc -> ${ADAS_exp}/lana/forc    #'
+    print '#                                                          #'
+    print '#  (4) BCS_PATH must be consistent with that of            #'
+    print '#      ${ADAS_exp}/run/lnbcs                               #'
+    print '#                                                          #'
+    print '#  (5) JOB_SGMT must be set to 6h (ADAS analysis window)   #'
+    print '#                                                          #'
+    print '#  (6) NUM_SGMT must be set to 1                           #'
+    print '#                                                          #'
+    print '#  (7) instantaneous "catch_progn_incr" must be in HIST    #'
+    print '#      collection; time step must match that of LDAS       #'
+    print '#      analysis                                            #'
+    print '#                                                          #'
+    print '############################################################'
+    print
+    print 'LADAS_COUPLING: 0'
 
     _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from /bin directory
 
