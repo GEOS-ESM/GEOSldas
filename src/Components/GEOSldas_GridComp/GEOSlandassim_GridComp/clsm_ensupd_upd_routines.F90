@@ -1087,9 +1087,14 @@ contains
     !
     ! deal with optional arguments
 
-    if (N_obsl > 0) then 
+    if (present(obsbias_ok)) then
+       
+       obsbias_ok_tmp = obsbias_ok
+       
+    else
+       
        obsbias_ok_tmp = .false.
-       if (present(obsbias_ok)) obsbias_ok_tmp = obsbias_ok
+       
     end if
         
     if (present(fcsterr_inflation_fac) .and. beforeEnKFupdate) then
