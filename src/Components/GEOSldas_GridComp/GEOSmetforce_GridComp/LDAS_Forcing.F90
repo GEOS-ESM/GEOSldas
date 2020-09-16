@@ -1,4 +1,4 @@
-#include "MAPL_Generic.h"  
+#include "MAPL_Generic.h"
 
 module LDAS_ForceMod
 
@@ -3488,7 +3488,7 @@ contains
 
      if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
         rc= NF90_INQ_VARID( fid, vname, nv_id)
-        ASSERT_( rc == nf90_noerr)
+        _ASSERT( rc == nf90_noerr, "nf90 error")
         if (isCubed) then
           c_address = c_loc(ptrShForce(1,1))
           call c_f_pointer(c_address,tmpShared,shape=icount)
@@ -3496,7 +3496,7 @@ contains
         else
           rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount) 
         endif
-        ASSERT_( rc == nf90_noerr)
+        _ASSERT( rc == nf90_noerr, "nf90 error")
      endif
 
      call MAPL_SyncSharedMemory(rc=status)
@@ -4625,23 +4625,23 @@ contains
          if(root_logit) then
            write(logunit,'(400A)') "opening file: "//trim(fname_full)
          endif
-         ASSERT_( ierr == nf90_noerr)
+         _ASSERT( ierr == nf90_noerr, "nf90 error")
          call FileOpenedHash%put(fname_full,fid)
       endif
       ! check if it is cs grid
       ierr =  nf90_inq_dimid(fid,"nf",nfid)
 
-      if (ierr == nf90_noerr) then ! it is cs grid if face dimension is found
+      if (ierr == nf90_noerr) then ! it is cubed-sphere grid if face dimension is found
 
          ierr  =  nf90_inq_dimid(fid,"Xdim",xdimid)
-         ASSERT_( ierr == nf90_noerr)
+         _ASSERT( ierr == nf90_noerr, "nf90 error")
          ierr  =  nf90_Inquire_Dimension(fid,nfid,  len=N_f)
-         ASSERT_( ierr == nf90_noerr)
-         ASSERT_( n_f == 6)
+         _ASSERT( ierr == nf90_noerr, "nf90 error")
+         _ASSERT( N_f == 6, "number of (cubed-sphere) faces not equal to 6")
          ierr  =  nf90_Inquire_Dimension(fid,xdimid,len=N_lon)
-         ASSERT_( ierr == nf90_noerr)
+         _ASSERT( ierr == nf90_noerr, "nf90 error")
          N_lat = N_f*N_lon
-         ASSERT_( m_hinterp == 0)
+         _ASSERT( m_hinterp == 0, "forcing on cubed-sphere grid requires m_hinterp = 0")
          isCubed = .true.       
       else
          ierr =  nf90_inq_dimid(fid,"lat",latid)

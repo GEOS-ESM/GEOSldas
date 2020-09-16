@@ -1,4 +1,3 @@
-#include "MAPL_Generic.h"
 !
 ! this file contains a collection of subroutines that are needed to
 ! run the Ensemble Kalman filter with the catchment model off-line driver
@@ -12,6 +11,7 @@
 !                          %tmp2m --> %tair  (but note lower-case!)
 !                          %dpt2m --> %qair  (but note lower-case!)
 !                          %wnd   --> %wind  (but note lower-case!)
+#include "MAPL_Generic.h"
 
 module LDAS_PertRoutinesMod
 
@@ -724,7 +724,7 @@ contains
 
     ! -----------------------------------------------------------
 
-    ASSERT_(size(Pert)==size(F))
+    _ASSERT(size(Pert)==size(F), "sizes of Pert and perturbed field do not match")
 
     select case (pert_param%typ)
 

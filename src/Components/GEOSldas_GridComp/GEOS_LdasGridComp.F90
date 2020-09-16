@@ -589,7 +589,7 @@ contains
           call MAPL_GetResource(MAPL, perturbations, 'PERTURBATIONS:', default=0, rc=status)
           if(trim(grid_type) == "Cubed-Sphere" ) then
 
-            ASSERT_(index(tile_grid_g%gridtype, 'c3') /=0)
+            _ASSERT(index(tile_grid_g%gridtype, 'c3') /=0, "tile_grid_g does not describe a cubed-sphere grid")
             
             !1) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
             call get_pert_grid(tile_grid_g, latlon_tmp_g)
