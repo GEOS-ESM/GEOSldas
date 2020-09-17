@@ -990,7 +990,7 @@ contains
     
     real,    parameter                      :: EASE_max_water_frac   = 0.05 ! [-]
 
-    integer                                 :: N_catlH, n_e, i, j, k, N_tmp, ii, jj
+    integer                                 :: N_catlH, n_e, i, j, k, N_tmp, ii, jj, kk
     integer                                 :: N_fields, N_Tbspecies, N_TbuniqFreqAngRTMid
     integer                                 :: this_species, this_tilenum, this_pol
     integer                                 :: this_Tbspecies, this_TbuniqFreqAngRTMid, RTM_id
@@ -1087,16 +1087,14 @@ contains
     !
     ! deal with optional arguments
 
-    if (present(obsbias_ok)) then
-       
-       obsbias_ok_tmp = obsbias_ok
-       
-    else
-       
+    if (N_obsl > 0) then 
+ 
        obsbias_ok_tmp = .false.
 
+       if (present(obsbias_ok)) obsbias_ok_tmp = obsbias_ok
+
     end if
-        
+            
     if (present(fcsterr_inflation_fac) .and. beforeEnKFupdate) then
 
        ! ONLY inflate *before* EnKF update!!!
@@ -1118,7 +1116,7 @@ contains
     
     allocate(Obs_pred_l(N_obsl,N_ens))
     
-    Obs_pred_l = nodata_generic
+    if (N_obsl > 0) Obs_pred_l = nodata_generic
 
     ! get_*_l : may include additional fields needed to compute observed fields
     
@@ -1141,78 +1139,83 @@ contains
     
     ind_obsparam2Tbspecies = -999
     
-    j = 0
+    j           = 0     ! initialize
+    N_Tbspecies = 0     ! initialize
+
+    if (N_catl > 0) then 
     
-    do i=1,N_obs_param  
-       
-       select case (trim(obs_param(i)%varname))
+       do i=1,N_obs_param  
           
-       case ('sfmc')
+          select case (trim(obs_param(i)%varname))
           
-          get_sfmc_l   = .true.
-          get_sfmc_lH  = .true.
-          get_tsurf_l  = .true.    ! needed for model-based QC
+          case ('sfmc')
           
-       case ('rzmc')
+             get_sfmc_l   = .true.
+             get_sfmc_lH  = .true.
+             get_tsurf_l  = .true.    ! needed for model-based QC
+             
+          case ('rzmc')
+             
+             get_rzmc_l   = .true.
+             get_rzmc_lH  = .true.
+             get_tsurf_l  = .true.    ! needed for model-based QC
+             
+          case ('tsurf')
+             
+             get_tsurf_l  = .true.
+             get_tsurf_lH = .true.
+             get_tp_l     = .true.    ! needed for model-based QC
+             get_sfmc_l   = .true.    ! needed to get ar1, ar2, and ar4
+             
+          case ('FT')
+             
+             get_FT_l     = .true.
+             get_FT_lH    = .true.
+             get_sfmc_l   = .true.    ! needed to get ar1, ar2, and ar4
+             get_tp_l     = .true.    ! needed as input to calc_FT
+             
+          case ('Tb')
+             
+             j=j+1        ! count number of Tb species
+             
+             ind_obsparam2Tbspecies(i) = j
+             
+             Tb_freq_ang_RTMid(j,1) =      obs_param(i)%freq
+             Tb_freq_ang_RTMid(j,2) =      obs_param(i)%ang(1)
+             Tb_freq_ang_RTMid(j,3) = real(obs_param(i)%RTM_ID)
+             
+             get_sfmc_l   = .true. 
+             get_tsurf_l  = .true.
+             get_tp_l     = .true.          
+             get_Tb_l     = .true.
+             
+             get_Tb_lH    = .true.
+             
+          case default
+             
+             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown obs_param%varname')
+             
+          end select
           
-          get_rzmc_l   = .true.
-          get_rzmc_lH  = .true.
-          get_tsurf_l  = .true.    ! needed for model-based QC
-          
-       case ('tsurf')
-          
-          get_tsurf_l  = .true.
-          get_tsurf_lH = .true.
-          get_tp_l     = .true.    ! needed for model-based QC
-          get_sfmc_l   = .true.    ! needed to get ar1, ar2, and ar4
-
-       case ('FT')
-          
-          get_FT_l     = .true.
-          get_FT_lH    = .true.
-          get_sfmc_l   = .true.    ! needed to get ar1, ar2, and ar4
-          get_tp_l     = .true.    ! needed as input to calc_FT
-          
-       case ('Tb')
-          
-          j=j+1        ! count number of Tb species
-          
-          ind_obsparam2Tbspecies(i) = j
-          
-          Tb_freq_ang_RTMid(j,1) =      obs_param(i)%freq
-          Tb_freq_ang_RTMid(j,2) =      obs_param(i)%ang(1)
-          Tb_freq_ang_RTMid(j,3) = real(obs_param(i)%RTM_ID)
-          
-          get_sfmc_l   = .true. 
-          get_tsurf_l  = .true.
-          get_tp_l     = .true.          
-          get_Tb_l     = .true.
-          
-          get_Tb_lH    = .true.
-          
-       case default
-          
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown obs_param%varname')
-          
-       end select
-       
-    end do
+       end do
     
-    N_Tbspecies = j
+       N_Tbspecies = j
+       
+       ! determine unique combinations of Tb frequency, angle, and RTM_ID
+       !
+       ! Step 1:
+       ! determine unique combinations of Tb frequency and angle
+       ! (obs_param usually has separate species for H- and V-pol and
+       !  for ascending and descending orbits, but the mwRTM model
+       !  always provides both polarizations and does not depend on the 
+       !  orbit direction --> avoid computing and communicating redundant
+       !  information)
+       
+       call unique_rows_3col(                                                        &
+            N_Tbspecies, Tb_freq_ang_RTMid(1:N_Tbspecies,:),                         &
+            N_TbuniqFreqAngRTMid, ind_Tbspecies2TbuniqFreqAngRTMid(1:N_Tbspecies) )
 
-    ! determine unique combinations of Tb frequency, angle, and RTM_ID
-    !
-    ! Step 1:
-    ! determine unique combinations of Tb frequency and angle
-    ! (obs_param usually has separate species for H- and V-pol and
-    !  for ascending and descending orbits, but the mwRTM model
-    !  always provides both polarizations and does not depend on the 
-    !  orbit direction --> avoid computing and communicating redundant
-    !  information)
-
-    call unique_rows_3col(                                                        &
-         N_Tbspecies, Tb_freq_ang_RTMid(1:N_Tbspecies,:),                         &
-         N_TbuniqFreqAngRTMid, ind_Tbspecies2TbuniqFreqAngRTMid(1:N_Tbspecies) )
+    endif ! N_catl > 0
         
     if (get_Tb_l)  allocate(Tb_h_l(N_catl,N_TbuniqFreqAngRTMid,N_ens))
     if (get_Tb_l)  allocate(Tb_v_l(N_catl,N_TbuniqFreqAngRTMid,N_ens))
@@ -1226,44 +1229,53 @@ contains
     
     ! for FOV_units in 'km', all processors need to know the xhalo of each processor, 
     !  which in turn depends on latitude
-    
+
+    kk = 0   ! counter to facilitate skipping over processors that have no tiles (N_catl_vec(jj)=0)
+
     do jj=1,numprocs
-       
+
+       if (N_catl_vec(jj) <=0 ) cycle   ! nothing to do for this processor
+              
        istart = low_ind(jj)
        iend   = istart + N_catl_vec(jj) - 1
        
        ! largest abs(lat) will have largest FOV
        
-       tmplatvec(jj) = maxval( abs( tile_coord_f(istart:iend)%com_lat ))  
+       kk = kk + 1
+       tmplatvec(kk) = maxval( abs( tile_coord_f(istart:iend)%com_lat ))  
        
     end do
     
     ! find maximum FOV in units of [deg] across all obs params 
-    
-    do ii=1,N_obs_param
+
+    if (N_catl > 0) then
        
-       if     ( trim(obs_param(ii)%FOV_units)=='deg' ) then
+       do ii=1,N_obs_param
           
-          xhalo = max( xhalo, obs_param(ii)%FOV )
-          yhalo = max( yhalo, obs_param(ii)%FOV )
+          if     ( trim(obs_param(ii)%FOV_units)=='deg' ) then
+             
+             xhalo = max( xhalo, obs_param(ii)%FOV )
+             yhalo = max( yhalo, obs_param(ii)%FOV )
+             
+          elseif ( trim(obs_param(ii)%FOV_units)=='km'  ) then
+             
+             ! convert from [km] (FOV) to [deg] 
+             
+             call dist_km2deg( obs_param(ii)%FOV, kk, tmplatvec(1:kk), tmprx(1:kk), r_y )
+             
+             xhalo = max( xhalo, tmprx(1:kk) )
+             yhalo = max( yhalo, r_y   )
+             
+          else
+             
+             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown FOV_units (i)')
+             
+          end if
           
-       elseif ( trim(obs_param(ii)%FOV_units)=='km'  ) then
-          
-          ! convert from [km] (FOV) to [deg] 
-          
-          call dist_km2deg( obs_param(ii)%FOV, numprocs, tmplatvec, tmprx, r_y )
-          
-          xhalo = max( xhalo, tmprx )
-          yhalo = max( yhalo, r_y   )
-          
-       else
-          
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown FOV_units (i)')
-          
-       end if
+       end do
        
-    end do
-    
+    endif ! N_catl > 0
+
     ! FOV is *radius*, leave some room
 
     xhalo = 2.5 * xhalo
@@ -1816,7 +1828,7 @@ contains
              
              ! potentially eliminate obs (except if "bias_Npar>0" and "obsbias_ok==FALSE")
              
-             if ( obs_param(this_species)%bias_Npar>0  .and.  (.not. obsbias_ok(i)) ) then
+             if ( obs_param(this_species)%bias_Npar>0  .and.  (.not. obsbias_ok_tmp(i)) ) then
                 
                 ! do nothing (ie, keep obs), obs bias estimate is spinning up
                 
@@ -2872,6 +2884,8 @@ contains
     !  crosses the dateline!
     
     do i=1,numprocs
+
+       if (N_catl_vec(i) <=0 ) cycle   ! nothing to do for this processor
        
        istart = low_ind(i)
        iend   = istart + N_catl_vec(i) - 1
@@ -2905,7 +2919,9 @@ contains
 
     end do
     
-    do i=1,numprocs            
+    do i=1,numprocs
+
+       if (N_catl_vec(i) <=0 ) cycle   ! nothing to do for this processor
 
        ! all tiles within the following rectangle are needed by proc i
        
