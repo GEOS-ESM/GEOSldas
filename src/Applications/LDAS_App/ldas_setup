@@ -41,7 +41,7 @@ class LDASsetup:
         # These keywords are excluded from LDAS.rc (i.e., only needed in pre- or post-processing)
         self.NoneLDASrcKeys=['EXP_ID', 'EXP_DOMAIN',
             'BEG_DATE', 'END_DATE','RESTART','RESTART_PATH',
-            'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
+            'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','LNFM_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
             'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME']
@@ -269,6 +269,7 @@ class LDASsetup:
             self.rqdExeInp['TILING_FILE'] =os.path.realpath(glob.glob(inpdir+'*tile.data')[0])
             self.rqdExeInp['GRN_FILE']=    os.path.realpath(glob.glob(inpdir+'green*data')[0])
             self.rqdExeInp['LAI_FILE']=    os.path.realpath(glob.glob(inpdir+'lai*data')[0])
+            self.rqdExeInp['LNFM_FILE']=    os.path.realpath(glob.glob(inpdir+'lnfm*data')[0])
             self.rqdExeInp['NDVI_FILE']=    os.path.realpath(glob.glob(inpdir+'ndvi*data')[0])
             self.rqdExeInp['NIRDF_FILE']=  os.path.realpath(glob.glob(inpdir+'nirdf*data')[0])
             self.rqdExeInp['VISDF_FILE']=  os.path.realpath(glob.glob(inpdir+'visdf*data')[0])
@@ -672,6 +673,7 @@ class LDASsetup:
 
         bcs=[self.rqdExeInp['GRN_FILE'],
              self.rqdExeInp['LAI_FILE'],
+             self.rqdExeInp['LNFM_FILE'],
              self.rqdExeInp['NDVI_FILE'],
              self.rqdExeInp['NIRDF_FILE'],
              self.rqdExeInp['VISDF_FILE'] ]
@@ -694,7 +696,7 @@ class LDASsetup:
 
         # link BC
         print "linking bcs..." 
-        bcnames=['green','lai','ndvi','nirdf','visdf']
+        bcnames=['green','lai','lnfm','ndvi','nirdf','visdf']
         for bcln,bc in zip(bcnames,bcs) :
            myBC=self.inpdir+'/'+bcln+'.data'
            os.symlink(bc,myBC)
@@ -1029,8 +1031,8 @@ class LDASsetup:
                    tmpl_='%s' 
                 if self.perturb == 1:
                    ldasrcInp['PERTURBATIONS'] ='1'
-                bcval=['../input/green','../input/lai','../input/ndvi','../input/nirdf','../input/visdf']
-                bckey=['GREEN','LAI','NDVI','NIRDF','VISDF']
+                bcval=['../input/green','../input/lai','../input/lnfm','../input/ndvi','../input/nirdf','../input/visdf']
+                bckey=['GREEN','LAI','LNFM','NDVI','NIRDF','VISDF']
                 for key, val in zip(bckey,bcval):
                    keyn = key+'_FILE'
                    valn = val+'.data'
