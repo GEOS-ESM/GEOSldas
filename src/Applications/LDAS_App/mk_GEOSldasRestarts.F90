@@ -111,7 +111,7 @@ PROGRAM mk_GEOSldasRestarts
 
   CHARACTER( * ), PARAMETER :: LOWER_CASE = 'abcdefghijklmnopqrstuvwxyz'
   CHARACTER( * ), PARAMETER :: UPPER_CASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  logical, parameter  :: clm45 = .false.
+  logical, parameter  :: clm45 = .true.
   logical             :: second_visit
   integer :: zoom, k, n
   character*100 :: InRestart
