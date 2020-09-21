@@ -47,7 +47,6 @@ setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 setenv    HOMDIR         $EXPDIR/run/
 setenv    SCRDIR         $EXPDIR/scratch
 setenv    MODEL          MY_MODEL
-@         NENS  =        MY_ENSEMBLE
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
 setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 setenv    LADAS_COUPLING       MY_LADAS_COUPLING   # 1 --yes, 0 --no  
@@ -75,6 +74,7 @@ endif
 
 if (! -e $SCRDIR            ) mkdir -p $SCRDIR
 
+set NENS = `grep NUM_LDAS_ENSEMBLE   $HOMDIR/LDAS.rc | cut -d':' -f2`
 set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
 set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 
