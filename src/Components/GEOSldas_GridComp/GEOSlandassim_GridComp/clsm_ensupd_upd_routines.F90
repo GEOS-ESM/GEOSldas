@@ -18,7 +18,8 @@ module clsm_ensupd_upd_routines
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
-       nodata_tol_generic
+       nodata_tol_generic,                        &
+       LDAS_is_nodata
   
   use clsm_ensupd_glob_param,           ONLY:     &
        N_obs_species_nml,                         &
@@ -990,7 +991,7 @@ contains
     
     real,    parameter                      :: EASE_max_water_frac   = 0.05 ! [-]
 
-    integer                                 :: N_catlH, n_e, i, j, k, N_tmp, ii, jj, kk
+    integer                                 :: N_catlH, n_e, i, j, k, N_tmp, ii, jj
     integer                                 :: N_fields, N_Tbspecies, N_TbuniqFreqAngRTMid
     integer                                 :: this_species, this_tilenum, this_pol
     integer                                 :: this_Tbspecies, this_TbuniqFreqAngRTMid, RTM_id
@@ -1230,19 +1231,18 @@ contains
     ! for FOV_units in 'km', all processors need to know the xhalo of each processor, 
     !  which in turn depends on latitude
 
-    kk = 0   ! counter to facilitate skipping over processors that have no tiles (N_catl_vec(jj)=0)
-
     do jj=1,numprocs
 
-       if (N_catl_vec(jj) <=0 ) cycle   ! nothing to do for this processor
-              
+       if (N_catl_vec(jj) <=0 ) then
+          tmplatvec(jj) = nodata_generic
+          cycle   
+       endif
+
+       ! largest abs(lat) will have largest FOV
+
        istart = low_ind(jj)
        iend   = istart + N_catl_vec(jj) - 1
-       
-       ! largest abs(lat) will have largest FOV
-       
-       kk = kk + 1
-       tmplatvec(kk) = maxval( abs( tile_coord_f(istart:iend)%com_lat ))  
+       tmplatvec(jj) = maxval( abs( tile_coord_f(istart:iend)%com_lat ))  
        
     end do
     
@@ -1261,9 +1261,9 @@ contains
              
              ! convert from [km] (FOV) to [deg] 
              
-             call dist_km2deg( obs_param(ii)%FOV, kk, tmplatvec(1:kk), tmprx(1:kk), r_y )
+             call dist_km2deg( obs_param(ii)%FOV, numprocs, tmplatvec, tmprx, r_y )
              
-             xhalo = max( xhalo, tmprx(1:kk) )
+             xhalo = max( xhalo, tmprx )
              yhalo = max( yhalo, r_y   )
              
           else
@@ -1535,7 +1535,7 @@ contains
     ! Get additional grid/tile information that is needed to map from tile
     ! to obs space
 
-    if ( any(obs_param(1:N_obs_param)%FOV>FOV_threshold) )  then
+    if ( any(obs_param(1:N_obs_param)%FOV>FOV_threshold) .and. N_catlH > 0)  then
        
        ! determine tile_grid_lH from tile_coord_lH
        
@@ -5151,13 +5151,16 @@ contains
     ! -------------------------------------------------------
     
     ! NOTE: MAPL_radius (Earth radius) is in [m] and dist_km is in [km]
-    
     dist_y_deg = dist_km * (180./MAPL_PI) / (MAPL_RADIUS/1000.)
     
-    ! NOTE: cos() needs argument in [rad], lat is in [deg] (-90:90)
+       ! NOTE: cos() needs argument in [rad], lat is in [deg] (-90:90)
     
-    dist_x_deg = dist_y_deg / cos( MAPL_PI/180. * lat )
-    
+    where ( .not. LDAS_is_nodata(lat)) 
+       dist_x_deg = dist_y_deg / cos( MAPL_PI/180. * lat )
+    elsewhere
+       dist_x_deg = 0.
+    endwhere
+
     if (any(dist_x_deg<0.) .or. dist_y_deg<0.)  &
          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'encountered negative distance' )
     
