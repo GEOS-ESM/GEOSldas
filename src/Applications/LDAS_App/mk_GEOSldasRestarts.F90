@@ -739,7 +739,11 @@ contains
       call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' , pFIO_READ,rc=rc)
    end if
    if(trim(MODEL) == 'CATCHCN') then
-      call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy' , pFIO_READ, rc=rc)
+      if (clm45) then
+         call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc)
+      else
+         call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_dummy' , pFIO_READ, rc=rc)
+      endif
    end if
    meta_data = InFmt%read(rc=rc)
    call inFmt%close(rc=rc)
