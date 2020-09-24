@@ -548,9 +548,7 @@ contains
         allocate (ityp_offl (ntiles_rst,nveg))
         allocate (fveg_offl (ntiles_rst,nveg))    
         allocate (id_loc_cn (nt_local (myid + 1),nveg))
-
-        call MPI_Barrier(MPI_COMM_WORLD, STATUS)
-        
+       
 !        STATUS = NF90_OPEN ('OutData2/catchcn_internal_rst',NF_WRITE,OUTID) ; VERIFY_(STATUS)
         STATUS = NF_OPEN_PAR   ('OutData2/catchcn_internal_rst',IOR(NF_WRITE,NF_MPIIO),MPI_COMM_WORLD, infos,OUTID) ; VERIFY_(STATUS)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),1/), (/nt_local(myid+1),1/),CLMC_pt1)
@@ -679,6 +677,7 @@ contains
            deallocate (var_off_col,var_off_pft)           
         endif
         call MPI_Barrier(MPI_COMM_WORLD, STATUS)
+        STATUS = NF_CLOSE (OutID)
      endif
      
  END SUBROUTINE regrid_from_xgrid
@@ -2014,14 +2013,14 @@ contains
      allocate (CLMC_st2(NTILES))
      allocate (VAR_DUM (NTILES))
      
-     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,1/), (/NTILES,1/),CLMC_pt1)
-     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,2/), (/NTILES,1/),CLMC_pt2)
-     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,3/), (/NTILES,1/),CLMC_st1)
-     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,4/), (/NTILES,1/),CLMC_st2)
-     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,1/), (/NTILES,1/),CLMC_pf1)
-     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,2/), (/NTILES,1/),CLMC_pf2)
-     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,3/), (/NTILES,1/),CLMC_sf1)
-     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,4/), (/NTILES,1/),CLMC_sf2)
+     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,1/), (/NTILES,1/),CLMC_pt1) ; VERIFY_(STATUS)
+     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,2/), (/NTILES,1/),CLMC_pt2) ; VERIFY_(STATUS)
+     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,3/), (/NTILES,1/),CLMC_st1) ; VERIFY_(STATUS)
+     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/1,4/), (/NTILES,1/),CLMC_st2) ; VERIFY_(STATUS)
+     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,1/), (/NTILES,1/),CLMC_pf1) ; VERIFY_(STATUS)
+     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,2/), (/NTILES,1/),CLMC_pf2) ; VERIFY_(STATUS)
+     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,3/), (/NTILES,1/),CLMC_sf1) ; VERIFY_(STATUS)
+     STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'FVG'), (/1,4/), (/NTILES,1/),CLMC_sf2) ; VERIFY_(STATUS)
      
      allocate (var_col_out (1: NTILES, 1 : nzone,1 : var_col))
      allocate (var_pft_out (1: NTILES, 1 : nzone,1 : nveg, 1 : var_pft)) 
@@ -2377,25 +2376,25 @@ contains
      i = 1
      do nv = 1,VAR_COL
         do nz = 1,nzone
-           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNCOL'), (/1,i/), (/NTILES,1 /),var_col_out(:, nz,nv))
+           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNCOL'), (/1,i/), (/NTILES,1 /),var_col_out(:, nz,nv))  ; VERIFY_(STATUS)
            i = i + 1
         end do
      end do
-     
+
      i = 1
      if(clm45) then
         do iv = 1,VAR_PFT
            do nv = 1,nveg
               do nz = 1,nzone
                  if(iv <= 74) then
-                    STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_pft_out(:, nz,nv,iv))
+                    STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_pft_out(:, nz,nv,iv))  ; VERIFY_(STATUS)
                  else
                     if((iv == 78) .OR. (iv == 89)) then    ! idop and harvdate
                        var_dum = 999
-                       STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_dum)
+                       STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_dum)  ; VERIFY_(STATUS)
                     else
                        var_dum = 0.
-                       STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_dum)
+                       STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_dum)  ; VERIFY_(STATUS)
                     endif
                  endif
                  i = i + 1
@@ -2406,48 +2405,49 @@ contains
         do iv = 1,VAR_PFT
            do nv = 1,nveg
               do nz = 1,nzone
-                 STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_pft_out(:, nz,nv,iv))
+                 STATUS = NF_PUT_VARA_REAL(OutID,VarID(OutID,'CNPFT'), (/1,i/), (/NTILES,1 /),var_pft_out(:, nz,nv,iv))  ; VERIFY_(STATUS)
                  i = i + 1
               end do
            end do
         end do
      endif
-     
+
      VAR_DUM = 0.
 
      do nz = 1,nzone
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TGWM'), (/1,nz/), (/NTILES,1 /),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RZMM'), (/1,nz/), (/NTILES,1 /),VAR_DUM(:))  
-        if(clm45) STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SFMM'), (/1,nz/), (/NTILES,1 /),VAR_DUM(:))  
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TGWM'), (/1,nz/), (/NTILES,1 /),VAR_DUM(:))            ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RZMM'), (/1,nz/), (/NTILES,1 /),VAR_DUM(:))            ; VERIFY_(STATUS)
+        if(clm45) STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SFMM'), (/1,nz/), (/NTILES,1 /),VAR_DUM(:))  ; VERIFY_(STATUS)
      end do
      
-     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'BFLOWM' ), (/1/), (/NTILES/),VAR_DUM(:))
-     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TOTWATM'), (/1/), (/NTILES/),VAR_DUM(:))
-     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TAIRM'  ), (/1/), (/NTILES/),VAR_DUM(:))
-     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPM'    ), (/1/), (/NTILES/),VAR_DUM(:))
-     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CNSUM'  ), (/1/), (/NTILES/),VAR_DUM(:)) 
-     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SNDZM'  ), (/1/), (/NTILES/),VAR_DUM(:))
-     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'ASNOWM' ), (/1/), (/NTILES/),VAR_DUM(:))
+     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'BFLOWM' ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TOTWATM'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TAIRM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPM'    ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CNSUM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SNDZM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+     STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'ASNOWM' ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      
      if(clm45) then
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'AR1M'    ), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RAINFM'  ), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RHM'     ), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RUNSRFM' ), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SNOWFM'  ), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'WINDM'   ), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC10D'), (/1/), (/NTILES/),VAR_DUM(:))
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC60D'), (/1/), (/NTILES/),VAR_DUM(:))
-     else
-        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SFMCM'), (/1/), (/NTILES/),VAR_DUM(:))
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'AR1M'    ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RAINFM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RHM'     ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'RUNSRFM' ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SNOWFM'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'WINDM'   ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC10D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC60D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+     else                                                                                      
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SFMCM'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      endif
-     
+          
      do nv = 1,nzone
         do nz = 1,nveg
-           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'PSNSUNM'), (/1,nz,nv/), (/NTILES,1,1/),VAR_DUM(:)) 
-           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'PSNSHAM'), (/1,nz,nv/), (/NTILES,1,1/),VAR_DUM(:)) 
+           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'PSNSUNM'), (/1,nz,nv/), (/NTILES,1,1/),VAR_DUM(:))  ; VERIFY_(STATUS)
+           STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'PSNSHAM'), (/1,nz,nv/), (/NTILES,1,1/),VAR_DUM(:))  ; VERIFY_(STATUS)
         end do
      end do
+
      VAR_DUM = 0.1
      do i = 1,4
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'WW'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
@@ -2464,10 +2464,9 @@ contains
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CM'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'CQ'), (/1,i/), (/NTILES,1 /),VAR_DUM(:))
      end do
-     
+
      STATUS = NF_CLOSE (NCFID)
-     STATUS = NF_CLOSE (OutID)
-     
+
      deallocate (var_col_out,var_pft_out)  
      deallocate (CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2)
      deallocate (CLMC_pt1, CLMC_pt2, CLMC_st1, CLMC_st2)
