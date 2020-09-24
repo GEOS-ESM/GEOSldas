@@ -14,7 +14,7 @@ PROGRAM mk_GEOSldasRestarts
 ! (2) to reorder an LDASsa restart file to the order of the BCs for use in an GCM experiment :
 ! --------------------------------------------------------------------------------------------
 ! mpirun -np 1 bin/mk_GEOSldasRestarts.x -b BCSDIR  -d YYYYMMDD -e EXPNAME -l EXPDIR -m MODEL -s SURFLAY(20/50) -r Y -t TILFILE -p PARAMFILE
-
+  use netcdf
   use MAPL
   use mk_restarts_getidsMod, only: GetIDs, ReadTileFile_RealLatLon
   use gFTL_StringVector 
@@ -113,7 +113,7 @@ PROGRAM mk_GEOSldasRestarts
   CHARACTER( * ), PARAMETER :: UPPER_CASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   logical, parameter  :: clm45 = .true.
   logical             :: second_visit
-  integer :: zoom, k, n
+  integer :: zoom, k, n, infos
   character*100 :: InRestart
 
   VAR_COL = VAR_COL_CLM40
@@ -125,7 +125,9 @@ PROGRAM mk_GEOSldasRestarts
   endif
 
   call init_MPI()
-
+  call MPI_Info_create(infos, STATUS)                                 ; VERIFY_(STATUS)
+  call MPI_Info_set(infos, "romio_cb_read", "automatic", STATUS)      ; VERIFY_(STATUS)
+  call MPI_Barrier(MPI_COMM_WORLD, STATUS)
   ! process commands
   ! ----------------
 
@@ -547,7 +549,10 @@ contains
         allocate (fveg_offl (ntiles_rst,nveg))    
         allocate (id_loc_cn (nt_local (myid + 1),nveg))
 
-        STATUS = NF_OPEN ('OutData2/catchcn_internal_rst',NF_WRITE,OUTID)
+        call MPI_Barrier(MPI_COMM_WORLD, STATUS)
+        
+!        STATUS = NF90_OPEN ('OutData2/catchcn_internal_rst',NF_WRITE,OUTID) ; VERIFY_(STATUS)
+        STATUS = NF_OPEN_PAR   ('OutData2/catchcn_internal_rst',IOR(NF_WRITE,NF_MPIIO),MPI_COMM_WORLD, infos,OUTID) ; VERIFY_(STATUS)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),1/), (/nt_local(myid+1),1/),CLMC_pt1)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),2/), (/nt_local(myid+1),1/),CLMC_pt2)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),3/), (/nt_local(myid+1),1/),CLMC_st1)
@@ -668,7 +673,7 @@ contains
                    
            where(isnan(var_off_pft))  var_off_pft = 0.   
            where(var_off_pft /= var_off_pft)  var_off_pft = 0.  
-           
+           print *, 'Writing regridded carbn'
            call write_regridded_carbon (NTILES, ntiles_rst, NCFID, OUTID, id_glb_cn, &
                 DAYX, var_off_col,var_off_pft, ityp_offl, fveg_offl) 
            deallocate (var_off_col,var_off_pft)           
@@ -2481,7 +2486,7 @@ contains
      real   , dimension (:), allocatable :: var_get, var_put
      type(Netcdf4_FileFormatter):: OutFmt, InFmt
      type(FileMetadata)         :: meta_data 
-     integer         :: STATUS, NCFID
+     integer         :: STATUS, NCFID, OUTID
      character(*), intent (in), optional :: rst_file
 
      allocate (var_get (NTILES_RST))
@@ -2490,7 +2495,7 @@ contains
      ! create output catchcn_internal_rst
      if(trim(model) == 'CATCHCN') then 
         if (clm45) then
-           call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc)
+           call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc) ; VERIFY_(RC)
         else
            call InFmt%open(trim(InCNRestart ), pFIO_READ, rc=rc)
         endif
@@ -2506,7 +2511,7 @@ contains
      if(trim(model) == 'CATCHCN') OutFileName = "OutData1/catchcn_internal_rst"
      if(trim(model) == 'CATCH'  ) OutFileName = "OutData1/catch_internal_rst"
 
-     call OutFmt%create(trim(OutFileName),rc=rc)
+     call OutFmt%create(trim(OutFileName),rc=rc) ; VERIFY_(RC)
      call OutFmt%write(meta_data,rc=rc)
  
      if (present(rst_file)) then
@@ -2939,17 +2944,15 @@ contains
         call MAPL_VarWrite(OutFmt,'CQ',VAR_PUT ,offset1=k)  
      end do
 
-     call OutFmt%close(rc=rc)
+     call OutFmt%close(rc=rc) ; VERIFY_(RC)
      STATUS = NF_CLOSE ( NCFID)
 
      deallocate (var_get, var_put)
-  
      if(trim(MODEL) == 'CATCHCN') then
-        call system('/bin/cp OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst')
+        CALL EXECUTE_COMMAND_LINE('/bin/cp OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst', .TRUE.)
      endif
-
      if(trim(MODEL) == 'CATCH') then
-        call system('/bin/cp OutData1/catch_internal_rst OutData2/catch_internal_rst')
+        CALL EXECUTE_COMMAND_LINE('/bin/cp OutData1/catch_internal_rst OutData2/catch_internal_rst', .TRUE.)
      endif
 
    END SUBROUTINE put_land_vars
