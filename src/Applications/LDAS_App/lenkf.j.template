@@ -47,7 +47,6 @@ setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 setenv    HOMDIR         $EXPDIR/run/
 setenv    SCRDIR         $EXPDIR/scratch
 setenv    MODEL          MY_MODEL
-@         NENS  =        MY_ENSEMBLE
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
 setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 setenv    LADAS_COUPLING       MY_LADAS_COUPLING   # 1 --yes, 0 --no  
@@ -75,6 +74,7 @@ endif
 
 if (! -e $SCRDIR            ) mkdir -p $SCRDIR
 
+set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
 set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
 set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 
@@ -577,16 +577,16 @@ EOF
      if ( -l "$new_mwrtm_file" ) then
         /bin/rm -f $new_mwrtm_file
      endif
-     /bin/ln -s $old_mwrtm_file $new_mwrtm_file
+     /bin/ln -rs $old_mwrtm_file $new_mwrtm_file
      /bin/rm ../input/restart/mwrtm_param_rst
-     /bin/ln -s $new_mwrtm_file ../input/restart/mwrtm_param_rst
+     /bin/ln -rs $new_mwrtm_file ../input/restart/mwrtm_param_rst
    endif
    
    if (-f $old_catch_param) then
      if ( -l "$new_catch_param" ) then
         /bin/rm -f $new_catch_param
      endif
-     /bin/ln -s $old_catch_param $new_catch_param
+     /bin/ln -rs $old_catch_param $new_catch_param
    endif
    
    # Move Intermediate Checkpoints to RESTARTS directory
@@ -614,7 +614,7 @@ EOF
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
           /bin/mv ${rstf}${ENSID}_internal_checkpoint $tmp_file
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
-          /bin/ln -s  $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
+          /bin/ln -rs  $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
        endif
    
        set rstf = 'landpert'
@@ -626,7 +626,7 @@ EOF
           /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
           set old_rst = `/usr/bin/readlink -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
-          /bin/ln -s $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
+          /bin/ln -rs $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /usr/bin/gzip $old_rst &
        endif
    
@@ -635,7 +635,7 @@ EOF
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
           /bin/mv ${rstf}${ENSID}_checkpoint $tmp_file
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_rst
-          /bin/ln -s $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_rst
+          /bin/ln -rs $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_rst
        endif
    # move intermediate check point files to  output/$EXPDOMAIN/rs/$ENSDIR/Yyyyy/Mmm/ directories
    # -------------------------------------------------------------------------------------------
