@@ -946,6 +946,7 @@ contains
     !  1 Dec 2011 - reichle: added QC for Tb vs. model *soil* temp (RFI-motivated)
     ! 18 Jun 2012 - reichle: rewritten for better memory management w/ MPI
     ! 26 Mar 2014 - reichle: apply all model-based QC only before EnKF update
+    ! 25 Sep 2020 - wjiang+reichle: accommodate processors that have no tiles
     
     implicit none
     
@@ -1086,11 +1087,15 @@ contains
     ! --------------------------------------------------------------
     !
     ! allocate and initialize
+    
     allocate(Obs_pred_l(N_obsl,N_ens))
-    if (N_catl == 0) return 
+
+    if (N_catl == 0) return   ! return if processor has no tiles
+
     if (N_obsl > 0) Obs_pred_l = nodata_generic
 
     ! deal with optional arguments
+    
     if (present(obsbias_ok)) then
        
        obsbias_ok_tmp = obsbias_ok
@@ -1229,7 +1234,7 @@ contains
 
     do jj=1,numprocs
  
-       if (N_catl_vec(jj) <=0) cycle
+       if (N_catl_vec(jj) <= 0) cycle    ! nothing to do for this processor
        
        istart = low_ind(jj)
        iend   = istart + N_catl_vec(jj) - 1
@@ -1254,6 +1259,8 @@ contains
           ! convert from [km] (FOV) to [deg] 
           
           call dist_km2deg( obs_param(ii)%FOV, numprocs, tmplatvec, tmprx, r_y )
+
+          ! for now, ignore what happens to xhalo for processors without tiles (fixed below)
           
           xhalo = max( xhalo, tmprx )
           yhalo = max( yhalo, r_y   )
@@ -1265,10 +1272,8 @@ contains
        end if
        
     end do
-    
-    where ( N_catl_vec <=0 ) 
-      xhalo = 0.
-    endwhere
+
+    where (N_catl_vec<=0)  xhalo = 0.    ! set xhalo=0. for processors without tiles
 
     ! FOV is *radius*, leave some room
 
@@ -1822,7 +1827,7 @@ contains
              
              ! potentially eliminate obs (except if "bias_Npar>0" and "obsbias_ok==FALSE")
              
-             if ( obs_param(this_species)%bias_Npar>0  .and.  (.not. obsbias_ok(i)) ) then
+             if ( obs_param(this_species)%bias_Npar>0  .and.  (.not. obsbias_ok_tmp(i)) ) then
                 
                 ! do nothing (ie, keep obs), obs bias estimate is spinning up
                 
@@ -2879,7 +2884,7 @@ contains
     
     do i=1,numprocs
       
-       if (N_catl_vec(i) <=0) cycle
+       if (N_catl_vec(i) <= 0) cycle    ! nothing to do for this processor
  
        istart = low_ind(i)
        iend   = istart + N_catl_vec(i) - 1
@@ -2916,7 +2921,8 @@ contains
     do i=1,numprocs            
 
        ! all tiles within the following rectangle are needed by proc i
-       if ( N_catl_vec(i) <=0) cycle
+
+       if ( N_catl_vec(i) <= 0) cycle    ! nothing to do for this processor
 
        ll_lon = halo_minlon_vec(i)
        ur_lon = halo_maxlon_vec(i)
@@ -2925,7 +2931,7 @@ contains
        
        do j=i+1,numprocs
      
-          if (N_catl_vec(j) <=0) cycle
+          if (N_catl_vec(j) <= 0) cycle  ! nothing to do for this processor
              
           minlon = catl_minlon_vec(j)
           maxlon = catl_maxlon_vec(j)
