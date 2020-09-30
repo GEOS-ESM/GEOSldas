@@ -1278,8 +1278,6 @@ class LDASsetup:
                         fout.write(line.replace('MY_EXPID',self.rqdExeInp['EXP_ID']))
                     elif 'MY_EXPDOMAIN' in line :
                         fout.write(line.replace('MY_EXPDOMAIN',self.rqdExeInp['EXP_DOMAIN']))
-                    elif 'MY_ENSEMBLE' in line :
-                        fout.write(line.replace('MY_ENSEMBLE',str(self.rqdExeInp['NUM_LDAS_ENSEMBLE'])))
                     elif 'MY_LOGFILE' in line :
                         fout.write(line.replace('MY_LOGFILE',my_logfile))
                     elif 'MY_ERRFILE' in line :
