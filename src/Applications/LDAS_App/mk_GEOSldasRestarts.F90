@@ -1365,6 +1365,14 @@ contains
           call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf1,offset1=3)     !  36
           call MAPL_VarRead(CatchCNFmt,'FVG',CLMC_sf2,offset1=4)     !  37
           call CatchCNFmt%close()
+          if(clm45) then
+            open(unit=30, file=trim(DataDir)//'CLM4.5_abm_peatf_gdp_hdm_fc' ,form='formatted')
+            do n=1,ntiles
+              read (30,'(2I8, i3, f8.4, f8.2, f10.2, f8.4)' ) i, j, abm(n), peatf(n), &
+                     gdp(n), hdm(n), fc(n)
+            end do
+            CLOSE (30, STATUS = 'KEEP')
+          endif
        endif
 
       
@@ -2437,6 +2445,7 @@ contains
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'WINDM'   ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC10D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'TPREC60D'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
+        STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'T2M10D'  ), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      else                                                                                      
         STATUS = NF_PUT_VARA_REAL(OutID,VarID(OUTID,'SFMCM'), (/1/), (/NTILES/),VAR_DUM(:)) ; VERIFY_(STATUS)
      endif
