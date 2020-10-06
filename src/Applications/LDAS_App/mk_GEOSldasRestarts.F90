@@ -34,8 +34,9 @@ PROGRAM mk_GEOSldasRestarts
   ! ----------------------
 
   character*256 :: Usage="mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -d YYYYMMDD  -e EXPNAME -j JOBFILE -k ENS -l EXPDIR -m MODEL -r REORDER -s SURFLAY -t TILFILE -p PARAMFILE"
-  character*256 :: BCSDIR, SPONSORCODE, EXPNAME, EXPDIR, MODEL, TILFILE, YYYYMMDD, SFL, PFILE
+  character*256 :: BCSDIR, SPONSORCODE, EXPNAME, EXPDIR, MODEL, TILFILE, SFL, PFILE
   character*400 :: CMD
+  character*8   :: YYYYMMDD
 
   real, parameter :: ECCENTRICITY  = 0.0167
   real, parameter :: PERIHELION    = 102.0
@@ -566,7 +567,7 @@ contains
            allocate (fveg_tmp (ntiles_rst,nveg))  
            allocate (DAYX   (NTILES))
 
-           AGCM_DATE = ICHAR(trim(YYYYMMDD))
+           READ(YYYYMMDD,'(I8)') AGCM_DATE 
            AGCM_YY = AGCM_DATE / 10000
            AGCM_MM = (AGCM_DATE - AGCM_YY*10000) / 100
            AGCM_DD = (AGCM_DATE - AGCM_YY*10000 - AGCM_MM*100)
