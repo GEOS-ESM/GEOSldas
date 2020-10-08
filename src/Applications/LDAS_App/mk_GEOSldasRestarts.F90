@@ -112,18 +112,13 @@ PROGRAM mk_GEOSldasRestarts
 
   CHARACTER( * ), PARAMETER :: LOWER_CASE = 'abcdefghijklmnopqrstuvwxyz'
   CHARACTER( * ), PARAMETER :: UPPER_CASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  logical, parameter  :: clm45 = .true.
+  logical             :: clm45 = .false.
   logical             :: second_visit
   integer :: zoom, k, n, infos
   character*100 :: InRestart
 
   VAR_COL = VAR_COL_CLM40
   VAR_PFT = VAR_PFT_CLM40
-
-  if(clm45) then
-     VAR_COL = VAR_COL_CLM45
-     VAR_PFT = VAR_PFT_CLM45     
-  endif
 
   call init_MPI()
   call MPI_Info_create(infos, STATUS)                                 ; VERIFY_(STATUS)
@@ -195,7 +190,8 @@ PROGRAM mk_GEOSldasRestarts
   end do
 
   if (trim(model) == 'CATCHCN') then
-     if((INDEX(BCSDIR, 'Heracles') == 0).AND.(INDEX(BCSDIR, 'Icarus') == 0)) then
+     if((INDEX(BCSDIR, 'Heracles') == 0).AND.(INDEX(BCSDIR, 'Icarus') == 0).AND. &
+          (INDEX(BCSDIR, 'NLv4') == 0)) then
         print *,'Land BCs in : ',trim(BCSDIR)
         print *,'do not support ',trim (model)
         stop
@@ -335,7 +331,9 @@ contains
     integer                :: AGCM_YY,AGCM_MM,AGCM_DD,AGCM_HR=0,AGCM_DATE
     real,    allocatable, dimension(:,:) :: fveg_offl,  ityp_offl,  fveg_tmp,  ityp_tmp
     real, allocatable :: var_off_col (:,:,:), var_off_pft (:,:,:,:) 
-
+    type(Netcdf4_FileFormatter)  :: ldFmt
+    type(FileMetadata)           :: meta_data
+ 
     ! read NTILES from output BCs and tile_coord from GEOSldas/LDASsa input restarts
 
     open (10,file =trim(BCSDIR)//"clsm/catchment.def",status='old',form='formatted')
@@ -362,6 +360,17 @@ contains
                '.ens'//ENS//'.catchcn_ldas_rst.'//trim(YYYYMMDD)//'_0000z'          
           lendian = .false.
        endif
+       call ldFmt%open(trim(rst_file) , pFIO_READ,rc=rc)
+        meta_data = ldFmt%read(rc=rc)
+        call ldFmt%close(rc=rc)
+        if(meta_data%get_dimension('unknown_dim3',rc=rc) == 105) then
+           clm45  = .true.
+           VAR_COL = VAR_COL_CLM45 
+           VAR_PFT = VAR_PFT_CLM45
+           if (root_proc) print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
+        else
+           if (root_proc) print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
+        endif
     endif
 
     ! Open input tile_coord
@@ -693,7 +702,7 @@ contains
     character(*), intent (in) :: BCSDIR, YYYYMMDD, EXPNAME, EXPDIR, MODEL, ENS
     character(256)            :: tile_coord
     character(300)            :: rst_file, out_rst_file
-    type(Netcdf4_FileFormatter) :: InFmt,OutFmt
+    type(Netcdf4_FileFormatter) :: InFmt,OutFmt, ldFmt
     type(FileMetadata)           :: meta_data
     integer                   :: NTILES, i,j,k,n, ndims,dimSizes(3)
     integer, allocatable      :: LDAS2BCS (:), g2d(:), tile_id(:)
@@ -715,6 +724,17 @@ contains
         rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
             '.ens'//ENS//'.catchcn_ldas_rst.'//trim(YYYYMMDD)//'_0000z'
         out_rst_file = 'catchcn'//ENS//'_internal_rst.'//trim(YYYYMMDD)
+        call ldFmt%open(trim(rst_file) , pFIO_READ,rc=rc)
+        meta_data = ldFmt%read(rc=rc)
+        call ldFmt%close(rc=rc)
+        if(meta_data%get_dimension('unknown_dim3',rc=rc) == 105) then
+           clm45  = .true.
+           VAR_COL = VAR_COL_CLM45 
+           VAR_PFT = VAR_PFT_CLM45
+           if (root_proc) print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
+        else
+           if (root_proc) print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
+        endif
     endif
 
     inquire(file =  trim(rst_file), exist=fexist)
