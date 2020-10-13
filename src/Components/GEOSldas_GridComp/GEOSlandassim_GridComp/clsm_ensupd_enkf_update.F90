@@ -686,6 +686,7 @@ contains
           ! NOTE: loop over tile_coord_l, if tile has nnz obs, store the 'full' index
           call cpu_time(t_start)
           allocate(indTiles_l(N_catl), source=-99)
+          allocate(select_species(0))
           nTiles_l = 0
           do iTile=1,N_catl
              halo = get_halo_around_tile(tile_coord_l(iTile), xcompact, ycompact)
@@ -789,6 +790,7 @@ contains
                   call addUniqueInts(tmp_ind_obs(1:N_selected_obs),indObs_ana,nObs_ana)
           end do
           if (allocated(tmp_ind_obs)) deallocate(tmp_ind_obs)
+          if (allocated(select_species)) deallocate(select_species)
           ! sort obs indices (for layout independence)
           if (nObs_ana>1) call MAPL_Sort(indObs_ana(1:nObs_ana))
 
