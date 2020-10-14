@@ -15,5 +15,5 @@ list (APPEND SRCS
 
 esma_add_library(${this}
   SRCS ${SRCS}
-  DEPENDENCIES MAPL_Base  GEOS_Shared
+  DEPENDENCIES MAPL  GEOS_Shared
   INCLUDES ${INC_ESMF} ${INC_NETCDF})

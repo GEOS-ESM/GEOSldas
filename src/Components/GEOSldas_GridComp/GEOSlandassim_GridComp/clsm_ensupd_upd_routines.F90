@@ -946,6 +946,7 @@ contains
     !  1 Dec 2011 - reichle: added QC for Tb vs. model *soil* temp (RFI-motivated)
     ! 18 Jun 2012 - reichle: rewritten for better memory management w/ MPI
     ! 26 Mar 2014 - reichle: apply all model-based QC only before EnKF update
+    ! 25 Sep 2020 - wjiang+reichle: accommodate processors that have no tiles
     
     implicit none
     
@@ -990,7 +991,7 @@ contains
     
     real,    parameter                      :: EASE_max_water_frac   = 0.05 ! [-]
 
-    integer                                 :: N_catlH, n_e, i, j, k, N_tmp, ii, jj, kk
+    integer                                 :: N_catlH, n_e, i, j, k, N_tmp, ii, jj
     integer                                 :: N_fields, N_Tbspecies, N_TbuniqFreqAngRTMid
     integer                                 :: this_species, this_tilenum, this_pol
     integer                                 :: this_Tbspecies, this_TbuniqFreqAngRTMid, RTM_id
@@ -1085,16 +1086,26 @@ contains
     
     ! --------------------------------------------------------------
     !
-    ! deal with optional arguments
+    ! allocate and initialize
+    
+    allocate(Obs_pred_l(N_obsl,N_ens))
 
-    if (N_obsl > 0) then 
- 
+    if (N_catl == 0) return   ! return if processor has no tiles
+
+    if (N_obsl > 0) Obs_pred_l = nodata_generic
+
+    ! deal with optional arguments
+    
+    if (present(obsbias_ok)) then
+       
+       obsbias_ok_tmp = obsbias_ok
+       
+    else
+       
        obsbias_ok_tmp = .false.
 
-       if (present(obsbias_ok)) obsbias_ok_tmp = obsbias_ok
-
     end if
-            
+        
     if (present(fcsterr_inflation_fac) .and. beforeEnKFupdate) then
 
        ! ONLY inflate *before* EnKF update!!!
@@ -1111,12 +1122,6 @@ contains
     !
     ! determine which diagnostics are needed (based on obs_param because
     ! observations on local proc may not reflect all obs)
-    
-    ! allocate and initialize
-    
-    allocate(Obs_pred_l(N_obsl,N_ens))
-    
-    if (N_obsl > 0) Obs_pred_l = nodata_generic
 
     ! get_*_l : may include additional fields needed to compute observed fields
     
@@ -1139,83 +1144,78 @@ contains
     
     ind_obsparam2Tbspecies = -999
     
-    j           = 0     ! initialize
-    N_Tbspecies = 0     ! initialize
-
-    if (N_catl > 0) then 
+    j = 0
     
-       do i=1,N_obs_param  
-          
-          select case (trim(obs_param(i)%varname))
-          
-          case ('sfmc')
-          
-             get_sfmc_l   = .true.
-             get_sfmc_lH  = .true.
-             get_tsurf_l  = .true.    ! needed for model-based QC
-             
-          case ('rzmc')
-             
-             get_rzmc_l   = .true.
-             get_rzmc_lH  = .true.
-             get_tsurf_l  = .true.    ! needed for model-based QC
-             
-          case ('tsurf')
-             
-             get_tsurf_l  = .true.
-             get_tsurf_lH = .true.
-             get_tp_l     = .true.    ! needed for model-based QC
-             get_sfmc_l   = .true.    ! needed to get ar1, ar2, and ar4
-             
-          case ('FT')
-             
-             get_FT_l     = .true.
-             get_FT_lH    = .true.
-             get_sfmc_l   = .true.    ! needed to get ar1, ar2, and ar4
-             get_tp_l     = .true.    ! needed as input to calc_FT
-             
-          case ('Tb')
-             
-             j=j+1        ! count number of Tb species
-             
-             ind_obsparam2Tbspecies(i) = j
-             
-             Tb_freq_ang_RTMid(j,1) =      obs_param(i)%freq
-             Tb_freq_ang_RTMid(j,2) =      obs_param(i)%ang(1)
-             Tb_freq_ang_RTMid(j,3) = real(obs_param(i)%RTM_ID)
-             
-             get_sfmc_l   = .true. 
-             get_tsurf_l  = .true.
-             get_tp_l     = .true.          
-             get_Tb_l     = .true.
-             
-             get_Tb_lH    = .true.
-             
-          case default
-             
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown obs_param%varname')
-             
-          end select
-          
-       end do
-    
-       N_Tbspecies = j
+    do i=1,N_obs_param  
        
-       ! determine unique combinations of Tb frequency, angle, and RTM_ID
-       !
-       ! Step 1:
-       ! determine unique combinations of Tb frequency and angle
-       ! (obs_param usually has separate species for H- and V-pol and
-       !  for ascending and descending orbits, but the mwRTM model
-       !  always provides both polarizations and does not depend on the 
-       !  orbit direction --> avoid computing and communicating redundant
-       !  information)
-       
-       call unique_rows_3col(                                                        &
-            N_Tbspecies, Tb_freq_ang_RTMid(1:N_Tbspecies,:),                         &
-            N_TbuniqFreqAngRTMid, ind_Tbspecies2TbuniqFreqAngRTMid(1:N_Tbspecies) )
+       select case (trim(obs_param(i)%varname))
+          
+       case ('sfmc')
+          
+          get_sfmc_l   = .true.
+          get_sfmc_lH  = .true.
+          get_tsurf_l  = .true.    ! needed for model-based QC
+          
+       case ('rzmc')
+          
+          get_rzmc_l   = .true.
+          get_rzmc_lH  = .true.
+          get_tsurf_l  = .true.    ! needed for model-based QC
+          
+       case ('tsurf')
+          
+          get_tsurf_l  = .true.
+          get_tsurf_lH = .true.
+          get_tp_l     = .true.    ! needed for model-based QC
+          get_sfmc_l   = .true.    ! needed to get ar1, ar2, and ar4
 
-    endif ! N_catl > 0
+       case ('FT')
+          
+          get_FT_l     = .true.
+          get_FT_lH    = .true.
+          get_sfmc_l   = .true.    ! needed to get ar1, ar2, and ar4
+          get_tp_l     = .true.    ! needed as input to calc_FT
+          
+       case ('Tb')
+          
+          j=j+1        ! count number of Tb species
+          
+          ind_obsparam2Tbspecies(i) = j
+          
+          Tb_freq_ang_RTMid(j,1) =      obs_param(i)%freq
+          Tb_freq_ang_RTMid(j,2) =      obs_param(i)%ang(1)
+          Tb_freq_ang_RTMid(j,3) = real(obs_param(i)%RTM_ID)
+          
+          get_sfmc_l   = .true. 
+          get_tsurf_l  = .true.
+          get_tp_l     = .true.          
+          get_Tb_l     = .true.
+          
+          get_Tb_lH    = .true.
+          
+       case default
+          
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown obs_param%varname')
+          
+       end select
+       
+    end do
+    
+    N_Tbspecies = j
+
+    ! determine unique combinations of Tb frequency, angle, and RTM_ID
+    !
+    ! Step 1:
+    ! determine unique combinations of Tb frequency and angle
+    ! (obs_param usually has separate species for H- and V-pol and
+    !  for ascending and descending orbits, but the mwRTM model
+    !  always provides both polarizations and does not depend on the 
+    !  orbit direction --> avoid computing and communicating redundant
+    !  information)
+
+    call unique_rows_3col(                                                        &
+         N_Tbspecies, Tb_freq_ang_RTMid(1:N_Tbspecies,:),                         &
+         N_TbuniqFreqAngRTMid, ind_Tbspecies2TbuniqFreqAngRTMid(1:N_Tbspecies) )
         
     if (get_Tb_l)  allocate(Tb_h_l(N_catl,N_TbuniqFreqAngRTMid,N_ens))
     if (get_Tb_l)  allocate(Tb_v_l(N_catl,N_TbuniqFreqAngRTMid,N_ens))
@@ -1229,52 +1229,51 @@ contains
     
     ! for FOV_units in 'km', all processors need to know the xhalo of each processor, 
     !  which in turn depends on latitude
-
-    kk = 0   ! counter to facilitate skipping over processors that have no tiles (N_catl_vec(jj)=0)
+    
+    tmplatvec = 0.
 
     do jj=1,numprocs
-
-       if (N_catl_vec(jj) <=0 ) cycle   ! nothing to do for this processor
-              
+ 
+       if (N_catl_vec(jj) <= 0) cycle    ! nothing to do for this processor
+       
        istart = low_ind(jj)
        iend   = istart + N_catl_vec(jj) - 1
        
        ! largest abs(lat) will have largest FOV
        
-       kk = kk + 1
-       tmplatvec(kk) = maxval( abs( tile_coord_f(istart:iend)%com_lat ))  
+       tmplatvec(jj) = maxval( abs( tile_coord_f(istart:iend)%com_lat ))  
        
     end do
     
     ! find maximum FOV in units of [deg] across all obs params 
+    
+    do ii=1,N_obs_param
+       
+       if     ( trim(obs_param(ii)%FOV_units)=='deg' ) then
+          
+          xhalo = max( xhalo, obs_param(ii)%FOV )
+          yhalo = max( yhalo, obs_param(ii)%FOV )
+          
+       elseif ( trim(obs_param(ii)%FOV_units)=='km'  ) then
+          
+          ! convert from [km] (FOV) to [deg] 
+          
+          call dist_km2deg( obs_param(ii)%FOV, numprocs, tmplatvec, tmprx, r_y )
 
-    if (N_catl > 0) then
-       
-       do ii=1,N_obs_param
+          ! for now, ignore what happens to xhalo for processors without tiles (fixed below)
           
-          if     ( trim(obs_param(ii)%FOV_units)=='deg' ) then
-             
-             xhalo = max( xhalo, obs_param(ii)%FOV )
-             yhalo = max( yhalo, obs_param(ii)%FOV )
-             
-          elseif ( trim(obs_param(ii)%FOV_units)=='km'  ) then
-             
-             ! convert from [km] (FOV) to [deg] 
-             
-             call dist_km2deg( obs_param(ii)%FOV, kk, tmplatvec(1:kk), tmprx(1:kk), r_y )
-             
-             xhalo = max( xhalo, tmprx(1:kk) )
-             yhalo = max( yhalo, r_y   )
-             
-          else
-             
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown FOV_units (i)')
-             
-          end if
+          xhalo = max( xhalo, tmprx )
+          yhalo = max( yhalo, r_y   )
           
-       end do
+       else
+          
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown FOV_units (i)')
+          
+       end if
        
-    endif ! N_catl > 0
+    end do
+
+    where (N_catl_vec<=0)  xhalo = 0.    ! set xhalo=0. for processors without tiles
 
     ! FOV is *radius*, leave some room
 
@@ -2884,9 +2883,9 @@ contains
     !  crosses the dateline!
     
     do i=1,numprocs
-
-       if (N_catl_vec(i) <=0 ) cycle   ! nothing to do for this processor
-       
+      
+       if (N_catl_vec(i) <= 0) cycle    ! nothing to do for this processor
+ 
        istart = low_ind(i)
        iend   = istart + N_catl_vec(i) - 1
 
@@ -2915,42 +2914,39 @@ contains
 
     do i=1,numprocs            
 
-       need_catl(i,i) = .true.
+       if (N_catl_vec(i) >0) need_catl(i,i) = .true.
 
     end do
     
-    do i=1,numprocs
-
-       if (N_catl_vec(i) <=0 ) cycle   ! nothing to do for this processor
+    do i=1,numprocs            
 
        ! all tiles within the following rectangle are needed by proc i
-       
+
+       if ( N_catl_vec(i) <= 0) cycle    ! nothing to do for this processor
+
        ll_lon = halo_minlon_vec(i)
        ur_lon = halo_maxlon_vec(i)
        ll_lat = halo_minlat_vec(i)
        ur_lat = halo_maxlat_vec(i)
        
-       do j=i+1,numprocs       
+       do j=i+1,numprocs
+     
+          if (N_catl_vec(j) <= 0) cycle  ! nothing to do for this processor
+             
+          minlon = catl_minlon_vec(j)
+          maxlon = catl_maxlon_vec(j)
+          minlat = catl_minlat_vec(j)
+          maxlat = catl_maxlat_vec(j)
           
-          if (N_catl_vec(j)>0) then
-             
-             minlon = catl_minlon_vec(j)
-             maxlon = catl_maxlon_vec(j)
-             minlat = catl_minlat_vec(j)
-             maxlat = catl_maxlat_vec(j)
-             
-             ! processor i needs tile_data_l from processor j 
-             ! if bounding box around tile_data_l(j) overlaps
-             ! with bounding box plus halo of processor i
-             
-             if ( (min(ur_lon,maxlon) - max(ll_lon,minlon))>0.   .and. &
-                  (min(ur_lat,maxlat) - max(ll_lat,minlat))>0. )       &
-                  need_catl(i,j) = .true.
-             
-             need_catl(j,i) = need_catl(i,j)
-             
-          end if
+          ! processor i needs tile_data_l from processor j 
+          ! if bounding box around tile_data_l(j) overlaps
+          ! with bounding box plus halo of processor i
           
+          if ( (min(ur_lon,maxlon) - max(ll_lon,minlon))>0.   .and. &
+               (min(ur_lat,maxlat) - max(ll_lat,minlat))>0. )       &
+               need_catl(i,j) = .true.
+          
+          need_catl(j,i) = need_catl(i,j)
        end do
     end do
     
@@ -2974,7 +2970,7 @@ contains
     ! initialize tile_coord_lH, tile_data_lH with local tile_coord_l, 
     ! tile_data_l
     
-    N_catlH = N_catl_vec(myid+1) ! will grow as data from other processors are appended
+    N_catlH = N_catl ! will grow as data from other processors are appended
     
     if (present(tile_coord_lH)) tile_coord_lH(1:N_catlH) = tile_coord_l(1:N_catlH)
     
