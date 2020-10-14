@@ -181,3 +181,7 @@ DYCORE: none
 # ---- For MAPL_RestartOptional
 #
 MAPL_ENABLE_BOOTSTRAP: YES
+
+# ---- For restart by OServer
+#
+WRITE_RESTART_BY_OSERVER: YES
