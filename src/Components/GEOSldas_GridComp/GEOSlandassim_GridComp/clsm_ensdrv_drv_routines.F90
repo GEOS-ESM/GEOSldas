@@ -239,6 +239,9 @@ contains
     call catch_calc_tp( N_catd, cat_param%poros,                    &
          catprogn2ghtcnt(N_catd,cat_progn), tp )
     
+       ! Bilja *** if catch_calc_tp returns Kelvin, then the cat_diagS will
+       ! become Kelvin as well. I made catch_calc_tp to get me 'tp' in Kelvin,
+       ! so cat_diagS(:)%tp(ii) = tp(ii,:) will leave this subroutine in K
     do ii=1,N_gt
        
        cat_diagS(:)%tp(ii) = tp(ii,:)

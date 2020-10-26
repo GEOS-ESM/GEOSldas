@@ -1339,6 +1339,7 @@ contains
        if (get_tp_l) then
           
           ! NOTE: "tp" is returned in CELSIUS [for consistency w/ catchment.F90]
+          ! *** Bilja changed "tp" in catch_calc_tp to be retured in KELVIN
 
           ! updated to new interface - reichle, 3 Apr 2012
           
@@ -1358,6 +1359,8 @@ contains
                ar1_l, ar2_l, ar4_l, tsurf_excl_snow )
           
           ! catch_calc_FT() expects "tp" in CELSIUS
+          ! *** Bilja changed catch_calc_FT to expect tp in Kelvin on input
+          !     here tp_l is in Kelvin
           
           call catch_calc_FT( N_catl, asnow, tp_l(1,:), tsurf_excl_snow, FT_l(:,n_e))
           
@@ -2272,7 +2275,7 @@ contains
     
     real,    dimension(N_cat), intent(in)    :: precip   ! Rainf+Snowf      [kg/m2/s]
     real,    dimension(N_cat), intent(in)    :: SWE      ! total SWE        [kg/m2]  
-    real,    dimension(N_cat), intent(in)    :: tp1      ! soil temperature [C]
+    real,    dimension(N_cat), intent(in)    :: tp1      ! soil temperature [K]
     
     real,    dimension(N_cat), intent(inout) :: tsurf    
     
@@ -2290,20 +2293,21 @@ contains
     
     logical, dimension(N_cat) :: frozen
     
-    real,    dimension(N_cat) :: tp1_in_Kelvin
+   !real,    dimension(N_cat) :: tp1_in_Kelvin
 
     ! ---------------------------------------    
-    
+    ! **** Bilja elimiated tp1_in_Kelvin variable; tp1 now arrives in [K]
     frozen = .false.
     
     if (avoid_frozen) then
        
-       tp1_in_Kelvin = tp1 + MAPL_TICE
+      !tp1_in_Kelvin = tp1 + MAPL_TICE
 
        do i=1,N_cat
           
           if ( (tsurf(          i) < temp_threshold)         .or.     &
-               (tp1_in_Kelvin(  i) < temp_threshold)                  &
+               (tp1          (  i) < temp_threshold)                  &
+              !(tp1_in_Kelvin(  i) < temp_threshold)                  &
                )                                                      &
                frozen(i) = .true. 
           
@@ -3474,7 +3478,9 @@ contains
 
     real, parameter :: SWE_threshold = +HUGE(1.) ! = 1.e-4           ! [kg/m2]
     
-    real, parameter :: tp1_threshold = -HUGE(1.) ! = 0.2             ! [CELSIUS]
+    ! Bilja *** tp is in Kelvin, which makes tp1_ensavg to be in Kelvin, so
+    !           this threshold has to be in K too (adding MAPL_TICE)
+    real, parameter :: tp1_threshold = -HUGE(1.) + MAPL_TICE  ! = 0.2 + MAPL_TICE ! [KELVIN]
     
     integer :: n, n_e, kk, ii
     
@@ -3615,7 +3621,9 @@ contains
        
        ! soil temperature 
        !
-       ! NOTE: "tp" is returned in CELSIUS
+       ! *** Bilja changed catch_calc_tp to return Kelvin
+       ! NOTE: "tp" is returned in KELVIN
+       ! NOTE: fice is fractional ice content
        
        call catch_calc_tp( N_catd, cat_param%poros,                           &
             catprogn2ghtcnt(N_catd,cat_progn(:,n_e)),                         &
@@ -4282,7 +4290,9 @@ contains
        
        do n_e=1,N_ens
           
-          ! tp must be in CELSIUS;  FT_Teff is returned in Kelvin
+          ! *** Bilja changed catch_calc_FT to expect tp in Kelvin on input.
+          !     Here tp IS in Kelvin
+          ! tp must be in KELVIN; FT_Teff is returned in Kelvin
 
           call catch_calc_FT( N_catd, asnow(:,n_e), tp(1,:,n_e),          &
                tsurf_excl_snow(:,n_e), FT_state(:), FT_Teff(:,n_e ) )
@@ -4418,18 +4428,31 @@ contains
                    
                    fice_minus = fice(1,kk,n_e)           ! model forecast
                    
-                   tp1_minus  = tp(1,kk,n_e)             ! model forecast [CELSIUS]       
-
+                   ! *** Bilja tp is in Kelvin here. I need to
+                   ! change the following lines to account for the 273
+                   ! difference between C and K
+                   tp1_minus  = tp(1,kk,n_e)             ! model forecast [Kelvin]       
+                   ! [K]  <----    [K]
                    fice_plus  = fice_minus               ! ice fraction does not change
-
-                   tp1_plus   = tp1_minus + deltaT       ! tentative tp1 analysis [CELSIUS]
-                   
+                   ! [-]           [-]
+                   tp1_plus   = tp1_minus + deltaT       ! tentative tp1 analysis [Kelvin]
+                   ! [K]  <----    [K]      [K or C doesnt matter]
                    ! avoid phase change of soil temp
                    
-                   if ((tp1_minus*tp1_plus) < 0.)  tp1_plus = 0.
-                   
+                   ! *** Bilja: the following line says: if model forcast (tp)
+                   ! and tentative tp1 analysis are of opposite sign, then make
+                   ! tentative analysis to be equal to 0 deg Celsius before sending it to catch_calc_ght
+                   ! if ((tp1_minus*tp1_plus) < 0.)  tp1_plus = 0.
+                   ! To rewrite this condition using Kelvin I do the following:
+                   if ((tp1_minus .gt. MAPL_TICE .and. tp1_plus .lt. MAPL_TICE) .or. &
+                       (tp1_minus .lt. MAPL_TICE .and. tp1_plus .gt. MAPL_TICE))     &
+                        tp1_plus = MAPL_TICE
+
                    ! compute ght1_plus from tp1_plus and fice_plus
                    
+                   ! *** Bilja I changed the catch_calc_ght to expect Kelvin
+                   ! (due to its other calls). So, I can send tp1_plus in
+                   ! Kelvins to catch_calc_ght. tp1_plus IS in Kelvin
                    call catch_calc_ght( cat_param(kk)%dzgt(1),                    &
                         cat_param(kk)%poros, tp1_plus, fice_plus, ght1_plus )
                    

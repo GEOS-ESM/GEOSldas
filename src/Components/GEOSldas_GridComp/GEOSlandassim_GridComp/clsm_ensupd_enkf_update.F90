@@ -2853,11 +2853,13 @@ contains
                tsurf(:,n_e) )
 
           ! NOTE: "tp" is returned in CELSIUS [for consistency w/ catchment.F90]
+          ! *** Bilja I've changed catch_calc_tp to return tp in Kelvin
 
           call catch_calc_tp( N_catl, cat_param%poros,                            &
                catprogn2ghtcnt(N_catl,cat_progn(:,n_e)), tp )
 
-          tp1(:,n_e) = tp(1,:) + MAPL_TICE
+             ! *** Bilja tp returned in Kelvin, removing addition of TICE
+          tp1(:,n_e) = tp(1,:) ! + MAPL_TICE
 
        end do
 

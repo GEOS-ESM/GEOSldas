@@ -1902,7 +1902,10 @@ contains
        if(associated(RZMC_ana))   RZMC_ana(:)   = cat_diagS_ensavg(:)%rzmc  
        if(associated(PRMC_ana))   PRMC_ana(:)   = cat_diagS_ensavg(:)%prmc 
        if(associated(TPSURF_ana)) TPSURF_ana(:) = cat_diagS_ensavg(:)%tsurf
-       if(associated(TSOIL1_ana)) TSOIL1_ana(:) = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
+       ! *** Bilja In recompute_diagS (few lines above) cat_diagS%tp is returned
+       ! here in K. This makes cat_diagS_ensavg(:)%tp be in K as well. So, no
+       ! need to transfer to K
+       if(associated(TSOIL1_ana)) TSOIL1_ana(:) = cat_diagS_ensavg(:)%tp(1) ! + MAPL_TICE  ! convert to K
 
        deallocate(cat_progn_tmp)
        deallocate(cat_diagS)
@@ -2199,7 +2202,9 @@ contains
     _VERIFY(status)
     
     ! convert Catchment model variables into inputs suitable for the mwRTM 
-    ! NOTE: input TP1 must be in degree Celsius!
+    ! Bilja 'TP1' now should be imported in K, meaning I it will be sent to 
+    ! catch2mwRTM_vars as such. The catch2mwRTM_vars is adjusted to deal with
+    ! tp in Kelving
     allocate(sfmc_mwRTM(N_catl), tsoil_mwRTM (N_catl))
     call catch2mwRTM_vars(  &
          N_catl,            &
@@ -2208,7 +2213,7 @@ contains
          mwRTM_param%poros, &
          WCSF,              & 
          TPSURF,            & 
-         TP1,               &    ! units deg C !!!
+         TP1,               &    ! units deg K !!!
          sfmc_mwRTM,        & 
          tsoil_mwRTM )           ! units Kelvin !!!
     

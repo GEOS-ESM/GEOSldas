@@ -222,9 +222,10 @@ contains
     ! (change prompted by revision of Catchment model parameter CSOIL_2)
     ! - reichle, 23 Dec 2015
 
+! **** Bilja removed C to K conversion 
     ! NOTE: "tp" is in deg Celsius
     
-    tsoil_mwRTM = tp1_catch + MAPL_TICE
+    tsoil_mwRTM = tp1_catch ! + MAPL_TICE
         
   end subroutine catch2mwRTM_vars
   
