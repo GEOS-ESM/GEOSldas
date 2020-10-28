@@ -384,6 +384,7 @@ contains
     real :: DT, DT_Solar
     type(ESMF_Alarm) :: SolarAlarm
     type(ESMF_TimeInterval) :: Solar_DT
+    integer :: LSM_CHOICE
 
     ! Begin...
 
@@ -422,7 +423,10 @@ contains
     ! Init catchment constants, currently different in GCM and GEOSldas
     call MAPL_GetResource(MAPL, LAND_PARAMS,Label="LAND_PARAMS:",DEFAULT="Icarus",RC=STATUS)
     VERIFY_(STATUS)
-    call SurfParams_init(LAND_PARAMS)
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+    call SurfParams_init(LAND_PARAMS, LSM_CHOICE, RC=STATUS)
+    VERIFY_(STATUS)
 
     
     call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
