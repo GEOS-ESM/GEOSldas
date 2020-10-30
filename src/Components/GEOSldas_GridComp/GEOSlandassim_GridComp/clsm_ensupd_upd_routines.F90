@@ -3480,7 +3480,8 @@ contains
     
     ! Bilja *** tp is in Kelvin, which makes tp1_ensavg to be in Kelvin, so
     !           this threshold has to be in K too (adding MAPL_TICE)
-    real, parameter :: tp1_threshold = -HUGE(1.) + MAPL_TICE  ! = 0.2 + MAPL_TICE ! [KELVIN]
+    real, parameter :: tp1_threshold = -HUGE(1.)  ! = 0.2 + MAPL_TICE ! [KELVIN]
+    !real, parameter :: tp1_threshold = -HUGE(1.) + MAPL_TICE  ! = 0.2 + MAPL_TICE ! [KELVIN]
     
     integer :: n, n_e, kk, ii
     

@@ -32,5 +32,5 @@ GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: git@github.com:GEOS-ESM/GEOSgcm_GridComp.git
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
-  branch: feature/borescan_TP_C_to_K
+  branch: feature/borescan_TP_C_to_K_2
   develop: develop
