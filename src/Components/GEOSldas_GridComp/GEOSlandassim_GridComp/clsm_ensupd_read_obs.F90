@@ -5997,44 +5997,43 @@ contains
                    
                 end if
 
-                ! compute fore and aft average
+                ! compute fore and aft average, put into "tb_1", "tmp_time_1"
                 
-                if (keep_data_1 .or. keep_data_2) then
+                if     (keep_data_1 .and. keep_data_2) then
+                   
+                   ! Compute stats for fore-minus-aft Tb differences.
+                   ! Excessive diffs are found in bad L1C_TB files, which occur 
+                   ! occasionally due to bad ANT_AZ files in L1B processing.
+                   ! Includes ALL SURFACES!!!
+                   ! - reichle, 22 Apr 2020 (resurrected)
+                   ! - reichle, 16 Oct 2020 (bug fix: do stats first, then avg)
+                   
+                   mm=mm+1
+                   
+                   tmp_tb_diff         = tmp_tb_1(nn) - tmp_tb_2(nn) 
+                   
+                   tmp_tb_diff_Sum     = tmp_tb_diff_Sum     + tmp_tb_diff
+                   tmp_tb_diff_SumOfSq = tmp_tb_diff_SumOfSq + tmp_tb_diff**2
                    
                    ! put average of "fore" and "aft" into "tb_1", "tmp_time_1"
                    
-                   if     (keep_data_1 .and. keep_data_2) then
-                      
-                      tmp_tb_1(  nn) = 0.5  *( tmp_tb_1(  nn) + tmp_tb_2(  nn) )
-                      tmp_time_1(nn) = 0.5D0*( tmp_time_1(nn) + tmp_time_2(nn) ) 
-                      
-                      ! Compute stats for fore-minus-aft Tb differences.
-                      ! Excessive diffs are found in bad L1C_TB files, which occur 
-                      ! occasionally due to bad ANT_AZ files in L1B processing.
-                      ! Includes ALL SURFACES!!!
-                      ! - reichle, 22 Apr 2020 (resurrected)
+                   tmp_tb_1(  nn) = 0.5  *( tmp_tb_1(  nn) + tmp_tb_2(  nn) )
+                   tmp_time_1(nn) = 0.5D0*( tmp_time_1(nn) + tmp_time_2(nn) ) 
+                   
+                elseif (keep_data_2)                   then
 
-                      mm=mm+1
+                   ! put "aft" data into "tb_1", "tmp_time_1"
+                   
+                   tmp_tb_1(  nn) = tmp_tb_2(  nn)
+                   tmp_time_1(nn) = tmp_time_2(nn)
 
-                      tmp_tb_diff         = tmp_tb_1(nn) - tmp_tb_2(nn) 
-                      
-                      tmp_tb_diff_Sum     = tmp_tb_diff_Sum     + tmp_tb_diff
-                      tmp_tb_diff_SumOfSq = tmp_tb_diff_SumOfSq + tmp_tb_diff**2
-                                       
-                   elseif (keep_data_1)                   then
-                      
-                      tmp_tb_1(  nn) = tmp_tb_1(  nn)
-                      tmp_time_1(nn) = tmp_time_1(nn)
-                      
-                   else   ! "keep_data_2=.true." per nested if statements above
-                      
-                      tmp_tb_1(  nn) = tmp_tb_2(  nn)
-                      tmp_time_1(nn) = tmp_time_2(nn)
-                      
-                   end if
+                else
+
+                   ! nothing to do here
+                   ! - if only keep_data_1 is true  (tmp_tb_1 and tmp_time_1 are already as needed)
+                   ! - if both keep_data_1 and keep_data_2 are false  (next if block ignores data)
                    
                 end if
-                
 
                 ! apply QC and thinning, ensure that time stamp is within assimilation window
                 
