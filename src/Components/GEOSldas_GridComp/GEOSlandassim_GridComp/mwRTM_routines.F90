@@ -218,8 +218,10 @@ contains
 
     ! local variables
     
-    logical :: tp1_in_K
+    logical                    :: tp1_in_K
 
+    real,    dimension(N_tile) :: tp1
+    
     ! -----------------------------------------------------------------------
     !
     ! reichle, 22 Oct 2012: scaling factor added because it is necessary for
@@ -231,15 +233,17 @@ contains
     ! (change prompted by revision of Catchment model parameter CSOIL_2)
     ! - reichle, 23 Dec 2015
 
-    ! NOTE: By default, "tp" is in deg Celsius; convert to Kelvin if needed
-    
+    ! NOTE: By default, "tp" is assumed to be in deg Celsius
+
     tp1_in_K = .false.
     
     if (present(tp1_in_Kelvin)) tp1_in_K = tp1_in_Kelvin
+
+    tp1 = tp1_catch
     
-    if (.not. tp1_in_K)  tp1_catch = tp1_catch + MAPL_TICE
+    if (.not. tp1_in_K)  tp1 = tp1 + MAPL_TICE  ! convert units if not already in Kelvin
            
-    tsoil_mwRTM = tp1_catch
+    tsoil_mwRTM = tp1
         
   end subroutine catch2mwRTM_vars
   
