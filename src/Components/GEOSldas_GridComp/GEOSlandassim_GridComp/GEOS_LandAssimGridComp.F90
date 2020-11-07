@@ -2189,7 +2189,7 @@ contains
     
     call MAPL_GetPointer(import, LAI,     'LAI'      ,rc=status)
     _VERIFY(status)
-    call MAPL_GetPointer(import, TP1,     'TP1'      ,rc=status)
+    call MAPL_GetPointer(import, TP1,     'TP1'      ,rc=status)         ! units now K, rreichle & borescan, 6 Nov 2020
     _VERIFY(status)
     call MAPL_GetPointer(import, WCSF,    'WCSF'     ,rc=status)
     _VERIFY(status)
@@ -2208,9 +2208,10 @@ contains
          mwRTM_param%poros, &
          WCSF,              & 
          TPSURF,            & 
-         TP1,               &    ! units deg C !!!
+         TP1,               &    ! units Kelvin !!!
          sfmc_mwRTM,        & 
-         tsoil_mwRTM )           ! units Kelvin !!!
+         tsoil_mwRTM,       &    ! units Kelvin !!!
+         tp1_in_Kelvin=.true. )
     
     ! calculate brightness temperatures
     ! (tau-omega model as in De Lannoy et al. 2013 [doi:10.1175/JHM-D-12-092.1]
