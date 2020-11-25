@@ -17,21 +17,9 @@ where `(path)` depends on the computer and operating system:
 
 | System        | Path                                              |
 | ------------- |---------------------------------------------------|
-| NCCS SLES11   | `/discover/swdev/gmao_SIteam/modulefiles-SLES11`  |
-| NCCS SLES12   | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
+| NCCS          | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
 | NAS           | `/nobackup/gmao_SIteam/modulefiles`               |
 | GMAO desktops | `/ford1/share/gmao_SIteam/modulefiles`            |
-
-
-For NCCS, you can add the following to your `.cshrc`:
-```
-if ( ! -f /etc/os-release ) then
-   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES11
-else
-   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
-endif
-module load GEOSenv
-```
 
 
 ### Step 2: Obtain the Model
@@ -123,13 +111,13 @@ Moreover, descriptions of the configuration (resource) parameters are included i
 
 The steps detailed below are essentially those performed by `parallel_build.csh` in Step 3 above. Either method should yield identical builds.
 
-##### Checkout externals
+#### mepo
 ```
 cd GEOSldas
-checkout_externals
+mepo clone
 ```
 
-##### Load Compiler, MPI Stack, and Baselibs
+#### Load Compiler, MPI Stack, and Baselibs
 On tcsh:
 ```
 source @env/g5_modules
@@ -139,14 +127,14 @@ or on bash:
 source @env/g5_modules.sh
 ```
 
-##### Create Build Directory
+#### Create Build Directory
 We currently do not allow in-source builds of GEOSldas. So we must make a directory:
 ```
 mkdir build
 ```
 The advantages of this is that you can build both a Debug and Release version with the same clone if desired.
 
-##### Run CMake
+#### Run CMake
 CMake generates the Makefiles needed to build the model.
 ```
 cd build
@@ -158,9 +146,9 @@ This will install to a directory parallel to your `build` directory. If you pref
 ```
 and CMake will install there.
 
-##### Build and Install with Make
+#### Build and Install with Make
 ```
 make -j6 install
 ```
-If you are using SLES12 at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.  
+If you are at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.  
 
