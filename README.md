@@ -112,6 +112,10 @@ Moreover, descriptions of the configuration (resource) parameters are included i
 The steps detailed below are essentially those performed by `parallel_build.csh` in Step 3 above. Either method should yield identical builds.
 
 #### mepo
+
+The GEOSldas is comprised of a set of sub-repositories. These are
+managed by a tool called [mepo](https://github.com/GEOS-ESM/mepo). To
+clone all the sub-repos, you can run `mepo clone` inside the fixture:
 ```
 cd GEOSldas
 mepo clone
