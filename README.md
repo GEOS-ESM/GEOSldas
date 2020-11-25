@@ -6,7 +6,7 @@ This document explains how to build, set up, and run the GEOS land modeling and 
 
 ### Step 1: Load the Build Modules  
 
-Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It contains the latest `git`, `CMake`, and `manage_externals` modules and must be loaded in any interactive window that is used to check out and build the model.
+Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It contains the latest `git`, `CMake`, and `mepo` modules and must be loaded in any interactive window that is used to check out and build the model.
 
 ```
 module use -a (path)
