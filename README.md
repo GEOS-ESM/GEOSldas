@@ -118,6 +118,7 @@ managed by a tool called [mepo](https://github.com/GEOS-ESM/mepo). To
 clone all the sub-repos, you can run `mepo clone` inside the fixture:
 ```
 cd GEOSldas
+mepo init
 mepo clone
 ```
 
