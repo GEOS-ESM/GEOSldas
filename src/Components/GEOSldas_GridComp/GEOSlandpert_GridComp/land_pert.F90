@@ -1222,6 +1222,10 @@ contains
   ! *************************************************************************
   
 #if 0
+  ! This subroutine is not used.
+  ! Note that my_matrix_functions.F90 contains another (commented-out) version.
+  ! wjiang + reichle, 25 Nov 2020
+  
   subroutine adjust_std( N_row, N_col, A, std )
     
     ! adjust N_row by N_col matrix A such that (sample) standard deviation
@@ -1264,8 +1268,14 @@ contains
     end do
     
   end subroutine adjust_std
+#endif
   
   ! ***************************************************************************
+  
+#if 0
+  ! This subroutine is not used.
+  ! Note that my_matrix_functions.F90 contains other (commented-out) versions.
+  ! wjiang + reichle, 25 Nov 2020
   
   subroutine matrix_std( N_row, N_col, A, std )
     

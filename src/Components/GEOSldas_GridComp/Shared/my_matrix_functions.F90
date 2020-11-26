@@ -18,6 +18,10 @@ module my_matrix_functions
   
 contains
 
+  ! Changed algorithm to compute (co)variance in subroutines row_covariance() and
+  ! row_variance().  Original subroutines commented out below.
+  ! wjiang + reichle, 25 Nov 2020
+  
   subroutine row_covariance( M, N, A, B, covar )
     ! compute covariance of each row of two M-by-N matrices A and B
     implicit none
@@ -27,8 +31,7 @@ contains
     real, intent(out), dimension(M)  :: covar
     ! locals
     integer :: i, j
-    real :: mean_a, mean_b
-
+    real :: mean_a, mean_b    
     ! -------------------------------------------------------------
     do i=1,M
        mean_a = sum(A(i,:))/N
@@ -41,27 +44,40 @@ contains
     covar = covar/(N-1)
   end subroutine row_covariance
 
+  ! **********************************************************************
+  
   subroutine row_variance( M, N, A, var, mean )
-     implicit none
-     integer, intent(in) :: M, N
-     real, intent(in), dimension(M,N) :: A
-     real, intent(out), dimension(M)  :: var
-     real, intent(out), dimension(M), optional  :: mean
-     ! locals
-     integer :: i, j
-     real, dimension(M) ::  mean_tmp
+    ! compute variance of each row of an M-by-N matrix A
+    ! optionally output mean values
+    implicit none
+    integer, intent(in) :: M, N
+    real, intent(in), dimension(M,N) :: A
+    real, intent(out), dimension(M)  :: var
+    real, intent(out), dimension(M), optional  :: mean
+    ! locals
+    integer :: i, j
+    real, dimension(M) ::  mean_tmp
     ! -------------------------------------------------------------
-     do i=1,M
-        mean_tmp(i) = sum(A(i,:))/N
-        var(i) = 0
-        do j=1,N
-           var(i) = var(i) + (A(i,j)-mean_tmp(i))**2
-        end do
-     end do
-     var = var/(N-1)
-     if (present(mean))  mean = mean_tmp
+    do i=1,M
+       mean_tmp(i) = sum(A(i,:))/N
+       var(i) = 0
+       do j=1,N
+          var(i) = var(i) + (A(i,j)-mean_tmp(i))**2
+       end do
+    end do
+    var = var/(N-1)
+    if (present(mean))  mean = mean_tmp
   end subroutine row_variance
 
+  ! **********************************************************************
+
+#if 0
+  ! The following is a version of subroutine matrix_std() that is
+  ! consistent with the revised algorithm for (co)variance computation.
+  ! This subroutine is not used.
+  ! Note that land_pert.F90 contains another (commented-out) version.
+  ! wjiang + reichle, 25 Nov 2020
+  
   subroutine matrix_std( N_row, N_col, A, std )
     ! compute std of all elements of N_row by N_col matrix A
     implicit none
@@ -72,16 +88,15 @@ contains
     ! locals
     integer ::  N
     real :: mean
-    
     ! ------------------------------------------------------------
-
     N = N_row*N_col
     ! compute sample std
     mean = sum(A)/N
     std  = sqrt(sum((A-mean)*(A-mean))/(N-1))
-    
   end subroutine matrix_std
 
+#endif
+  
 !!  subroutine row_covariance( M, N, A, B, covar )
 !!    
 !!    ! compute covariance of each row of two M-by-N matrices A and B
@@ -392,7 +407,12 @@ contains
   end subroutine adjust_mean
   
   ! ------------------------------------------------------------------
-  
+
+#if 0
+  ! This subroutine is not used.
+  ! Note that land_pert.F90 contains another (commented-out) version.
+  ! wjiang + reichle, 25 Nov 2020
+
   subroutine adjust_std( N_row, N_col, A, std )
     
     ! adjust N_row by N_col matrix A such that (sample) standard deviation
@@ -435,6 +455,7 @@ contains
     end do
     
   end subroutine adjust_std
+#endif
   
   ! ------------------------------------------------------------------
   
