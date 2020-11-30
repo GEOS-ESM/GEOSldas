@@ -1050,6 +1050,8 @@ contains
     ! locals
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     type(MAPL_LocStream)         :: locstream
+    type(MAPL_MetaComp), pointer :: CHILD_MAPL=>null() ! Child's MAPL obj
+    type(ESMF_GridComp), pointer :: gcs(:)
 
     character(len=300)           :: out_path,fname
     character(len=ESMF_MAXSTR)   :: exp_id, GridName
@@ -1288,7 +1290,17 @@ contains
     call MPI_BCAST(obs_param,   N_obs_param, MPI_OBS_PARAM_TYPE, 0,MPICOMM,mpierr)
     
     if (root_proc) call echo_clsm_ensupd_glob_param(logunit) 
-    
+  
+    call MAPL_Get(MAPL, GCS=gcs, rc=status)
+    VERIFY_(STATUS)
+
+    do i = 1,NUM_ENSEMBLE
+       call MAPL_GetObjectFromGC(gcs(i), CHILD_MAPL, rc=status)
+       VERIFY_(status)
+       call MAPL_Set(CHILD_MAPL, LocStream=locstream, rc=status)
+       VERIFY_(status)
+    enddo
+ 
     call MAPL_GenericInitialize(gc, import, export, clock, rc=status)
     _VERIFY(status)
     
