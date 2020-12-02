@@ -13,7 +13,7 @@ module my_matrix_functions
   public :: row_variance
   public :: row_std
   public :: adjust_mean
-  public :: matrix_std
+  !public :: matrix_std
   public :: unique_rows_3col
   
 contains
