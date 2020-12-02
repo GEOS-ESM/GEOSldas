@@ -427,7 +427,6 @@ contains
     VERIFY_(STATUS)
     call SurfParams_init(LAND_PARAMS,LSM_CHOICE,RC=STATUS)
     VERIFY_(STATUS)
-
     
     call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
     VERIFY_(STATUS)
