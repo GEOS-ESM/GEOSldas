@@ -31,7 +31,7 @@ setenv I_MPI_DAPL_UD enable
 
 #setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
 # reversed sequence for LADAS_COUPLING (Sep 2020)  (needed when coupling with ADAS using different BASEDIR)
-setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${LD_LIBRARY_PATH} 
+setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${ESMADIR}/lib:${LD_LIBRARY_PATH} 
 
 if ( -e /etc/os-release ) then
   module load nco/4.8.1
