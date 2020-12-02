@@ -1,13 +1,13 @@
 env:
   local: ./@env
   remote: git@github.com:GEOS-ESM/ESMA_env.git
-  tag: v3.1.0
+  tag: v3.1.1
   develop: main
 
 cmake:
   local: ./@cmake
   remote: git@github.com:GEOS-ESM/ESMA_cmake.git
-  tag: v3.2.0
+  tag: v3.3.1
   develop: develop
 
 ecbuild:
@@ -25,7 +25,7 @@ GMAO_Shared:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: git@github.com:GEOS-ESM/MAPL.git
-  tag: v2.3.2
+  tag: v2.4.0
   develop: develop
 
 GEOSgcm_GridComp:
