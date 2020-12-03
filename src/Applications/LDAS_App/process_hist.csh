@@ -36,7 +36,7 @@ endif
 if($LSM_CHOICE == 1) then
    set GridComp = CATCH
    sed -i '/^>>>HIST_CATCHCN<<</d' $HISTRC
-   sed -i '/^>>>HIST_CATCHCN45<<</d' $HISTRC
+   sed -i '/^>>>HIST_CATCHCNCLM45<<</d' $HISTRC
 endif
 
 if($LSM_CHOICE == 2) then
