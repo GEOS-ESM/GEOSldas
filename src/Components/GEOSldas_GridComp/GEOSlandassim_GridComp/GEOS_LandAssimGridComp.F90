@@ -2475,6 +2475,9 @@ contains
     integer :: N_catl_tmp, n, mpierr, status
     logical :: mwp_nodata, all_nodata_l
 
+    type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
+
+    type(ESMF_Clock) :: clock  ! The clock
     character(len=ESMF_MAXSTR)         :: TAUFile
     type(ESMF_Time) :: CURRENT_TIME
  
@@ -2484,16 +2487,16 @@ contains
 
     call MAPL_GetResource(MAPL, TAUFile, label = 'TAU_FILE:', &
         default = 'tau.dat', RC=STATUS )
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
 
-    call MAPL_GetPointer(INTERNAL,      DCATAU,      'DCATAU' , RC=STATUS)
-    VERIFY_(STATUS)
+    call MAPL_GetPointer(INTERNAL, DCATAU,  'DCATAU' , RC=STATUS)
+    _VERIFY(STATUS)
 
-    call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
-    VERIFY_(STATUS)
+    call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
+    _VERIFY(STATUS)
 
     call MAPL_ReadForcing(MAPL,'DCATAU',TAUFILE,CURRENT_TIME,DCATAU,ON_TILES=.true.,RC=STATUS)
-    VERIFY_(STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
     _VERIFY(STATUS)
