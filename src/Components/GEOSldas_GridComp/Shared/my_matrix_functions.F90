@@ -13,104 +13,183 @@ module my_matrix_functions
   public :: row_variance
   public :: row_std
   public :: adjust_mean
-  public :: matrix_std
+  !public :: matrix_std
   public :: unique_rows_3col
   
 contains
 
+  ! Changed algorithm to compute (co)variance in subroutines row_covariance() and
+  ! row_variance().  Original subroutines commented out below.
+  ! wjiang + reichle, 25 Nov 2020
+  
   subroutine row_covariance( M, N, A, B, covar )
-    
     ! compute covariance of each row of two M-by-N matrices A and B
-    
     implicit none
-    
     integer, intent(in) :: M, N
-    
     real, intent(in), dimension(M,N) :: A
-
     real, intent(in), dimension(M,N) :: B
-    
-    real, intent(out), dimension(M)  :: covar    
-    
+    real, intent(out), dimension(M)  :: covar
     ! locals
-    
     integer :: i, j
-    
-    real :: x2, N_real, N_real_minus_one
-    
+    real :: mean_a, mean_b    
     ! -------------------------------------------------------------
-    
-    N_real = real(N)
-    
-    N_real_minus_one = real(N-1)
-    
     do i=1,M
-       
-       x2 = 0.0
+       mean_a = sum(A(i,:))/N
+       mean_b = sum(B(i,:))/N
+       covar(i) = 0.
        do j=1,N
-          x2 = x2 + A(i,j)*B(i,j)
+          covar(i) = covar(i) + (A(i,j)-mean_a)*(B(i,j)-mean_b)
        end do
-       
-       covar(i) = ( x2 - (sum(A(i,:))*sum(B(i,:)))/N_real )/N_real_minus_one
-       
     end do
-    
+    covar = covar/(N-1)
   end subroutine row_covariance
-  
-  
-  ! -------------------------------------------------------------------
+
+  ! **********************************************************************
   
   subroutine row_variance( M, N, A, var, mean )
-    
     ! compute variance of each row of an M-by-N matrix A
-    
-    ! reichle, 16 Jun 2011: added optional output of mean
-
+    ! optionally output mean values
     implicit none
-    
     integer, intent(in) :: M, N
-    
     real, intent(in), dimension(M,N) :: A
-    
-    real, intent(out), dimension(M)  :: var    
-
+    real, intent(out), dimension(M)  :: var
     real, intent(out), dimension(M), optional  :: mean
-    
     ! locals
-    
     integer :: i, j
-    
-    real :: x2, N_real, N_real_minus_one
-
-    real, dimension(M) :: xm
-    
+    real, dimension(M) ::  mean_tmp
     ! -------------------------------------------------------------
-    
-    N_real = real(N)
-    
-    N_real_minus_one = real(N-1)
-    
     do i=1,M
-       
-       x2 = 0.0
+       mean_tmp(i) = sum(A(i,:))/N
+       var(i) = 0
        do j=1,N
-          x2 = x2 + A(i,j)*A(i,j)
+          var(i) = var(i) + (A(i,j)-mean_tmp(i))**2
        end do
-
-       xm(i) = sum(A(i,:))
-
-       var(i) = ( x2 - (xm(i)**2)/N_real )/N_real_minus_one
-       
     end do
-    
-    ! deal with possible round-off errors
-    ! reichle, 24 Sep 2004
-
-    var = max(var,0.)
-    
-    if (present(mean))  mean = xm/N_real
-    
+    var = var/(N-1)
+    if (present(mean))  mean = mean_tmp
   end subroutine row_variance
+
+  ! **********************************************************************
+
+#if 0
+  ! The following is a version of subroutine matrix_std() that is
+  ! consistent with the revised algorithm for (co)variance computation.
+  ! This subroutine is not used.
+  ! Note that land_pert.F90 contains another (commented-out) version.
+  ! wjiang + reichle, 25 Nov 2020
+  
+  subroutine matrix_std( N_row, N_col, A, std )
+    ! compute std of all elements of N_row by N_col matrix A
+    implicit none
+    integer, intent(in) :: N_row, N_col
+    real, intent(inout), dimension(N_row,N_col)  :: A
+    real, intent(out) :: std
+    ! ----------------------------
+    ! locals
+    integer ::  N
+    real :: mean
+    ! ------------------------------------------------------------
+    N = N_row*N_col
+    ! compute sample std
+    mean = sum(A)/N
+    std  = sqrt(sum((A-mean)*(A-mean))/(N-1))
+  end subroutine matrix_std
+
+#endif
+  
+!!  subroutine row_covariance( M, N, A, B, covar )
+!!    
+!!    ! compute covariance of each row of two M-by-N matrices A and B
+!!    
+!!    implicit none
+!!    
+!!    integer, intent(in) :: M, N
+!!    
+!!    real, intent(in), dimension(M,N) :: A
+!!
+!!    real, intent(in), dimension(M,N) :: B
+!!    
+!!    real, intent(out), dimension(M)  :: covar    
+!!    
+!!    ! locals
+!!    
+!!    integer :: i, j
+!!    
+!!    real :: x2, N_real, N_real_minus_one
+!!    
+!!    ! -------------------------------------------------------------
+!!    
+!!    N_real = real(N)
+!!    
+!!    N_real_minus_one = real(N-1)
+!!    
+!!    do i=1,M
+!!       
+!!       x2 = 0.0
+!!       do j=1,N
+!!          x2 = x2 + A(i,j)*B(i,j)
+!!       end do
+!!       
+!!       covar(i) = ( x2 - (sum(A(i,:))*sum(B(i,:)))/N_real )/N_real_minus_one
+!!       
+!!    end do
+!!    
+!!  end subroutine row_covariance
+!!  
+!!  
+!!  ! -------------------------------------------------------------------
+!!  
+!!  subroutine row_variance( M, N, A, var, mean )
+!!    
+!!    ! compute variance of each row of an M-by-N matrix A
+!!    
+!!    ! reichle, 16 Jun 2011: added optional output of mean
+!!
+!!    implicit none
+!!    
+!!    integer, intent(in) :: M, N
+!!    
+!!    real, intent(in), dimension(M,N) :: A
+!!    
+!!    real, intent(out), dimension(M)  :: var    
+!!
+!!    real, intent(out), dimension(M), optional  :: mean
+!!    
+!!    ! locals
+!!    
+!!    integer :: i, j
+!!    
+!!    real :: x2, N_real, N_real_minus_one
+!!
+!!    real, dimension(M) :: xm
+!!    
+!!    ! -------------------------------------------------------------
+!!    
+!!    N_real = real(N)
+!!    
+!!    N_real_minus_one = real(N-1)
+!!    
+!!    do i=1,M
+!!       
+!!       x2 = 0.0
+!!       do j=1,N
+!!          x2 = x2 + A(i,j)*A(i,j)
+!!       end do
+!!
+!!       xm(i) = sum(A(i,:))
+!!
+!!       var(i) = ( x2 - (xm(i)**2)/N_real )/N_real_minus_one
+!!       
+!!    end do
+!!    
+!!    ! deal with possible round-off errors
+!!    ! reichle, 24 Sep 2004
+!!
+!!    var = max(var,0.)
+!!    
+!!    if (present(mean))  mean = xm/N_real
+!!    
+!!  end subroutine row_variance
   
   ! **********************************************************************
 
@@ -328,7 +407,12 @@ contains
   end subroutine adjust_mean
   
   ! ------------------------------------------------------------------
-  
+
+#if 0
+  ! This subroutine is not used.
+  ! Note that land_pert.F90 contains another (commented-out) version.
+  ! wjiang + reichle, 25 Nov 2020
+
   subroutine adjust_std( N_row, N_col, A, std )
     
     ! adjust N_row by N_col matrix A such that (sample) standard deviation
@@ -371,50 +455,51 @@ contains
     end do
     
   end subroutine adjust_std
+#endif
   
   ! ------------------------------------------------------------------
   
-  subroutine matrix_std( N_row, N_col, A, std )
-    
-    ! compute std of all elements of N_row by N_col matrix A
-    
-    implicit none
-    
-    integer, intent(in) :: N_row, N_col
-    
-    real, intent(inout), dimension(N_row,N_col)  :: A
-    
-    real, intent(out) :: std
-    
-    ! ----------------------------
-    
-    ! locals
-    
-    integer :: i, j
-    
-    real :: x2, m, N_real, N_real_minus_one
-    
-    ! ------------------------------------------------------------
-    
-    N_real = real(N_row)*real(N_col)
-    
-    N_real_minus_one = N_real - 1.
-    
-    ! compute sample std
-    
-    x2 = 0.0
-    m  = 0.0
-    
-    do i=1,N_row
-       do j=1,N_col
-          m  = m  + A(i,j)
-          x2 = x2 + A(i,j)*A(i,j)
-       end do
-    end do
-    
-    std = sqrt( ( x2 - m**2/N_real )/N_real_minus_one )
-        
-  end subroutine matrix_std
+!!  subroutine matrix_std( N_row, N_col, A, std )
+!!    
+!!    ! compute std of all elements of N_row by N_col matrix A
+!!    
+!!    implicit none
+!!    
+!!    integer, intent(in) :: N_row, N_col
+!!    
+!!    real, intent(inout), dimension(N_row,N_col)  :: A
+!!    
+!!    real, intent(out) :: std
+!!    
+!!    ! ----------------------------
+!!    
+!!    ! locals
+!!    
+!!    integer :: i, j
+!!    
+!!    real :: x2, m, N_real, N_real_minus_one
+!!    
+!!    ! ------------------------------------------------------------
+!!    
+!!    N_real = real(N_row)*real(N_col)
+!!    
+!!    N_real_minus_one = N_real - 1.
+!!    
+!!    ! compute sample std
+!!    
+!!    x2 = 0.0
+!!    m  = 0.0
+!!    
+!!    do i=1,N_row
+!!       do j=1,N_col
+!!          m  = m  + A(i,j)
+!!          x2 = x2 + A(i,j)*A(i,j)
+!!       end do
+!!    end do
+!!    
+!!    std = sqrt( ( x2 - m**2/N_real )/N_real_minus_one )
+!!        
+!!  end subroutine matrix_std
 
 
   ! ****************************************************************

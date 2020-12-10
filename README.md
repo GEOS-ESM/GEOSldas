@@ -6,7 +6,7 @@ This document explains how to build, set up, and run the GEOS land modeling and 
 
 ### Step 1: Load the Build Modules  
 
-Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It contains the latest `git`, `CMake`, and `manage_externals` modules and must be loaded in any interactive window that is used to check out and build the model.
+Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It contains the latest `git`, `CMake`, and `mepo` modules and must be loaded in any interactive window that is used to check out and build the model.
 
 ```
 module use -a (path)
@@ -17,21 +17,9 @@ where `(path)` depends on the computer and operating system:
 
 | System        | Path                                              |
 | ------------- |---------------------------------------------------|
-| NCCS SLES11   | `/discover/swdev/gmao_SIteam/modulefiles-SLES11`  |
-| NCCS SLES12   | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
+| NCCS          | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
 | NAS           | `/nobackup/gmao_SIteam/modulefiles`               |
 | GMAO desktops | `/ford1/share/gmao_SIteam/modulefiles`            |
-
-
-For NCCS, you can add the following to your `.cshrc`:
-```
-if ( ! -f /etc/os-release ) then
-   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES11
-else
-   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
-endif
-module load GEOSenv
-```
 
 
 ### Step 2: Obtain the Model
@@ -123,13 +111,18 @@ Moreover, descriptions of the configuration (resource) parameters are included i
 
 The steps detailed below are essentially those performed by `parallel_build.csh` in Step 3 above. Either method should yield identical builds.
 
-##### Checkout externals
+#### mepo
+
+The GEOSldas is comprised of a set of sub-repositories. These are
+managed by a tool called [mepo](https://github.com/GEOS-ESM/mepo). To
+clone all the sub-repos, you can run `mepo clone` inside the fixture:
 ```
 cd GEOSldas
-checkout_externals
+mepo init
+mepo clone
 ```
 
-##### Load Compiler, MPI Stack, and Baselibs
+#### Load Compiler, MPI Stack, and Baselibs
 On tcsh:
 ```
 source @env/g5_modules
@@ -139,14 +132,14 @@ or on bash:
 source @env/g5_modules.sh
 ```
 
-##### Create Build Directory
+#### Create Build Directory
 We currently do not allow in-source builds of GEOSldas. So we must make a directory:
 ```
 mkdir build
 ```
 The advantages of this is that you can build both a Debug and Release version with the same clone if desired.
 
-##### Run CMake
+#### Run CMake
 CMake generates the Makefiles needed to build the model.
 ```
 cd build
@@ -158,9 +151,9 @@ This will install to a directory parallel to your `build` directory. If you pref
 ```
 and CMake will install there.
 
-##### Build and Install with Make
+#### Build and Install with Make
 ```
 make -j6 install
 ```
-If you are using SLES12 at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.  
+If you are at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.  
 
