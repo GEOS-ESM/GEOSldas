@@ -6,8 +6,8 @@ module GEOS_ExportCatchIncrGridCompMod
   !BOP
   ! !DESCRIPTION:
   !
-  !   {\tt Obs} is a gridded component to export catch incr
-  !   {\tt Obs} has no children.
+  !   This is a gridded component to export analysis increments for Catchment.
+  !   It has no children.
   
   !
   ! !USES:
