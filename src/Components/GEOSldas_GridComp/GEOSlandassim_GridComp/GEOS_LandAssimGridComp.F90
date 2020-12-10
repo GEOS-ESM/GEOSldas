@@ -979,6 +979,15 @@ contains
       DEFAULT     = nodata_generic              ,&
       RC=STATUS)
 
+   call MAPL_AddInternalSpec(GC                 ,&
+      LONG_NAME   = 'L-band Microwave RTM: L2 DCAVOD'   ,&
+      UNITS       = '1'                    ,&
+      SHORT_NAME  = 'DCATAU'                ,&
+      DIMS        = MAPL_DimsTileOnly           ,&
+      VLOCATION   = MAPL_VLocationNone          ,&
+      DEFAULT     = nodata_generic              ,&
+      RC=STATUS)
+
     call MAPL_TimerAdd(GC, name="Initialize"    ,RC=STATUS)
     _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
@@ -2140,6 +2149,7 @@ contains
     real, dimension(:), pointer :: BH
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
+    real, dimension(:), pointer :: DCATAU 
     
     ! export
     real, dimension(:), pointer :: TB_H_enavg
@@ -2460,13 +2470,30 @@ contains
     real, dimension(:), pointer :: BH
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
+    real, dimension(:), pointer :: DCATAU 
     
     integer :: N_catl_tmp, n, mpierr, status
     logical :: mwp_nodata, all_nodata_l
-    
+
+    character(len=ESMF_MAXSTR)         :: TAUFile
+    type(ESMF_Time) :: CURRENT_TIME
+ 
     if(allocated(mwRTM_param)) then
        _RETURN(_SUCCESS)
     endif
+
+    call MAPL_GetResource(MAPL, TAUFile, label = 'TAU_FILE:', &
+        default = 'tau.dat', RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_GetPointer(INTERNAL,      DCATAU,      'DCATAU' , RC=STATUS)
+    VERIFY_(STATUS)
+
+    call ESMF_ClockGet  ( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
+    VERIFY_(STATUS)
+
+    call MAPL_ReadForcing(MAPL,'DCATAU',TAUFILE,CURRENT_TIME,DCATAU,ON_TILES=.true.,RC=STATUS)
+    VERIFY_(STATUS)
     
     call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
     _VERIFY(STATUS)
@@ -2527,6 +2554,7 @@ contains
     mwRTM_param(:)%bh        = BH(:)
     mwRTM_param(:)%bv        = bv(:)
     mwRTM_param(:)%lewt      = LEWT(:)
+    mwRTM_param(:)%dcatau    = DCATAU(:)
     
     all_nodata_l = .true.
     do n=1,N_catl

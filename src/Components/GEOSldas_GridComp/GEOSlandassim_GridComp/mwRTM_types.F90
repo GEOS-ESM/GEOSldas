@@ -75,6 +75,7 @@ module mwRTM_types
      real    :: bh          ! veg b parameter (h-pol)  (tau = b*VWC)        [dim-less]
      real    :: bv          ! veg b parameter (v-pol)  (tau = b*VWC)        [dim-less]
      real    :: lewt        ! VWC = lewt*LAI                                [kg/m2]
+     real    :: dcatau        ! 
 
      
   end type mwRTM_param_type
@@ -280,6 +281,7 @@ contains
     mwRTM_param%bh          = scalar
     mwRTM_param%bv          = scalar
     mwRTM_param%lewt        = scalar
+    mwRTM_param%dcatau        = scalar
     
   end subroutine scalar2mwRTM_param
 
@@ -319,7 +321,8 @@ contains
          LDAS_is_nodata( mwp%omega      ) .or.        &
          LDAS_is_nodata( mwp%bh         ) .or.        &
          LDAS_is_nodata( mwp%bv         ) .or.        &
-         LDAS_is_nodata( mwp%lewt       )      ) then
+         LDAS_is_nodata( mwp%lewt       ) .or.        &
+         LDAS_is_nodata( mwp%dcatau       )     ) then
        
        mwp        = nodata_generic
        
