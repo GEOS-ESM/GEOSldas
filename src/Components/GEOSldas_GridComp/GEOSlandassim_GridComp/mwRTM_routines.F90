@@ -428,7 +428,7 @@ contains
           ! VWC=LEWT*LAI, lewt is actually a time-varying parameter!
           ! For now LEWT is guessed based on literature, and kept cst. 
           
-          vwc = mwp(n)%lewt * lai(n)
+          !vwc = mwp(n)%lewt * lai(n)
 
           ! removed contribution of interception water ("capac")
           !
@@ -438,10 +438,15 @@ contains
                     
           ! Vegetation optical thickness tau=b*VWC  (eq. (2) in Crow et al. 2005)
 
-          tmpreal = vwc/cos_inc
+          !tmpreal = vwc/cos_inc
 
-          exptauh = EXP( -mwp(n)%bh * tmpreal )
-          exptauv = EXP( -mwp(n)%bv * tmpreal )
+          !exptauh = EXP( -mwp(n)%bh * tmpreal )
+          !exptauv = EXP( -mwp(n)%bv * tmpreal )
+
+          ! Q. Liu test with L2 DCA TAU, the same for hpol and vpol
+
+          exptauh = EXP( -mwp(n)%dcatau)
+          exptauh = EXP( -mwp(n)%dcatau)
           
           Tc = soiltemp(n)        ! canopy temp = soil temp
           
