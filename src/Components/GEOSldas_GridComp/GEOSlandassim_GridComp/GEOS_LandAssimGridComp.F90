@@ -6,8 +6,8 @@ module GEOS_LandAssimGridCompMod
   !BOP
   ! !DESCRIPTION:
   !
-  !   {\tt Obs} is a gridded component to
-  !   {\tt Obs} has ExportCatchIncr as children for export purpose.
+  !   This is a gridded component for ensemble-based land data assimilation. 
+  !   It has ExportCatchIncr as children for export purpose.
   
   !
   ! !USES:
