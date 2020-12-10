@@ -2476,11 +2476,9 @@ contains
        _RETURN(_SUCCESS)
     endif
 
+    allocate(DCATAU (N_catl))
     call MAPL_GetResource(MAPL, TAUFile, label = 'TAU_FILE:', &
         default = 'tau.dat', RC=STATUS )
-    _VERIFY(STATUS)
-
-    call MAPL_GetPointer(INTERNAL, DCATAU,  'DCATAU' , RC=STATUS)
     _VERIFY(STATUS)
 
     call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
