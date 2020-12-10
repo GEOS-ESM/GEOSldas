@@ -352,7 +352,11 @@ contains
        
        if ( (SWE(n)<SWE_threshold)                            .and.         &
             (soiltemp(n)>tsoil_threshold)                     .and.         &
-            (mwp(n)%sand-nodata_generic>nodata_tol_generic) )        then
+            (mwp(n)%sand-nodata_generic>nodata_tol_generic)   .and.   &
+            (mwp(n)%rgh_hmin>-nodata_tol_generic) .and.   &
+            (mwp(n)%rgh_hmax>-nodata_tol_generic) .and.   &
+            (mwp(n)%omega>-nodata_tol_generic)    .and.   &
+            (mwp(n)%dcatau>-nodata_tol_generic) )        then
        
           ! soil dielectric constant
           
@@ -399,7 +403,7 @@ contains
              h_mc = mwp(n)%rgh_hmax + slope * (soilmoist(n) - mwp(n)%rgh_wmin)
                           
           endif
-          
+         
           ! 2) polarization mixing, Q as defined in CMEM:
           
           if (freq < 2.e9) then
@@ -446,7 +450,7 @@ contains
           ! Q. Liu test with L2 DCA TAU, the same for hpol and vpol
 
           exptauh = EXP( -mwp(n)%dcatau)
-          exptauh = EXP( -mwp(n)%dcatau)
+          exptauv = EXP( -mwp(n)%dcatau)
           
           Tc = soiltemp(n)        ! canopy temp = soil temp
           

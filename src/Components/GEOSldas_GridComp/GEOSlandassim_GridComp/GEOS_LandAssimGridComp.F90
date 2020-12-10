@@ -2180,8 +2180,8 @@ contains
     !----------------------
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
     _VERIFY(status)
-    
-    call get_mwrtm_param(INTERNAL, N_catl, rc=status)
+   
+    call get_mwrtm_param(MAPL, clock,INTERNAL, N_catl, rc=status)
     _VERIFY(STATUS)
     ! make sure that at least some mwRTM parameters are not nodata 
     if (mwRTM_all_nodata) then
@@ -2329,7 +2329,7 @@ contains
      call esmf2ldas(ModelTimeCur, start_time, rc=status)
      _VERIFY(status)
 
-     call get_mwrtm_param(INTERNAL, N_catl, rc=status)
+     call get_mwrtm_param(MAPL,clock, INTERNAL, N_catl, rc=status)
      _VERIFY(status)
 
      call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
@@ -2438,11 +2438,13 @@ contains
   
   ! ******************************************************************************
   
-  subroutine get_mwrtm_param(internal,N_catl, rc)
+  subroutine get_mwrtm_param(MAPL,clock, internal,N_catl, rc)
     type(ESMF_State),  intent(inout) :: INTERNAL
     integer,           intent(in)    :: N_catl
     integer, optional, intent(out)   :: rc
     
+    type(ESMF_Clock),    intent(in) :: clock  ! The clock
+
     real, dimension(:), pointer :: VEGCLS
     real, dimension(:), pointer :: SOILCLS
     real, dimension(:), pointer :: SAND
@@ -2466,9 +2468,8 @@ contains
     integer :: N_catl_tmp, n, mpierr, status
     logical :: mwp_nodata, all_nodata_l
 
-    type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
+    type(MAPL_MetaComp), pointer, intent(in) :: MAPL
 
-    type(ESMF_Clock) :: clock  ! The clock
     character(len=ESMF_MAXSTR)         :: TAUFile
     type(ESMF_Time) :: CURRENT_TIME
  
@@ -2476,7 +2477,7 @@ contains
        _RETURN(_SUCCESS)
     endif
 
-    allocate(DCATAU (N_catl))
+    allocate(DCATAU(N_catl))
     call MAPL_GetResource(MAPL, TAUFile, label = 'TAU_FILE:', &
         default = 'tau.dat', RC=STATUS )
     _VERIFY(STATUS)
@@ -2547,7 +2548,8 @@ contains
     mwRTM_param(:)%bv        = bv(:)
     mwRTM_param(:)%lewt      = LEWT(:)
     mwRTM_param(:)%dcatau    = DCATAU(:)
-    
+    deallocate(DCATAU)
+ 
     all_nodata_l = .true.
     do n=1,N_catl
        call mwRTM_param_nodata_check(mwRTM_param(n), mwp_nodata )
