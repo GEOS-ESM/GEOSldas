@@ -979,15 +979,6 @@ contains
       DEFAULT     = nodata_generic              ,&
       RC=STATUS)
 
-   call MAPL_AddInternalSpec(GC                 ,&
-      LONG_NAME   = 'L-band Microwave RTM: L2 DCAVOD'   ,&
-      UNITS       = '1'                    ,&
-      SHORT_NAME  = 'DCATAU'                ,&
-      DIMS        = MAPL_DimsTileOnly           ,&
-      VLOCATION   = MAPL_VLocationNone          ,&
-      DEFAULT     = nodata_generic              ,&
-      RC=STATUS)
-
     call MAPL_TimerAdd(GC, name="Initialize"    ,RC=STATUS)
     _VERIFY(STATUS)
     call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
