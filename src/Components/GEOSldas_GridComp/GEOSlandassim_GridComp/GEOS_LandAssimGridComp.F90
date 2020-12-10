@@ -7,7 +7,7 @@ module GEOS_LandAssimGridCompMod
   ! !DESCRIPTION:
   !
   !   {\tt Obs} is a gridded component to
-  !   {\tt Obs} has no children.
+  !   {\tt Obs} has ExportCatchIncr as children for export purpose.
   
   !
   ! !USES:
@@ -15,7 +15,7 @@ module GEOS_LandAssimGridCompMod
   use ESMF
   use MAPL_Mod
   use ESMF_CFIOMOD,              only: ESMF_CFIOstrTemplate
-  use GEOS_OutputIncrGridCompMod,only: OutputIncrSetServices=>SetServices  
+  use GEOS_ExportCatchIncrGridCompMod, only: ExportCatchIncrSetServices=>SetServices  
   use MAPL_ConstantsMod,         only: MAPL_TICE
     
   use LDAS_TileCoordType,        only: tile_coord_type
@@ -147,7 +147,7 @@ contains
     character(len=ESMF_MAXSTR)   :: LAND_ASSIM_STR, mwRTM_file
     character(len=ESMF_MAXSTR)   :: id_string,childname, fmt_str
     integer                      :: i, ens_id_width, FIRST_ENS_ID, NUM_ENSEMBLE
-    integer, allocatable, dimension(:) :: ens_id, output_incr
+    integer, allocatable, dimension(:) :: ens_id, export_id
 
     ! Begin...
     ! --------
@@ -991,7 +991,7 @@ contains
    VERIFY_(STATUS)
 
    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
-   allocate(ens_id(NUM_ENSEMBLE), output_incr(NUM_ENSEMBLE))
+   allocate(ens_id(NUM_ENSEMBLE), export_id(NUM_ENSEMBLE))
    do i=1,NUM_ENSEMBLE
       ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
       if (NUM_ENSEMBLE == 1 ) then
@@ -1002,8 +1002,8 @@ contains
 
       id_string=trim(id_string)
 
-      childname='OUTPUT_INCR'//trim(id_string)
-      output_incr(i) = MAPL_AddChild(gc, name=childname, ss=OutputIncrSetServices, rc=status)
+      childname='CATCHINCR'//trim(id_string)
+      export_id(i) = MAPL_AddChild(gc, name=childname, ss=ExportCatchIncrSetServices, rc=status)
       VERIFY_(status)
    enddo
 
@@ -1789,11 +1789,11 @@ contains
        call MAPL_Get(MAPL, GEX=gex, rc=status)
        _VERIFY(STATUS) 
        do n_e =1, NUM_ENSEMBLE
-          call OUTPUT_INCR(cat_progn_incr(:,n_e), gex(n_e), rc=status)
+          call EXPORT_INCR(cat_progn_incr(:,n_e), gex(n_e), rc=status)
           _VERIFY(status)
        enddo
        
-       call OUTPUT_INCR(cat_progn_incr_ensavg, export, rc=status)
+       call EXPORT_INCR(cat_progn_incr_ensavg, export, rc=status)
        _VERIFY(status) 
 
        ! recompute select model diagnostics after analysis
@@ -2267,7 +2267,7 @@ contains
 
   end subroutine OUTPUT_SMAPL4SMLMC 
 
-  subroutine OUTPUT_INCR( cat_progn_incr, export,rc)
+  subroutine EXPORT_INCR( cat_progn_incr, export,rc)
     type(cat_progn_type), dimension(:),intent(in) :: cat_progn_incr
     type(ESMF_State), intent(inout) :: export
     integer, optional, intent(out)  :: rc
@@ -2387,7 +2387,7 @@ contains
 
     _RETURN(_SUCCESS)
 
-  end subroutine OUTPUT_INCR 
+  end subroutine EXPORT_INCR 
 
   ! ******************************************************************************
   

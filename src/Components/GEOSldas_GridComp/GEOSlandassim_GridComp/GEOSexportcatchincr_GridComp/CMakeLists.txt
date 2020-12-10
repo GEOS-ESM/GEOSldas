@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set (SRCS
-  GEOS_OutputIncrGridComp.F90 
+  GEOS_ExportCatchIncrGridComp.F90 
   )
 
 esma_add_library (${this}

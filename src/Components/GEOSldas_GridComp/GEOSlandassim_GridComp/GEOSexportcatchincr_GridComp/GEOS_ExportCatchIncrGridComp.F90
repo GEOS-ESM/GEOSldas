@@ -1,12 +1,12 @@
 #include "MAPL_Generic.h"
 
 !=============================================================================
-module GEOS_OutputIncrGridCompMod
+module GEOS_ExportCatchIncrGridCompMod
 
   !BOP
   ! !DESCRIPTION:
   !
-  !   {\tt Obs} is a gridded component to
+  !   {\tt Obs} is a gridded component to export catch incr
   !   {\tt Obs} has no children.
   
   !
@@ -388,4 +388,4 @@ contains
     
   end subroutine Finalize
 
-end module GEOS_OutputIncrGridCompMod 
+end module GEOS_ExportCatchIncrGridCompMod 

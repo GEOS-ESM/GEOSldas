@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set (alldirs
-  GEOSoutputincr_GridComp
+  GEOSexportcatchincr_GridComp 
   )
 
 set (SRCS
