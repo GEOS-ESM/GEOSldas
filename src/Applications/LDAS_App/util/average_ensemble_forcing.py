@@ -17,7 +17,7 @@ def averaging_forcing(in_path, out_path, nens):
    for i in range(1,nens+1):
       sfx = f'{i:03}'
       folder  = in_path+sfx
-      fs      = sorted(glob.glob(folder+'/*.nc4'))
+      fs      = sorted(glob.glob(folder+'/*lfo*.nc4'))
       files_list.append(fs)
    for fs in zip(*files_list):
       k = 1

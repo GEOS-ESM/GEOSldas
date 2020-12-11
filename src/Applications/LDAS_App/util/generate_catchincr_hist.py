@@ -30,7 +30,7 @@ PC720x361-DC.LM: 1
 hist_template = """
 'catch_progn_incr'
 ::
-descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Prognostics Increments',
+descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation, Land Prognostics Increments',
 template:    '%y4%m2%d2_%h2%n2z.bin',
 mode:        'instantaneous',
 frequency:   030000,
