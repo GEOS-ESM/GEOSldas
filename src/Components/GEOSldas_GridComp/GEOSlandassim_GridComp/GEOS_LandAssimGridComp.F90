@@ -6,8 +6,8 @@ module GEOS_LandAssimGridCompMod
   !BOP
   ! !DESCRIPTION:
   !
-  !   {\tt Obs} is a gridded component to
-  !   {\tt Obs} has no children.
+  !   This is a gridded component for ensemble-based land data assimilation. 
+  !   It has ExportCatchIncr as children for export purpose.
   
   !
   ! !USES:
@@ -15,7 +15,7 @@ module GEOS_LandAssimGridCompMod
   use ESMF
   use MAPL_Mod
   use ESMF_CFIOMOD,              only: ESMF_CFIOstrTemplate
-  
+  use GEOS_ExportCatchIncrGridCompMod, only: ExportCatchIncrSetServices=>SetServices  
   use MAPL_ConstantsMod,         only: MAPL_TICE
     
   use LDAS_TileCoordType,        only: tile_coord_type
@@ -145,6 +145,9 @@ contains
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     type(ESMF_Config)            :: CF
     character(len=ESMF_MAXSTR)   :: LAND_ASSIM_STR, mwRTM_file
+    character(len=ESMF_MAXSTR)   :: id_string,childname, fmt_str
+    integer                      :: i, ens_id_width, FIRST_ENS_ID, NUM_ENSEMBLE
+    integer, allocatable, dimension(:) :: ens_id, export_id
 
     ! Begin...
     ! --------
@@ -979,17 +982,42 @@ contains
       DEFAULT     = nodata_generic              ,&
       RC=STATUS)
 
-    call MAPL_TimerAdd(GC, name="Initialize"    ,RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
-    _VERIFY(STATUS)
+!
+   call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+   VERIFY_(STATUS)
 
-    call MAPL_GenericSetServices ( GC, RC=STATUS )
-    _VERIFY(STATUS)
+   write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
+   allocate(ens_id(NUM_ENSEMBLE), export_id(NUM_ENSEMBLE))
+   do i=1,NUM_ENSEMBLE
+      ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+      if (NUM_ENSEMBLE == 1 ) then
+         id_string=''
+      else
+         write(id_string, fmt_str) ens_id(i)
+      endif
+
+      id_string=trim(id_string)
+
+      childname='CATCHINCR'//trim(id_string)
+      export_id(i) = MAPL_AddChild(gc, name=childname, ss=ExportCatchIncrSetServices, rc=status)
+      VERIFY_(status)
+   enddo
+
+   call MAPL_TimerAdd(GC, name="Initialize"    ,RC=STATUS)
+   _VERIFY(STATUS)
+   call MAPL_TimerAdd(GC, name="RUN"           ,RC=STATUS)
+   _VERIFY(STATUS)
+
+   call MAPL_GenericSetServices ( GC, RC=STATUS )
+   _VERIFY(STATUS)
     
-    RETURN_(ESMF_SUCCESS)
+   RETURN_(ESMF_SUCCESS)
     
-  end subroutine SetServices
+ end subroutine SetServices
   
   ! ******************************************************************************
 
@@ -1022,6 +1050,8 @@ contains
     ! locals
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     type(MAPL_LocStream)         :: locstream
+    type(MAPL_MetaComp), pointer :: CHILD_MAPL=>null() ! Child's MAPL obj
+    type(ESMF_GridComp), pointer :: gcs(:)
 
     character(len=300)           :: out_path,fname
     character(len=ESMF_MAXSTR)   :: exp_id, GridName
@@ -1260,7 +1290,17 @@ contains
     call MPI_BCAST(obs_param,   N_obs_param, MPI_OBS_PARAM_TYPE, 0,MPICOMM,mpierr)
     
     if (root_proc) call echo_clsm_ensupd_glob_param(logunit) 
-    
+  
+    call MAPL_Get(MAPL, GCS=gcs, rc=status)
+    VERIFY_(STATUS)
+
+    do i = 1,NUM_ENSEMBLE
+       call MAPL_GetObjectFromGC(gcs(i), CHILD_MAPL, rc=status)
+       VERIFY_(status)
+       call MAPL_Set(CHILD_MAPL, LocStream=locstream, rc=status)
+       VERIFY_(status)
+    enddo
+ 
     call MAPL_GenericInitialize(gc, import, export, clock, rc=status)
     _VERIFY(status)
     
@@ -1291,6 +1331,7 @@ contains
     character(len=ESMF_MAXSTR)        :: IAm
     integer                           :: STATUS
     character(len=ESMF_MAXSTR)        :: COMP_NAME
+    type(ESMF_State), pointer         :: gex(:)
     !
     !  time
     !  
@@ -1359,34 +1400,6 @@ contains
     real, pointer :: DZ_enavg(:)=>null()
     real, pointer :: SWLAND(:)=>null()
     real, pointer :: LAI(:)=>null()
-
-    !! export incr progn
-    
-    real, dimension(:),pointer :: TC1_incr=>null()
-    real, dimension(:),pointer :: TC2_incr=>null()
-    real, dimension(:),pointer :: TC4_incr=>null()
-    real, dimension(:),pointer :: QC1_incr=>null()
-    real, dimension(:),pointer :: QC2_incr=>null()
-    real, dimension(:),pointer :: QC4_incr=>null()
-    real, dimension(:),pointer :: CAPAC_incr=>null()
-    real, dimension(:),pointer :: CATDEF_incr=>null()
-    real, dimension(:),pointer :: RZEXC_incr=>null()
-    real, dimension(:),pointer :: SRFEXC_incr=>null()
-    real, dimension(:),pointer :: GHTCNT1_incr=>null()
-    real, dimension(:),pointer :: GHTCNT2_incr=>null()
-    real, dimension(:),pointer :: GHTCNT3_incr=>null()
-    real, dimension(:),pointer :: GHTCNT4_incr=>null()
-    real, dimension(:),pointer :: GHTCNT5_incr=>null()
-    real, dimension(:),pointer :: GHTCNT6_incr=>null()
-    real, dimension(:),pointer :: WESNN1_incr=>null()
-    real, dimension(:),pointer :: WESNN2_incr=>null()
-    real, dimension(:),pointer :: WESNN3_incr=>null()
-    real, dimension(:),pointer :: HTSNNN1_incr=>null()
-    real, dimension(:),pointer :: HTSNNN2_incr=>null()
-    real, dimension(:),pointer :: HTSNNN3_incr=>null()
-    real, dimension(:),pointer :: SNDZN1_incr=>null()
-    real, dimension(:),pointer :: SNDZN2_incr=>null()
-    real, dimension(:),pointer :: SNDZN3_incr=>null()
 
     !! export for analysis model diagnostics 
 
@@ -1553,58 +1566,6 @@ contains
     call MAPL_GetPointer(import, LAI,           'LAI',     rc=status)
     _VERIFY(status)
     
-    ! exports for model prognostics increments
-    
-    call MAPL_GetPointer(export, TC1_incr,     'TCFSAT_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, TC2_incr,     'TCFTRN_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, TC4_incr,     'TCFWLT_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, QC1_incr,     'QCFSAT_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, QC2_incr,     'QCFTRN_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, QC4_incr,     'QCFWLT_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, CAPAC_incr,   'CAPAC_INCR'   ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, CATDEF_incr,  'CATDEF_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, RZEXC_incr,   'RZEXC_INCR'   ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, SRFEXC_incr,  'SRFEXC_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, GHTCNT1_incr, 'GHTCNT1_INCR' ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, GHTCNT2_incr, 'GHTCNT2_INCR' ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, GHTCNT3_incr, 'GHTCNT3_INCR' ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, GHTCNT4_incr, 'GHTCNT4_INCR' ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, GHTCNT5_incr, 'GHTCNT5_INCR' ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, GHTCNT6_incr, 'GHTCNT6_INCR' ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, WESNN1_incr,  'WESNN1_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, WESNN2_incr,  'WESNN2_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, WESNN3_incr,  'WESNN3_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, HTSNNN1_incr, 'HTSNNN1_INCR' ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, HTSNNN2_incr, 'HTSNNN2_INCR' ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, HTSNNN3_incr, 'HTSNNN3_INCR' ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, SNDZN1_incr,  'SNDZN1_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, SNDZN2_incr,  'SNDZN2_INCR'  ,rc=status)
-    _VERIFY(status)
-    call MAPL_GetPointer(export, SNDZN3_incr,  'SNDZN3_INCR'  ,rc=status)
-    _VERIFY(status)
 
     ! exports for analysis model diagnostics
     
@@ -1826,47 +1787,26 @@ contains
             met_force, lai,                                              &
             cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
             Observations_l, rf2f=rf2f )
-       
+
        do ii = 1, N_catl
           cat_progn_incr_ensavg(ii) = 0.0
           do n_e=1, NUM_ENSEMBLE
              cat_progn_incr_ensavg(ii) = cat_progn_incr_ensavg(ii) &
-                  + cat_progn_incr(ii,n_e)
+                 + cat_progn_incr(ii,n_e)
           end do
           cat_progn_incr_ensavg(ii) = cat_progn_incr_ensavg(ii)/real(NUM_ENSEMBLE)
+       enddo 
+
+        ! Get information about children
+       call MAPL_Get(MAPL, GEX=gex, rc=status)
+       _VERIFY(STATUS) 
+       do n_e =1, NUM_ENSEMBLE
+          call EXPORT_INCR(cat_progn_incr(:,n_e), gex(n_e), rc=status)
+          _VERIFY(status)
        enddo
        
-       if(associated(TC1_incr))     TC1_incr(:)     = cat_progn_incr_ensavg(:)%tc1
-       if(associated(TC2_incr))     TC2_incr(:)     = cat_progn_incr_ensavg(:)%tc2
-       if(associated(TC4_incr))     TC4_incr(:)     = cat_progn_incr_ensavg(:)%tc4
-       if(associated(QC1_incr))     QC1_incr(:)     = cat_progn_incr_ensavg(:)%qa1
-       if(associated(QC2_incr))     QC2_incr(:)     = cat_progn_incr_ensavg(:)%qa2
-       if(associated(QC4_incr))     QC4_incr(:)     = cat_progn_incr_ensavg(:)%qa4
-       
-       if(associated(CAPAC_incr))   CAPAC_incr(:)   = cat_progn_incr_ensavg(:)%capac
-       if(associated(CATDEF_incr))  CATDEF_incr(:)  = cat_progn_incr_ensavg(:)%catdef
-       if(associated(RZEXC_incr))   RZEXC_incr(:)   = cat_progn_incr_ensavg(:)%rzexc
-       if(associated(SRFEXC_incr))  SRFEXC_incr(:)  = cat_progn_incr_ensavg(:)%srfexc
-       
-       if(associated(GHTCNT1_incr)) GHTCNT1_incr(:) = cat_progn_incr_ensavg(:)%ght(1)
-       if(associated(GHTCNT2_incr)) GHTCNT2_incr(:) = cat_progn_incr_ensavg(:)%ght(2)
-       if(associated(GHTCNT3_incr)) GHTCNT3_incr(:) = cat_progn_incr_ensavg(:)%ght(3)
-       if(associated(GHTCNT4_incr)) GHTCNT4_incr(:) = cat_progn_incr_ensavg(:)%ght(4)
-       if(associated(GHTCNT5_incr)) GHTCNT5_incr(:) = cat_progn_incr_ensavg(:)%ght(5)
-       if(associated(GHTCNT6_incr)) GHTCNT6_incr(:) = cat_progn_incr_ensavg(:)%ght(6)
-       
-       if(associated(WESNN1_incr))  WESNN1_incr(:)  = cat_progn_incr_ensavg(:)%wesn(1)
-       if(associated(WESNN2_incr))  WESNN2_incr(:)  = cat_progn_incr_ensavg(:)%wesn(2)
-       if(associated(WESNN3_incr))  WESNN3_incr(:)  = cat_progn_incr_ensavg(:)%wesn(3)
-       
-       if(associated(HTSNNN1_incr)) HTSNNN1_incr(:) = cat_progn_incr_ensavg(:)%htsn(1)
-       if(associated(HTSNNN2_incr)) HTSNNN2_incr(:) = cat_progn_incr_ensavg(:)%htsn(2)
-       if(associated(HTSNNN3_incr)) HTSNNN3_incr(:) = cat_progn_incr_ensavg(:)%htsn(3)
-       
-       if(associated(SNDZN1_incr))  SNDZN1_incr(:)  = cat_progn_incr_ensavg(:)%sndz(1)
-       if(associated(SNDZN2_incr))  SNDZN2_incr(:)  = cat_progn_incr_ensavg(:)%sndz(2)
-       if(associated(SNDZN3_incr))  SNDZN3_incr(:)  = cat_progn_incr_ensavg(:)%sndz(3)
-       
+       call EXPORT_INCR(cat_progn_incr_ensavg, export, rc=status)
+       _VERIFY(status) 
 
        ! recompute select model diagnostics after analysis
        
@@ -2339,7 +2279,129 @@ contains
      _RETURN(_SUCCESS)
 
   end subroutine OUTPUT_SMAPL4SMLMC 
- 
+
+  subroutine EXPORT_INCR( cat_progn_incr, export,rc)
+    type(cat_progn_type), dimension(:),intent(in) :: cat_progn_incr
+    type(ESMF_State), intent(inout) :: export
+    integer, optional, intent(out)  :: rc
+    !! export incr progn
+
+    real, dimension(:),pointer :: TC1_incr=>null()
+    real, dimension(:),pointer :: TC2_incr=>null()
+    real, dimension(:),pointer :: TC4_incr=>null()
+    real, dimension(:),pointer :: QC1_incr=>null()
+    real, dimension(:),pointer :: QC2_incr=>null()
+    real, dimension(:),pointer :: QC4_incr=>null()
+    real, dimension(:),pointer :: CAPAC_incr=>null()
+    real, dimension(:),pointer :: CATDEF_incr=>null()
+    real, dimension(:),pointer :: RZEXC_incr=>null()
+    real, dimension(:),pointer :: SRFEXC_incr=>null()
+    real, dimension(:),pointer :: GHTCNT1_incr=>null()
+    real, dimension(:),pointer :: GHTCNT2_incr=>null()
+    real, dimension(:),pointer :: GHTCNT3_incr=>null()
+    real, dimension(:),pointer :: GHTCNT4_incr=>null()
+    real, dimension(:),pointer :: GHTCNT5_incr=>null()
+    real, dimension(:),pointer :: GHTCNT6_incr=>null()
+    real, dimension(:),pointer :: WESNN1_incr=>null()
+    real, dimension(:),pointer :: WESNN2_incr=>null()
+    real, dimension(:),pointer :: WESNN3_incr=>null()
+    real, dimension(:),pointer :: HTSNNN1_incr=>null()
+    real, dimension(:),pointer :: HTSNNN2_incr=>null()
+    real, dimension(:),pointer :: HTSNNN3_incr=>null()
+    real, dimension(:),pointer :: SNDZN1_incr=>null()
+    real, dimension(:),pointer :: SNDZN2_incr=>null()
+    real, dimension(:),pointer :: SNDZN3_incr=>null()
+
+    integer :: status
+
+    ! exports for model prognostics increments
+
+    call MAPL_GetPointer(export, TC1_incr,     'TCFSAT_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, TC2_incr,     'TCFTRN_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, TC4_incr,     'TCFWLT_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, QC1_incr,     'QCFSAT_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, QC2_incr,     'QCFTRN_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, QC4_incr,     'QCFWLT_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, CAPAC_incr,   'CAPAC_INCR'   ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, CATDEF_incr,  'CATDEF_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, RZEXC_incr,   'RZEXC_INCR'   ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, SRFEXC_incr,  'SRFEXC_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, GHTCNT1_incr, 'GHTCNT1_INCR' ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, GHTCNT2_incr, 'GHTCNT2_INCR' ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, GHTCNT3_incr, 'GHTCNT3_INCR' ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, GHTCNT4_incr, 'GHTCNT4_INCR' ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, GHTCNT5_incr, 'GHTCNT5_INCR' ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, GHTCNT6_incr, 'GHTCNT6_INCR' ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, WESNN1_incr,  'WESNN1_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, WESNN2_incr,  'WESNN2_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, WESNN3_incr,  'WESNN3_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, HTSNNN1_incr, 'HTSNNN1_INCR' ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, HTSNNN2_incr, 'HTSNNN2_INCR' ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, HTSNNN3_incr, 'HTSNNN3_INCR' ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, SNDZN1_incr,  'SNDZN1_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, SNDZN2_incr,  'SNDZN2_INCR'  ,rc=status)
+    _VERIFY(status)
+    call MAPL_GetPointer(export, SNDZN3_incr,  'SNDZN3_INCR'  ,rc=status)
+    _VERIFY(status)
+
+    if(associated(TC1_incr))     TC1_incr(:)     = cat_progn_incr(:)%tc1
+    if(associated(TC2_incr))     TC2_incr(:)     = cat_progn_incr(:)%tc2
+    if(associated(TC4_incr))     TC4_incr(:)     = cat_progn_incr(:)%tc4
+    if(associated(QC1_incr))     QC1_incr(:)     = cat_progn_incr(:)%qa1
+    if(associated(QC2_incr))     QC2_incr(:)     = cat_progn_incr(:)%qa2
+    if(associated(QC4_incr))     QC4_incr(:)     = cat_progn_incr(:)%qa4
+
+    if(associated(CAPAC_incr))   CAPAC_incr(:)   = cat_progn_incr(:)%capac
+    if(associated(CATDEF_incr))  CATDEF_incr(:)  = cat_progn_incr(:)%catdef
+    if(associated(RZEXC_incr))   RZEXC_incr(:)   = cat_progn_incr(:)%rzexc
+    if(associated(SRFEXC_incr))  SRFEXC_incr(:)  = cat_progn_incr(:)%srfexc
+
+    if(associated(GHTCNT1_incr)) GHTCNT1_incr(:) = cat_progn_incr(:)%ght(1)
+    if(associated(GHTCNT2_incr)) GHTCNT2_incr(:) = cat_progn_incr(:)%ght(2)
+    if(associated(GHTCNT3_incr)) GHTCNT3_incr(:) = cat_progn_incr(:)%ght(3)
+    if(associated(GHTCNT4_incr)) GHTCNT4_incr(:) = cat_progn_incr(:)%ght(4)
+    if(associated(GHTCNT5_incr)) GHTCNT5_incr(:) = cat_progn_incr(:)%ght(5)
+    if(associated(GHTCNT6_incr)) GHTCNT6_incr(:) = cat_progn_incr(:)%ght(6)
+
+    if(associated(WESNN1_incr))  WESNN1_incr(:)  = cat_progn_incr(:)%wesn(1)
+    if(associated(WESNN2_incr))  WESNN2_incr(:)  = cat_progn_incr(:)%wesn(2)
+    if(associated(WESNN3_incr))  WESNN3_incr(:)  = cat_progn_incr(:)%wesn(3)
+
+    if(associated(HTSNNN1_incr)) HTSNNN1_incr(:) = cat_progn_incr(:)%htsn(1)
+    if(associated(HTSNNN2_incr)) HTSNNN2_incr(:) = cat_progn_incr(:)%htsn(2)
+    if(associated(HTSNNN3_incr)) HTSNNN3_incr(:) = cat_progn_incr(:)%htsn(3)
+
+    if(associated(SNDZN1_incr))  SNDZN1_incr(:)  = cat_progn_incr(:)%sndz(1)
+    if(associated(SNDZN2_incr))  SNDZN2_incr(:)  = cat_progn_incr(:)%sndz(2)
+    if(associated(SNDZN3_incr))  SNDZN3_incr(:)  = cat_progn_incr(:)%sndz(3)
+
+    _RETURN(_SUCCESS)
+
+  end subroutine EXPORT_INCR 
+
   ! ******************************************************************************
   
   subroutine read_pert_rseed(id_string,seed_fname,pert_rseed_r8)
