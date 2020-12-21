@@ -34,9 +34,10 @@ PROGRAM mk_GEOSldasRestarts
   ! ----------------------
 
   character*256 :: Usage="mk_GEOSldasRestarts.x -a SPONSORCODE -b BCSDIR -d YYYYMMDD  -e EXPNAME -j JOBFILE -k ENS -l EXPDIR -m MODEL -r REORDER -s SURFLAY -t TILFILE -p PARAMFILE"
-  character*256 :: BCSDIR, SPONSORCODE, EXPNAME, EXPDIR, MODEL, TILFILE, SFL, PFILE
+  character*256 :: BCSDIR, SPONSORCODE, EXPNAME, EXPDIR, TILFILE, SFL, PFILE
   character*400 :: CMD
   character*8   :: YYYYMMDD
+  character(len=:), allocatable :: model
 
   real, parameter :: ECCENTRICITY  = 0.0167
   real, parameter :: PERIHELION    = 102.0
@@ -112,6 +113,7 @@ PROGRAM mk_GEOSldasRestarts
 
   CHARACTER( * ), PARAMETER :: LOWER_CASE = 'abcdefghijklmnopqrstuvwxyz'
   CHARACTER( * ), PARAMETER :: UPPER_CASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  character(len=:), allocatable :: scale_catch
   logical             :: clm45 = .false.
   logical             :: second_visit
   integer :: zoom, k, n, infos
@@ -171,7 +173,7 @@ PROGRAM mk_GEOSldasRestarts
      case ('l')
         EXPDIR = trim(arg) 
      case ('m')
-        MODEL = StrUpCase(trim(arg))
+        MODEL = StrLowCase(trim(arg))
      case ('r')
         REORDER = trim(arg)
      case ('s')
@@ -189,13 +191,19 @@ PROGRAM mk_GEOSldasRestarts
      call getarg(nxt,arg)
   end do
 
-  if (trim(model) == 'CATCHCN') then
+  if (index(model, 'catchcn') /=0 ) then
+     scale_catch = 'Scale_CatchCN'
      if((INDEX(BCSDIR, 'Heracles') == 0).AND.(INDEX(BCSDIR, 'Icarus') == 0).AND. &
           (INDEX(BCSDIR, 'NLv4') == 0)) then
         print *,'Land BCs in : ',trim(BCSDIR)
         print *,'do not support ',trim (model)
         stop
      endif
+
+     if (model == 'catchcnclm45') clm45 = .true.
+     
+  else
+     scale_catch = 'Scale_Catch'
   endif
 
 
@@ -255,11 +263,7 @@ PROGRAM mk_GEOSldasRestarts
         write(10,'(a)')' ' 
         write(10,'(a)')'mpirun -np 56 '//trim(cmd)//' -j Y'
 
-        if(trim(model) == 'CATCHCN') then
-           write(10,'(a)')'bin/Scale_CatchCN OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst catchcn_internal_rst '//trim(SFL)
-        else
-           write(10,'(a)')'bin/Scale_Catch OutData1/catch_internal_rst OutData2/catch_internal_rst catch_internal_rst '//trim(SFL)
-        endif
+        write(10,'(a)')'bin/Scale_'//model//' OutData1/'//model//'_internal_rst OutData2/'//model//'_internal_rst '//model//'_internal_rst '//trim(SFL)
 
         close (10, status ='keep')
         call system('chmod 755 mkLDASsa.j')
@@ -281,23 +285,22 @@ PROGRAM mk_GEOSldasRestarts
   call MPI_BCAST(NTILES     ,     1, MPI_INTEGER  ,  0,MPI_COMM_WORLD,mpierr)
   
   ! Regridding
-  if(trim(MODEL) == 'CATCH'    )inquire(file='OutData1/catch_internal_rst',exist=second_visit )
-  if(trim(MODEL) == 'CATCHCN'  )inquire(file='OutData1/catchcn_internal_rst',exist=second_visit )
+  inquire(file='OutData1/'//trim(MODEL)//'_internal_rst',exist=second_visit )
+
   if(.not. second_visit) then
      call regrid_hyd_vars (NTILES, trim(MODEL)) 
      call MPI_Barrier(MPI_COMM_WORLD, STATUS)
      stop
   endif
   if (root_proc) then 
-     if(trim(MODEL) == 'CATCH'  ) call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData2/clsm/','OutData2/catch_internal_rst'  )
-     if(trim(MODEL) == 'CATCHCN') call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData2/clsm/','OutData2/catchcn_internal_rst')
+     call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData2/clsm/','OutData2/'//trim(MODEL)//'_internal_rst'  )
   endif
 
   call MPI_Barrier(MPI_COMM_WORLD, STATUS)
 
-  if(trim(MODEL) == 'CATCHCN') then 
+  if(index(MODEL,'catchcn') /=0) then 
 
-     call  regrid_carbon_vars (NTILES)     
+     call  regrid_carbon_vars (NTILES, model)     
 
   endif
 
@@ -341,7 +344,7 @@ contains
     close (10, status = 'keep')  
 
     ! Determine whether LDASsa or GEOSldas
-    if(trim(MODEL) == 'CATCH') then
+    if(trim(MODEL) == 'catch') then
        rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
                    '.catch_internal_rst.'//trim(YYYYMMDD)//'_0000'  
        inquire(file =  trim(rst_file), exist=fexist)
@@ -353,11 +356,11 @@ contains
        endif
     else
        rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-            '.catchcn_internal_rst.'//trim(YYYYMMDD)//'_0000' 
+            '.'//trim(MODEL)//'_internal_rst.'//trim(YYYYMMDD)//'_0000' 
        inquire(file =  trim(rst_file), exist=fexist)
        if (.not. fexist) then
           rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-               '.ens'//ENS//'.catchcn_ldas_rst.'//trim(YYYYMMDD)//'_0000z'          
+               '.ens'//ENS//'.'//trim(MODEL)//'_ldas_rst.'//trim(YYYYMMDD)//'_0000z'          
           lendian = .false.
        endif
        call ldFmt%open(trim(rst_file) , pFIO_READ,rc=rc)
@@ -534,8 +537,7 @@ contains
            ! just delaying few seconds to allow the system to copy the file
         end do
 
-        if(trim(MODEL) == 'CATCH'  ) call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData2/clsm/','OutData2/catch_internal_rst'  )
-        if(trim(MODEL) == 'CATCHCN') call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData2/clsm/','OutData2/catchcn_internal_rst')
+        call read_bcs_data (NTILES, SURFLAY, trim(MODEL),'OutData2/clsm/','OutData2/'//trim(model)//'_internal_rst'  )
 
      endif
 
@@ -545,7 +547,7 @@ contains
      ! REGRID Carbon
      ! =============
 
-     if(trim(MODEL) == 'CATCHCN')then
+     if (index(MODEL, 'catchcn') /=0) then
 
         allocate (CLMC_pf1(nt_local (myid + 1)))
         allocate (CLMC_pf2(nt_local (myid + 1)))
@@ -560,7 +562,7 @@ contains
         allocate (id_loc_cn (nt_local (myid + 1),nveg))
        
 !        STATUS = NF90_OPEN ('OutData2/catchcn_internal_rst',NF_WRITE,OUTID) ; VERIFY_(STATUS)
-        STATUS = NF_OPEN_PAR   ('OutData2/catchcn_internal_rst',IOR(NF_WRITE,NF_MPIIO),MPI_COMM_WORLD, infos,OUTID) ; VERIFY_(STATUS)
+        STATUS = NF_OPEN_PAR   ('OutData2/'//trim(model)//'_internal_rst',IOR(NF_WRITE,NF_MPIIO),MPI_COMM_WORLD, infos,OUTID) ; VERIFY_(STATUS)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),1/), (/nt_local(myid+1),1/),CLMC_pt1)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),2/), (/nt_local(myid+1),1/),CLMC_pt2)
         STATUS = NF_GET_VARA_REAL(OUTID,VarID(OUTID,'ITY'), (/low_ind(myid+1),3/), (/nt_local(myid+1),1/),CLMC_st1)
@@ -714,28 +716,12 @@ contains
     type(StringVector), pointer :: var_dimensions
     character(len=:), pointer :: vname,dname
     logical :: fexist, bin_out = .false.
-
-    if(trim(MODEL) == 'CATCH') then
-        rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'  &
-           //trim(ExpName)//'.ens'//ENS//'.catch_ldas_rst.'// &
-           YYYYMMDD(1:8)//'_0000z.bin'
-        out_rst_file = 'catch'//ENS//'_internal_rst.'//trim(YYYYMMDD)
-    else
-        rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
-            '.ens'//ENS//'.catchcn_ldas_rst.'//trim(YYYYMMDD)//'_0000z'
-        out_rst_file = 'catchcn'//ENS//'_internal_rst.'//trim(YYYYMMDD)
-        call ldFmt%open(trim(rst_file) , pFIO_READ,rc=rc)
-        meta_data = ldFmt%read(rc=rc)
-        call ldFmt%close(rc=rc)
-        if(meta_data%get_dimension('unknown_dim3',rc=rc) == 105) then
-           clm45  = .true.
-           VAR_COL = VAR_COL_CLM45 
-           VAR_PFT = VAR_PFT_CLM45
-           if (root_proc) print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
-        else
-           if (root_proc) print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
-        endif
-    endif
+    character(len=:), allocatable :: ftype
+    
+    ftype = ''
+    if(trim(MODEL) == 'catch') ftype='.bin'
+    rst_file = trim(EXPDIR)//'rs/ens'//ENS//'/Y'//YYYYMMDD(1:4)//'/M'//YYYYMMDD(5:6)//'/'//trim(ExpName)//&
+           '.ens'//ENS//'.'//trim(model)//'_ldas_rst.'//YYYYMMDD(1:8)//'_0000z'//trim(ftype)
 
     inquire(file =  trim(rst_file), exist=fexist)
     if (.not. fexist) then
@@ -745,25 +731,40 @@ contains
        return
     endif
 
+    out_rst_file = trim(model)//ENS//'_internal_rst.'//trim(YYYYMMDD)
+
+    if (index(model,'catchcn') /=0) then
+        call ldFmt%open(trim(rst_file) , pFIO_READ,rc=rc)
+        meta_data = ldFmt%read(rc=rc)
+        call ldFmt%close(rc=rc)
+        if(meta_data%get_dimension('unknown_dim3',rc=rc) == 105) then
+           VAR_COL = VAR_COL_CLM45 
+           VAR_PFT = VAR_PFT_CLM45
+           if ( .not. clm45) stop ' ERROR: Given clm45 restart, but the model is not clm45'
+           if (root_proc) print *, 'Processing CLM45 restarts : ', VAR_COL, VAR_PFT, clm45
+        else
+           if (root_proc) print *, 'Processing CLM40 restarts : ', VAR_COL, VAR_PFT, clm45
+        endif
+    endif
  
-   open (10,file =trim(BCSDIR)//"clsm/catchment.def",status='old',form='formatted')
-   read (10,*) ntiles
-   close (10, status = 'keep')  
+    open (10,file =trim(BCSDIR)//"clsm/catchment.def",status='old',form='formatted')
+    read (10,*) ntiles
+    close (10, status = 'keep')  
 
    ! read NTILES from BCs and tile_coord from LDASsa experiment
 
-   tile_coord = trim(EXPDIR)//'rc_out/'//trim(expname)//'.ldas_tilecoord.bin'
-   open (10,file =trim(tile_coord),status='old',form='unformatted',convert='big_endian')
-   read (10) i
-   if (i /= ntiles) then 
+    tile_coord = trim(EXPDIR)//'rc_out/'//trim(expname)//'.ldas_tilecoord.bin'
+    open (10,file =trim(tile_coord),status='old',form='unformatted',convert='big_endian')
+    read (10) i
+    if (i /= ntiles) then 
       print *,'NTILES BCs/LDASsa mismatch:', i,ntiles
       stop
-   endif
+    endif
 
-   if(trim(MODEL) == 'CATCH') then
-      call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' , pFIO_READ,rc=rc)
-   end if
-   if(trim(MODEL) == 'CATCHCN') then
+    if(trim(MODEL) == 'catch') then
+       call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/Catch/catch_internal_rst' , pFIO_READ,rc=rc)
+    end if
+    if(index(MODEL, 'catchcn') /=0) then
       if (clm45) then
          call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc)
       else
@@ -818,7 +819,7 @@ contains
       G2D(tile_id(n)) = n
    end do
    
-   if(trim(MODEL) == 'CATCH') then   
+   if(trim(MODEL) == 'catch') then   
 
       open(10, file=trim(rst_file), form='unformatted', status='old', &
            convert='big_endian', action='read')
@@ -1117,8 +1118,8 @@ contains
 
     logical :: all_found
 
-    if(trim(MODEL) == 'CATCHCN') ntiles_smap = ntiles_cn
-    if(trim(MODEL) == 'CATCH'  ) ntiles_smap = ntiles_cat
+    if(index(MODEL, 'catchcn') /=0) ntiles_smap = ntiles_cn
+    if(trim(MODEL) == 'catch'     ) ntiles_smap = ntiles_cat
 
     allocate (tid_offl  (ntiles_smap))
     allocate (tmp_var   (ntiles_smap))
@@ -1162,18 +1163,18 @@ contains
        ! Read exact lonc, latc from offline .til File 
        ! ---------------------------------------------
        
-       if(trim(MODEL) == 'CATCHCN') then
+       if(index(MODEL,'catchcn') /=0) then
           call ReadTileFile_RealLatLon(trim(InCNTilFile ),i,lonc,latc) 
           VERIFY_(i-ntiles_smap)
        endif
-       if(trim(MODEL) == 'CATCH'  ) then
+       if(trim(MODEL) == 'catch'  ) then
           call ReadTileFile_RealLatLon(trim(InCatTilFile),i,lonc,latc) 
           VERIFY_(i-ntiles_smap)
        endif
-       if(trim(MODEL) == 'CATCHCN') then
+       if(index(MODEL,'catchcn') /=0) then
           STATUS = NF_OPEN (trim(InCNRestart ),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)
        endif
-       if(trim(MODEL) == 'CATCH'  ) then
+       if(trim(MODEL) == 'catch'  ) then
           STATUS = NF_OPEN (trim(InCatRestart),NF_NOWRITE,NCFID) ; VERIFY_(STATUS) 
        endif
        STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'TILE_ID'   ), (/1/), (/NTILES_SMAP/),tmp_var)
@@ -1324,7 +1325,7 @@ contains
     inquire(file = trim(DataDir)//'/catchcn_params.nc4', exist=file_exists)
     inquire(file = trim(DataDir)//"CLM_veg_typs_fracs"   ,exist=NewLand )
 
-    isCatchCN = (trim(model) == 'CATCHCN')
+    isCatchCN = (index(model,'catchcn') /=0)
 
     if(file_exists) then
 
@@ -1744,12 +1745,14 @@ contains
 
   ! *****************************************************************************
   
-  SUBROUTINE regrid_carbon_vars (NTILES)
+  SUBROUTINE regrid_carbon_vars (NTILES, model)
 
     implicit none
 
     integer, intent (in)                 :: NTILES
-    character*300          :: OutTileFile = 'OutData1/OutTileFile', OutFileName='OutData2/catchcn_internal_rst'
+    character(*), intent (in)            :: model
+    character*300          :: OutTileFile = 'OutData1/OutTileFile'
+    character*300          :: OutFileName
     integer                :: AGCM_YY=2015,AGCM_MM=1,AGCM_DD=1,AGCM_HR=0 
     real, allocatable, dimension (:)     :: CLMC_pf1, CLMC_pf2, CLMC_sf1, CLMC_sf2, &
          CLMC_pt1, CLMC_pt2,CLMC_st1,CLMC_st2
@@ -1769,6 +1772,9 @@ contains
 
     logical :: all_found
   
+
+    OutFileName='OutData2/'//trim(model)//'_internal_rst'
+
     allocate (tid_offl  (ntiles_cn))
     allocate (mask      (ntiles_cn))
     allocate (ityp_offl (ntiles_cn,nveg))
@@ -2522,14 +2528,14 @@ contains
      allocate (var_put (NTILES))
    
      ! create output catchcn_internal_rst
-     if(trim(model) == 'CATCHCN') then 
+     if(index(model,'catchcn') /=0) then 
         if (clm45) then
            call InFmt%open('/discover/nobackup/rreichle/l_data/LandRestarts_for_Regridding/CatchCN/catchcn_internal_clm45',PFIO_READ, rc=rc) ; VERIFY_(RC)
         else
            call InFmt%open(trim(InCNRestart ), pFIO_READ, rc=rc)
         endif
      endif
-     if(trim(model) == 'CATCH'  ) then
+     if(trim(model) == 'catch'  ) then
         call InFmt%open(trim(InCatRestart), pFIO_READ, rc=rc)  
      endif
      meta_data = InFmt%read(rc=rc)
@@ -2537,8 +2543,7 @@ contains
 
      call meta_data%modify_dimension('tile', ntiles, rc=rc)
 
-     if(trim(model) == 'CATCHCN') OutFileName = "OutData1/catchcn_internal_rst"
-     if(trim(model) == 'CATCH'  ) OutFileName = "OutData1/catch_internal_rst"
+     OutFileName = "OutData1/"//trim(model)//"_internal_rst"
 
      call OutFmt%create(trim(OutFileName),rc=rc) ; VERIFY_(RC)
      call OutFmt%write(meta_data,rc=rc)
@@ -2546,10 +2551,10 @@ contains
      if (present(rst_file)) then
         STATUS = NF_OPEN (trim(rst_file ),NF_NOWRITE,NCFID)  ; VERIFY_(STATUS)  
      else
-        if(trim(model) == 'CATCHCN') then
+        if(index(model, 'catchcn') /=0 ) then
            STATUS = NF_OPEN (trim(InCNRestart ),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)  
         endif
-        if(trim(model) == 'CATCH') then
+        if(trim(model) == 'catch') then
            STATUS = NF_OPEN (trim(InCatRestart),NF_NOWRITE,NCFID) ; VERIFY_(STATUS)  
         endif
      endif
@@ -2731,7 +2736,7 @@ contains
      end do
      call MAPL_VarWrite(OutFmt,'BTAU',var_put) 
      
-     if(trim(model) == 'CATCHCN') then
+     if(index(model,'catchcn') /=0) then
 
         STATUS = NF_GET_VARA_REAL(NCFID,VarID(NCFID,'ITY'   ), (/1,1/), (/NTILES_RST,1/),var_get)
         do k = 1, NTILES
@@ -2977,12 +2982,7 @@ contains
      STATUS = NF_CLOSE ( NCFID)
 
      deallocate (var_get, var_put)
-     if(trim(MODEL) == 'CATCHCN') then
-        CALL EXECUTE_COMMAND_LINE('/bin/cp OutData1/catchcn_internal_rst OutData2/catchcn_internal_rst', .TRUE.)
-     endif
-     if(trim(MODEL) == 'CATCH') then
-        CALL EXECUTE_COMMAND_LINE('/bin/cp OutData1/catch_internal_rst OutData2/catch_internal_rst', .TRUE.)
-     endif
+     CALL EXECUTE_COMMAND_LINE('/bin/cp OutData1/'//trim(model)//'_internal_rst OutData2/'//trim(model)//'_internal_rst', .TRUE.)
 
    END SUBROUTINE put_land_vars
 
