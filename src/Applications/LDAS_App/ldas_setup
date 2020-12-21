@@ -1415,7 +1415,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '#         SURFACE METEOROLOGICAL FORCING                   #'
     print '#                                                          #'
-    print '#  See README files in ./src/Applications/LDAS_App/doc     #'
+    print '#  See README file in ./doc                                #'
     print '#                                                          #'
     print '#  Surface meteorological forcing time step is in seconds. #'
     print '#                                                          #'     
@@ -1429,7 +1429,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '#            LAND BOUNDARY CONDITIONS DIRECTORY            #'
     print '#                                                          #'
-    print '#  See README files in ./src/Applications/LDAS_App/doc     #'
+    print '#  See README file in ./doc                                #'
     print '#                                                          #'
     print '############################################################'
     print

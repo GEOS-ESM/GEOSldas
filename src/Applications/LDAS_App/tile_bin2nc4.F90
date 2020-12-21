@@ -286,12 +286,12 @@ PROGRAM tile_bin2nc4
     case ('TPSURF');     LONG_NAME = 'ave_catchment_temp_incl_snw';                                      UNITS = 'K' 
     case ('GRN');        LONG_NAME = 'greeness_fraction';                                                UNITS = '1' 
     case ('LAI');        LONG_NAME = 'leaf_area_index';                                                  UNITS = '1' 
-    case ('TP1');        LONG_NAME = 'soil_temperatures_layer_1';                                        UNITS = 'C' 
-    case ('TP2');        LONG_NAME = 'soil_temperatures_layer_2';                                        UNITS = 'C' 
-    case ('TP3');        LONG_NAME = 'soil_temperatures_layer_3';                                        UNITS = 'C' 
-    case ('TP4');        LONG_NAME = 'soil_temperatures_layer_4';                                        UNITS = 'C' 
-    case ('TP5');        LONG_NAME = 'soil_temperatures_layer_5';                                        UNITS = 'C' 
-    case ('TP6');        LONG_NAME = 'soil_temperatures_layer_6';                                        UNITS = 'C' 
+    case ('TP1');        LONG_NAME = 'soil_temperatures_layer_1';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP2');        LONG_NAME = 'soil_temperatures_layer_2';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP3');        LONG_NAME = 'soil_temperatures_layer_3';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP4');        LONG_NAME = 'soil_temperatures_layer_4';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP5');        LONG_NAME = 'soil_temperatures_layer_5';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP6');        LONG_NAME = 'soil_temperatures_layer_6';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
     case ('PRECTOTLAND');LONG_NAME = 'Total_precipitation_land';                                         UNITS = 'kg m-2 s-1'
     case ('PRECSNOLAND');LONG_NAME = 'snowfall_land';                                                    UNITS = 'kg m-2 s-1'
     case ('SNOWMASS')   ;LONG_NAME = 'snow_mass';                                                        UNITS = 'kg m-2'
