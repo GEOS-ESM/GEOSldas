@@ -4641,7 +4641,7 @@ contains
          _ASSERT( N_f == 6, "number of (cubed-sphere) faces not equal to 6")
          ierr  =  nf90_Inquire_Dimension(fid,xdimid,len=N_lon)
          _ASSERT( ierr == nf90_noerr, "nf90 error")
-         _ASSERT( N_lon == im_world_cs, "forcing dimension should match native grid dimension")
+         _ASSERT( N_lon == im_world_cs, "forcing on cube-sphere grid: forcing dimension should match native grid dimension (grid associated with tile space)")
          N_lat = N_f*N_lon
          _ASSERT( m_hinterp == 0, "forcing on cubed-sphere grid requires m_hinterp = 0")
          isCubed = .true.       
