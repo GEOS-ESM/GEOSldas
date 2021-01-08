@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
-# module load python/GEOSpyD/Ana2019.03_py3.7
-# module  load nco/4.8.1
+# module load python/GEOSpyD/Min4.8.3_py2.7
+# module load nco/4.8.1
 #
 import os
 import glob
@@ -15,7 +15,7 @@ def averaging_forcing(in_path, out_path, nens):
       os.makedirs(out_path) 
    files_list=[]
    for i in range(1,nens+1):
-      sfx = f'{i:03}'
+      sfx = '%03d'%(i)
       folder  = in_path+sfx
       fs      = sorted(glob.glob(folder+'/*lfo*.nc4'))
       files_list.append(fs)
