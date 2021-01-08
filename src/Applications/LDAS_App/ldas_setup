@@ -1085,10 +1085,10 @@ class LDASsetup:
                     keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
                     valn = 'landpert'+tmpl_+'_internal_checkpoint'
                     ldasrcInp[keyn]= valn
+                if (self.perturb == 1):
                     keyn = 'LANDPERT_INTERNAL_RESTART_FILE'
                     valn = '../input/restart/landpert'+tmpl_+'_internal_rst'
                     ldasrcInp[keyn]= valn
-                    
     
                 # write LDAS.rc
                 fout =open(self.rundir+'/'+shortfile,'w')
