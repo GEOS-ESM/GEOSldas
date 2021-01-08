@@ -68,34 +68,29 @@ else
    exit
 endif
 
+set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
+set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
+set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 #######################################################
 #  if LADAS_COUPLING ==2, do atmens forcing processing 
 ###################################################### 
-   if ( $LADAS_COUPLING == 2) then
-     cd $HOMDIR
-     module load  python/GEOSpyD/Ana2019.03_py3.7
-     module  load nco/4.8.1
-     python  average_ensemble_forcing.py
-  endif
-
-
+if ( $LADAS_COUPLING == 2) then
+   cd $HOMDIR
+   setenv force_in  MY_LADAS_FORCE_PATH_IN
+   setenv force_out MY_LADAS_FORCE_PATH_OUT
+   python  $GEOSBIN/average_ensemble_forcing.py $force_in $force_out $NENS 
+endif
+/bin/rm -f $HOMDIR/lenkf_job_completed.txt 
 
 #######################################################################
 #                   Set Experiment Run Parameters
 #######################################################################
 
-if (! -e $SCRDIR            ) mkdir -p $SCRDIR
-
-set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
-set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
-set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
-
 #######################################################################
 #        Move to Scratch Directory and Copy .rc .nml .rst files
 #######################################################################
 
-/bin/rm -f $HOMDIR/lenkf_job_completed.txt 
-
+if (! -e $SCRDIR            ) mkdir -p $SCRDIR
 cd $SCRDIR
 /bin/rm -rf *.*
 /bin/cp     $HOMDIR/cap_restart .

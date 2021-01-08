@@ -44,7 +44,8 @@ class LDASsetup:
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
-            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME']
+            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME',
+            'LADAS_FORCE_PATH_IN', 'LADAS_FORCE_PATH_OUT' ]
 
 
         # ------
@@ -145,6 +146,10 @@ class LDASsetup:
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None 
         self.ladas_coupling = int(self.rqdExeInp.get('LADAS_COUPLING',0))
+        if self.ladas_coupling == 2:
+           assert 'LADAS_FORCE_PATH_IN'  in self.rqdExeInp, " need LADAS_FORCE_PATH_IN  in the input file %s" %(self.exeinpfile)
+           assert 'LADAS_FORCE_PATH_OUT' in self.rqdExeInp, " need LADAS_FORCE_PATH_OUT in the input file %s" %(self.exeinpfile)
+ 
         self.first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
         self.perturb = int(self.rqdExeInp.get('PERTURBATIONS',0))
         if self.nens > 1:
@@ -1290,6 +1295,12 @@ class LDASsetup:
                         fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
                     elif 'MY_LADAS_COUPLING' in line :
                         fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
+                    elif 'MY_LADAS_FORCE_PATH_IN' in line :
+                        if self.ladas_coupling == 2:
+                           fout.write(line.replace('MY_LADAS_FORCE_PATH_IN', self.rqdExeInp['LADAS_FORCE_PATH_IN']))
+                    elif 'MY_LADAS_FORCE_PATH_OUT' in line :
+                        if self.ladas_coupling) == 2:
+                           fout.write(line.replace('MY_LADAS_FORCE_PATH_OUT', self.rqdExeInp['LADAS_FORCE_PATH_OUT']))
                         
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))

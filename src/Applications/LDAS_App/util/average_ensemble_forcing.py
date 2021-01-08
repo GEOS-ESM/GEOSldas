@@ -3,6 +3,7 @@
 # module load python/GEOSpyD/Ana2019.03_py3.7
 # module  load nco/4.8.1
 #
+import sys
 import os
 import glob
 import subprocess as sp
@@ -15,7 +16,7 @@ def averaging_forcing(in_path, out_path, nens):
       os.makedirs(out_path) 
    files_list=[]
    for i in range(1,nens+1):
-      sfx = f'{i:03}'
+      sfx = '%03d'%(i)
       folder  = in_path+sfx
       fs      = sorted(glob.glob(folder+'/*lfo*.nc4'))
       files_list.append(fs)
@@ -34,9 +35,10 @@ def averaging_forcing(in_path, out_path, nens):
       sp.call(cmd, shell=True)
    
 if __name__ == '__main__' :
+ 
    # These there arguments should be changed accordingly
-   in_path  = '/discover/nobackup/qzhang/forcing/stage/ensdiag/mem'
-   nens     = 32
-   out_path = './mem_avg'
+   in_path  = sys.argv[1]
+   out_path = sys.argv[2]
+   nens     = int(sys.argv[3])
 
    averaging_forcing(in_path, out_path, nens)
