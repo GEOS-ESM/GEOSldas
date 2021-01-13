@@ -10,7 +10,7 @@ program main
        createLocalBC,                        &
        createLocalVegRestart,                &
        createLocalmwRTMRestart,              &
-       createLocalCatchRestart,              &
+       write3D_nc => createLocalCatchRestart,&
        correctEase,                          &
        convert_pert_rst,                     &
        optimize_latlon
@@ -40,6 +40,8 @@ program main
   character(len=200) :: new_BC
   character(len=200) :: orig_Veg
   character(len=200) :: new_veg
+  character(len=200) :: orig_irr
+  character(len=200) :: new_irr
   character(len=200) :: orig_ease
   character(len=200) :: new_ease
   character(len=12 ) :: ymdhm
@@ -88,7 +90,14 @@ program main
      orig_veg = arg1
      new_veg  = arg2
 
-     call  createLocalVegRestart(orig_veg, new_veg)      
+     call  createLocalVegRestart(orig_veg, new_veg)
+
+  else if (trim(option) == "c_localirrrst") then
+
+     orig_irr = arg1
+     new_irr  = arg2
+
+     call  write3D_nc (orig_irr, new_irr)
 
   else if (trim(option) == "c_localmwrtmrst") then
 
@@ -102,7 +111,7 @@ program main
      orig_catch = arg1
      new_catch  = arg2
 
-     call createLocalCatchRestart(orig_catch, new_catch)
+     call write3D_nc (orig_catch, new_catch)
 
   else if (trim(option)=="correctease") then
 

@@ -182,7 +182,10 @@ COLLECTIONS:
 >>>HIST_CATCHCN<<<        'WAT10CM'  , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'WATSOI'   , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'ICESOI'   , 'GridComp'  ,
->>>HIST_IRRIG<<<        'IRRIGRATE'  , 'GridComp'  ,
+>>>HIST_IRRIG<<<        'SPRINKLERRATE'  , 'IRRIGATION'  ,
+>>>HIST_IRRIG<<<        'FLOODRATE'  , 'IRRIGATION'  ,
+>>>HIST_IRRIG<<<        'DRIPRATE'  , 'IRRIGATION'  ,
+
                                ::
 
   tavg24_2d_lnd_Nx.descr:       '2d,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics',
@@ -280,7 +283,9 @@ COLLECTIONS:
 >>>HIST_CATCHCN<<<        'WAT10CM'  , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'WATSOI'   , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'ICESOI'   , 'GridComp'  ,
->>>HIST_IRRIG<<<        'IRRIGRATE'  , 'GridComp'  ,
+>>>HIST_IRRIG<<<        'SPRINKLERRATE'  , 'IRRIGATION'  ,
+>>>HIST_IRRIG<<<        'FLOODRATE'  , 'IRRIGATION'  ,
+>>>HIST_IRRIG<<<        'DRIPRATE'  , 'IRRIGATION'  ,
                                ::
 
   SMAP_L4_SM_gph.descr:         'Tile-space,3-Hourly,Time-Averaged,Single-Level,Assimilation,SMAP L4_SM Land Geophysical Diagnostics',
