@@ -746,7 +746,7 @@ class LDASsetup:
  
         cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, exp_dir,
                         bcdir, tilefile, lsmchoice, have_rst, YYYYMMDD,
-                        rstid, rstdomain, rstpath0, str(self.nens), str(self.rqdExeInp['RUN_IRRIG']),
+                        rstid, rstdomain, rstpath0, str(self.nens), 
                         dzsf, wemin_in, wemin_out])
         print "cmd:   " + cmd
         os.system(cmd)

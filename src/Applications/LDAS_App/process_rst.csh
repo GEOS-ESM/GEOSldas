@@ -12,10 +12,9 @@ setenv  RESTART_ID   $9
 setenv  RESTART_DOMAIN $10
 setenv  RESTART_PATH $11
 setenv  NUMENS       $12
-setenv  RUN_IRRIG    $13
-setenv  SURFLAY      $14
-setenv  WEMIN_IN     $15
-setenv  WEMIN_OUT    $16
+setenv  SURFLAY      $13
+setenv  WEMIN_IN     $14
+setenv  WEMIN_OUT    $15
 setenv  RESTART_short ${RESTART_PATH}/${RESTART_ID}/output/${RESTART_DOMAIN}/
 setenv  PARAM_FILE `ls $RESTART_short/rc_out/*/*/*ldas_catparam* | head -1`
 
@@ -112,14 +111,8 @@ _EOI_
 sleep 2
 
 if($LSM_CHOICE == 1) then
-   if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then 
-      ncks -4  -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A catch_internal_rst
-   endif
    ln -s  catch_internal_rst catch_internal_rst.$YYYYMMDD
 else
-   if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then 
-      ncks -4 -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A catchcn_internal_rst 
-   endif
    ln -s  catchcn_internal_rst catchcn_internal_rst.$YYYYMMDD
 endif
 
@@ -248,14 +241,8 @@ _EOI3_
 sleep 2
 
 if($LSM_CHOICE == 1) then
-   if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then 
-      ncks -4  -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A catch_internal_rst
-   endif
    ln -s  catch_internal_rst catch_internal_rst.$YYYYMMDD
 else
-   if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then 
-      ncks -4 -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A catchcn_internal_rst 
-   endif
    ln -s  catchcn_internal_rst catchcn_internal_rst.$YYYYMMDD
 endif
 
@@ -417,9 +404,6 @@ else
 bin/Scale_CatchCN OutData.1/M2Restart OutData.2/M2Restart catchcn_internal_rst $SURFLAY 26 $WEMIN_OUT
 endif
 
-if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then 
-    ncks -4  -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A catch_internal_rst
-endif
 /bin/ln -s  catch_internal_rst catch_internal_rst.$YYYYMMDD
 
 echo DONE > done_rst_file  
