@@ -404,6 +404,13 @@ PROGRAM tile_bin2nc4
     case ('TSURF_ANA');    LONG_NAME = 'ave_catchment_temp_incl_snw_analysis';                           UNITS = 'K'
     case ('TSOIL1_ANA');   LONG_NAME = 'soil_temperatures_layer_1_analysis';                             UNITS = 'K'
 
+    ! new fields for the irrigation model
+       
+    case ('SPRINKLERRATE');LONG_NAME = 'sprinkler_irrigation_rate';                                      UNITS = 'kg m-2 s-1'
+    case ('DRIPRATE');     LONG_NAME = 'drip_irrigation_rate';                                           UNITS = 'kg m-2 s-1'
+    case ('FLOODRATE');    LONG_NAME = 'flood_irrigation_rate';                                          UNITS = 'kg m-2 s-1'
+    case ('IRRLAND');      LONG_NAME = 'Total_irrigation_land';                                          UNITS = 'kg m-2 s-1'
+       
     ! default LONG_NAME and UNITS for nc4 files created by tile_bin2nc4.F90 (used for any SHORT_NAME not listed above):
 
     case default;          LONG_NAME = 'not defined in tile_bin2nc4.F90';                                UNITS = 'not defined in tile_bin2nc4.F90';
