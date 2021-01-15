@@ -1080,7 +1080,7 @@ class LDASsetup:
                 ldasrcInp[keyn]= valn
 
                 # specify LANDPERT restart file
-                if (self.perturb == 1):
+                if ((self.has_geos_pert or self.has_ldassa_pert) and self.perturb == 1):
                     keyn = 'LANDPERT_INTERNAL_RESTART_FILE'
                     valn = '../input/restart/landpert'+tmpl_+'_internal_rst'
                     ldasrcInp[keyn]= valn

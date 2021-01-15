@@ -876,7 +876,7 @@ contains
     integer :: imjm(7), imjm_global(7) ! we need just the first 2
     integer :: model_dtstep
     integer :: land_nt_local,m,n, i1, in, j1, jn
-    logical :: IAmRoot
+    logical :: IAmRoot, f_exist
     integer :: ipert,n_lon,n_lat, n_lon_g, n_lat_g
     integer, allocatable :: pert_rseed(:)
     real :: dlon, dlat,locallat,locallon
@@ -983,8 +983,9 @@ contains
        endif
 
        call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_fname_tmp)),'GRADS', xid = trim(id_string), stat=status)
+       inquire(file=rst_name, exist=f_exist)
 
-       if (index(rst_fname, 'NONE') == 0) then
+       if (index(rst_fname, 'NONE') == 0 .and. f_exist) then
 
           if ( IAmRoot) then
             call read_pert_rst(trim(rst_fname),internal%fpert_ntrmdt,internal%ppert_ntrmdt, internal%pert_rseed_r8) 
