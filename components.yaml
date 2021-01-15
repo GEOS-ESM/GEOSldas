@@ -28,8 +28,8 @@ GMAO_Shared:
 
 MAPL:
   local: ./src/Shared/@MAPL
-  remote: git@github.com:GEOS-ESM/MAPL.git
-  branch: feature/wjiang/mapl_shared_lib
+  remote: ../MAPL.git
+  tag: v2.5.0
   develop: develop
 
 GEOSgcm_GridComp:
