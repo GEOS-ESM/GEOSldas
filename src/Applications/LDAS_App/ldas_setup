@@ -1084,12 +1084,12 @@ class LDASsetup:
                     keyn = 'LANDPERT_INTERNAL_RESTART_FILE'
                     valn = '../input/restart/landpert'+tmpl_+'_internal_rst'
                     ldasrcInp[keyn]= valn
-                    # for lat/lon and EASE tile space, specify LANDPERT checkpoint file here (via MAPL);
-                    # for cube-sphere tile space, Landpert GC will set up LANDPERT checkpoint file 
-                    if ('-CF' not in self.rqdExeInp['GRIDNAME']):
-                        keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
-                        valn = 'landpert'+tmpl_+'_internal_checkpoint'
-                        ldasrcInp[keyn]= valn
+                # for lat/lon and EASE tile space, specify LANDPERT checkpoint file here (via MAPL);
+                # for cube-sphere tile space, Landpert GC will set up LANDPERT checkpoint file 
+                if ('-CF' not in self.rqdExeInp['GRIDNAME'] and self.perturb == 1):
+                    keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
+                    valn = 'landpert'+tmpl_+'_internal_checkpoint'
+                    ldasrcInp[keyn]= valn
  
                 # write LDAS.rc
                 fout =open(self.rundir+'/'+shortfile,'w')

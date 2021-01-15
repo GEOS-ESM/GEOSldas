@@ -983,7 +983,7 @@ contains
        endif
 
        call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_fname_tmp)),'GRADS', xid = trim(id_string), stat=status)
-       inquire(file=rst_name, exist=f_exist)
+       inquire(file=rst_fname, exist=f_exist)
 
        if (index(rst_fname, 'NONE') == 0 .and. f_exist) then
 
