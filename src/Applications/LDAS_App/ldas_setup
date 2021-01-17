@@ -779,10 +779,12 @@ class LDASsetup:
             irrigationRstFile = ''
             pertRstFile   = ''
             print "restart: " + self.rqdExeInp['RESTART']
+            self.present_irrfile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')
             if self.rqdExeInp['RESTART'].isdigit() :
                 if int(self.rqdExeInp['RESTART']) == 0 or int(self.rqdExeInp['RESTART']) == 2 :
-                    vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
-                    irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]
+                    vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]                    
+                    if len(self.present_irrfile) > 0:
+                        irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]
                     catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'_internal_rst.'+YYYYMMDD
                 else :
                     catchRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
@@ -791,8 +793,9 @@ class LDASsetup:
                     if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
                         vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
                     irrigationRstFile= rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.irrigation_internal_rst.'+y4m2d2_h2m2
-                    if not os.path.isfile(vegdynRstFile): # no irrigation restart from LDASsa
-                        irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]                    
+                    if not os.path.isfile(irrigationRstFile): # no irrigation restart from LDASsa
+                        if len(self.present_irrfile) > 0:
+                            irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]                    
                     if (self.nens == 1) :
                         _catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'0000_internal_rst.'+YYYYMMDD
                     if os.path.isfile(_catchRstFile): # from LDASsa restart
@@ -800,7 +803,8 @@ class LDASsetup:
                         assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'restart from LDASsa should be global'
             else :
                 vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
-                irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]
+                if len(self.present_irrfile) > 0:
+                    irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]
                 catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'_internal_rst.'+YYYYMMDD
 
             # catchment restart file
@@ -879,7 +883,8 @@ class LDASsetup:
 
             os.symlink(catchRstFile, myCatchRst)
             os.symlink(vegdynRstFile,  myVegRst)
-            os.symlink(irrigationRstFile,  myIrrRst)
+            if os.path.isfile(irrigationRstFile):
+                os.symlink(irrigationRstFile,  myIrrRst)
             if ( (self.has_geos_pert or self.has_ldassa_pert) and  self.perturb == 1 ):
                os.symlink(pertRstFile,  myPertRst)
 
