@@ -17,7 +17,7 @@ def averaging_forcing(in_path, out_path, nens):
    files_list=[]
    for i in range(1,nens+1):
       sfx = '%03d'%(i)
-      folder  = in_path+sfx
+      folder  = in_path+'/atmens/ensdiag/mem'+sfx
       fs      = sorted(glob.glob(folder+'/*lfo*.nc4'))
       files_list.append(fs)
    for fs in zip(*files_list):
@@ -37,8 +37,10 @@ def averaging_forcing(in_path, out_path, nens):
 if __name__ == '__main__' :
  
    # These there arguments should be changed accordingly
-   in_path  = sys.argv[1]
-   out_path = sys.argv[2]
+   # in_path for adas_exp: the hybrid adas exp that ldas is coupled with 
+   # out_path : specified by MET_PATH 
+   in_path  =  sys.argv[1]
+   out_path  =  sys.argv[2]
    nens     = int(sys.argv[3])
 
    averaging_forcing(in_path, out_path, nens)

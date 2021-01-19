@@ -50,7 +50,7 @@ setenv    MODEL          MY_MODEL
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
 setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 setenv    LADAS_COUPLING       MY_LADAS_COUPLING   # 1 --yes for central, 2 --yes for atmens,  0 --no  
-
+setenv    ADASCOUPL_EXPDIR  MY_ADASCOUPL_EXPDIR
 #
 # DEBUGGER : 0 -- no debugger
 #          : 1 -- Totalview
@@ -76,8 +76,11 @@ set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 ###################################################### 
 if ( $LADAS_COUPLING == 2) then
    cd $HOMDIR
-   setenv force_in  MY_LADAS_FORCE_PATH_IN
-   setenv force_out MY_LADAS_FORCE_PATH_OUT
+   set force_in  = $ADASCOUPL_EXPDIR
+   set force_out = `grep MET_PATH: $HOMDIR/LDAS.rc | cut -d ':' -f2`
+#   echo "process forcing ensavg, force_in and force_out:  "
+#   echo $force_in
+#   echo $force_out
    python  $GEOSBIN/average_ensemble_forcing.py $force_in $force_out $NENS 
 endif
 /bin/rm -f $HOMDIR/lenkf_job_completed.txt 

@@ -45,7 +45,7 @@ class LDASsetup:
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
             'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME',
-            'LADAS_FORCE_PATH_IN', 'LADAS_FORCE_PATH_OUT' ]
+            'ADASCOUPL_EXPDIR' ]
 
 
         # ------
@@ -146,10 +146,9 @@ class LDASsetup:
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None 
         self.ladas_coupling = int(self.rqdExeInp.get('LADAS_COUPLING',0))
-        if self.ladas_coupling == 2:
-           assert 'LADAS_FORCE_PATH_IN'  in self.rqdExeInp, " need LADAS_FORCE_PATH_IN  in the input file %s" %(self.exeinpfile)
-           assert 'LADAS_FORCE_PATH_OUT' in self.rqdExeInp, " need LADAS_FORCE_PATH_OUT in the input file %s" %(self.exeinpfile)
- 
+        if self.ladas_coupling > 0:
+           assert 'ADASCOUPL_EXPDIR'  in self.rqdExeInp, " need ADASCOUPL_EXPDIR  in the input file %s" %(self.exeinpfile)
+
         self.first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
         self.perturb = int(self.rqdExeInp.get('PERTURBATIONS',0))
         if self.nens > 1:
@@ -1295,12 +1294,10 @@ class LDASsetup:
                         fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
                     elif 'MY_LADAS_COUPLING' in line :
                         fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
-                    elif 'MY_LADAS_FORCE_PATH_IN' in line :
-                        if self.ladas_coupling == 2:
-                           fout.write(line.replace('MY_LADAS_FORCE_PATH_IN', self.rqdExeInp['LADAS_FORCE_PATH_IN']))
-                    elif 'MY_LADAS_FORCE_PATH_OUT' in line :
-                        if self.ladas_coupling) == 2:
-                           fout.write(line.replace('MY_LADAS_FORCE_PATH_OUT', self.rqdExeInp['LADAS_FORCE_PATH_OUT']))
+                    elif 'MY_ADASCOUPL_EXPDIR' in line :
+                        if self.ladas_coupling > 0:
+                           fout.write(line.replace('MY_ADASCOUPL_EXPDIR', self.rqdExeInp['ADASCOUPL_EXPDIR']))
+                    
                         
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
@@ -1449,9 +1446,11 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '# Coupling of LDAS to ADAS ("LADAS"):                      #'
     print '#                                                          #'
     print '#   0 -- LDAS not coupled with ADAS (default)              #'
-    print '#   1 -- LDAS coupled with ADAS ${ADAS_exp}                #'
-    print '#                                                          #'
-    print '#  Requirements for LADAS_COUPLING = 1:                    #'
+    print '#   1 -- LDAS coupled with centralADAS ${ADAS_exp}         #'
+    print '#   2 -- LDAS coupled with enADAS      ${ADAS_exp}         #' 
+    print '#                                                          #' 
+    print '#  Requirements for LADAS_COUPLING > 0:                    #'
+    print '#  (0) ADASCOUPL_EXPDIR = $user_dir_path/${ADAS_exp}       #'
     print '#                                                          #'
     print '#  (1) BEG_DATE must be consistent with ${ADAS_exp}        #'
     print '#                first cycle date(21z, 3z, 9z or 15z)      #'
@@ -1459,9 +1458,11 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#  (2) EXP_DOMAIN must be global CS grid as in ${ADAS_exp} #'
     print '#                                                          #'
     print '#  (3) MET_TAG  must be set to  ${ADAS_exp}__Nx+-          #'
-    print '#      MET_PATH must be set to  ${ADAS_exp}/lana/forc      #' 
+    print '#      MET_PATH must be set to :                           #'
+    print '#      ${ADASCOUPL_EXPDIR}/lana/forc (LADAS_COUPLING=1)    #'        
+    print '# ${ADASCOUPL_EXPDIR}/atmens/ensdiag/forc (LADAS_COUPLING=2)  #'
     print '#    After ldas exp setup, verify the following link:      #'        
-    print '#    ../input/met_forcing/forc -> ${ADAS_exp}/lana/forc    #'
+    print '#    ../input/met_forcing/forc -> ${MET_PATH}              #' 
     print '#                                                          #'
     print '#  (4) BCS_PATH must be consistent with that of            #'
     print '#      ${ADAS_exp}/run/lnbcs                               #'
@@ -1472,7 +1473,8 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '#  (7) instantaneous "catch_progn_incr" must be in HIST    #'
     print '#      collection; time step must match that of LDAS       #'
-    print '#      analysis                                            #'
+    print '#      analysis; "catch_pron_incr${ens_index}" should be   #'
+    print '#      in HIST collection for the case LADAS_COUPLING=2    #'              
     print '#                                                          #'
     print '############################################################'
     print
