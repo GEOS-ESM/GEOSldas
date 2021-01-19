@@ -983,27 +983,30 @@ contains
        endif
 
        call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_fname_tmp)),'GRADS', xid = trim(id_string), stat=status)
-       inquire(file=rst_fname, exist=f_exist)
 
-       if (index(rst_fname, 'NONE') == 0 .and. f_exist) then
-
+       if (index(rst_fname, 'NONE') == 0 ) then
+          f_exist = .false.
           if ( IAmRoot) then
-            call read_pert_rst(trim(rst_fname),internal%fpert_ntrmdt,internal%ppert_ntrmdt, internal%pert_rseed_r8) 
+            inquire(file=rst_fname, exist=f_exist)
+            if (f_exist) call read_pert_rst(trim(rst_fname),internal%fpert_ntrmdt,internal%ppert_ntrmdt, internal%pert_rseed_r8) 
           endif
-          n = n_lat_g*n_lon_g*N_FORCE_PERT_MAX
-          call c_f_pointer(c_loc(internal%fpert_ntrmdt(1,1,1)), pert_ptr, [n])
-          call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
-          VERIFY_(status)
-          pert_ptr=>null()
+          call MAPL_CommsBcast(vm, data=f_exist,  N=1, ROOT=0,rc=status) 
+          if (f_exist) then
+             n = n_lat_g*n_lon_g*N_FORCE_PERT_MAX
+             call c_f_pointer(c_loc(internal%fpert_ntrmdt(1,1,1)), pert_ptr, [n])
+             call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
+             VERIFY_(status)
+             pert_ptr=>null()
 
-          n = n_lat_g*n_lon_g*N_PROGN_PERT_MAX
-          call c_f_pointer(c_loc(internal%ppert_ntrmdt(1,1,1)), pert_ptr, [n])
-          call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
-          VERIFY_(status)
-          pert_ptr=>null()
+             n = n_lat_g*n_lon_g*N_PROGN_PERT_MAX
+             call c_f_pointer(c_loc(internal%ppert_ntrmdt(1,1,1)), pert_ptr, [n])
+             call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
+             VERIFY_(status)
+             pert_ptr=>null()
 
-          call MAPL_CommsBcast(vm, data=internal%pert_rseed_r8, N=NRANDSEED, ROOT=0,rc=status)
-          VERIFY_(status)
+             call MAPL_CommsBcast(vm, data=internal%pert_rseed_r8, N=NRANDSEED, ROOT=0,rc=status)
+             VERIFY_(status)
+          endif
        endif 
        fpert_ntrmdt => internal%fpert_ntrmdt      
        ppert_ntrmdt => internal%ppert_ntrmdt      
