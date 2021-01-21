@@ -49,9 +49,14 @@ setenv    SCRDIR         $EXPDIR/scratch
 setenv    MODEL          MY_MODEL
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
 setenv    POSTPROC_HIST  MY_POSTPROC_HIST
-setenv    LADAS_COUPLING       MY_LADAS_COUPLING   # 1 --yes for central, 2 --yes for atmens,  0 --no  
-setenv    ADASCOUPL_EXPDIR  MY_ADASCOUPL_EXPDIR
-#
+
+# LADAS_COUPLING : 0 -- stand-alone LDAS (no coupling to ADAS)
+#                : 1 -- LDAS coupled to central (deterministic) component of ADAS
+#                : 2 -- LDAS coupled to atmospheric ensemble component of ADAS
+
+setenv    LADAS_COUPLING MY_LADAS_COUPLING
+setenv    ADAS_EXPDIR    MY_ADAS_EXPDIR
+
 # DEBUGGER : 0 -- no debugger
 #          : 1 -- Totalview
 #          : 2 -- DDT
@@ -71,18 +76,18 @@ endif
 set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
 set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
 set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
-#######################################################
-#  if LADAS_COUPLING ==2, do atmens forcing processing 
-###################################################### 
-if ( $LADAS_COUPLING == 2) then
+
+####################################################################### 
+#  if LADAS_COUPLING==2, compute ens avg of atmens forcing 
+####################################################################### 
+
+if ( $LADAS_COUPLING == 2 ) then
    cd $HOMDIR
-   set force_in  = $ADASCOUPL_EXPDIR
+   set force_in  = $ADAS_EXPDIR
    set force_out = `grep MET_PATH: $HOMDIR/LDAS.rc | cut -d ':' -f2`
-#   echo "process forcing ensavg, force_in and force_out:  "
-#   echo $force_in
-#   echo $force_out
    python  $GEOSBIN/average_ensemble_forcing.py $force_in $force_out $NENS 
 endif
+
 /bin/rm -f $HOMDIR/lenkf_job_completed.txt 
 
 #######################################################################
@@ -752,7 +757,7 @@ endif
 #                 Re-Submit Job
 #######################################################################
 
-if ( $LADAS_COUPLING > 0) then
+if ( $LADAS_COUPLING > 0 ) then
    if ( $rc == 0 ) then
       echo 'SUCCEEDED' > $HOMDIR/lenkf_job_completed.txt
    endif

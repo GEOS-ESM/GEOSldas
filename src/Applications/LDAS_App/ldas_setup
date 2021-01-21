@@ -45,7 +45,7 @@ class LDASsetup:
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
             'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME',
-            'ADASCOUPL_EXPDIR' ]
+            'ADAS_EXPDIR' ]
 
 
         # ------
@@ -147,7 +147,7 @@ class LDASsetup:
         _mydir = None 
         self.ladas_coupling = int(self.rqdExeInp.get('LADAS_COUPLING',0))
         if self.ladas_coupling > 0:
-           assert 'ADASCOUPL_EXPDIR'  in self.rqdExeInp, " need ADASCOUPL_EXPDIR  in the input file %s" %(self.exeinpfile)
+           assert 'ADAS_EXPDIR'  in self.rqdExeInp, " need ADAS_EXPDIR  in the input file %s" %(self.exeinpfile)
 
         self.first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
         self.perturb = int(self.rqdExeInp.get('PERTURBATIONS',0))
@@ -1294,9 +1294,9 @@ class LDASsetup:
                         fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
                     elif 'MY_LADAS_COUPLING' in line :
                         fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
-                    elif 'MY_ADASCOUPL_EXPDIR' in line :
+                    elif 'MY_ADAS_EXPDIR' in line :
                         if self.ladas_coupling > 0:
-                           fout.write(line.replace('MY_ADASCOUPL_EXPDIR', self.rqdExeInp['ADASCOUPL_EXPDIR']))
+                           fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
                     
                         
                     else :
@@ -1446,35 +1446,42 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '# Coupling of LDAS to ADAS ("LADAS"):                      #'
     print '#                                                          #'
     print '#   0 -- LDAS not coupled with ADAS (default)              #'
-    print '#   1 -- LDAS coupled with centralADAS ${ADAS_exp}         #'
-    print '#   2 -- LDAS coupled with enADAS      ${ADAS_exp}         #' 
+    print '#   1 -- LDAS coupled with central member of ADAS          #'
+    print '#   2 -- LDAS coupled with ens component of ADAS           #' 
     print '#                                                          #' 
     print '#  Requirements for LADAS_COUPLING > 0:                    #'
-    print '#  (0) ADASCOUPL_EXPDIR = $user_dir_path/${ADAS_exp}       #'
+    print '#                                                          #'     
+    print '#  (0) Specify ADAS_EXPDIR = [full_path]/[ADAS_EXPID]      #'
     print '#                                                          #'
-    print '#  (1) BEG_DATE must be consistent with ${ADAS_exp}        #'
-    print '#                first cycle date(21z, 3z, 9z or 15z)      #'
+    print '#  (1) BEG_DATE must be consistent with first cycle date   #'
+    print '#        and time of ADAS experiment (time is typically    #'
+    print '#        3z, 9z, 15z, or 21z)                              #'
     print '#                                                          #'        
-    print '#  (2) EXP_DOMAIN must be global CS grid as in ${ADAS_exp} #'
+    print '#  (2) EXP_DOMAIN must be global CS grid as in ADAS exp    #'
     print '#                                                          #'
-    print '#  (3) MET_TAG  must be set to  ${ADAS_exp}__Nx+-          #'
-    print '#      MET_PATH must be set to :                           #'
-    print '#      ${ADASCOUPL_EXPDIR}/lana/forc (LADAS_COUPLING=1)    #'        
-    print '# ${ADASCOUPL_EXPDIR}/atmens/ensdiag/forc (LADAS_COUPLING=2)  #'
-    print '#    After ldas exp setup, verify the following link:      #'        
-    print '#    ../input/met_forcing/forc -> ${MET_PATH}              #' 
+    print '#  (3) MET_TAG  must be set to [ADAS_EXPID]__Nx+-          #'
+    print '#      MET_PATH must be set as follows for                 #'
+    print '#        LADAS_COUPLING = 1:                               #'        
+    print '#          [ADAS_EXPDIR]/lana/forc                         #'        
+    print '#        LADAS_COUPLING = 1:                               #'        
+    print '#          [ADAS_EXPDIR]/atmens/ensdiag/forc               #'
+    print '#      After ldas exp setup, verify the following link:    #'        
+    print '#        ../input/met_forcing/forc -> [MET_PATH]           #' 
     print '#                                                          #'
     print '#  (4) BCS_PATH must be consistent with that of            #'
-    print '#      ${ADAS_exp}/run/lnbcs                               #'
+    print '#        [ADAS_EXPDIR][/run/lnbcs                          #'
     print '#                                                          #'
-    print '#  (5) JOB_SGMT must be set to 6h (ADAS analysis window)   #'
+    print '#  (5) JOB_SGMT must match ADAS analysis window            #'
+    print '#        (typically 6h)                                    #'
     print '#                                                          #'
     print '#  (6) NUM_SGMT must be set to 1                           #'
     print '#                                                          #'
-    print '#  (7) instantaneous "catch_progn_incr" must be in HIST    #'
-    print '#      collection; time step must match that of LDAS       #'
-    print '#      analysis; "catch_pron_incr${ens_index}" should be   #'
-    print '#      in HIST collection for the case LADAS_COUPLING=2    #'              
+    print '#  (7) HISTORY:                                            #'
+    print '#      - instantaneous "catch_progn_incr" must be in       #'
+    print '#          HISTORY collection                              #'
+    print '#      - time step must match that of LDAS analysis        #'
+    print '#      - for LADAS_COUPLING=2, HISTORY must include        #'              
+    print '#          "catch_progn_incr[ENS_INDEX]"                   #'
     print '#                                                          #'
     print '############################################################'
     print
