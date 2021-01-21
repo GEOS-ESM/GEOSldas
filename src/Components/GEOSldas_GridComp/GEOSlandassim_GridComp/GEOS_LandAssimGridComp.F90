@@ -1602,8 +1602,8 @@ contains
     !allocate(Pert_adapt_R(N_adapt_R,NUM_ENSEMBLE))
     !allocate(Obs_pert(N_obsl_max,NUM_ENSEMBLE))
     
+    allocate(obs_bias(N_catl,N_obs_param,N_obsbias_max))
     if (N_obsbias_max>0) then
-       allocate(obs_bias(N_catl,N_obs_param,N_obsbias_max))
        call initialize_obs_bias( N_catf, N_obs_param, N_obsbias_max, trim(out_path), &
             trim(exp_id), start_time, N_catl, numprocs, N_catl_vec, low_ind, obs_bias)
     end if
