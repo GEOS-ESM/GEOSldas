@@ -1463,7 +1463,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#      MET_PATH must be set as follows for                 #'
     print '#        LADAS_COUPLING = 1:                               #'        
     print '#          [ADAS_EXPDIR]/lana/forc                         #'        
-    print '#        LADAS_COUPLING = 1:                               #'        
+    print '#        LADAS_COUPLING = 2:                               #'        
     print '#          [ADAS_EXPDIR]/atmens/ensdiag/forc               #'
     print '#      After ldas exp setup, verify the following link:    #'        
     print '#        ../input/met_forcing/forc -> [MET_PATH]           #' 
