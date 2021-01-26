@@ -192,13 +192,16 @@ contains
   ! ****************************************************************
 
   subroutine catch2mwRTM_vars( N_tile, vegcls_catch, poros_catch, poros_mwRTM, &
-       sfmc_catch, tsurf_catch, tp1_catch, sfmc_mwRTM, tsoil_mwRTM )
+       sfmc_catch, tsurf_catch, tp1_catch, sfmc_mwRTM, tsoil_mwRTM, tp1_in_Kelvin )
     
     ! convert soil moisture, surface temperature, and soil temperature from the Catchment
     ! model into soil moisture and soil temperature inputs for the microwave radiative 
     ! transfer model (mwRTM) 
     !
     ! reichle, 11 Dec 2013
+    !
+    ! added optional switch to allow tp1_catch input in Kelvin
+    ! - reichle & borescan, 6 Nov 2020
     
     implicit none
     
@@ -210,6 +213,14 @@ contains
     real,    dimension(N_tile), intent(in)  :: sfmc_catch,  tsurf_catch, tp1_catch
     
     real,    dimension(N_tile), intent(out) :: sfmc_mwRTM,  tsoil_mwRTM
+
+    logical,                    intent(in),  optional :: tp1_in_Kelvin
+
+    ! local variables
+    
+    logical                    :: tp1_in_K
+
+    real,    dimension(N_tile) :: tp1
     
     ! -----------------------------------------------------------------------
     !
@@ -222,9 +233,17 @@ contains
     ! (change prompted by revision of Catchment model parameter CSOIL_2)
     ! - reichle, 23 Dec 2015
 
-    ! NOTE: "tp" is in deg Celsius
+    ! NOTE: By default, "tp" is assumed to be in deg Celsius
+
+    tp1_in_K = .false.
     
-    tsoil_mwRTM = tp1_catch + MAPL_TICE
+    if (present(tp1_in_Kelvin)) tp1_in_K = tp1_in_Kelvin
+
+    tp1 = tp1_catch
+    
+    if (.not. tp1_in_K)  tp1 = tp1 + MAPL_TICE  ! convert units if not already in Kelvin
+           
+    tsoil_mwRTM = tp1
         
   end subroutine catch2mwRTM_vars
   

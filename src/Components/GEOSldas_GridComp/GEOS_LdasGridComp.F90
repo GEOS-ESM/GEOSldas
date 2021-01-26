@@ -371,6 +371,7 @@ contains
 
     integer,dimension(:),pointer :: f2g
     integer :: N_catf
+    integer :: LSM_CHOICE
 
     type(grid_def_type) :: tile_grid_g
     type(grid_def_type) :: tile_grid_f
@@ -422,8 +423,10 @@ contains
     ! Init catchment constants, currently different in GCM and GEOSldas
     call MAPL_GetResource(MAPL, LAND_PARAMS,Label="LAND_PARAMS:",DEFAULT="Icarus",RC=STATUS)
     VERIFY_(STATUS)
-    call SurfParams_init(LAND_PARAMS)
-
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+    call SurfParams_init(LAND_PARAMS,LSM_CHOICE,rc=status)
+    VERIFY_(STATUS)
     
     call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
     VERIFY_(STATUS)
