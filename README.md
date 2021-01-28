@@ -30,7 +30,7 @@ git clone -b develop git@github.com:GEOS-ESM/GEOSldas.git
 ```
 For science runs, you can also obtain a specific tag or branch _only_ (as opposed to the _entire_ repository), e.g.: 
 ```
-git clone -b v17.9.0-beta.3 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
+git clone -b v17.9.1 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 ```
 
 
@@ -49,7 +49,7 @@ See below for how to build the model in multiple steps.
 
 ---
 
-## How to Set Up and Run GEOSldas
+## How to Set Up (Configure) and Run GEOSldas
 
 a) Set up the job as follows:
 
@@ -74,7 +74,7 @@ The latter two files contain essential information about the experiment setup.
 Sample files can be generated as follows:
 ```        
 ldas_setup sample --exeinp > YOUR_exeinp.txt
-ldas_setup sample --batinp > YOUR_exeinp.txt
+ldas_setup sample --batinp > YOUR_batinp.txt
 ```
 
 Edit these sample files following the examples and comments within the sample files.  

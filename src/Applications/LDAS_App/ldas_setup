@@ -1324,13 +1324,13 @@ def _printExeInputKeys(rqdExeInpKeys):
     Private method: print sample exe input
     """
 
-    print '#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#'
-    print '#                                                          #'
-    print '#                 REQUIRED INPUTS                          #'
-    print '#                                                          #'
-    print '# These inputs are needed to set up output dir structure.  #'
-    print '#                                                          #'
-    print '#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#'
+    print '####################################################################################'
+    print '#                                                                                  #'
+    print '#                             REQUIRED INPUTS                                      #'
+    print '#                                                                                  #'
+    print '#             These inputs are needed to set up output dir structure.              #'
+    print '#                                                                                  #'
+    print '####################################################################################'
     print 
     print '############################################################'
     print '#                                                          #'
@@ -1487,6 +1487,8 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '############################################################'
     print
     print 'LADAS_COUPLING: 0'
+    print
+    print
 
     _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from /bin directory
 
@@ -1529,8 +1531,12 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# REQUIRED inputs'
     print '#'
     print '# NOTE:'
-    print '# (1) rm_name (resource manager name) is SLURM (PBS is no longer used)'
-    print '# (2) walltime is in the format hh:mm:ss'
+    print '# - rm_name    = resource manager name'
+    print '#                  [At NCCS: Use "SLURM"; PBS is no longer used.'
+    print '# - account    = computational project number'
+    print '#                  [At NCCS: Use command "getsponsor" to see available account number(s).]'  
+    print '# - walltime   = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
+    print '# - ntasks     = number of processors requested'
     print '#'
     for key in rqdRmInpKeys:
         print key.ljust(23), ':'
@@ -1539,9 +1545,9 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# OPTIONAL inputs'
     print '#'
     print '# NOTE:'
-    print '# (1) Default job_name is "exp_id"'
-    print '# (2) Default is no constraint'
-    print '# (3) Do not specify qos (quality-of-service) by default.  Specify "debug" for faster but limited service.'
+    print '# - job_name   = name of experiment; default is "exp_id"'
+    print '# - constraint = type of processors requested; default is no constraint.'
+    print '# - qos        = quality-of-service; do not specify by default; specify "debug" for faster but limited service.'
     print '#'
     for key in optRmInpKeys:
         print '#'+key.ljust(23), ':'

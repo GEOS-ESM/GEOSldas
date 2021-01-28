@@ -1,14 +1,14 @@
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-#                                                        #
-#            GEOSldas Resource Parameters                #
-#                                                        #
-#  Values below override the hardcoded default values    #
-#    in *.F90 calls to MAPL_GetResource().               #
-#                                                        #
-#  Users can further override the values below by        #
-#    editing the "exeinp" file during ldas setup.        #
-#                                                        #
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+####################################################################################
+#                                                                                  #
+#                         GEOSldas Resource Parameters                             #
+#                                                                                  #
+#               Values below override the hardcoded default values                 #
+#                 in *.F90 calls to MAPL_GetResource().                            #
+#                                                                                  #
+#               Users can further override the values below by                     #
+#                 editing the "exeinp" file during ldas setup.                     #
+#                                                                                  #
+####################################################################################
 
 
 # ---- Using Catchment/CatchmentCN offline?

@@ -1,6 +1,6 @@
 
-GEOSldas History / Changelog
-===============================
+GEOSldas Releases and Change Log
+================================
 
 Description:
 ------------
@@ -33,6 +33,12 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
+[v17.9.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.1) - 2020-10-16
+------------------------------
+
+- Bug fix for SMAP L1C Tb fore-minus-aft check.
+
+------------------------------
 [v17.9.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0) - 2020-08-27
 ------------------------------
 
@@ -160,16 +166,16 @@ Overview of Git Releases:
   - New GEOS_SurfaceGridComp.rc file (via v1.8.3 of GEOS_GCMGridComp).
   - Parallel post-processing.
   - Cross-stream support for FP f525_p5 forcing.
-  - ~sbatch~ submission for pre-processing of restarts to comply with SLES12 requirements.
+  - "sbatch" submission for pre-processing of restarts to comply with SLES12 requirements.
   - Subdaily-to-daily concatenation processes before month is complete.
   - Temporary solution to create directories for ObsFcstAna files to enable extending an existing GEOSldas run without going through setup.
 
 - Bug fixes and other minor changes:
   - Updated README.md.
-  - ~obspertrseed~ restart file name when restarting from existing run.
+  - "obspertrseed" restart file name when restarting from existing run.
   - Subdaily-to-daily nc4 concatenation (indent error).
   - Fixes for GNU compiler in debug mode.
-  - Fixed ~landpert~ checkpoint output when on cube-sphere tiles.
+  - Fixed "landpert" checkpoint output when on cube-sphere tiles.
 
 ------------------------------
 [v17.9.0-beta.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.3) - 2020-03-18
