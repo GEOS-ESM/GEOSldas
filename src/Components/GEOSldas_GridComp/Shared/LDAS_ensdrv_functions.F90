@@ -76,7 +76,8 @@ contains
     character(*),         optional :: file_ext      ! default = '.bin'
 
     logical,              optional :: no_subdirs    ! default = .false.  
-    
+
+    character(len=*), parameter :: Iam = 'get_io_filename'    
     ! locals
     
     integer        :: tmp_option
@@ -87,7 +88,8 @@ contains
     character(  4) :: YYYY, MMDD, HHMM, tmpstring4
     character(  2) :: PP
     logical        :: tmp_no_subdirs
-    
+   
+ 
     ! --------------------------------------------------------
     !
     ! initialize optional arguments
@@ -129,8 +131,12 @@ contains
           write (YYYY,'(i4.4)') date_time%year
           write (MMDD,'(i4.4)') date_time%month*100 + date_time%day
           write (HHMM,'(i4.4)') date_time%hour*100  + date_time%min    
-          write (PP,  '(i2.2)') date_time%pentad
-          
+
+          if ( date_time%pentad /= -9999) then
+              write (PP,  '(i2.2)') date_time%pentad
+          else
+             if (tmp_option==3) call ldas_abort(LDAS_GENERIC_ERROR, Iam, "This option needs 'pPP' directory")
+          endif
        else
 
           tmpstring300 = 'get_io_filename(): need optional argument date_time'
