@@ -77,7 +77,8 @@ contains
 
     logical,              optional :: no_subdirs    ! default = .false.  
 
-    character(len=*), parameter :: Iam = 'get_io_filename'    
+    character(len=*), parameter    :: Iam = 'get_io_filename'    
+
     ! locals
     
     integer        :: tmp_option
@@ -87,8 +88,7 @@ contains
     character(  8) :: ens_id_string
     character(  4) :: YYYY, MMDD, HHMM, tmpstring4
     character(  2) :: PP
-    logical        :: tmp_no_subdirs
-   
+    logical        :: tmp_no_subdirs   
  
     ! --------------------------------------------------------
     !
@@ -131,12 +131,20 @@ contains
           write (YYYY,'(i4.4)') date_time%year
           write (MMDD,'(i4.4)') date_time%month*100 + date_time%day
           write (HHMM,'(i4.4)') date_time%hour*100  + date_time%min    
-
-          if ( date_time%pentad /= -9999) then
-              write (PP,  '(i2.2)') date_time%pentad
-          else
-             if (tmp_option==3) call ldas_abort(LDAS_GENERIC_ERROR, Iam, "This option needs 'pPP' directory")
-          endif
+          
+          if (tmp_option==3) then
+             
+             ! determine %pentad if out of range
+             ! - this might happen if only %year/%month/%day were set in "date_time"
+             ! - if %pentad is within range, assume that %year/%month/%day and %pentad
+             !     are consistent and do nothing
+             
+             if (date_time%pentad<1 .or. date_time%pentad>73)  call get_dofyr_pentad(date_time)
+             
+             write (PP,'(i2.2)') date_time%pentad
+             
+          end if
+             
        else
 
           tmpstring300 = 'get_io_filename(): need optional argument date_time'
