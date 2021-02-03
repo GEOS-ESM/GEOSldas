@@ -2,7 +2,9 @@
 
 ### Overview
 
-Most output from GEOSldas is generated through the **HISTORY** functionality provided by [MAPL](https://github.com/GEOS-ESM/MAPL).
+Most diagnostic output from GEOSldas is generated through the **HISTORY** functionality provided by [MAPL](https://github.com/GEOS-ESM/MAPL).
+
+Restart/checkpoint files are also written through MAPL (although not through HISTORY).  The key configuration parameters that control checkpoint file output are described in the sample "exeinp" files that can be generated using `ldas_setup`.  For details, see [README.md](https://github.com/GEOS-ESM/GEOSldas/blob/main/README.md).
 
 Notable exceptions from the MAPL-generated output include:
 * log files [ASCII], 
