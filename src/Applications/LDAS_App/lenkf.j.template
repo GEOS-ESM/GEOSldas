@@ -57,22 +57,6 @@ setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 setenv    LADAS_COUPLING MY_LADAS_COUPLING
 setenv    ADAS_EXPDIR    MY_ADAS_EXPDIR
 
-# DEBUGGER : 0 -- no debugger
-#          : 1 -- Totalview
-#          : 2 -- DDT
-
-setenv  DEBUGGER  $1
-if ( "$1" == "" || $1 == 0 ) then  # if nothing is passed, no debuger
-   setenv  DEBUGGER  0
-else if ( $1 == 1 ) then
-   echo "Using Totalview to debug"
-else if ( $1 == 2 ) then 
-   echo "Using DDT to debug"
-else
-   echo "Please use 1 (Totalview ) or 2 (DDT) to debug"
-   exit
-endif
-
 set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
 set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
 set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
@@ -342,21 +326,24 @@ while ( $counter <= ${NUM_SGMT} )
    
    # Run GEOSldas.x
    # --------------
-   
+   # clean up
+   $GEOSBIN/RmShmKeys_sshmpi.csh
+
    # Debugging
    # ---------
-   if( $DEBUGGER == 1) then
-       module load tool/tview-2018.0.5
-       totalview $GEOSBIN/GEOSldas.x
-       exit
-   endif 
-   if( $DEBUGGER == 2) then
-       module load tool/arm-forge-19.0.3
-       ddt $GEOSBIN/GEOSldas.x
-       exit
+   if ( "$1" == "-debug" ) then
+      echo "Here is the location where users are required to insert commands manually"
+      echo "to launch debugging tools (Totalview or DDT). Since the debugging tools evolve"
+      echo "over time, users should use 'module av' to look up for update"
+      echo "Two commands below can launch totalview (the module may be obsolete now)"
+      echo " module load tview/2019.0.4"
+      echo " totalview $GEOSBIN/GEOSldas.x"
+      echo "Two commands below can launch DDT(the module may be obsolete now)"
+      echo " module load arm-forge/20.1.0"
+      echo " ddt $GEOSBIN/GEOSldas.x"
+      exit
    endif
    
-   $GEOSBIN/RmShmKeys_sshmpi.csh
    $RUN_CMD $numprocs $GEOSBIN/GEOSldas.x
    
    if( -e EGRESS.ldas ) then
