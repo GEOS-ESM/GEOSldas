@@ -38,7 +38,7 @@ Created by `ldas_setup`.
 
 `CAP.rc` contains the experiment start/end times and the number/length of job segments. See documentation in `"exeinp"` file.
 
-`cap_restart` contains the start time of the next job segment.  Note that `GEOSldas.x` reads the start time from this file, not from `CAP.rc` file.
+`cap_restart` contains the start time of the next job segment.  The main GEOSldas executable (`GEOSldas.x`) reads the start time from `cap_restart`, not from `CAP.rc`.
 
 To extend a simulation past the originally specified end date used during `ldas_setup`, users can change the end date in `CAP.rc` and resubmit the `lenkf.j` job script.  In this particular case, it is not necessary to run `ldas_setup` again.
 
@@ -48,7 +48,7 @@ If an experiment did not complete successfully (e.g., because of a system downti
 ---
 ### `LDAS.rc`
 
-Contains parameters needed to run the main executable (`GEOSldas.x`), including information on land model configuration, version, grid, time steps, processor layout.
+Contains parameters needed to run the main GEOSldas executable (`GEOSldas.x`), including information on land model configuration, version, grid, time steps, processor layout.
 
 Created in the experiment `./run` directory during `ldas_setup`.  Merges information from the `"exeinp"` and `"batinp"` files and the resource parameter template files for GEOSldas, i.e., [GEOSldas_LDAS.rc](https://github.com/GEOS-ESM/GEOSldas/blob/main/src/Applications/LDAS_App/GEOSldas_LDAS.rc) and  [GEOS_SurfaceGridComp.rc](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/main/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/GEOS_SurfaceGridComp.rc) (from the linked GEOSgcm_GridComp repository).
 
