@@ -51,7 +51,24 @@ For example, to write the "WCSF" and "WCRZ" variables (surface and root-zone soi
 
 The same variable can be written in more than one Collection (i.e., at different temporal and/or spatial resolutions), and there is no limit to the number of Collections that are defined for and written by a simulation.  
 
-Gridded ("2d") output can be on a grid other than the "native" grid that is associated with the tile space used in the simulation, as long as the output grid is defined in `HISTORY.rc`.   [_**MORE INFO NEEDED!!!**_]
+Gridded ("2d") output can be on a grid other than the "native" grid that is associated with the tile space used in the simulation, as long as the output grid is defined in `HISTORY.rc`.  If the native is EASE grid, we dont have the "2d" option at this moment. If the native is Cubed-Sphere grid, an output gird can be defined for example as following:
+
+```
+GRID_LABELS: PC720x361-DC
+   ::
+PC720x361-DC.GRID_TYPE: LatLon
+PC720x361-DC.IM_WORLD: 720
+PC720x361-DC.JM_WORLD: 361
+PC720x361-DC.POLE: PC
+PC720x361-DC.DATELINE: DC
+PC720x361-DC.LM: 1
+```
+
+and in `HISTORY.rc`, a line "VERSION: 1" should be added at the beginning. Finally, the definition of a collection can reference the output grid as:
+
+```
+tavg3_2d_lnd_Nx.grid_label:  PC720x361-DC,
+```
 
 MAPL HISTORY can generally write gridded ("2d") output in binary or netcdf-4 (nc4) format _**except**_ for GEOSldas simulations in EASE-grid tile space.  Output in tile space ("1d") must be written in binary format.
 
