@@ -38,7 +38,7 @@ Created by `ldas_setup`.
 
 `CAP.rc` contains the experiment start/end times and the number/length of job segments. See documentation in `"exeinp"` file.
 
-`cap_restart` contains the start time of the next job segment.  `GEOSldas.x` reads the start time from this file. [_**CORRECT???**_]
+`cap_restart` contains the start time of the next job segment.  Note that `GEOSldas.x` reads the start time from this file, not from `CAP.rc` file.
 
 To extend a simulation past the originally specified end date used during `ldas_setup`, users can change the end date in `CAP.rc` and resubmit the `lenkf.j` job script.  In this particular case, it is not necessary to run `ldas_setup` again.
 
