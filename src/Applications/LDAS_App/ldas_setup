@@ -306,7 +306,7 @@ class LDASsetup:
             self.rqdExeInp['LADAS_COUPLING'] = 0
 
         if 'RUN_IRRIG' not in self.rqdExeInp:
-            self.rqdExeInp['RUN_IRRIG'] = .FALSE.  
+            self.rqdExeInp['RUN_IRRIG'] = '.FALSE.'  
 
         if 'AEROSOL_DEPOSITION' not in self.rqdExeInp:
             self.rqdExeInp['AEROSOL_DEPOSITION'] = 0
