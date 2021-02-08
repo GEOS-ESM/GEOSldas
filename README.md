@@ -43,7 +43,7 @@ parallel_build.csh
 ``` 
 from a head node. Doing so will checkout all the external repositories of the model and build it. When done, the resulting model build will be found in `build/` and the installation will be found in `install/`, with setup scripts like `ldas_setup` in `install/bin`. 
 
-To obtain a build that is suitable for debugging, you can run `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.
+To obtain a build that is suitable for debugging, use `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.  There is also an option for aggressive  optimization.  For details, see [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
 
 See below for how to build the model in multiple steps.
 
