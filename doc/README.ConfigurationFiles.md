@@ -61,6 +61,5 @@ Created in the experiment `./run` directory during `ldas_setup`.  Merges informa
 
 GEOSldas job script created by `ldas_setup`.  The beginning of `lenkf.j` contains configuration parameters for the resource manager (e.g., SBATCH).
 
-**Users are generally discouraged from editing** `lenkf.j`, but the number of processors (`ntasks`) can be edited safely without going through `ldas_setup`.
-
+**Users are generally discouraged from editing** `lenkf.j`.  Some (but not all) of the resource manager directives, including the number of processors (`--ntasks`), the requested wall time (`--time`), and the requested queue/quality-of-service (`--qos`), can be edited safely without going through `ldas_setup`.
 
