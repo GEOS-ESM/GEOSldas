@@ -1,5 +1,9 @@
 #!/bin/csh -f
 
+# GEOSldas job script ("lenkf" = Land Ensemble Kalman Filter)
+#
+# usage: lenkf.j [-debug]
+
 #######################################################################
 #                     Batch Parameters for Run Job
 #######################################################################
@@ -29,7 +33,10 @@ source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
 
-setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
+#setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
+# reversed sequence for LADAS_COUPLING (Sep 2020)  (needed when coupling with ADAS using different BASEDIR)
+setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${LD_LIBRARY_PATH} 
+
 if ( -e /etc/os-release ) then
   module load nco/4.8.1
 else
@@ -44,40 +51,42 @@ setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 setenv    HOMDIR         $EXPDIR/run/
 setenv    SCRDIR         $EXPDIR/scratch
 setenv    MODEL          MY_MODEL
-@         NENS  =        MY_ENSEMBLE
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
 setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 
-#
-# DEBUGGER : 0 -- no debugger
-#          : 1 -- Totalview
-#          : 2 -- DDT
+# LADAS_COUPLING : 0 -- stand-alone LDAS (no coupling to ADAS)
+#                : 1 -- LDAS coupled to central (deterministic) component of ADAS
+#                : 2 -- LDAS coupled to atmospheric ensemble component of ADAS
 
-setenv  DEBUGGER  $1
-if ( "$1" == "" || $1 == 0 ) then  # if nothing is passed, no debuger
-   setenv  DEBUGGER  0
-else if ( $1 == 1 ) then
-   echo "Using Totalview to debug"
-else if ( $1 == 2 ) then 
-   echo "Using DDT to debug"
-else
-   echo "Please use 1 (Totalview ) or 2 (DDT) to debug"
-   exit
+setenv    LADAS_COUPLING MY_LADAS_COUPLING
+setenv    ADAS_EXPDIR    MY_ADAS_EXPDIR
+
+set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
+set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
+set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
+
+####################################################################### 
+#  if LADAS_COUPLING==2, compute ens avg of atmens forcing 
+####################################################################### 
+
+if ( $LADAS_COUPLING == 2 ) then
+   cd $HOMDIR
+   set force_in  = $ADAS_EXPDIR
+   set force_out = `grep MET_PATH: $HOMDIR/LDAS.rc | cut -d ':' -f2`
+   python  $GEOSBIN/average_ensemble_forcing.py $force_in $force_out $NENS 
 endif
+
+/bin/rm -f $HOMDIR/lenkf_job_completed.txt 
 
 #######################################################################
 #                   Set Experiment Run Parameters
 #######################################################################
 
-if (! -e $SCRDIR            ) mkdir -p $SCRDIR
-
-set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
-set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
-
 #######################################################################
 #        Move to Scratch Directory and Copy .rc .nml .rst files
 #######################################################################
 
+if (! -e $SCRDIR            ) mkdir -p $SCRDIR
 cd $SCRDIR
 /bin/rm -rf *.*
 /bin/cp     $HOMDIR/cap_restart .
@@ -321,21 +330,29 @@ while ( $counter <= ${NUM_SGMT} )
    
    # Run GEOSldas.x
    # --------------
-   
+   # clean up
+   $GEOSBIN/RmShmKeys_sshmpi.csh
+
    # Debugging
    # ---------
-   if( $DEBUGGER == 1) then
-       module load tool/tview-2018.0.5
-       totalview $GEOSBIN/GEOSldas.x
-       exit
-   endif 
-   if( $DEBUGGER == 2) then
-       module load tool/arm-forge-19.0.3
-       ddt $GEOSBIN/GEOSldas.x
-       exit
+   if ( "$1" == "-debug" ) then
+      echo ""
+      echo "------------------------------------------------------------------"
+      echo ""
+      echo "lenkf.j -debug:"
+      echo ""
+      echo "To start debugging, you must now manually launch your debugging tool"
+      echo "with GEOSldas.x from here, e.g.,"
+      echo ""           
+      echo "   totalview $GEOSBIN/GEOSldas.x"           
+      echo ""
+      echo "Availability of tools depends on the computing system and may require"
+      echo "loading modules.  For more information, check with your computing center."
+      echo "See also GEOSldas Wiki at https://github.com/GEOS-ESM/GEOSldas/wiki"
+      echo ""
+      exit
    endif
    
-   $GEOSBIN/RmShmKeys_sshmpi.csh
    $RUN_CMD $numprocs $GEOSBIN/GEOSldas.x
    
    if( -e EGRESS.ldas ) then
@@ -571,16 +588,16 @@ EOF
      if ( -l "$new_mwrtm_file" ) then
         /bin/rm -f $new_mwrtm_file
      endif
-     /bin/ln -s $old_mwrtm_file $new_mwrtm_file
+     /bin/ln -rs $old_mwrtm_file $new_mwrtm_file
      /bin/rm ../input/restart/mwrtm_param_rst
-     /bin/ln -s $new_mwrtm_file ../input/restart/mwrtm_param_rst
+     /bin/ln -rs $new_mwrtm_file ../input/restart/mwrtm_param_rst
    endif
    
    if (-f $old_catch_param) then
      if ( -l "$new_catch_param" ) then
         /bin/rm -f $new_catch_param
      endif
-     /bin/ln -s $old_catch_param $new_catch_param
+     /bin/ln -rs $old_catch_param $new_catch_param
    endif
    
    # Move Intermediate Checkpoints to RESTARTS directory
@@ -608,7 +625,7 @@ EOF
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
           /bin/mv ${rstf}${ENSID}_internal_checkpoint $tmp_file
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
-          /bin/ln -s  $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
+          /bin/ln -rs  $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
        endif
    
        set rstf = 'landpert'
@@ -620,7 +637,7 @@ EOF
           /bin/rm -f ${rstf}${ENSID}_internal_checkpoint 
           set old_rst = `/usr/bin/readlink -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst`
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
-          /bin/ln -s $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
+          /bin/ln -rs $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /usr/bin/gzip $old_rst &
        endif
    
@@ -629,7 +646,7 @@ EOF
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
           /bin/mv ${rstf}${ENSID}_checkpoint $tmp_file
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_rst
-          /bin/ln -s $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_rst
+          /bin/ln -rs $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_rst
        endif
    # move intermediate check point files to  output/$EXPDOMAIN/rs/$ENSDIR/Yyyyy/Mmm/ directories
    # -------------------------------------------------------------------------------------------
@@ -736,8 +753,14 @@ endif
 #                 Re-Submit Job
 #######################################################################
 
-if ( $rc == 0 ) then
+if ( $LADAS_COUPLING > 0 ) then
+   if ( $rc == 0 ) then
+      echo 'SUCCEEDED' > $HOMDIR/lenkf_job_completed.txt
+   endif
+else
+   if ( $rc == 0 ) then
    cd   $HOMDIR
    #don't change below line(not even extra space)
    if($capdate<$enddate) sbatch $HOMDIR/lenkf.j
+  endif
 endif
