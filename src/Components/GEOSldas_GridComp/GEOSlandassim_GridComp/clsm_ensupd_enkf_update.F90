@@ -294,7 +294,8 @@ contains
     type varLenIntArr                                    ! used to store indices on each processor
        integer, dimension(:), allocatable :: ind
     end type varLenIntArr
-    integer, dimension(:), allocatable :: select_species ! input to get_ind_obs_lat_lon_box()
+    integer                            :: N_select_species  ! input to get_ind_obs_lat_lon_box()
+    integer, dimension(:), allocatable :: select_species    ! input to get_ind_obs_lat_lon_box() and TileNnzObs()
     type(halo_type)                    :: halo
     integer                            :: N_selected_obs
     integer, dimension(numprocs)       :: tmp_low_ind    ! tmp_low_ind-1 is the displs vector for Gatherv/Scatterv
@@ -478,7 +479,7 @@ contains
 
           allocate(obsbias_ok(N_obsl))
 
-          obsbias_ok = .false.          ! initialize
+          if (N_obsl>0) obsbias_ok = .false.          ! initialize
 
 	  if ( (N_obsl>0) .and. (N_obsbias_max>0) ) then
 
@@ -528,7 +529,7 @@ contains
                N_obsl, Observations_l, Obs_pred_l, obsbias_ok,    &
                fcsterr_inflation_fac )
 
-          deallocate(obsbias_ok)
+          if (allocated(obsbias_ok)) deallocate(obsbias_ok)
 
 
           ! IF NEEDED, INCLUDE WITHHOLDING SUBROUTINE HERE.
@@ -627,6 +628,12 @@ contains
           ! nTilesAna_vec, indTilesAna_vec (list of nTiles_ana,
           ! indTiles_ana on each proc) to distribute cat_param, cat_progn.
           !
+          ! IMPORTANT: Regardless of update_type, obs from *all* species are
+          !            considered (ie, N_select_species=0).  This could result in
+          !            poor load balancing if different species are present, 
+          !            which will need to be addressed in future. 
+          !            - wjiang+reichle, 13 Oct 2020
+          !
           ! Step 3: Each processor computes nObs_ana and indObs_ana,
           ! the number and indices of obs affecting tiles in indTiles_ana.
           ! Root needs nObsAna_vec, indObsAna_vec to distribute Obs_pred_l.
@@ -686,6 +693,8 @@ contains
           ! NOTE: loop over tile_coord_l, if tile has nnz obs, store the 'full' index
           call cpu_time(t_start)
           allocate(indTiles_l(N_catl), source=-99)
+          N_select_species=0                           ! include *all* obs species 
+          allocate(select_species(N_select_species))   ! allocate() needed for gcc10
           nTiles_l = 0
           do iTile=1,N_catl
              halo = get_halo_around_tile(tile_coord_l(iTile), xcompact, ycompact)
@@ -782,13 +791,14 @@ contains
              call get_ind_obs_lat_lon_box(                            &
                   N_obsf_assim,     Obs_f_assim,                      &
                   halo%minlon, halo%maxlon, halo%minlat, halo%maxlat, &
-                  0,                select_species,                   &
+                  N_select_species, select_species,                   &   ! incl. *all* obs species (N_select_species=0)
                   N_selected_obs,   tmp_ind_obs )
              ! add N_selected_obs indices to indObs_ana. CAREFUL not to duplicate indices
              if (N_selected_obs>0) &
                   call addUniqueInts(tmp_ind_obs(1:N_selected_obs),indObs_ana,nObs_ana)
           end do
           if (allocated(tmp_ind_obs)) deallocate(tmp_ind_obs)
+          if (allocated(select_species)) deallocate(select_species)
           ! sort obs indices (for layout independence)
           if (nObs_ana>1) call MAPL_Sort(indObs_ana(1:nObs_ana))
 

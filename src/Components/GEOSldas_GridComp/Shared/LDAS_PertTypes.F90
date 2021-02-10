@@ -38,8 +38,14 @@ module LDAS_PertTypes
      !          calls to MPI_BCAST in clsm_ensdrv_main.F90 are also updated.
      ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      
-     character(40)     :: descr    ! 'precip', 'shortwave', etc
-     integer           :: typ      ! add or multiply perturbation?
+     character(40)     :: descr    ! 'pcp' (precip), 'sw' (shortwave), etc
+
+     ! add or multiply perturbation?
+     !
+     ! additive:                     typ = 0
+     ! multiplicative and lognormal: typ = 1
+
+     integer           :: typ      
      
      ! max allowed normalized perturbation (relative to N(0,1))
      

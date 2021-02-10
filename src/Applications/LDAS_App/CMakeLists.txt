@@ -25,7 +25,7 @@ ecbuild_add_executable (
    LIBS GEOSldas_GridComp mk_restarts)
    
 install(
-   PROGRAMS ldas_setup process_hist.csh process_rst.csh
+   PROGRAMS ldas_setup process_hist.csh process_rst.csh util/average_ensemble_forcing.py
    DESTINATION bin
    )
 

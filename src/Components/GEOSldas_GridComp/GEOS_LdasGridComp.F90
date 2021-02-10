@@ -371,6 +371,7 @@ contains
 
     integer,dimension(:),pointer :: f2g
     integer :: N_catf
+    integer :: LSM_CHOICE
 
     type(grid_def_type) :: tile_grid_g
     type(grid_def_type) :: tile_grid_f
@@ -422,8 +423,10 @@ contains
     ! Init catchment constants, currently different in GCM and GEOSldas
     call MAPL_GetResource(MAPL, LAND_PARAMS,Label="LAND_PARAMS:",DEFAULT="Icarus",RC=STATUS)
     VERIFY_(STATUS)
-    call SurfParams_init(LAND_PARAMS)
-
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
+    VERIFY_(STATUS)
+    call SurfParams_init(LAND_PARAMS,LSM_CHOICE,rc=status)
+    VERIFY_(STATUS)
     
     call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
     VERIFY_(STATUS)
@@ -589,7 +592,7 @@ contains
           call MAPL_GetResource(MAPL, perturbations, 'PERTURBATIONS:', default=0, rc=status)
           if(trim(grid_type) == "Cubed-Sphere" ) then
 
-            ASSERT_(index(tile_grid_g%gridtype, 'c3') /=0)
+            _ASSERT(index(tile_grid_g%gridtype, 'c3') /=0, "tile_grid_g does not describe a cubed-sphere grid")
             
             !1) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
             call get_pert_grid(tile_grid_g, latlon_tmp_g)

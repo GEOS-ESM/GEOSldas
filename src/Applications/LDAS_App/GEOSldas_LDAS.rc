@@ -1,14 +1,14 @@
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
-#                                                        #
-#            GEOSldas Resource Parameters                #
-#                                                        #
-#  Values below override the hardcoded default values    #
-#    in *.F90 calls to MAPL_GetResource().               #
-#                                                        #
-#  Users can further override the values below by        #
-#    editing the "exeinp" file during ldas setup.        #
-#                                                        #
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+####################################################################################
+#                                                                                  #
+#                         GEOSldas Resource Parameters                             #
+#                                                                                  #
+#               Values below override the hardcoded default values                 #
+#                 in *.F90 calls to MAPL_GetResource().                            #
+#                                                                                  #
+#               Users can further override the values below by                     #
+#                 editing the "exeinp" file during ldas setup.                     #
+#                                                                                  #
+####################################################################################
 
 
 # ---- Using Catchment/CatchmentCN offline?
@@ -59,6 +59,8 @@ LSM_CHOICE: 1
 #    1 :  bilinear interpolation (default)
 #    0 :  nearest neighbor
 #
+#   When forcing is on CS grid, must set MET_HINTERP: 0 
+#  
 MET_HINTERP: 1
 
 

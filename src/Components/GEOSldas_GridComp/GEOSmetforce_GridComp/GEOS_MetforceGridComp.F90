@@ -18,6 +18,7 @@ module GEOS_MetforceGridCompMod
   use LDAS_ForceMod, only: LDAS_GetForcing => get_forcing
   use LDAS_ForceMod, only: LDAS_move_new_force_to_old
   use LDAS_ForceMod, only: FileOpenedHash,GEOS_closefile
+  use LDAS_ForceMod, only: im_world_cs
   use LDAS_DriverTypes, only: met_force_type, assignment(=)
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_InterpMod, only: LDAS_TInterpForcing=>metforcing_tinterp
@@ -585,7 +586,9 @@ contains
 
     integer :: AEROSOL_DEPOSITION
     type(MAPL_LocStream) :: locstream
-
+    character(len=ESMF_MAXSTR) :: grid_type
+    type(ESMF_Grid) :: agrid
+    integer :: dims(ESMF_MAXDIM)
     ! Begin...
 
     ! Get component's name and setup traceback handle
@@ -627,6 +630,17 @@ contains
 
     call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", &
          DEFAULT=0, RC=STATUS)
+
+    call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
+    VERIFY_(STATUS)
+
+    if(trim(grid_type) == "Cubed-Sphere" ) then
+       call ESMF_GridCompGet(gc, grid=agrid, rc=status)
+       VERIFY_(status)
+       call MAPL_GridGet(agrid, globalCellCountPerDim=dims, rc=status) 
+       VERIFY_(STATUS)
+       im_world_cs = dims(1)
+    endif 
 
     ! Get MetForcing values and put them in Ldas' internal state
     ! Get resources needed to call LDAS_ForceMod::get_forcing()
