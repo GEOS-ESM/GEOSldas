@@ -1,6 +1,6 @@
 
-GEOSldas History / Changelog
-===============================
+GEOSldas Releases and Change Log
+================================
 
 Description:
 ------------
@@ -33,10 +33,43 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
+[v17.9.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.2) - 2021-02-10
+------------------------------
+
+- Science changes:
+  - CatchCN model parameter and implementation changes for consistency with science-tested, published version of Lee et al. 2018 (doi:10.5194/bg-15-5635-2018).
+
+- Infrastructure:
+  - Updated MAPL (v2.4.0), Baselibs (6.0.27), ESMA_env (v3.1.3), ESMA_cmake (v3.3.5).
+  - Removed support for “manage_externals” (use only “mepo”).
+  - Output of analysis increments for each ensemble member.
+
+- Cleanup and documentation: 
+  - Added doc/README.ConfigurationFiles.md
+  - Added doc/README.OutputSpecs.md
+  - Updated README.md
+
+- Bug fixes and other minor changes:
+  - Soil temperature “export” variables now consistently in units of Kelvin.
+  - Updated LADAS_COUPLING option with coupling to ensemble component of ADAS through ensemble-average surface met forcing.
+  - For cube-sphere forcing, added check that forcing grid matches grid associated with tile space.
+  - Changed algorithm to calculate ensemble variance.
+  - Removed incorrect setting to 0 of non-GEOS flux-type forcing.
+  - For simulations in cube-sphere tile space, added entry for LANDPERT_INTERNAL_RESTART_FILE in LDAS.rc.
+  - Minor fixes for GNU compiler.
+  
+------------------------------
+[v17.9.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.1) - 2020-10-16
+------------------------------
+
+- Bug fixes and other minor changes:
+  - Bug fix for SMAP L1C Tb fore-minus-aft check.
+
+------------------------------
 [v17.9.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0) - 2020-08-27
 ------------------------------
 
-- Full release meant for SMAP L4_SM Version 5.
+- Full release for SMAP L4_SM Version 5.
 
 - Zero-diff vs. v17.9.0-beta.8
 
@@ -120,7 +153,7 @@ Overview of Git Releases:
 ------------------------------
 [v17.9.0-beta.5](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.5) - 2020-05-11
 ------------------------------
-- Pre-release meant for use under SLES12 at NCCS.  Still works for SLES11.
+- Pre-release for use under SLES12 at NCCS.  Still works for SLES11.
 
 - Science functionality:
   - Forecast error covariance inflation with scalar (globally constant) factor.
@@ -140,14 +173,14 @@ Overview of Git Releases:
 ------------------------------
 [v17.9.0-beta.4-SLES12](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.4-SLES12) - 2020-04-24
 ------------------------------
-- Pre-release meant for use under SLES12 at NCCS, otherwise identical to v17.9.0-beta.4-SLES11.
+- Pre-release for use under SLES12 at NCCS, otherwise identical to v17.9.0-beta.4-SLES11.
 - Works under SLES12 using the Intel-19 compiler.
 - Also works under SLES11 using the Intel-18 compiler but is not zero-diff across compilers/operating systems.
 
 ------------------------------
 [v17.9.0-beta.4-SLES11](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.4-SLES11) - 2020-04-23
 ------------------------------
-- Pre-release meant for use under SLES11 at NCCS. Under SLES12, use v17.9.0-beta.4-SLES12 (or newer).
+- Pre-release for use under SLES11 at NCCS. Under SLES12, use v17.9.0-beta.4-SLES12 (or newer).
 - Uses the Intel-18 compiler and also appears to work under SLES12. However, LDASsa with Intel-18 under SLES12 was found to create bad Fortran sequential binary files out of a subroutine that is very similar in LDASsa and GEOSldas.
 - Zero-diff vs. v17.9.0-beta.3 for Catchment only (except SMAP L1C Tb fore-minus-aft check).
 - Not zero-diff for CatchCN (via v1.8.3 of GEOS_GCMGridComp).
@@ -160,16 +193,16 @@ Overview of Git Releases:
   - New GEOS_SurfaceGridComp.rc file (via v1.8.3 of GEOS_GCMGridComp).
   - Parallel post-processing.
   - Cross-stream support for FP f525_p5 forcing.
-  - ~sbatch~ submission for pre-processing of restarts to comply with SLES12 requirements.
+  - "sbatch" submission for pre-processing of restarts to comply with SLES12 requirements.
   - Subdaily-to-daily concatenation processes before month is complete.
   - Temporary solution to create directories for ObsFcstAna files to enable extending an existing GEOSldas run without going through setup.
 
 - Bug fixes and other minor changes:
   - Updated README.md.
-  - ~obspertrseed~ restart file name when restarting from existing run.
+  - "obspertrseed" restart file name when restarting from existing run.
   - Subdaily-to-daily nc4 concatenation (indent error).
   - Fixes for GNU compiler in debug mode.
-  - Fixed ~landpert~ checkpoint output when on cube-sphere tiles.
+  - Fixed "landpert" checkpoint output when on cube-sphere tiles.
 
 ------------------------------
 [v17.9.0-beta.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.3) - 2020-03-18
@@ -211,7 +244,7 @@ Overview of Git Releases:
 ------------------------------
 [v17.9.0-beta.0] - 2019-12-20
 ------------------------------
-- First tag for SMAP L4_SM Version 5, Catchment model consistent with f525land_fpp
+- First tag for SMAP L4_SM Version 5 development, Catchment model consistent with f525land_fpp
   - Changed default Z0_FORMULATION to 4 (incl. addition of simple tree SAI)
     (to be used with Icarus-NLv3 as default BCs; reverting to look-up veg heights)
   - Fix PAR perturbations bug affecting assim
