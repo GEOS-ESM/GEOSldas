@@ -5224,16 +5224,24 @@ contains
    
   subroutine check_forcing_nodata( N_catd, tile_coord, nodata_forcing, met_force )
     
-    ! check input forcing for no-data-values and unphysical values
+    ! check input forcing for no-data-values
     !
-    ! If no-data-value is encountered, use value from "next" catchment, 
-    ! where "next" is next in line (not necessarily next in distance!).
-    ! if that does not work, give up
+    ! (Note: subroutine repair_forcing() checks for unphysical values.)
     !
-    ! reset unphysical values as best as possible
+    ! Owing to differences in land masks, some land-only forcing datasets may have
+    !  only no-data-values for some GEOS land tiles.  There may also be intermittent
+    !  no-data-values in the forcing dataset.    
+    ! If a no-data-value is encountered, use the value from the "next" tile, where
+    !  "next" is next in tile order, provided the "next" tile is within "max_distance".
+    !  Abort if this does not work.
+    ! The "next" tile approach is used to avoid the costly determination of the nearest
+    !  tile, which would require communications across processors and long loops.
+    ! For details, see helper subroutine check_forcing_nodata_2(), which also offers 
+    !  a compile-time switch to create a list of all tiles that lack forcing data. 
     !
     ! reichle, 13 May 2003
     ! reichle, 13 Jun 2005
+    ! reichle, 12 Feb 2021 - added "max_distance" limit, revised comments
 
     implicit none
     
@@ -5290,11 +5298,8 @@ contains
     
     ! helper subroutine for check_forcing_nodata()
     !
-    ! If no-data-value is encountered, use value from "next" catchment, 
-    ! where "next" is next in line (not necessarily next in distance!).
-    ! if that does not work, give up
-    !
     ! reichle, 13 Jun 2005
+    ! reichle, 12 Feb 2021 - added "max_distance" limit, revised comments
     
     implicit none
     
@@ -5306,15 +5311,21 @@ contains
 
     real, dimension(:), intent(inout) :: force_vec
     
-    ! local variables
-    
-    real :: tol 
+    ! local variables    
+
+    real, parameter :: max_distance = 0.5     ! [degrees]
+
+    real :: tol, distsq_next
     
     integer :: i, i_next, N_exclude
     
-    ! set the following logical to .true. to generate an ExcludeList
-    ! for a given forcing data set (it will end up in the file
-    ! "fort.9999")
+    ! Set the following logical to .true. to generate an "ExcludeList"
+    ! for a given forcing data set.  The list contains all tiles for
+    ! which the specified forcing dataset has only no-data-values
+    ! within "max_distance".  The list will end up in the file
+    ! "fort.9999".  Next, run "ldas_setup" again and exclude the
+    ! tiles in this list from the simulation domain (see "ExcludeList"
+    ! in "exeinp" setup file.)
     
     logical, parameter :: create_ExcludeList = .false.
     
@@ -5333,7 +5344,7 @@ contains
        
        i_next = min(i+1,N_catd) 
        
-       if (abs(force_vec(i)-nodata_forcing)<tol) then
+       if (abs(force_vec(i)-nodata_forcing)<tol) then   ! forcing is no-data at tile i
           
           if (create_ExcludeList) then
              
@@ -5342,17 +5353,32 @@ contains
              write (9999,*) tile_coord(i)%tile_id
              
           else
+
+             ! compute square of distance to "next" tile
              
-             if (abs(force_vec(i_next)-nodata_forcing)>tol) then
-                if(root_logit) write (logunit,*) 'forcing has no-data-value in tile ID = ', &
-                     tile_coord(i)%tile_id
+             distsq_next =                                                    &
+                  (tile_coord(i)%com_lon - tile_coord(i_next)%com_lon)**2 +   &
+                  (tile_coord(i)%com_lat - tile_coord(i_next)%com_lat)**2 
+             
+             if ( (abs(force_vec(i_next)-nodata_forcing)>tol) .and.                &
+                  (distsq_next .le. max_distance**2)                 )    then
+
+                ! "next" tile has good forcing data and is within "max_distance"
+                !  --> use forcing from "next" tile for tile i, add note in log file.
+                
+                if (root_logit)  write (logunit,*) 'forcing has no-data-value in tile ID = ', &
+                     tile_coord(i)%tile_id, '. Using forcing from nearby tile.'
                 force_vec(i)=force_vec(i_next)
+                   
              else
 
+                ! cannot find forcing data for tile i, abort with message
+                
                 write (tmpstring10,*) tile_coord(i)%tile_id
-                write (tmpstring40,*) tile_coord(i_next)%tile_id
-                err_msg = 'forcing has no-data-value in tile ID = ' // &
-                     trim(tmpstring10) // ' and ' // trim(tmpstring40)
+                err_msg = 'forcing has no-data-value in tile ID = ' // trim(tmpstring10) //     &
+                     '. No good forcing nearby. ' //                                            &
+                     'Use compile-time switch "create_ExcludeList" to create ' //               &
+                     'a complete list for use in "ldas_setup".'  
                 call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
              end if
              
@@ -5365,7 +5391,7 @@ contains
     if (create_ExcludeList) then
        if(root_logit)  write (logunit,*) '---------------------------------------------------------------'
        if(root_logit)  write (logunit,*) ' found N_exclude = ',N_exclude, ' tiles that should be in ExcludeList'
-       err_msg = 'ExcludeList now in file fort.9999'
+       err_msg = 'ExcludeList now in file fort.9999.  Use this info in ldas_setup.'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
     
