@@ -11,6 +11,8 @@ set (SRCS
   clsm_ensupd_enkf_update.F90 clsm_ensdrv_out_routines.F90 GEOS_LandAssimGridComp.F90
   )
 
+find_package(HDF5 REQUIRED COMPONENTS Fortran)
+
 esma_add_library (${this}
   SRCS ${SRCS}
   SUBCOMPONENTS ${alldirs}
