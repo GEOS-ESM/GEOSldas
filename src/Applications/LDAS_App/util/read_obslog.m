@@ -1,9 +1,10 @@
 
-function [obs_descr, read_obs_subr, N_obs_read, obs_fname] = read_obslog(fname)
+function [ana_time, obs_descr, read_obs_subr, N_obs_read, obs_fname] = read_obslog(fname)
 
 % read LDASsa obs log files
 %
-% reichle, 2 Jan 2014
+% reichle,  2 Jan 2014
+% reichle, 11 Feb 2021 - corrected for post-launch file format
 %
 % -------------------------------------------------------------
 
@@ -13,7 +14,7 @@ disp(['reading from ', fname])
 
 fid = fopen( fname );
 
-data = textscan(fid, '%s%s%d%s',              ...
+data = textscan(fid, '%s%s%s%d%s',              ...
                 'Delimiter', ',',             ...
                 'HeaderLines', 3   );
 
@@ -29,6 +30,7 @@ if strcmp(data{1}{end},'EOF')
   data{2}(end) = [];
   data{3}(end) = [];
   data{4}(end) = [];
+  data{5}(end) = [];
 
 else
   
@@ -38,10 +40,12 @@ end
 
 % extract data into output variables
 
-obs_descr     = data{1};
-read_obs_subr = data{2};
-N_obs_read    = data{3};
-obs_fname     = data{4};
+
+ana_time      = data{1};
+obs_descr     = data{2};
+read_obs_subr = data{3};
+N_obs_read    = data{4};
+obs_fname     = data{5};
   
 
 % ================== EOF =====================================
