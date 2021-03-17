@@ -55,7 +55,7 @@ class LDASsetup:
         # ------
         # Optional resource manager input fields
         # ------
-        optSlurmInpKeys = ['job_name', 'constraint','qos']
+        optSlurmInpKeys = ['job_name', 'constraint','qos', 'nodes', 'oserver_nodes', 'writers_per_node']
 
         # ------
         # ./ldsetup.py sample ...
@@ -1117,50 +1117,6 @@ class LDASsetup:
         status=True
         return status
 
-    def _getRMdirectives(self, start):
-
-        _rm_name = self.rqdRmInp['rm_name']
-        expid = self.rqdExeInp['EXP_ID']
-        if _rm_name=='SLURM':
-            directives = ''
-            # REQUIRED directives account/time/ntasks
-            directives += '#SBATCH --account=%s\n' % self.rqdRmInp['account']
-            directives += '#SBATCH --time=%s\n' % self.rqdRmInp['walltime']
-            directives += '#SBATCH --ntasks=%s\n' % self.rqdRmInp['ntasks']
-            # OPTIONAL directives
-            for key, val in self.optRmInp.iteritems():
-                directives += '#SBATCH --%s=%s\n' % (key, val)
-            # out/err files in rc_out
-            myDateTime = '%04d%02d%02d_%02d%02dz' % \
-                (start.year, start.month, start.day,start.hour,start.minute)
-            outfile = os.path.relpath(
-                '/'.join([
-                        self.outdir,
-                        self.rqdExeInp['EXP_DOMAIN'],
-                        'rc_out',
-                        'Y%04d' % start.year,
-                        'M%02d' % start.month,
-                        '.'.join([expid, 'ldas_log', myDateTime, 'txt']),
-                        ]),
-                self.rundir)
-            errfile = os.path.relpath(
-                '/'.join([
-                        self.outdir,
-                        self.rqdExeInp['EXP_DOMAIN'],
-                        'rc_out',
-                        'Y%04d' % start.year,
-                        'M%02d' % start.month,
-                        '.'.join([expid, 'ldas_err', myDateTime, 'txt']),
-                        ]),
-                self.rundir)
-            directives += '#SBATCH --output=%s\n' % outfile
-            directives += '#SBATCH --error=%s\n' % errfile
-        else:
-            raise Exception
-        
-        return directives
-
-
     def createBatchRun(self):
         """
         """
@@ -1234,9 +1190,37 @@ class LDASsetup:
         if 'job_name' in self.optRmInp :
             my_job = self.optRmInp['job_name']
 
-        my_constraint=''
+        # default is skylake
+        my_constraint='sky'
         if 'constraint' in self.optRmInp :
             my_constraint = self.optRmInp['constraint']
+        else:
+            self.optRmInp['constraint'] = my_constraint
+
+        if (my_constraint == 'sky'):
+           my_ntasks_per_node = 40
+        elif (my_constraint == 'hasw'):
+           my_ntasks_per_node = 28
+        else:
+           assert True, "wrong constraint"
+       
+        self.optRmInp['ntasks_per_node'] = my_ntasks_per_node
+
+        # default number of nodes
+        my_nodes = self.rqdRmInp['ntasks'] / my_ntasks_per_node
+        if self.rqdRmInp['ntasks'] % my_ntasks_per_node > 0 :
+           my_nodes = my_nodes + 1
+
+        # over write above default if specified
+        self.optRmInp['oserver_nodes'] = 1
+        if 'nodes' in self.optRmInp :
+           self.optRmInp['oserver_nodes'] = self.optRmInp['nodes'] - my_nodes
+           assert self.optRmInp['oserver_nodes'] >=0, "too few nodes"    
+        else:
+           self.optRmInp['nodes'] = my_nodes + self.optRmInp['oserver_nodes']
+        # set default for now
+        if 'writers_per_node' not in self.optRmInp:
+           self.optRmInp['writers_per_node'] = 5
 
         start = self.begDates[0]
         expid = self.rqdExeInp['EXP_ID']
@@ -1269,8 +1253,13 @@ class LDASsetup:
                         fout.write(line.replace('MY_ACCOUNT',self.rqdRmInp['account']))
                     elif 'MY_WALLTIME' in line :
                         fout.write(line.replace('MY_WALLTIME',self.rqdRmInp['walltime']))
-                    elif 'MY_NTASKS' in line :
-                        fout.write(line.replace('MY_NTASKS',str(self.rqdRmInp['ntasks'])))
+                    elif 'MY_NODES' in line :
+                        line_ = line.replace('MY_NODES',str(self.optRmInp['nodes']))
+                        fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.optRmInp['ntasks_per_node'])))
+                    elif 'MY_OSERVER_NODES' in line :
+                        fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
+                    elif 'MY_WRITERS_NPES' in line :
+                        fout.write(line.replace('MY_WRITERS_NPES', str(self.optRmInp['writers_per_node'])))
                     elif 'MY_QOS' in line :
                         if 'allnccs' not in my_qos:
                            fout.write(line.replace('MY_QOS',my_qos))
@@ -1539,7 +1528,7 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# - ntasks     = number of processors requested'
     print '#'
     for key in rqdRmInpKeys:
-        print key.ljust(23), ':'
+        print key + ':'
     print
     print '#'
     print '# OPTIONAL inputs'
@@ -1548,9 +1537,13 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# - job_name   = name of experiment; default is "exp_id"'
     print '# - constraint = type of processors requested; default is no constraint.'
     print '# - qos        = quality-of-service; do not specify by default; specify "debug" for faster but limited service.'
+    print '# - nodes      = number of nodes requested for the job'
+    print '# - ntasks_per_node  = tasks per node ( 40 skylake, 28 haswell)'
+    print '# - oserver_nodes    = number of nodes for oserver ( default is 1 )'
+    print '# - writers_per_node = tasks per oserver_node for writing ( default is 5 )'
     print '#'
     for key in optRmInpKeys:
-        print '#'+key.ljust(23), ':'
+        print '#'+key + ':'
     
 def parseCmdLine():
     """
