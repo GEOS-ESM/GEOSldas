@@ -59,6 +59,8 @@ module GEOS_LdasGridCompMod
   integer :: ENSAVG, LANDASSIM
   integer :: NUM_ENSEMBLE
   logical :: assim
+  integer :: LSM_CHOICE
+  
 contains
 
   !BOP
@@ -428,8 +430,8 @@ contains
     ! Init catchment constants, currently different in GCM and GEOSldas
     call MAPL_GetResource(MAPL, LAND_PARAMS,Label="LAND_PARAMS:",DEFAULT="Icarus",RC=STATUS)
     VERIFY_(STATUS)
-    call SurfParams_init(LAND_PARAMS)
-
+    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS) ; VERIFY_(STATUS)
+    call SurfParams_init(LAND_PARAMS, LSM_CHOICE)
     
     call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
     VERIFY_(STATUS)
@@ -780,7 +782,6 @@ contains
     integer :: igc,i
     logical :: IAmRoot
     integer :: mpierr
-    integer :: LSM_CHOICE
 
     ! Begin...
 
@@ -807,8 +808,6 @@ contains
     IAmRoot = MAPL_Am_I_Root(vm)
     !call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
     !VERIFY_(status)
-
-    call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
 
     ! Get current time
     call ESMF_ClockGet(clock, currTime=ModelTimeCur, rc=status)
