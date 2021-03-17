@@ -59,14 +59,14 @@ module LDAS_ensdrv_mpi
   integer, public  :: myid=0, numprocs=1, mpicomm
   integer, public  :: mpierr, mpistatus(MPI_STATUS_SIZE)
   
-  logical, public  :: master_proc=.true.
+  logical, public  :: root_proc=.true.
   
   integer, public  :: MPI_tile_coord_type, MPI_grid_def_type
   integer, public  :: MPI_cat_param_type,  MPI_cat_progn_type
   integer, public  :: MPI_cat_diagS_type,  MPI_cat_diagF_type
   integer, public  :: MPI_met_force_type,  MPI_veg_param_type
   integer, public  :: MPI_bal_diagn_type,  MPI_alb_param_type  
-  integer, public  :: MPI_date_time_type,  MPI_out_dtstep_type, MPI_out_choice_type
+  integer, public  :: MPI_date_time_type
   integer, public  :: MPI_mwRTM_param_type,MPI_obs_type,        MPI_obs_param_type
   integer, public  :: MPI_cat_progn_int_type,                   MPI_cat_bias_param_type
   integer, public  :: MPI_obs_bias_type
@@ -121,99 +121,32 @@ contains
     deallocate(idisp)
     deallocate(itype)
 
-    ! ---------------------------------------------------------------
-    !
-    ! type output time steps
-    !
-    ! type :: out_dtstep_type
-    !   integer :: rstrt
-    !   integer :: inst
-    !   integer :: xhourly
-    ! end type out_dtstep_type
-    
-    icount = 1
-
-    allocate(iblock(icount))
-    allocate(idisp( icount))
-    allocate(itype( icount))
-    
-    itype(1)  = MPI_INTEGER
-    
-    iblock(1) = 3
-    
-    idisp(1)  = 0
-    
-    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
-         MPI_out_dtstep_type, mpierr )
-    
-    call MPI_TYPE_COMMIT(MPI_out_dtstep_type, mpierr)
-    
-    deallocate(iblock)
-    deallocate(idisp)
-    deallocate(itype)
-
-    ! ---------------------------------------------------------------
-    !
-    ! type for output choices *after* processing in read_driver_inputs()
-    !    
-    ! type :: out_choice_space_type
-    !   logical :: tile
-    !   logical :: grid
-    !   logical :: any
-    ! end type out_choice_space_type
-    !
-    ! type :: out_choice_type
-    !   type(out_choice_space_type) :: inst
-    !   type(out_choice_space_type) :: xhourly
-    !   type(out_choice_space_type) :: daily
-    !   type(out_choice_space_type) :: pentad
-    !   type(out_choice_space_type) :: monthly
-    !   type(out_choice_space_type) :: any
-    ! end type out_choice_type
-    
-    icount = 1
-
-    allocate(iblock(icount))
-    allocate(idisp( icount))
-    allocate(itype( icount))
-    
-    itype(1)  = MPI_LOGICAL
-    
-    iblock(1) = 18
-    
-    idisp(1)  = 0
-    
-    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
-         MPI_out_choice_type, mpierr )
-    
-    call MPI_TYPE_COMMIT(MPI_out_choice_type, mpierr)
-    
-    deallocate(iblock)
-    deallocate(idisp)
-    deallocate(itype)
 
     ! --------------------------------------------------------------------------------
     !
     !  type :: tile_coord_type
     !     
-    !     integer :: tile_id    ! unique tile ID
-    !     integer :: f_num      ! unique tile ID in full domain
-    !     integer :: typ        ! (0=ocean, 100=land, 19=inland water, 20=ice)
-    !     integer :: pfaf       ! Pfafstetter number (for land tiles, NOT unique)
-    !     real    :: com_lon    ! center-of-mass longitude
-    !     real    :: com_lat    ! center-of-mass latitude
-    !     real    :: min_lon    ! minimum longitude (bounding box for tile)
-    !     real    :: max_lon    ! maximum longitude (bounding box for tile)
-    !     real    :: min_lat    ! minimum latitude (bounding box for tile)
-    !     real    :: max_lat    ! maximum latitude (bounding box for tile)
-    !     integer :: i_indg     ! i index (w.r.t. *global* grid that cuts tiles) 
-    !     integer :: j_indg     ! j index (w.r.t. *global* grid that cuts tiles)
-    !     integer :: cs_i_indg  ! i index (w.r.t. *global* grid that cuts tiles) 
-    !     integer :: cs_j_indg  ! j index (w.r.t. *global* grid that cuts tiles)
-    !     real    :: frac_cell  ! area fraction of grid cell covered by tile
-    !     real    :: frac_pfaf  ! fraction of Pfafstetter catchment for land tiles 
-    !     real    :: area       ! area [km^2]
-    !     real    :: elev       ! elevation above sea level [m]
+    !     integer :: tile_id      ! unique tile ID
+    !     integer :: f_num        ! full domain ID
+    !     integer :: typ          ! (0=MAPL_Ocean, 100=MAPL_Land, 19=MAPL_Lake, 20=MAPL_LandIce) 
+    !     integer :: pfaf         ! Pfafstetter number (for land tiles, NOT unique)
+    !     real    :: com_lon      ! center-of-mass longitude
+    !     real    :: com_lat      ! center-of-mass latitude
+    !     real    :: min_lon      ! minimum longitude (bounding box for tile)
+    !     real    :: max_lon      ! maximum longitude (bounding box for tile)
+    !     real    :: min_lat      ! minimum latitude (bounding box for tile)
+    !     real    :: max_lat      ! maximum latitude (bounding box for tile)
+    !     integer :: i_indg       ! i index (w.r.t. *global* grid that cuts tiles) 
+    !     integer :: j_indg       ! j index (w.r.t. *global* grid that cuts tiles)
+    !     ! For cubed-sphere tile spaces, hash_[x]_indg refers to a lat-lon "hash" grid that will 
+    !     !   be created at runtime to support efficient mapping for perturbations and the EnKF analysis.
+    !     ! For EASE and LatLon tile spaces, hash_[x]_indg is identical to [x]_indg
+    !     integer :: hash_i_indg  ! i index (w.r.t. *global* "hash" grid for perts and EnKF) 
+    !     integer :: hash_j_indg  ! j index (w.r.t. *global* "hash" grid for perts and EnKF)
+    !     real    :: frac_cell    ! area fraction of grid cell covered by tile
+    !     real    :: frac_pfaf    ! fraction of Pfafstetter catchment for land tiles 
+    !     real    :: area         ! area [km^2]
+    !     real    :: elev         ! elevation above sea level [m]
 
     icount = 4
 
@@ -228,7 +161,7 @@ contains
     
     iblock(1) = 4
     iblock(2) = 6
-    iblock(3) = 4 ! add cs_i_indg and cs_j_indg
+    iblock(3) = 4 ! i_indg, j_indg, hash_i_indg and hash_j_indg
     iblock(4) = 4
     
     idisp(1)  = 0

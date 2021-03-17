@@ -1,4 +1,3 @@
-#include "MAPL_Generic.h"
 !
 ! this file contains a collection of subroutines that are needed to
 ! run the Ensemble Kalman filter with the catchment model off-line driver
@@ -12,15 +11,16 @@
 !                          %tmp2m --> %tair  (but note lower-case!)
 !                          %dpt2m --> %qair  (but note lower-case!)
 !                          %wnd   --> %wind  (but note lower-case!)
+#include "MAPL_Generic.h"
 
 module LDAS_PertRoutinesMod
 
   use ESMF
   use MAPL_Mod
 
-  use LDAS_ensdrv_Globals,                  ONLY:     &
+  use LDAS_ensdrv_Globals,              ONLY:     &
        logunit,                                   &
-       master_logit,                                   &
+       root_logit,                                &
        nodata_generic,                            &
        nodata_tolfrac_generic,                    &
        nodata_tol_generic
@@ -35,9 +35,8 @@ module LDAS_PertRoutinesMod
        grid_def_type,                             &
        io_grid_def_type
 
-  use LDAS_TileCoordRoutines,          ONLY:     &
-        LDAS_create_grid_g,                       &
-        get_ij_ind_from_latlon
+  use LDAS_TileCoordRoutines,           ONLY:     &
+        LDAS_create_grid_g
 
   use LDAS_PertTypes,                   ONLY:     &
        pert_param_type,                           &
@@ -96,12 +95,6 @@ module LDAS_PertRoutinesMod
   use RepairForcingMod,                 ONLY:     &
        repair_forcing
 
-  ! CHANGED: Getting rid of command  line arguments
-  ! TODO: Check
-  ! use clsm_ensdrv_init_routines,        ONLY:     &
-  !      clsm_ensdrv_get_command_line,              &
-  !      add_domain_to_path
-
   use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
@@ -117,24 +110,17 @@ module LDAS_PertRoutinesMod
   private
 
   public :: read_ens_prop_inputs
-  ! CHANGED: we do not need get_tile_pert any more
-  ! public :: get_tile_pert
   public :: interpolate_pert_to_timestep
-  ! public :: apply_progn_pert
-  ! public :: apply_force_pert
   public :: get_pert_grid
   public :: get_progn_pert_param
   public :: get_force_pert_param
   public :: echo_pert_param
-  ! CHANGED :: io_pert_rstrt() removed - use MAPL to read internal rst vars
   ! WY note :: io_pert_rstrt() was adapted. read from LDASsa and write to a nc4 file as MAPL internal
   public :: io_pert_rstrt
-  ! CHANGED: we do not need initialize_perturbations any more
-  ! public :: initialize_perturbations
   public :: check_pert_dtstep
   ! ADDED
   public :: apply_pert
-  ! the parameters below will be overriteted by RC file 
+  ! the parameters below will be overwritten by RC file 
   integer,public :: GEOSldas_NUM_ENSEMBLE = -1
   integer,public :: GEOSldas_FIRST_ENS_ID = -1
   integer,public :: GEOSldas_FORCE_PERT_DTSTEP = -1
@@ -193,9 +179,6 @@ contains
     ! 2.) overwrite options from special namelist file (if present)
     !      specified at the command line using -ens_prop_inputs_path
     !      and -ens_prop_inputs_file
-    !
-    ! 3.) overwrite options from command line (if present)
-    !      see subroutine clsm_ensdrv_get_command_line()
     !
     ! reichle, 29 Mar 2004
     ! reichle, 31 Aug 2004 - added tskin_isccp
@@ -310,7 +293,7 @@ contains
     ! MPI variables
     type(ESMF_VM) :: vm
     integer :: mpicomm
-    logical :: master_proc,f_exist
+    logical :: root_proc,f_exist
 
     ! -----------------------------------------------------------------
 
@@ -349,7 +332,7 @@ contains
     VERIFY_(status)
     call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
     VERIFY_(status)
-    master_proc = MAPL_Am_I_Root(vm)
+    root_proc = MAPL_Am_I_Root(vm)
 
     ! ---------------------------------------------------------------------
     !
@@ -365,8 +348,6 @@ contains
     ! Set default file name for ens prop inputs namelist file
 
     ens_prop_inputs_path = './'                                       ! set default
-    ! CHANGED: commented out get_command_line
-    ! call clsm_ensdrv_get_command_line(run_path=ens_prop_inputs_path)
     ens_prop_inputs_file = 'LDASsa_DEFAULT_inputs_ensprop.nml'
 
     ! Read data from default ens_prop_inputs namelist file
@@ -377,7 +358,7 @@ contains
     if (present(kw_echo)) then
        if (kw_echo) then
 
-          if(master_logit) then
+          if(root_logit) then
              write (logunit,*)
              write (logunit,'(400A)') 'reading *default* ens prop inputs from ' // trim(fname)
              write (logunit,*)
@@ -398,7 +379,7 @@ contains
        if (present(kw_echo)) then
           if (kw_echo) then
 
-             if(master_logit) then
+             if(root_logit) then
                 write (logunit,*)
                 write (logunit,'(400A)') 'reading *SPECIAL* ens prop inputs from ' // trim(fname)
                 write (logunit,*)
@@ -408,57 +389,18 @@ contains
        read (10, nml=ens_prop_inputs)
        close(10,status='keep')
     endif
-    if(     GEOSldas_NUM_ENSEMBLE      == -1 .or. GEOSldas_FIRST_ENS_ID==-1  &
+    if(     GEOSldas_NUM_ENSEMBLE      == -1 .or. GEOSldas_FIRST_ENS_ID      == -1         &
        .or. GEOSldas_FORCE_PERT_DTSTEP == -1 .or. GEOSldas_PROGN_PERT_DTSTEP == -1 ) then
        stop " GEOSldas_NUM_ENSEMBLE etc. should be initialized"
     endif
-    N_ens = GEOSldas_NUM_ENSEMBLE
-    first_ens_id = GEOSldas_FIRST_ENS_ID
-    force_pert_dtstep =GEOSldas_FORCE_PERT_DTSTEP 
-    progn_pert_dtstep =GEOSldas_PROGN_PERT_DTSTEP 
-
-    ! CHANGED: Getting rid of ability to read ensprop path and file from command line
-    ! ! Get name and path for special ens prop inputs file from
-    ! ! command line (if present)
-
-    ! ens_prop_inputs_path = ''
-    ! ens_prop_inputs_file = ''
-
-    ! call clsm_ensdrv_get_command_line(                              &
-    !      ens_prop_inputs_path=ens_prop_inputs_path,                 &
-    !      ens_prop_inputs_file=ens_prop_inputs_file )
-
-    ! if ( trim(ens_prop_inputs_path) /= ''  .and.                    &
-    !      trim(ens_prop_inputs_file) /= ''          ) then
-
-    !    ! Read data from special ens prop inputs namelist file
-
-    !    fname = trim(ens_prop_inputs_path) // '/' // trim(ens_prop_inputs_file)
-
-    !    open (10, file=fname, delim='apostrophe', action='read', status='old')
-
-    !    if (logit) write (logunit,*)
-    !    if (logit) write (logunit,'(400A)') 'reading *special* ens prop inputs from ' // trim(fname)
-    !    if (logit) write (logunit,*)
-
-    !    read (10, nml=ens_prop_inputs)
-
-    !    close(10,status='keep')
-
-    ! end if
-
-    ! over write ens prop from the test file
-    ! overwrite ens prop inputs with command line options, if any
-
-    ! write (logunit,*) 'overwriting driver inputs from command line (if present)'
-    ! write (logunit,*)
-
-    ! CHANGED: Not reading N_ens and first_ens_id from command line
-    ! call clsm_ensdrv_get_command_line( N_ens=N_ens, first_ens_id=first_ens_id )
+    N_ens             = GEOSldas_NUM_ENSEMBLE
+    first_ens_id      = GEOSldas_FIRST_ENS_ID
+    force_pert_dtstep = GEOSldas_FORCE_PERT_DTSTEP 
+    progn_pert_dtstep = GEOSldas_PROGN_PERT_DTSTEP 
 
     ! echo variables of ens_prop_inputs
 
-    if (present(kw_echo) .and. master_logit) then
+    if (present(kw_echo) .and. root_logit) then
        if (kw_echo) then
 
           write (logunit,*) 'ens_prop inputs are:'
@@ -481,7 +423,7 @@ contains
           do i=1,N_ens
              kw_ens_id(i) = first_ens_id + i - 1
           end do
-          if(master_logit) then
+          if(root_logit) then
              write (logunit,*)
              write (logunit,*) 'ens_id = ', (kw_ens_id(i), i=1,N_ens)
              write (logunit,*)
@@ -568,8 +510,8 @@ contains
           fname = get_io_filename( work_path, exp_id, file_tag, date_time=date_time, &
                dir_name=dir_name, file_ext=file_ext )
 
-          if(master_logit) write (logunit,'(400A)') 'writing ens prop inputs to ' // trim(fname)
-          if(master_logit) write (logunit,*)
+          if(root_logit) write (logunit,'(400A)') 'writing ens prop inputs to ' // trim(fname)
+          if(root_logit) write (logunit,*)
 
           open(10, file=fname, status='unknown', action='write', &
                delim='apostrophe')
@@ -782,7 +724,7 @@ contains
 
     ! -----------------------------------------------------------
 
-    ASSERT_(size(Pert)==size(F))
+    _ASSERT(size(Pert)==size(F), "sizes of Pert and perturbed field do not match")
 
     select case (pert_param%typ)
 
@@ -1053,7 +995,7 @@ contains
     ! MPI variables
     type(ESMF_VM) :: vm
     integer :: mpicomm, numprocs, myid, mpierr
-    logical :: master_proc
+    logical :: root_proc
 
     ! -----------------------------------------------------------------
 
@@ -1061,13 +1003,13 @@ contains
     VERIFY_(status)
     call ESMF_VMGet(VM, petCount=numprocs, localPet=myid, mpiCommunicator=mpicomm, rc=status)
     VERIFY_(status)
-    master_proc = MAPL_Am_I_Root(vm)
+    root_proc = MAPL_Am_I_Root(vm)
 
     ! ---------
     !
     ! DESCR
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_descr_force_pert=tmp_force_pert_character)
 
@@ -1086,7 +1028,7 @@ contains
     !
     ! ZEROMEAN
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_zeromean_force_pert=tmp_force_pert_logical)
 
@@ -1102,7 +1044,7 @@ contains
     !
     ! COARSEN
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_coarsen_force_pert=tmp_force_pert_logical)
 
@@ -1120,7 +1062,7 @@ contains
 
     ! obtain (default) homogeneous std of forcing perturbations
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_std_force_pert=tmp_force_pert_real)
 
@@ -1143,7 +1085,7 @@ contains
 
     ! find out whether std_force_pert should be read from file
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_stdfromfile_force_pert=tmp_force_pert_logical)
 
@@ -1161,7 +1103,7 @@ contains
 
        ! find out name (incl full path) of file with std value
 
-       if (master_proc)                                               &
+       if (root_proc)                                               &
             call read_ens_prop_inputs(                                &
             kw_stdfilename_force_pert = stdfilename_force_pert        &
             )
@@ -1234,7 +1176,7 @@ contains
     ! PC: instead of reading one param (and broadcasting it) at a time, it
     ! will be better to read them all and broadcast at one go
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_std_normal_max_force_pert=tmp_force_pert_real)
 
@@ -1249,7 +1191,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_xcorr_force_pert=tmp_force_pert_real)
 
@@ -1263,7 +1205,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_ycorr_force_pert=tmp_force_pert_real)
 
@@ -1277,7 +1219,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_tcorr_force_pert=tmp_force_pert_real)
 
@@ -1291,7 +1233,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_typ_force_pert=tmp_force_pert_real)
 
@@ -1310,7 +1252,7 @@ contains
     ! (see subroutine read_ens_prop_inputs)
     ! now fill in the rest of the information (diagonal=1 and symmetry)
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_ccorr_force_pert=tmp_force_pert_ccorr)
 
@@ -1444,7 +1386,7 @@ contains
     ! MPI variables
     type(ESMF_VM) :: vm
     integer :: mpicomm, numprocs, myid, mpierr
-    logical :: master_proc
+    logical :: root_proc
 
     ! -----------------------------------------------------------------
 
@@ -1452,13 +1394,13 @@ contains
     VERIFY_(status)
     call ESMF_VMGet(VM, petCount=numprocs, localPet=myid, mpiCommunicator=mpicomm, rc=status)
     VERIFY_(status)
-    master_proc = MAPL_Am_I_Root(vm)
+    root_proc = MAPL_Am_I_Root(vm)
 
     ! -------
     !
     ! DESCR
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_descr_progn_pert=tmp_progn_pert_character)
 
@@ -1477,7 +1419,7 @@ contains
     !
     ! ZEROMEAN
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_zeromean_progn_pert=tmp_progn_pert_logical)
 
@@ -1493,7 +1435,7 @@ contains
     !
     ! COARSEN
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_coarsen_progn_pert=tmp_progn_pert_logical)
 
@@ -1511,7 +1453,7 @@ contains
     !
     ! obtain (default) homogeneous std of forcing perturbations
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_std_progn_pert=tmp_progn_pert_real)
 
@@ -1534,7 +1476,7 @@ contains
 
     ! find out whether std_progn_pert should be read from file
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_stdfromfile_progn_pert=tmp_progn_pert_logical)
 
@@ -1553,7 +1495,7 @@ contains
 
        ! find out name (incl full path) of file with std value
 
-       if (master_proc)                                               &
+       if (root_proc)                                               &
             call read_ens_prop_inputs(                                &
             kw_stdfilename_progn_pert = stdfilename_progn_pert        &
             )
@@ -1623,7 +1565,7 @@ contains
     !       homogeneous (ie same for all catchments, unlike std_progn_pert)
     !       typ_progn_pert must also be homogeneous
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_std_normal_max_progn_pert=tmp_progn_pert_real)
 
@@ -1638,7 +1580,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_xcorr_progn_pert=tmp_progn_pert_real)
 
@@ -1652,7 +1594,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_ycorr_progn_pert=tmp_progn_pert_real)
 
@@ -1666,7 +1608,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_tcorr_progn_pert=tmp_progn_pert_real)
 
@@ -1680,7 +1622,7 @@ contains
 
     ! ----------
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_typ_progn_pert=tmp_progn_pert_real)
 
@@ -1699,7 +1641,7 @@ contains
     ! (see subroutine read_ens_prop_inputs)
     ! now fill in the rest of the information (diagonal=1 and symmetry)
 
-    if (master_proc) then
+    if (root_proc) then
        call read_ens_prop_inputs(kw_echo=.false., &
             kw_ccorr_progn_pert=tmp_progn_pert_ccorr)
 
@@ -1982,137 +1924,6 @@ contains
 
   ! *********************************************************************
 
-  ! subroutine get_tile_pert(                                &
-  !      N_pert, N_ens, pert_grid_f, pert_grid_l,            &
-  !      dtstep,                                             &
-  !      N_catl, tile_coord_l,                               &
-  !      pert_param,                                         &
-  !      Pert_rseed, Pert_ntrmdt,                            &
-  !      Pert_tile,                                          &
-  !      ens_id,                                             &
-  !      initialize_rseed,                                   &
-  !      initialize_ntrmdt,                                  &
-  !      diagnose_pert_only    )
-
-  !   ! get perturbations in tile space
-
-  !   implicit none
-
-  !   integer, intent(in) :: N_pert, N_ens
-
-  !   type(grid_def_type), intent(in) :: pert_grid_f, pert_grid_l
-
-  !   real, intent(in) :: dtstep
-
-  !   integer, intent(in) :: N_catl
-
-  !   type(tile_coord_type), dimension(:), pointer :: tile_coord_l
-
-  !   type(pert_param_type), dimension(:), pointer :: pert_param
-
-  !   integer, dimension(NRANDSEED,N_ens), intent(inout) :: Pert_rseed
-
-  !   real, dimension(N_pert,pert_grid_l%N_lon,pert_grid_l%N_lat,N_ens), &
-  !        intent(inout) :: Pert_ntrmdt
-
-  !   real, dimension(N_pert, N_catl, N_ens), intent(out) :: Pert_tile
-
-  !   integer, dimension(N_ens),    intent(in), optional :: ens_id
-
-  !   logical, intent(in), optional :: initialize_rseed
-  !   logical, intent(in), optional :: initialize_ntrmdt
-
-  !   logical, intent(in), optional :: diagnose_pert_only
-
-  !   ! local variables
-
-  !   integer :: i, n_e
-
-  !   real, dimension(N_pert,pert_grid_l%N_lon,pert_grid_l%N_lat,N_ens) :: &
-  !        Pert_grid
-
-  !   real, dimension(pert_grid_l%N_lon,pert_grid_l%N_lat) :: grid_data
-  !   real, dimension(N_catl)                            :: tile_data
-
-  !   logical :: init_rseed, init_ntrmdt, diagn_only
-
-  !   character(len=400) :: err_msg
-  !   character(len=*), parameter :: Iam = 'get_tile_pert'
-
-  !   ! ------------------------------------------------------------
-
-  !   init_rseed  = .false.
-  !   init_ntrmdt = .false.
-
-  !   if (present(initialize_rseed))   init_rseed  = initialize_rseed
-  !   if (present(initialize_ntrmdt))  init_ntrmdt = initialize_ntrmdt
-
-  !   if (init_rseed) then
-
-  !      write (logunit,*) 'initializing random seed from scratch'
-
-  !      if (present(ens_id)) then
-
-  !         call get_init_Pert_rseed( N_ens, ens_id, Pert_rseed(1,:) )
-
-  !      else
-
-  !         call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'ens_id not present')
-
-  !      end if
-
-  !   end if
-
-  !   ! -----------------------------------------------------------------
-
-  !   diagn_only = .false.
-
-  !   if (present(diagnose_pert_only))  diagn_only = diagnose_pert_only
-
-  !   if ( diagn_only .and. (init_rseed .or. init_ntrmdt) ) then
-
-  !      call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'contradictory optional inputs')
-
-  !   end if
-
-  !   ! -----------------------------------------------------------------
-
-  !   call get_pert(                                                 &
-  !        N_pert, N_ens,                                            &
-  !        pert_grid_f, pert_grid_l,                                 &
-  !        dtstep,                                                   &
-  !        pert_param,                                               &
-  !        Pert_rseed,                                               &
-  !        Pert_ntrmdt,                                              &
-  !        Pert_grid,                                                &
-  !        initialize_rseed=init_rseed,                              &
-  !        initialize_ntrmdt=init_ntrmdt,                            &
-  !        diagnose_pert_only=diagn_only     )
-
-  !   ! -----------------------------------------------------------------
-
-  !   ! map to tile space
-
-  !   do i=1,N_pert
-  !      do n_e=1,N_ens
-
-  !         grid_data = Pert_grid(i,:,:,n_e)
-
-  !         ! this call to grid2tile() links the grid on which perturbations
-  !         ! are computed to the GEOS5 tile_grid
-
-  !         call grid2tile( pert_grid_l, N_catl, tile_coord_l, grid_data, &
-  !              tile_data)
-
-  !         Pert_tile(i,:,n_e) = tile_data
-
-  !      end do
-  !   end do
-
-  ! end subroutine get_tile_pert
-
-  ! *********************************************************************
-
   subroutine interpolate_pert_to_timestep(                 &
        date_time, pert_time_old, pert_dtstep_real,         &
        Pert_old, Pert_new, Pert_ntp )
@@ -2173,7 +1984,7 @@ contains
 
     ! -------------------------------------------------------------
 
-    if (master_logit) then
+    if (root_logit) then
        write (logunit,*) 'echo_pert_param():'
 
        do m=1,N_pert
@@ -2201,7 +2012,7 @@ contains
 
           end do
        end do
-     endif ! master_logit
+     endif ! root_logit
   end subroutine echo_pert_param
 
  !*************************************************************
@@ -2276,7 +2087,7 @@ contains
             file_tag, date_time=date_time,                          &
             dir_name=dir_name, ens_id=ens_id, file_ext=file_ext )
 
-!!$       if (master_proc) then
+!!$       if (root_proc) then
        inquire(file=filename,exist=file_exists)
        if(.not. file_exists) then
           write (6,'(400A)') &
@@ -2294,7 +2105,7 @@ contains
 !!$       call MPI_Bcast(istat, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, mpierr)
 !!$#endif
 
-!!$       if (master_proc) then
+!!$       if (root_proc) then
 
        write (6,'(400A)') &
                'Reading pert restart file ' // trim(filename)
@@ -2359,7 +2170,7 @@ contains
 
        do k=1,N_force_pert
 
-!!$          if (master_proc) then
+!!$          if (root_proc) then
              read (10) ((Pert_ntrmdt_f(i,j), i=1,pert_grid_f%N_lon), &
                   j=1,pert_grid_f%N_lat)
 
@@ -2375,7 +2186,7 @@ contains
 
        do k=1,N_progn_pert
 
-!!$          if (master_proc) then
+!!$          if (root_proc) then
              read (10) ((Pert_ntrmdt_f(i,j), i=1,pert_grid_f%N_lon), &
                   j=1,pert_grid_f%N_lat)
              Progn_pert_ntrmdt_g(xstart:xend, ystart:yend,k) = Pert_ntrmdt_f(:,:)
@@ -2402,198 +2213,10 @@ contains
 
     end select
     
-!!    if (master_proc)  close (10,status='keep')
+!!    if (root_proc)  close (10,status='keep')
     close (10,status='keep')
 
    end subroutine io_pert_rstrt
-
-!   subroutine initialize_perturbations(                                &
-!        N_catl, N_ens, ens_id, start_time,                             &
-!        restart_path, restart_domain, restart_id, work_path, exp_id,   &
-!        tile_coord_l, pert_grid_f, pert_grid_l,                        &
-!        N_force_pert, N_progn_pert,                                    &
-!        force_pert_param, progn_pert_param,                            &
-!        Pert_rseed, Force_pert_ntrmdt_l, Progn_pert_ntrmdt_l,          &
-!        Force_pert_tile_new, Force_pert_tile_old,                      &
-!        Progn_pert_tile_new, Progn_pert_tile_old            )
-
-!     ! Initialize perturbations variables either from a restart file or
-!     ! by reinitializing the seed
-!     !
-!     ! reichle, 21 Jun 2005
-!     ! reichle, 16 Oct 2008 - eliminated logical variable "restart_pert" from input list
-!     !
-!     ! -----------------------------------------------------------------
-
-!     implicit none
-
-!     integer, intent(in) :: N_catl, N_ens
-
-!     integer, intent(in), dimension(N_ens) :: ens_id
-
-!     type(date_time_type), intent(in) :: start_time
-
-!     character(200), intent(in) :: restart_path, work_path
-
-!     character(40), intent(in)  :: restart_domain, restart_id, exp_id
-
-!     type(tile_coord_type), dimension(:), pointer :: tile_coord_l  ! input
-
-!     type(grid_def_type), intent(in) :: pert_grid_f, pert_grid_l
-
-!     integer, intent(in) :: N_force_pert, N_progn_pert
-
-!     type(pert_param_type), dimension(:), pointer :: force_pert_param  ! input
-!     type(pert_param_type), dimension(:), pointer :: progn_pert_param  ! input
-
-!     integer, dimension(NRANDSEED,N_ens), intent(out) :: Pert_rseed
-
-!     real, dimension(N_force_pert,pert_grid_l%N_lon,pert_grid_l%N_lat,N_ens), &
-!          intent(out) :: Force_pert_ntrmdt_l
-
-!     real, dimension(N_progn_pert,pert_grid_l%N_lon,pert_grid_l%N_lat,N_ens), &
-!          intent(out) :: Progn_pert_ntrmdt_l
-
-!     real, dimension(N_force_pert,N_catl,N_ens), intent(out) :: &
-!          Force_pert_tile_new, Force_pert_tile_old
-
-!     real, dimension(N_progn_pert,N_catl,N_ens), intent(out) :: &
-!          Progn_pert_tile_new, Progn_pert_tile_old
-
-!     character(len=*), parameter :: Iam = 'initialize_perturbations'
-!     character(len=400) :: err_msg
-
-!     ! ---------------------------------
-
-!     ! locals
-
-!     character(200) :: restart_path_tmp
-
-!     integer :: n_e, rc
-
-!     logical :: initialize_rseed, initialize_ntrmdt, diagnose_pert_only, restart_pert
-
-!     ! -----------------------------------------------------------------------
-
-!     write (logunit,*)
-
-!     ! CHANGED: Replaced call to add_domain_to_path by its content
-!     ! restart_path_tmp = add_domain_to_path( restart_path, restart_domain )
-!     restart_path_tmp = trim(restart_path) // '/' // trim(restart_domain) // '/'
-
-!     initialize_rseed  = .true.
-!     initialize_ntrmdt = .true.
-
-!     diagnose_pert_only = .false.
-
-!     restart_pert       = .false.     ! assume restart file is NOT available
-
-!     ! try getting perturbations prognostics from restart file
-
-!     do n_e=1,N_ens
-
-!        call io_pert_rstrt( 'r', restart_path_tmp, restart_id, ens_id(n_e),   &
-!             start_time, tile_coord_l, pert_grid_l, pert_grid_f,              &
-!             N_force_pert, N_progn_pert, Pert_rseed(:,n_e),                   &
-!             Force_pert_ntrmdt_l(:,:,:,n_e), Progn_pert_ntrmdt_l(:,:,:,n_e), rc )
-
-!        if (n_e==1) then
-
-!           ! set restart_pert to true if first pert restart file was successfully read
-
-!           if (rc==0) restart_pert = .true.
-
-!        else
-
-!           ! stop if restart file was read for first but not for current ensemble member
-
-!           if (rc/=0 .and. restart_pert) then
-!              err_msg = 'found pert restart file for some but not all ens members'
-!              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-!           end if
-
-!        end if
-
-!     end do
-
-!     ! broadcast Pert_rseed
-!     call MPI_Bcast(Pert_rseed,NRANDSEED*N_ens,MPI_INTEGER,0,mpicomm,mpierr)
-
-!     ! restart_pert is now true if pert restart files were available for all ens members,
-!     ! false otherwise
-
-!     if (restart_pert) then
-
-!        initialize_rseed  = .false.
-!        initialize_ntrmdt = .false.
-
-!        diagnose_pert_only = .true.
-
-!     end if
-
-!     ! --------------------------------------------------------------------
-!     !
-!     ! get perturbations prognostics (unless read from restart file) and
-!     ! perturbations diagnostics
-
-!     if (N_force_pert>0) then
-
-!        call get_tile_pert(                                        &
-!             N_force_pert, N_ens, pert_grid_f, pert_grid_l,        &
-!             nodata_generic,                                       &
-!             N_catl, tile_coord_l,                                 &
-!             force_pert_param,                                     &
-!             Pert_rseed,                                           &
-!             Force_pert_ntrmdt_l,                                  &
-!             Force_pert_tile_old,                                  &
-!             ens_id=ens_id,                                        &
-!             initialize_rseed=initialize_rseed,                    &
-!             initialize_ntrmdt=initialize_ntrmdt,                  &
-!             diagnose_pert_only=diagnose_pert_only   )
-
-!        Force_pert_tile_new = Force_pert_tile_old
-
-!        initialize_rseed = .false.
-
-!     end if
-
-!     if (N_progn_pert>0) then
-
-!        call get_tile_pert(                                        &
-!             N_progn_pert, N_ens, pert_grid_f, pert_grid_l,        &
-!             nodata_generic,                                       &
-!             N_catl, tile_coord_l,                                 &
-!             progn_pert_param,                                     &
-!             Pert_rseed,                                           &
-!             Progn_pert_ntrmdt_l,                                  &
-!             Progn_pert_tile_old,                                  &
-!             ens_id=ens_id,                                        &
-!             initialize_rseed=initialize_rseed,                    &
-!             initialize_ntrmdt=initialize_ntrmdt,                  &
-!             diagnose_pert_only=diagnose_pert_only   )
-
-!        Progn_pert_tile_new = Progn_pert_tile_old
-
-!     end if
-
-!     ! --------------------------------------------------------------------
-!     !
-!     ! if no restart file was available or restart file was from a
-!     !  different experiment, write out initial restart file
-!     !  for current experiment
-
-!     if ( (.not. restart_pert) .or. (trim(restart_path_tmp)/=trim(work_path)) ) then
-
-!        do n_e=1,N_ens
-!           call io_pert_rstrt( 'w', work_path, exp_id, ens_id(n_e), &
-!                start_time, tile_coord_l, pert_grid_l, pert_grid_f, &
-!                N_force_pert, N_progn_pert, Pert_rseed(:,n_e),      &
-!                Force_pert_ntrmdt_l(:,:,:,n_e), Progn_pert_ntrmdt_l(:,:,:,n_e) )
-!        end do
-
-!     end if
-
-!   end subroutine initialize_perturbations
 
   ! ******************************************************************
 

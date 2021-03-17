@@ -1,6 +1,6 @@
 
-GEOSldas History / Changelog
-===============================
+GEOSldas Releases and Change Log
+================================
 
 Description:
 ------------
@@ -30,17 +30,181 @@ In 2019, GEOS LDAS version control transferred from CVS to Git.
 This README file contains the history of stable GEOSldas versions ("tags") in Git, followed by older, CVS LDASsa and GEOSldas versions and change logs.
 
 
-[Unreleased] Features:
---------------------
-_These are additions put in development, that will be in the next stable tag_
-
-
-
-
-
-Overview of Git tags:
+Overview of Git Releases:
 ============================
 
+[v17.9.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.2) - 2021-02-10
+------------------------------
+
+- Science changes:
+  - CatchCN model parameter and implementation changes for consistency with science-tested, published version of Lee et al. 2018 (doi:10.5194/bg-15-5635-2018).
+
+- Infrastructure:
+  - Updated MAPL (v2.4.0), Baselibs (6.0.27), ESMA_env (v3.1.3), ESMA_cmake (v3.3.5).
+  - Removed support for “manage_externals” (use only “mepo”).
+  - Output of analysis increments for each ensemble member.
+
+- Cleanup and documentation: 
+  - Added doc/README.ConfigurationFiles.md
+  - Added doc/README.OutputSpecs.md
+  - Updated README.md
+
+- Bug fixes and other minor changes:
+  - Soil temperature “export” variables now consistently in units of Kelvin.
+  - Updated LADAS_COUPLING option with coupling to ensemble component of ADAS through ensemble-average surface met forcing.
+  - For cube-sphere forcing, added check that forcing grid matches grid associated with tile space.
+  - Changed algorithm to calculate ensemble variance.
+  - Removed incorrect setting to 0 of non-GEOS flux-type forcing.
+  - For simulations in cube-sphere tile space, added entry for LANDPERT_INTERNAL_RESTART_FILE in LDAS.rc.
+  - Minor fixes for GNU compiler.
+  
+------------------------------
+[v17.9.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.1) - 2020-10-16
+------------------------------
+
+- Bug fixes and other minor changes:
+  - Bug fix for SMAP L1C Tb fore-minus-aft check.
+
+------------------------------
+[v17.9.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0) - 2020-08-27
+------------------------------
+
+- Full release for SMAP L4_SM Version 5.
+
+- Zero-diff vs. v17.9.0-beta.8
+
+- Cleanup and documentation: 
+  - Updated README.md, CHANGELOG.md, and README.metforcing_and_bcs.md.
+  - Deleted obsolete subroutines and functions.
+  - Improved interface for select subroutines related to “tile_coord” utilities.	
+  - Fixed indents (blank space changes).
+  - Moved code that is only used during LDAS setup and pre-processing into LDAS_App directory. 
+  - Changed variables names that used racially-charged terminology.
+  - Fixed confusing re-purposing of %i_indg and %j_indg of cube-sphere tiles when mapping between tiles and grids for perturbations and EnKF analysis.
+
+- Bug fixes and other minor changes: 
+  - Monthly-average post-processing fixes.
+  - Fixed check of perturbations time step against start and stop times.
+  - Fixes for flexible “ens_id_width” field.
+  - Accommodate peat column in soil_param.dat of NLv4 bcs.
+  - Revised setup to avoid user error leading to improper cycling of LANDPERT restart files from one job segment to the next.
+  - Fixed degree-to-radians conversion of EASE tile lat/lon information before use in ESMF.
+  - Write SMAP L4 “lmc” file also when mwRTM=.true. and LANDASSIM=NO.
+  - Provide proper fill value in nc4 files created with tile_bin2nc4 utility.
+  
+------------------------------
+[v17.9.0-beta.8](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.8) - 2020-06-26
+------------------------------
+
+- Zero-diff vs. v17.9.0-beta.7.
+
+- Bug fixes and other minor changes:
+  - SLES12 bug fix for reading LAI, GRN, NIRDF, VISDF and NDVI in (LDAS) ensemble mode.  Climatology files in ../input directory no longer contain ensemble ID string.
+  - mepo updates.
+
+------------------------------
+[v17.9.0-beta.7](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.7) - 2020-06-11
+------------------------------
+
+- Zero-diff vs. v17.9.0-beta.6 for model-only simulations without perturbations.
+
+- Not zero-diff for simulations with perturbations (including data assimilation).
+
+- Infrastructure:
+  - Added calculation of ensemble-mean Catchment model diagnostics to LANDASSIM GridComp for output of instantaneous forecast and analysis estimates via HISTORY (“lndfcstana” Collection).
+
+- Bug fixes and other minor changes:
+  - Fixed handling of LANDPERT restart files after cold-start in first job segment.
+  - Fixed violation of zero-diff (binary identical) results when stopping/restarting at different intervals (removed extra zero-mean adjustment of LANDPERT after reading from restart file and fixed tile2grid operation for cube-sphere tile space).
+  - Fixed LANDPERT restart file name for cube-sphere.
+  - Added log message for all ens members if LANDPERT is cold-started.
+  - Removed deflation of LANDPERT checkpoint files.
+  - Added “.nc4” file name extension for cube-sphere LANDPERT checkpoint file.
+  - Added log messages for initialization of OBSPERTRSEED.
+  - Fixed typo in default OBSPERTRSEED restart file name.
+  - Fixed time stamp of output *ensprop_inputs.nml file.
+  - Fixed FIRST_ENS_ID for post-processing.
+  - Added “endhour” for control of loop through job segments in lenkf.j.template to facilitate job segments that are shorter than a full day.
+  - Added sample entries in “LDAS.rc” for output of CHECKPOINT (restart) files before GEOSldas.x exits (RECORD_FREQUENCY, RECORD_REF_TIME, RECORD_REF_DATE).
+
+------------------------------
+[v17.9.0-beta.6](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.6) - 2020-05-29
+------------------------------
+
+- Zero-diff vs. v17.9.0-beta.5 for model-only simulations without perturbations.
+
+- Not zero-diff for simulations with perturbations (including data assimilation).
+
+- Infrastructure:
+  - Output of L-band Tb via HISTORY (nodata value = MAPL_UNDEF = 1.e15).
+
+- Bug fixes:
+  - Changed timing of application of model prognostics perturbations such that perturbations at the current time step impact the land analysis and HISTORY output at that same time step. Before the fix, ApplyPrognPert was executed too late and the current time step's prognostics perturbations were missed by the land analysis and HISTORY, and only felt at the next time step. Consequently, simulations with perturbations are not zero-diff vs. v17.9.0-beta.5.
+  - Fixed no-data-value handling in computation of the ensemble average for surface temperature components.
+
+- Cleanup and documentation:
+  - Avoids redundant entries in LDAS.rc.
+  - Enabled setup for NUM_ENSEMBLE=1 with PERTURBATION=1.
+  - Improved help and log messages for setup and configuration.
+  - Option "--runmodel" of "ldas_setup" script is now obsolete.
+  - "DATAATM" renamed to "METFORCE" in HISTORY.rc.
+  - Removed default constraint to Haswell nodes.
+
+------------------------------
+[v17.9.0-beta.5](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.5) - 2020-05-11
+------------------------------
+- Pre-release for use under SLES12 at NCCS.  Still works for SLES11.
+
+- Science functionality:
+  - Forecast error covariance inflation with scalar (globally constant) factor.
+
+- Infrastructure:
+  - Support for GEOS FP forcing with generic ("seamless") file names.
+  - Resource parameter changes:
+    - Renamed NUM_ENSEMBLE to NUM_LDAS_ENSEMBLE in "exeinp" file to be consistent with LDAS.rc.
+    - Renamed MONTHLY_OUTPUT to POSTPROC_HIST.
+  - Updated utilities to MAPL v2.1.3, ESMA_env v2.1.3+intel19.1.0.
+  
+- Bug fixes and other minor changes:
+  - Added basic protections for concatenation of sub-daily into daily nc4 files and for generation of monthly-mean nc4 files.
+  - Write ObsFcstAna and smapL4SMaup files into ./scratch, then move to ana/ens_avg/year/month dir in postprocessing.
+  - Some cleanup of obsolete LDASsa code.
+
+------------------------------
+[v17.9.0-beta.4-SLES12](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.4-SLES12) - 2020-04-24
+------------------------------
+- Pre-release for use under SLES12 at NCCS, otherwise identical to v17.9.0-beta.4-SLES11.
+- Works under SLES12 using the Intel-19 compiler.
+- Also works under SLES11 using the Intel-18 compiler but is not zero-diff across compilers/operating systems.
+
+------------------------------
+[v17.9.0-beta.4-SLES11](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.4-SLES11) - 2020-04-23
+------------------------------
+- Pre-release for use under SLES11 at NCCS. Under SLES12, use v17.9.0-beta.4-SLES12 (or newer).
+- Uses the Intel-18 compiler and also appears to work under SLES12. However, LDASsa with Intel-18 under SLES12 was found to create bad Fortran sequential binary files out of a subroutine that is very similar in LDASsa and GEOSldas.
+- Zero-diff vs. v17.9.0-beta.3 for Catchment only (except SMAP L1C Tb fore-minus-aft check).
+- Not zero-diff for CatchCN (via v1.8.3 of GEOS_GCMGridComp).
+
+- Science functionality:
+  - Resurrected SMAP L1C Tb fore-minus-aft check.
+
+- Infrastructure:
+  - Updated utilities to MAPL v2.1.1, ESMA_env v2.1.1., ESMA_cmake v3.0.1.
+  - New GEOS_SurfaceGridComp.rc file (via v1.8.3 of GEOS_GCMGridComp).
+  - Parallel post-processing.
+  - Cross-stream support for FP f525_p5 forcing.
+  - "sbatch" submission for pre-processing of restarts to comply with SLES12 requirements.
+  - Subdaily-to-daily concatenation processes before month is complete.
+  - Temporary solution to create directories for ObsFcstAna files to enable extending an existing GEOSldas run without going through setup.
+
+- Bug fixes and other minor changes:
+  - Updated README.md.
+  - "obspertrseed" restart file name when restarting from existing run.
+  - Subdaily-to-daily nc4 concatenation (indent error).
+  - Fixes for GNU compiler in debug mode.
+  - Fixed "landpert" checkpoint output when on cube-sphere tiles.
+
+------------------------------
 [v17.9.0-beta.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.3) - 2020-03-18
 ------------------------------
 - Additional RESTART options, incl. from re-tiling MERRA-2, FP, or other restarts on different tile space or with different boundary conditions
@@ -49,8 +213,7 @@ Overview of Git tags:
 ------------------------------
 [v17.9.0-beta.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.2) - 2020-02-26
 ------------------------------
-- New/Updated Science Functionality:
-
+- Science functionality:
   - Assimilation when running on cube-sphere tiles.
   - Read forcing from cube-sphere grid when running on matching cube-sphere tiles.
   - Output of Catchment analysis increments via HISTORY.  
@@ -59,8 +222,7 @@ Overview of Git tags:
   - Configuration option to add extra variables into catch restart files (as needed by GCM).
   - Allows processing of (assimilation) observations for innovations output *without* perturbations turned on.
 
-- New/Updated Infrastructure:
-
+- Infrastructure:
   - Support for SLES 12 in addition to SLES11 (ESMA_env v2.0.2).
   - Updated to MAPL v2.0.
   - Removed dycore and FMS
@@ -69,8 +231,7 @@ Overview of Git tags:
   - Added LDAS_app/mk_GEOSldasRestarts.F90 (adapted from GCM GridComp's mk_LDASsaRestarts.F90 in preparation for re-tiling changes).
   - Fixed output log file name and location.
 
-- Bug Fixes and Other Minor Changes: 
-
+- Bug fixes and other minor changes: 
   - Bug fix in select-update_type 9 (abs(deltaT)>0.)
   - Bug fix for local mwRTM and time dimension restart.
   - Replaced copy ("cp") with link ("ln") for catparam and mwrtm diagnostic output files.
@@ -83,7 +244,7 @@ Overview of Git tags:
 ------------------------------
 [v17.9.0-beta.0] - 2019-12-20
 ------------------------------
-- First tag for SMAP L4_SM Version 5, Catchment model consistent with f525land_fpp
+- First tag for SMAP L4_SM Version 5 development, Catchment model consistent with f525land_fpp
   - Changed default Z0_FORMULATION to 4 (incl. addition of simple tree SAI)
     (to be used with Icarus-NLv3 as default BCs; reverting to look-up veg heights)
   - Fix PAR perturbations bug affecting assim
@@ -239,6 +400,15 @@ reichle-LDASsa_m3-16_6_p1                9 Jul 2018  Added GEOS-5.21 FP function
                                                      (patch targeted for NRv7.2 and SMAP L4_SM ops)
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 reichle-LDASsa_m3-16_6_p2                7 Mar 2019  Added GEOS-5.22 FP functionality
+                                                     (patch targeted for NRv7.2 and SMAP L4_SM ops)
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+reichle-LDASsa_m3-16_6_p3               30 Jan 2020  Added GEOS-5.25 FP functionality
+                                                     (patch targeted for NRv7.2 and SMAP L4_SM ops)
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+reichle-LDASsa_m3-16_6_p4                3 Apr 2020  Added GEOS-5.25_p5 FP functionality
+                                                     (patch targeted for NRv7.2 and SMAP L4_SM ops)
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+reichle-LDASsa_m3-16_6_p4_SLES12        14 Apr 2020  SLES12 version of *_p4 tag -- NOT zero-diff!!
                                                      (patch targeted for NRv7.2 and SMAP L4_SM ops)
 
 -------------------------------------------------------------------------------------

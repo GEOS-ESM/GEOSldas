@@ -11,12 +11,12 @@ module clsm_bias_routines
        N_snow => CATCH_N_SNOW,                    &
        N_gt   => CATCH_N_GT
   
-  use LDAS_ensdrv_globals,           ONLY:     &
+  use LDAS_ensdrv_globals,              ONLY:     &
        nodata_generic,                            &
        logit,                                     &
        logunit
   
-  use  LDAS_DateTimeMod,                   ONLY:     &
+  use  LDAS_DateTimeMod,                ONLY:     &
        date_time_type
   
   use catch_types,                      ONLY:     &
@@ -32,21 +32,18 @@ module clsm_bias_routines
        obs_bias_type
 
   use LDAS_ensdrv_mpi,                  ONLY:     &
-       master_proc,                               &
+       root_proc,                                 &
        MPI_obs_bias_type,                         &
-       mpicomm,                            &
+       mpicomm,                                   &
        MPIERR
 
   use LDAS_ensdrv_functions,            ONLY:     &
        get_io_filename
 
-  use LDAS_ensdrv_init_routines,        ONLY:     &
-       clsm_ensdrv_get_command_line
-
   use clsm_ensupd_upd_routines,         ONLY:     &
        get_cat_progn_ens_avg
 
-  use LDAS_exceptionsMod,                  ONLY:     &
+  use LDAS_exceptionsMod,               ONLY:     &
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
     
@@ -78,78 +75,6 @@ contains
   !
   ! -------------------------------------------------------------------
   
-  subroutine clsm_cat_bias_get_command_line(                    &
-       cat_bias_inputs_path, cat_bias_inputs_file               &
-       )
-    
-    ! get some inputs from command line 
-    !
-    ! if present, command line arguments overwrite inputs from
-    ! catbias_inputs namelist files
-    !
-    ! command line should look something like
-    !
-    ! a.out -cat_bias_inputs_file fname.nml 
-    !
-    ! NOTE: This subroutine does NOT stop for unknown arguments!
-    !       (If that is desired, all arguments used by 
-    !        clsm_ensdrv_get_command_line() must be listed here
-    !        explicitly and be ignored.)
-    !
-    ! reichle, 18 Oct 2005
-    ! 
-    ! ----------------------------------------------------------------
-    
-    implicit none
-    
-    character(*), intent(inout), optional :: cat_bias_inputs_path
-    character(*),  intent(inout), optional :: cat_bias_inputs_file    
-    
-    ! -----------------------------------------------------------------
-    
-    integer :: N_args, iargc, i
-    
-    character(40) :: arg
-    
-    !external getarg, iargc
-    
-    ! -----------------------------------------------------------------
-    
-    N_args = iargc()
-    
-    i=0
-    
-    do while ( i < N_args )
-       
-       i = i+1
-       
-       call getarg(i,arg)
-       
-       if     ( trim(arg) == '-cat_bias_inputs_path' ) then
-          i = i+1
-          if (present(cat_bias_inputs_path))  &
-               call getarg(i,cat_bias_inputs_path)
-          
-       elseif ( trim(arg) == '-cat_bias_inputs_file' ) then
-          i = i+1
-          if (present(cat_bias_inputs_file))  &
-               call getarg(i,cat_bias_inputs_file)
-          
-       else
-               
-          i=i+1
-          if (logit) write (logunit,*)                                    &
-               'clsm_cat_bias_get_command_line(): IGNORING argument = ',  &
-               trim(arg)
-          
-       endif
-       
-    end do
-    
-  end subroutine clsm_cat_bias_get_command_line
-  
-  ! ********************************************************************
-
   subroutine io_rstrt_cat_bias( action, work_path, exp_id, date_time, &
        model_dtstep, N_cat, N_catbias, cat_bias )
     
@@ -578,7 +503,6 @@ contains
     ! read default cat bias inputs file
     
     cat_bias_inputs_path = './'                                       ! set default 
-    !call clsm_ensdrv_get_command_line(run_path=cat_bias_inputs_path)
     cat_bias_inputs_file = 'LDASsa_DEFAULT_inputs_catbias.nml'
       
     fname = trim(cat_bias_inputs_path) // '/' // trim(cat_bias_inputs_file)
@@ -594,21 +518,11 @@ contains
     close(10,status='keep')
     
        
-    ! Get name and path for special cat bias inputs file from
-    ! command line (if present) 
-    
-   ! cat_bias_inputs_path = ''
-   ! cat_bias_inputs_file = ''
-    
-   ! call clsm_cat_bias_get_command_line(                            &
-   !      cat_bias_inputs_path=cat_bias_inputs_path,                 &
-   !      cat_bias_inputs_file=cat_bias_inputs_file )
+    ! Read from special cat bias inputs file (if present) 
     
     cat_bias_inputs_file = 'LDASsa_SPECIAL_inputs_catbias.nml'
-   ! if ( trim(cat_bias_inputs_path) /= ''  .and.                &
-   !      trim(cat_bias_inputs_file) /= ''          ) then
-       
-       ! Read data from special cat bias inputs namelist file 
+
+    ! Read data from special cat bias inputs namelist file 
        
     fname = trim(cat_bias_inputs_path)//'/'//trim(cat_bias_inputs_file)
 
@@ -1155,7 +1069,7 @@ contains
 
     ! ------------------------------------------------------------------
     
-    if (master_proc) then 
+    if (root_proc) then 
        
        allocate(obs_bias_f(N_catf,N_obs_param,N_obsbias_max))
        
@@ -1184,7 +1098,7 @@ contains
     
 #endif
     
-    if (master_proc)  deallocate(obs_bias_f)
+    if (root_proc)  deallocate(obs_bias_f)
     
   end subroutine initialize_obs_bias
   
@@ -1399,7 +1313,7 @@ contains
     
     integer :: i,j
 
-    if (master_proc) allocate(obs_bias_f(N_catf,N_obs_param, N_obsbias_max))
+    if (root_proc) allocate(obs_bias_f(N_catf,N_obs_param, N_obsbias_max))
     
 #ifdef LDAS_MPI
     
@@ -1422,7 +1336,7 @@ contains
     
 #endif
     
-    if (master_proc) then
+    if (root_proc) then
        
        call io_rstrt_obs_bias(                         &
             'w', work_path, exp_id, date_time, N_catf, &

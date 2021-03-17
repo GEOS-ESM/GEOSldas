@@ -1,12 +1,12 @@
 # GEOSldas Fixture
 
-This document explains how to build, set up, and run the GEOS land modeling and data assimilation system (`GEOSldas`).
+This document explains how to build, set up, and run the GEOS land modeling and data assimilation system (`GEOSldas`) on the most common systems used by GMAO.  Additional steps are needed on other systems.
 
 ## How to Build GEOSldas
 
 ### Step 1: Load the Build Modules  
 
-Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It contains the latest `git`, `CMake`, and `manage_externals` modules and must be loaded in any interactive window that is used to check out and build the model.
+Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It contains the latest `git`, `CMake`, and `mepo` modules and must be loaded in any interactive window that is used to check out and build the model.
 
 ```
 module use -a (path)
@@ -17,21 +17,9 @@ where `(path)` depends on the computer and operating system:
 
 | System        | Path                                              |
 | ------------- |---------------------------------------------------|
-| NCCS SLES11   | `/discover/swdev/gmao_SIteam/modulefiles-SLES11`  |
-| NCCS SLES12   | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
+| NCCS          | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
 | NAS           | `/nobackup/gmao_SIteam/modulefiles`               |
 | GMAO desktops | `/ford1/share/gmao_SIteam/modulefiles`            |
-
-
-For NCCS, you can add the following to your `.cshrc`:
-```
-if ( ! -f /etc/os-release ) then
-   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES11
-else
-   module use -a /discover/swdev/gmao_SIteam/modulefiles-SLES12
-endif
-module load GEOSenv
-```
 
 
 ### Step 2: Obtain the Model
@@ -42,7 +30,7 @@ git clone -b develop git@github.com:GEOS-ESM/GEOSldas.git
 ```
 For science runs, you can also obtain a specific tag or branch _only_ (as opposed to the _entire_ repository), e.g.: 
 ```
-git clone -b v17.9.0-beta.3 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
+git clone -b v17.9.1 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 ```
 
 
@@ -55,38 +43,38 @@ parallel_build.csh
 ``` 
 from a head node. Doing so will checkout all the external repositories of the model and build it. When done, the resulting model build will be found in `build/` and the installation will be found in `install/`, with setup scripts like `ldas_setup` in `install/bin`. 
 
-To obtain a build that is suitable for debugging, you can run `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.
+To obtain a build that is suitable for debugging, use `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.  There is also an option for aggressive  optimization.  For details, see [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
 
 See below for how to build the model in multiple steps.
 
 ---
 
-## How to Set Up and Run GEOSldas
+## How to Set Up (Configure) and Run GEOSldas
 
-The GEOSldas setup script uses MPI.  If you are using SLES12 at NCCS, you **must** run setup on an interactive _compute_ node.  SLES12 _login_ nodes no longer allow running MPI.
+a) Set up the job as follows:
 
-To set up a job, do the following:
 ```
-cd ./install/bin
+cd (build_path)/GEOSldas/install/bin
 source g5_modules
-./ldas_setup setup [-v] [--runmodel]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
+./ldas_setup setup [-v]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
 ```  
 
 where
 
 | Parameter              | Description                                              |
 | -----------------------|----------------------------------------------------------|
+| `build_path`           | path to build directory                                  |
 | `exp_path`             | path of desired experiment directory                     |
 | `"exe"_input_filename` | filename (with path) of "experiment" inputs              |
 | `"bat"_input_filename` | filename (with path) of "batch" (job scheduler) inputs   |
 
-must be ordered as above (positional arguments).
+The three arguments for `ldas_setup` are positional and must be ordered as indicated above.
 
 The latter two files contain essential information about the experiment setup. 
 Sample files can be generated as follows:
 ```        
 ldas_setup sample --exeinp > YOUR_exeinp.txt
-ldas_setup sample --batinp > YOUR_exeinp.txt
+ldas_setup sample --batinp > YOUR_batinp.txt
 ```
 
 Edit these sample files following the examples and comments within the sample files.  
@@ -104,15 +92,16 @@ ldas_setup sample -h
 ldas_setup setup  -h
 ```
 
-Configure the experiment output by editing the ```HISTORY.rc``` file.
+b) Configure the experiment output by editing the ```./run/HISTORY.rc``` file as needed.
 
-Finally, run the job:
+c) Run the job:
 ```
 cd [exp_path]/[exp_name]/run/
 sbatch lenkf.j
 ```
 
-For more information, see the README files and ppt tutorial in `./src/Applications/LDAS_App/doc/`.
+For more information, see the files in `./doc/`.
+Moreover, descriptions of the configuration (resource) parameters are included in the sample "exeinp" and "batinp" files that can be generated using `ldas_setup`.
 
 -----------------------------------------------------------------------------------
 
@@ -122,13 +111,18 @@ For more information, see the README files and ppt tutorial in `./src/Applicatio
 
 The steps detailed below are essentially those performed by `parallel_build.csh` in Step 3 above. Either method should yield identical builds.
 
-##### Checkout externals
+#### mepo
+
+The GEOSldas is comprised of a set of sub-repositories. These are
+managed by a tool called [mepo](https://github.com/GEOS-ESM/mepo). To
+clone all the sub-repos, you can run `mepo clone` inside the fixture:
 ```
 cd GEOSldas
-checkout_externals
+mepo init
+mepo clone
 ```
 
-##### Load Compiler, MPI Stack, and Baselibs
+#### Load Compiler, MPI Stack, and Baselibs
 On tcsh:
 ```
 source @env/g5_modules
@@ -138,14 +132,14 @@ or on bash:
 source @env/g5_modules.sh
 ```
 
-##### Create Build Directory
+#### Create Build Directory
 We currently do not allow in-source builds of GEOSldas. So we must make a directory:
 ```
 mkdir build
 ```
 The advantages of this is that you can build both a Debug and Release version with the same clone if desired.
 
-##### Run CMake
+#### Run CMake
 CMake generates the Makefiles needed to build the model.
 ```
 cd build
@@ -157,8 +151,9 @@ This will install to a directory parallel to your `build` directory. If you pref
 ```
 and CMake will install there.
 
-##### Build and Install with Make
+#### Build and Install with Make
 ```
 make -j6 install
 ```
+If you are at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.  
 

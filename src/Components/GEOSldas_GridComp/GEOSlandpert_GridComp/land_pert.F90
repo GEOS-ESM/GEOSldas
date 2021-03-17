@@ -46,7 +46,7 @@ module land_pert_routines
   use LDAS_ExceptionsMod,               ONLY:     & 
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
-  use LDAS_ensdrv_Globals, only: master_logit,logunit
+  use LDAS_ensdrv_Globals, only: root_logit,logunit
     
   implicit none
   
@@ -67,6 +67,7 @@ module land_pert_routines
   interface propagate_pert
      module procedure GEOSldas_propagate_pert, LDASsa_propagate_pert
   end interface
+  
   ! **********************************************************************
 
 contains
@@ -101,8 +102,8 @@ contains
     
     integer, intent(in) :: N_pert   ! # different perturbations
     
-    type(grid_def_type), intent(in) :: pert_grid_f
     type(grid_def_type), intent(in) :: pert_grid_l
+    type(grid_def_type), intent(in) :: pert_grid_f
     
     real, intent(in) :: dtstep        ! perturbation time step in seconds
     
@@ -312,9 +313,11 @@ contains
     
   end subroutine GEOSldas_get_pert
 
-  subroutine LDASsa_get_pert(                                &
+  ! ******************************************************************
+  
+  subroutine LDASsa_get_pert(                         &
        N_pert, N_ens,                                 &
-       pert_grid_f, pert_grid_l,                      &
+       pert_grid_l, pert_grid_f,                      &
        dtstep,                                        &
        pert_param,                                    &
        Pert_rseed,                                    &
@@ -327,7 +330,9 @@ contains
     ! get perturbations
     !
     ! reichle, 22 Jun 2005
-
+    ! reichle, 17 Jul 2020 - switched order of input arguments pert_grid_f and pert_grid_l
+    !                         for consistency with other subroutines
+    
     implicit none
 
     ! N_pert is the number of *perturbation* fields and is not 
@@ -342,8 +347,8 @@ contains
 
     integer, intent(in) :: N_ens  ! # ensemble members
 
-    type(grid_def_type), intent(in) :: pert_grid_f
     type(grid_def_type), intent(in) :: pert_grid_l
+    type(grid_def_type), intent(in) :: pert_grid_f
 
     real, intent(in) :: dtstep        ! perturbation time step in seconds
 
@@ -1217,6 +1222,10 @@ contains
   ! *************************************************************************
   
 #if 0
+  ! This subroutine is not used.
+  ! Note that my_matrix_functions.F90 contains another (commented-out) version.
+  ! wjiang + reichle, 25 Nov 2020
+  
   subroutine adjust_std( N_row, N_col, A, std )
     
     ! adjust N_row by N_col matrix A such that (sample) standard deviation
@@ -1259,8 +1268,14 @@ contains
     end do
     
   end subroutine adjust_std
+#endif
   
   ! ***************************************************************************
+  
+#if 0
+  ! This subroutine is not used.
+  ! Note that my_matrix_functions.F90 contains other (commented-out) versions.
+  ! wjiang + reichle, 25 Nov 2020
   
   subroutine matrix_std( N_row, N_col, A, std )
     
@@ -1549,7 +1564,7 @@ contains
     
     
       ! echo part of forcepert_param (mean, std, and ccorr for i=1, j=1 only):
-  if(master_logit) then
+  if(root_logit) then
      do i=1,N_forcepert
      
         write (logunit,*) 'forcepert_param(',i,')%descr=', &
@@ -1580,7 +1595,7 @@ contains
              forcepert_param(i)%ccorr(j,1,1)
         end do
      end do
- endif ! master_logit
+ endif ! root_logit
     
     
     

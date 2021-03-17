@@ -20,30 +20,30 @@ PROGRAM mwrtm_bin2nc4
   character(len=:),allocatable :: shnms(:)
   type(mwRTM_param_type), allocatable :: mwp(:)
   integer :: unitnum
-  logical :: is_nodata
+  logical :: mwp_nodata
 
 
   nVars = 18
-  shnms =[ &
-'MWRTM_VEGCLS   ',&
-'MWRTM_SOILCLS  ',&
-'MWRTM_SAND     ',&
-'MWRTM_CLAY     ',&
-'MWRTM_POROS    ',&
-'MWRTM_WANGWT   ',&
-'MWRTM_WANGWP   ',&
-'MWRTM_RGHHMIN  ',&
-'MWRTM_RGHHMAX  ',&
-'MWRTM_RGHWMIN  ',&
-'MWRTM_RGHWMAX  ',&
-'MWRTM_RGHNRH   ',&
-'MWRTM_RGHNRV   ',&
-'MWRTM_RGHPOLMIX',&
-'MWRTM_OMEGA    ',&
-'MWRTM_BH       ',&
-'MWRTM_BV       ',&
-'MWRTM_LEWT     ']
-
+  shnms = [              &
+       'MWRTM_VEGCLS   ',&
+       'MWRTM_SOILCLS  ',&
+       'MWRTM_SAND     ',&
+       'MWRTM_CLAY     ',&
+       'MWRTM_POROS    ',&
+       'MWRTM_WANGWT   ',&
+       'MWRTM_WANGWP   ',&
+       'MWRTM_RGHHMIN  ',&
+       'MWRTM_RGHHMAX  ',&
+       'MWRTM_RGHWMIN  ',&
+       'MWRTM_RGHWMAX  ',&
+       'MWRTM_RGHNRH   ',&
+       'MWRTM_RGHNRV   ',&
+       'MWRTM_RGHPOLMIX',&
+       'MWRTM_OMEGA    ',&
+       'MWRTM_BH       ',&
+       'MWRTM_BV       ',&
+       'MWRTM_LEWT     ']
+  
   ! processing command line agruments
   I = iargc()
   
@@ -123,7 +123,7 @@ PROGRAM mwrtm_bin2nc4
   read (unitnum) VAR;  mwp(1:NTILES)%lewt       =  VAR(1:NTILES)
 
   do i = 1, NTILES
-    call mwRTM_param_nodata_check( mwp(i), is_nodata )
+    call mwRTM_param_nodata_check( mwp(i), mwp_nodata )
   enddo
 
   VAR = real(mwp(1:NTILES)%vegcls)

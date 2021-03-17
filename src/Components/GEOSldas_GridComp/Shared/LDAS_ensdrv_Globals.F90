@@ -1,18 +1,19 @@
 module LDAS_ensdrv_Globals
 
-  ! just change the name CLSM_xxxx to LDAS_xxxx
   ! global parameters for LDAS ens driver
-  !
-  ! must re-compile if any of these change
   !
   ! reichle, 25 Mar 2004
   ! reichle,  6 May 2005
   ! reichle, 29 Nov 2010 - deleted N_outselect (obsolete)
   !                      - added sfc_turb_scheme (choose Louis or Helfand Monin-Obukhov)
   ! reichle,  5 Apr 2013 - removed N_out_fields as global parameter
-
+  ! wjiang+reichle, 
+  !          21 May 2020 - added "LDAS_is_nodata" function, checks if "nodata_generic" or "MAPL_UNDEF"
+  
   use, intrinsic :: iso_fortran_env, only : output_unit
 
+  use MAPL_BaseMod,                  only : MAPL_UNDEF
+  
   implicit none
   
   private
@@ -20,11 +21,11 @@ module LDAS_ensdrv_Globals
   public :: nodata_generic
   public :: nodata_tolfrac_generic
   public :: nodata_tol_generic
-  public :: N_bits_shaved
+  public :: LDAS_is_nodata
   public :: logunit
   public :: logit
-  public :: master_logit
-  public :: log_master_only
+  public :: root_logit
+  public :: log_root_only
   
   public :: echo_clsm_ensdrv_glob_param
   public :: write_status
@@ -36,17 +37,8 @@ module LDAS_ensdrv_Globals
   real, parameter :: nodata_generic         = -9999.
   real, parameter :: nodata_tolfrac_generic = 1.e-4
   
-  real :: nodata_tol_generic = abs(nodata_generic*nodata_tolfrac_generic)
-  
-  ! ----------------------------------------------------------------------
-  !
-  ! bit shaving for better gzip compression of output files:
-  ! - degrade least significant digits in floating point output
-  !   in return for better gzip compression rates;
-  ! - real*4 reserves 24 bits for Mantissa, the N_bits_shaved 
-  !   least significant of these 24 bits will be altered)
-
-  integer, parameter :: N_bits_shaved = 12  ! useful range: 0-12  (0=no shaving)
+  real :: nodata_tol_generic     = abs(nodata_generic*nodata_tolfrac_generic)
+  real :: MAPL_UNDEF_tol_generic = abs(MAPL_UNDEF    *nodata_tolfrac_generic) 
 
   ! ----------------------------------------------------------------
   !
@@ -58,13 +50,13 @@ module LDAS_ensdrv_Globals
   ! until the job terminates.
   !
   ! NOTE: "logunit=stdout" is disabled if log messages are requested from *all* processors
-  !       (that is, for "log_master_only=.false.") to avoid garbled output
+  !       (that is, for "log_root_only=.false.") to avoid garbled output
 
   integer, parameter :: logunit         = output_unit ! defined in iso_fortran_env
   
-  logical, parameter :: log_master_only = .true.
+  logical, parameter :: log_root_only = .true.
   
-  logical            :: logit,master_logit
+  logical            :: logit,root_logit
 
   
 contains
@@ -88,11 +80,9 @@ contains
     write (logunit,*)
     write (logunit,*) 'nodata_tol_generic      = ',   nodata_tol_generic
     write (logunit,*)
-    write (logunit,*) 'N_bits_shaved           = ',   N_bits_shaved
-    write (logunit,*)
     write (logunit,*) 'logunit                 = ',   logunit
     write (logunit,*)
-    write (logunit,*) 'log_master_only         = ',   log_master_only
+    write (logunit,*) 'log_root_only           = ',   log_root_only
     write (logunit,*)
     write (logunit,*) 'logit                   = ',   logit
     write (logunit,*)
@@ -136,6 +126,19 @@ contains
     close(unit=10)
     
   end subroutine write_status
+
+  ! ********************************************************************
+  
+  elemental   function LDAS_is_nodata(data) result(no_data)
+    
+    real,   intent(in) :: data
+    logical            :: no_data
+    
+    no_data =                                                         &
+         ( abs(data-nodata_generic) < nodata_tol_generic    ) .or.    &
+         ( abs(data-MAPL_UNDEF)     < MAPL_UNDEF_tol_generic)     
+    
+  end function LDAS_is_nodata
 
   ! *************************************************************
   

@@ -21,11 +21,11 @@ module clsm_ensupd_read_obs
   use io_hdf5,                          ONLY:     &
        hdf5read 
 
-  use LDAS_ease_conv,                      ONLY:     &
+  use LDAS_ease_conv,                   ONLY:     &
        easeV2_convert,                            &
        easeV2_extent
   
-  use LDAS_ensdrv_globals,           ONLY:     &
+  use LDAS_ensdrv_globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
        nodata_tolfrac_generic
@@ -33,7 +33,7 @@ module clsm_ensupd_read_obs
   use clsm_ensupd_glob_param,           ONLY:     &
        unitnum_obslog
 
-  use LDAS_DateTimeMod,                   ONLY:     &
+  use LDAS_DateTimeMod,                 ONLY:     &
        date_time_type,                            &
        augment_date_time,                         &
        get_dofyr_pentad,                          &
@@ -46,7 +46,7 @@ module clsm_ensupd_read_obs
        obs_type,                                  &
        obs_param_type
 
-  use LDAS_TilecoordType,                 ONLY:     &
+  use LDAS_TilecoordType,               ONLY:     &
        tile_coord_type,                           &
        grid_def_type
 
@@ -55,17 +55,17 @@ module clsm_ensupd_read_obs
        f2l_real8,                                 &
        f2l_logical
   
-  use LDAS_TilecoordRoutines,              ONLY:     &
+  use LDAS_TilecoordRoutines,           ONLY:     &
        get_tile_num_from_latlon
   
   use LDAS_ensdrv_mpi,                  ONLY:     &
-       master_proc,                               &
+       root_proc,                                 &
        numprocs,                                  &
-       mpicomm,                            &
+       mpicomm,                                   &
        MPI_obs_type,                              &
        mpierr
 
-  use LDAS_exceptionsMod,                  ONLY:     &
+  use LDAS_exceptionsMod,               ONLY:     &
        ldas_abort,                                &
        ldas_warn,                                 &
        LDAS_GENERIC_ERROR,                        &
@@ -524,7 +524,7 @@ contains
 
     cmd = '/bin/rm -f ' // tmpfname 
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     ! identify all files within current assimilation interval
     ! (list all files within hourly intervals)
@@ -554,7 +554,7 @@ contains
        
        cmd = trim(cmd) // ' >> ' // trim(tmpfname)
        
-       call system(trim(cmd))
+       call Execute_command_line(trim(cmd))
        
        call augment_date_time( 3600, date_time_tmp )
        
@@ -566,7 +566,7 @@ contains
     
     cmd = 'wc -w ' // trim(tmpfname) // ' > ' // trim(tmpfname2)
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     open(10, file=tmpfname2, form='formatted', action='read')
     
@@ -1037,7 +1037,7 @@ contains
 
     cmd = '/bin/rm -f ' // tmpfname 
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     ! identify all files within current assimilation interval
     ! (list all files within hourly intervals)
@@ -1070,7 +1070,7 @@ contains
        
        cmd = trim(cmd) // ' >> ' // trim(tmpfname)
        
-       call system(trim(cmd))
+       call Execute_command_line(trim(cmd))
        
        call augment_date_time( 3600, date_time_tmp )
        
@@ -1082,7 +1082,7 @@ contains
     
     cmd = 'wc -w ' // trim(tmpfname) // ' > ' // trim(tmpfname2)
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     open(10, file=tmpfname2, form='formatted', action='read')
     
@@ -1348,7 +1348,7 @@ contains
 
     cmd = '/bin/rm -f ' // tmpfname 
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     ! identify all files within current assimilation interval
     ! (list all files within hourly intervals)
@@ -1379,7 +1379,7 @@ contains
 
        cmd = trim(cmd) // ' >> ' // trim(tmpfname)
        
-       call system(trim(cmd))
+       call Execute_command_line(trim(cmd))
        
        
        call augment_date_time( 3600, date_time_tmp )
@@ -1392,7 +1392,7 @@ contains
     
     cmd = 'wc -w ' // trim(tmpfname) // ' > ' // trim(tmpfname2)
     
-    call system(trim(cmd))
+    call Execute_command_line(trim(cmd))
     
     open(10, file=tmpfname2, form='formatted', action='read')
     
@@ -5282,6 +5282,9 @@ contains
     ! reichle, 23 Jan 2018: removed stats check for L1C fore-minus-aft Tb differences;
     !                       use avg fore/aft timestamp so that fore and aft Tbs for same 
     !                         location are never used in different assimilation windows
+    ! reichle, 22 Apr 2020: resurrected check for L1C fore-minus-aft Tb differences
+    !                         after antenna-scan-angle (ASA) issues continued and the
+    !                         SMAP Project declined to address these issues in L1 ops
 
     implicit none
         
@@ -5338,6 +5341,8 @@ contains
     real,      parameter :: Tb_min       = 100.0  ! min allowed Tb
     real,      parameter :: Tb_max       = 320.0  ! max allowed Tb
 
+    real,      parameter :: max_std_tb_fore_minus_aft = 20.  ! max std-dev L1C[E] fore-minus-aft Tb diffs
+
     integer,   parameter :: L1CE_spacing = 3  ! thinning of L1C_TB_E in units of 9-km indices ("3" => 27 km)
     
     ! temporarily shift lat/lon of obs for computation of nearest tile to
@@ -5369,7 +5374,7 @@ contains
     type(date_time_type) :: date_time_low,       date_time_upp
     type(date_time_type) :: date_time_low_fname, date_time_tmp
 
-    integer              :: ii, jj, kk, nn
+    integer              :: ii, jj, kk, nn, mm
     integer              :: N_fnames, N_fnames_tmp, N_obs_tmp
     integer              :: dset_rank
     integer              :: ind_tile, ind_start, ind_end
@@ -5377,6 +5382,7 @@ contains
     real                 :: M36_col_ind_tile, M36_row_ind_tile  
     real                 :: M36_col_ind_obs,  M36_row_ind_obs
     real                 :: tmpreal
+    real                 :: tmp_tb_diff, tmp_tb_diff_Sum, tmp_tb_diff_SumOfSq, tmp_var
 
     real*8               :: J2000_seconds_low, J2000_seconds_upp
 
@@ -5957,6 +5963,13 @@ contains
 
           if (L1C_files .or. L1CE_files) then
 
+             ! initialize stats check for fore-minus-aft Tb diffs
+
+             mm = 0
+             
+             tmp_tb_diff_Sum     = 0.
+             tmp_tb_diff_SumOfSq = 0.
+
              do nn=1,N_obs_tmp
 
                 ! QC
@@ -5984,31 +5997,43 @@ contains
                    
                 end if
 
-                ! compute fore and aft average
+                ! compute fore and aft average, put into "tb_1", "tmp_time_1"
                 
-                if (keep_data_1 .or. keep_data_2) then
+                if     (keep_data_1 .and. keep_data_2) then
+                   
+                   ! Compute stats for fore-minus-aft Tb differences.
+                   ! Excessive diffs are found in bad L1C_TB files, which occur 
+                   ! occasionally due to bad ANT_AZ files in L1B processing.
+                   ! Includes ALL SURFACES!!!
+                   ! - reichle, 22 Apr 2020 (resurrected)
+                   ! - reichle, 16 Oct 2020 (bug fix: do stats first, then avg)
+                   
+                   mm=mm+1
+                   
+                   tmp_tb_diff         = tmp_tb_1(nn) - tmp_tb_2(nn) 
+                   
+                   tmp_tb_diff_Sum     = tmp_tb_diff_Sum     + tmp_tb_diff
+                   tmp_tb_diff_SumOfSq = tmp_tb_diff_SumOfSq + tmp_tb_diff**2
                    
                    ! put average of "fore" and "aft" into "tb_1", "tmp_time_1"
                    
-                   if     (keep_data_1 .and. keep_data_2) then
-                      
-                      tmp_tb_1(  nn) = 0.5  *( tmp_tb_1(  nn) + tmp_tb_2(  nn) )
-                      tmp_time_1(nn) = 0.5D0*( tmp_time_1(nn) + tmp_time_2(nn) ) 
-                      
-                   elseif (keep_data_1)                   then
-                      
-                      tmp_tb_1(  nn) = tmp_tb_1(  nn)
-                      tmp_time_1(nn) = tmp_time_1(nn)
-                      
-                   else   ! "keep_data_2=.true." per nested if statements above
-                      
-                      tmp_tb_1(  nn) = tmp_tb_2(  nn)
-                      tmp_time_1(nn) = tmp_time_2(nn)
-                      
-                   end if
+                   tmp_tb_1(  nn) = 0.5  *( tmp_tb_1(  nn) + tmp_tb_2(  nn) )
+                   tmp_time_1(nn) = 0.5D0*( tmp_time_1(nn) + tmp_time_2(nn) ) 
+                   
+                elseif (keep_data_2)                   then
+
+                   ! put "aft" data into "tb_1", "tmp_time_1"
+                   
+                   tmp_tb_1(  nn) = tmp_tb_2(  nn)
+                   tmp_time_1(nn) = tmp_time_2(nn)
+
+                else
+
+                   ! nothing to do here
+                   ! - if only keep_data_1 is true  (tmp_tb_1 and tmp_time_1 are already as needed)
+                   ! - if both keep_data_1 and keep_data_2 are false  (next if block ignores data)
                    
                 end if
-                
 
                 ! apply QC and thinning, ensure that time stamp is within assimilation window
                 
@@ -6028,6 +6053,29 @@ contains
                 
              end do
              
+             ! finalize stats check for fore-minus-aft differences (ALL SURFACES!!!)
+             ! - reichle, 22 Apr 2020 (resurrected)
+             
+             if (mm>1) then
+                
+                tmp_var = ( tmp_tb_diff_SumOfSq - (tmp_tb_diff_Sum**2)/real(mm) )/(real(mm-1))
+                
+                if ( tmp_var > max_std_tb_fore_minus_aft**2 ) then
+                   
+                   write(err_msg, '(e12.5)') sqrt(tmp_var) 
+                   
+                   err_msg =                                                                                      &
+                        'Ignoring ALL obs in halforbit file b/c of excessive std-dev in fore-minus-aft Tbs. ' //  &
+                        'std-dev( tb_fore - tb_aft ) = ' // trim(err_msg)
+                   
+                   call ldas_warn(LDAS_GENERIC_WARNING, Iam, err_msg)
+                   
+                   jj = 0  ! results in N_obs_kept=0 below
+                   
+                end if
+
+             end if
+
           else  ! L2_SM_AP
              
              do nn=1,N_obs_tmp
@@ -6405,7 +6453,7 @@ contains
        
 #endif
        
-       if (master_proc) then
+       if (root_proc) then
           
           N_obsf = sum(N_obsl_vec)
           
@@ -6450,7 +6498,7 @@ contains
        mask_v_A = .false.   ! initialize
        mask_v_D = .false.   ! initialize
     
-       if (master_proc) then
+       if (root_proc) then
           
           ! mask for H-pol ascending
           
@@ -6542,7 +6590,7 @@ contains
 
           deallocate(Observations_f)
           
-       end if  ! (master_proc)
+       end if  ! (root_proc)
        
        ! MPI broadcast masks
        
@@ -6855,7 +6903,7 @@ contains
     
     ! read observations and optionally scale observations to model clim
     !
-    ! intended to be called by master_proc
+    ! intended to be called by root_proc
 
     ! 10 Jun 2011 - removed model-based QC for MPI re-structuring (now done
     !               in connection with get_obs_pred())
@@ -8066,7 +8114,7 @@ contains
     type(grid_def_type),                          intent(in)  :: tile_grid_f
     
     ! N_tile_in_cell_ij and tile_num_in_cell_ij are on the "full" domain
-    !  and guaranteed to be allocated ONLY for the master_proc
+    !  and guaranteed to be allocated ONLY for the root_proc
     !  (but may be allocated on all processors depending on obs_param%FOV)
 
     integer, dimension(:,:),   pointer :: N_tile_in_cell_ij_f   ! input 
@@ -8138,7 +8186,7 @@ contains
           call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'something wrong')
        end if
                  
-       if (master_proc) then
+       if (root_proc) then
           
           ! subroutine read_obs() reads all observations in obs files 
           ! (typically global) and returns a vector in (full domain) 

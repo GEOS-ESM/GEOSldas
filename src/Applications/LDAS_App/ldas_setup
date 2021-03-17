@@ -32,19 +32,20 @@ class LDASsetup:
         # Required exe input fields
         # These fields are needed to pre-compute exp dir structure
         # ------
-        rqdExeInpKeys = ['EXP_ID', 'EXP_DOMAIN', 'NUM_ENSEMBLE', 
+        rqdExeInpKeys = ['EXP_ID', 'EXP_DOMAIN', 'NUM_LDAS_ENSEMBLE', 
             'BEG_DATE', 'END_DATE','RESTART_PATH',
             'RESTART_DOMAIN','RESTART_ID','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
-        rqdExeInpKeys_rst = ['EXP_ID', 'EXP_DOMAIN', 'NUM_ENSEMBLE', 
+        rqdExeInpKeys_rst = ['EXP_ID', 'EXP_DOMAIN', 'NUM_LDAS_ENSEMBLE', 
             'BEG_DATE', 'END_DATE','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
 
-        # These keywords are excluded from LDAS.rc
+        # These keywords are excluded from LDAS.rc (i.e., only needed in pre- or post-processing)
         self.NoneLDASrcKeys=['EXP_ID', 'EXP_DOMAIN',
             'BEG_DATE', 'END_DATE','RESTART','RESTART_PATH',
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
-            'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','MONTHLY_OUTPUT',
-            'MINLON','MAXLON','MINLAT','MAXLAT','BLACK_FILE','WHITE_FILE','MWRTM_FILE']
+            'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
+            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME',
+            'ADAS_EXPDIR' ]
 
 
         # ------
@@ -62,7 +63,7 @@ class LDASsetup:
         if 'exeinp' in cmdLineArgs:
             # sample sub-command
             # by construction, we can have
-            # either: {'exeinp': False, 'batinp': 'lasgh'}
+            # either: {'exeinp': False, 'batinp': 'lasgh'}    <-- 'lasgh'???
             # or:     {'exeinp': True, 'batinp': None}
             if cmdLineArgs['exeinp']:
                 _printExeInputKeys(rqdExeInpKeys)
@@ -82,9 +83,10 @@ class LDASsetup:
         assert os.path.isdir(self.exphome) # exphome should exist
         self.verbose = cmdLineArgs['verbose']
         self.runmodel = cmdLineArgs['runmodel']
+        if self.runmodel :
+          print('\n The option "--runmodel" is out of date, not necessary anymore. \n')
         self.daysperjob = cmdLineArgs['daysperjob']
         self.monthsperjob = cmdLineArgs['monthsperjob']
-        #self.ForceReuseDir = cmdLineArgs['ForceReuseDir']
         self.rqdExeInp = OrderedDict()
         self.rqdRmInp = OrderedDict()
         self.optRmInp = OrderedDict()
@@ -98,12 +100,16 @@ class LDASsetup:
         self.islocal = False
         self.catch = ''
         self.has_mwrtm = False
+        self.assim = False
         self.has_landassim_seed = False
         self.has_geos_pert = False
         self.has_ldassa_pert = False
         self.nSegments = 1
+        self.perturb = 0
+        self.first_ens_id = 0
+        self.ladas_coupling = 0
         # ------
-        # Read exe input file which is required to setup the dir
+        # Read exe input file which is required to set up the dir
         # ------
         self.rqdExeInp = self._parseInputFile(cmdLineArgs['exeinpfile'])
         # verifing the required input
@@ -134,13 +140,21 @@ class LDASsetup:
             _printdict(self.rqdExeInp)
 
         # nens is an integer and =1 for model run
-        self.nens         =    int(self.rqdExeInp['NUM_ENSEMBLE']) # fail if Nens's val is not int
-        assert self.nens>0, 'NUM_ENSEMBLE [%d] <= 0' % self.nens
+        self.nens         =    int(self.rqdExeInp['NUM_LDAS_ENSEMBLE']) # fail if Nens's val is not int
+        assert self.nens>0, 'NUM_LDAS_ENSEMBLE [%d] <= 0' % self.nens
         _mydir = self.exphome + '/' + self.rqdExeInp['EXP_ID']
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
-        _mydir = None
-        self.ensdirs      = ['ens%04d'%iens for iens in xrange(self.nens)]
-        self.ensids       = ['%04d'%iens for iens in xrange(self.nens)]
+        _mydir = None 
+        self.ladas_coupling = int(self.rqdExeInp.get('LADAS_COUPLING',0))
+        if self.ladas_coupling > 0:
+           assert 'ADAS_EXPDIR'  in self.rqdExeInp, " need ADAS_EXPDIR  in the input file %s" %(self.exeinpfile)
+
+        self.first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
+        self.perturb = int(self.rqdExeInp.get('PERTURBATIONS',0))
+        if self.nens > 1:
+           self.perturb = 1
+        self.ensdirs  = ['ens%04d'%iens for iens in range(self.first_ens_id, self.nens  + self.first_ens_id)]
+        self.ensids   = ['%04d'%iens    for iens in range(self.first_ens_id, self.nens  + self.first_ens_id)]
         if (self.nens == 1) :
             self.ensdirs_avg = self.ensdirs
             self.ensids=['']
@@ -167,7 +181,7 @@ class LDASsetup:
                 )
         if self.rqdExeInp['RESTART'].isdigit() :
             if int(self.rqdExeInp['RESTART']) == 0 :
-                # print "Starting date is forced to January 1st if there is no restart file"
+                print "No restart file (cold restart): Forcing start date to January 1, 0z"
                 year = self.begDates[0].year
                 self.begDates[0]=datetime(year =year,month=1,day =1,hour =0, minute= 0,second= 0)
 
@@ -186,6 +200,16 @@ class LDASsetup:
                                                _datediff.minutes,
                                                _datediff.seconds)
             self.job_sgmt.append("JOB_SGMT: "+self.rqdExeInp['JOB_SGMT'])
+
+        if 'NUM_SGMT' not in self.rqdExeInp:
+           self.rqdExeInp['NUM_SGMT'] = 1
+        # hard set NUM_SGMT and NUM_SGMT
+        if (self.ladas_coupling > 0) :
+           if self.rqdExeInp['NUM_SGMT'] != 1 :
+              sys.exit("'NUM_SGMT' should be set to 1 with LADAS_COUPLING")
+           if self.rqdExeInp['JOB_SGMT'] != "00000000 060000" :
+              sys.exit("'JOB_SGMT' should be set to  00000000 060000 with LADAS_COUPLING")
+
         _years  = int(self.rqdExeInp['JOB_SGMT'][0:4])
         _months = int(self.rqdExeInp['JOB_SGMT'][4:6])
         _days   = int(self.rqdExeInp['JOB_SGMT'][6:8])
@@ -194,8 +218,6 @@ class LDASsetup:
         _mins   = int(self.rqdExeInp['JOB_SGMT'][11:13])
         _seconds= int(self.rqdExeInp['JOB_SGMT'][13:15])
 
-        if 'NUM_SGMT' not in self.rqdExeInp:
-           self.rqdExeInp['NUM_SGMT'] = 1
 
         _difftime =timedelta(days = _years*365+_months*30+_days,hours = _hours,minutes=_mins,seconds=_seconds)
         _difftime = int(self.rqdExeInp['NUM_SGMT'])*_difftime
@@ -272,8 +294,6 @@ class LDASsetup:
         if 'GRIDNAME' not in self.rqdExeInp :
             tmptile =self.rqdExeInp['TILING_FILE']
             self.rqdExeInp['GRIDNAME']  = linecache.getline(tmptile, 3).strip()
-        if 'RESOLUTION' not in self.rqdExeInp :
-            self.rqdExeInp['RESOLUTION']= os.path.split(os.path.split(self.rqdExeInp['BCS_PATH'])[0])[1]
 
         if 'LSM_CHOICE' not in self.rqdExeInp:
             self.rqdExeInp['LSM_CHOICE'] = 1
@@ -283,12 +303,11 @@ class LDASsetup:
         else :
             self.catch = 'catchcn'
 
-        if 'MONTHLY_OUTPUT' not in self.rqdExeInp:
-            self.rqdExeInp['MONTHLY_OUTPUT'] = 0
+        if 'POSTPROC_HIST' not in self.rqdExeInp:
+            self.rqdExeInp['POSTPROC_HIST'] = 0
 
-        #if int(self.rqdExeInp['MONTHLY_OUTPUT']) > 0:
-        #    assert self.begDates[0].day == 1 and self.begDates[0].hour == 0 and self.begDates[0].minute == 0 and self.begDates[0].second == 0, "monthly output should start from day 1 and 0Z"
-        #    assert self.endDates[0].day == 1 and self.endDates[0].hour == 0 and self.endDates[0].minute == 0 and self.endDates[0].second == 0, "monthly output should end at day 1 and 0Z"
+        if 'LADAS_COUPLING' not in self.rqdExeInp:
+            self.rqdExeInp['LADAS_COUPLING'] = 0
 
         if 'RUN_IRRIG' not in self.rqdExeInp:
             self.rqdExeInp['RUN_IRRIG'] = 0  
@@ -301,8 +320,8 @@ class LDASsetup:
         _domain_dic['MAXLON']= 180.
         _domain_dic['MINLAT']= -90.
         _domain_dic['MAXLAT']=  90.
-        _domain_dic['BLACK_FILE']= "''"
-        _domain_dic['WHITE_FILE']= "''"
+        _domain_dic['EXCLUDE_FILE']= "''"
+        _domain_dic['INCLUDE_FILE']= "''"
          
         for key,val in _domain_dic.iteritems() :
             if key in self.rqdExeInp :
@@ -312,9 +331,11 @@ class LDASsetup:
         for key,val in _domain_dic.iteritems() :
             keyn=(key+"  = ").ljust(16)
             valn = str(val)
-            fout.write(keyn+ valn +'\n')
+            if '_FILE' in key:
+               fout.write(keyn+ "'"+valn+"'"+'\n')
+            else :
+               fout.write(keyn+ valn +'\n')
         fout.write('/\n')
-
         
         # make sure bcs files exist
         if self.rqdExeInp['RESTART'].isdigit() :
@@ -355,15 +376,13 @@ class LDASsetup:
                             self.has_ldassa_pert = True
                
         # DEAL WITH mwRTM input from exec
-        _assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
-        if _assim == 0 :
-           _result = self.rqdExeInp.pop('MWRTM_FILE', None)
-           
-
+        self.assim = True if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
+        # verify mwrtm file
         if 'MWRTM_FILE' in self.rqdExeInp :
            _tmpfile = self.rqdExeInp['MWRTM_FILE'].replace("'",'').replace('"','')
            if os.path.isfile(_tmpfile) :
-              assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'if MWRTM_FILE is specified,it should be global'
+              self.has_mwrtm = True
+              self.rqdExeInp['MWRTM_FILE'] = _tmpfile 
            else : 
               assert not _tmpfile.strip(),  ' MWRTM_FILE: %s should point to mwrtm param file'% _tmpfile
               del self.rqdExeInp['MWRTM_FILE']
@@ -389,6 +408,8 @@ class LDASsetup:
         assert self.rqdRmInp['rm_name'].upper() == 'SLURM'
         ## account and walltime should exist
         assert self.rqdRmInp['account']
+        if cmdLineArgs['account'] != 'None':
+           self.rqdRmInp['account'] = cmdLineArgs['account']
         assert self.rqdRmInp['walltime']
         ## ntasks is a +ve integer
         _ntasks = int(self.rqdRmInp['ntasks'])
@@ -441,101 +462,6 @@ class LDASsetup:
         tmp_expid = None
         tmp_expdir = None
 
-        # ------
-        # If daysperjob>0, split duration of 
-        # start/end_times are now lists of len > 1
-        # ------
-        # wj notes: disable daysperjob
-#        self.daysperjob = 0 
-#        if self.daysperjob:
-#            # shorthands
-#            _dpj = self.daysperjob
-#            _start = self.begDates[0]
-#            _end = self.endDates[0]
-#            assert _dpj>0, 'daysperjob = %d' % _dpj
-#            # total number of days for the given job
-#            nDays = (_end - _start).days
-#            assert nDays>_dpj, \
-#                'Days per job [%d] >= Duration [%d days]' %\
-#                (_dpj, nDays)
-#            # number of job segments
-#            q = nDays/_dpj
-#            r = nDays%_dpj
-#            if r>0:
-#                nSegments = q+1
-#            else:
-#                nSegments = q
-#            # lists of start times, end times
-#            _start_list = list()
-#            _end_list = list()
-#            for iseg in xrange(nSegments):
-#                _start_list.append(_start+timedelta(days=iseg*_dpj))
-#            for iseg in xrange(nSegments-1):
-#                _end_list.append(_start_list[iseg+1])
-#            _end_list.append(_end)
-#
-#            #update beg dates and end dates
-#            self.begDates = _start_list
-#            self.endDates = _end_list
-#            self.job_sgmt = list()
-#            for iseg in xrange(nSegments):
-#                self.job_sgmt.append("JOB_SGMT: 000000%02d 000000"%(self.endDates[iseg]-self.begDates[iseg]).days)
-# 
-#            # print, if requested
-#            if self.verbose:
-#                print '\nn          start                  end'
-#                for iseg in xrange(nSegments):
-#                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
-#
-#        # wj notes: disable monthsperjob
-#        self.monthsperjob = 0
-#        if self.monthsperjob:
-#            # shorthands
-#            _mpj = self.monthsperjob
-#            assert _mpj>0, 'monthsperjob = %d' % _mpj
-#            _start = self.begDates[0]
-#            _end = self.endDates[0]
-#            # for this option the start/end dates have to be
-#            # 0z on the first of the month
-#            assert (_start.day==1 and _start.hour==0 and 
-#                    _start.minute==0 and _start.second==0
-#                    ), 'invalid start_time: %s for --monthsperjob' % \
-#                    _start.strftime('%Y-%m-%d-%H-%M-%S')
-#            assert (_end.day==1 and _end.hour==0 and 
-#                    _end.minute==0 and _end.second==0
-#                    ), 'invalid end_time: %s for --monthsperjob' % \
-#                    _end.strftime('%Y-%m-%d-%H-%M-%S')
-#            _start_list = list()
-#            _end_list = list()
-#            for dt in rrule.rrule(rrule.MONTHLY, interval=_mpj, dtstart=_start, until=_end):
-#                seg_start = dt
-#                seg_end = dt+relativedelta(months=_mpj)
-#                if seg_end>_end:
-#                    seg_end = _end
-#                if(seg_start>=seg_end) :
-#                    break
-#                _start_list.append(seg_start)
-#                _end_list.append(seg_end)
-#
-#            #update beg dates and end dates
-#
-#            self.begDates = _start_list
-#            self.endDates = _end_list
-#            self.job_sgmt =list()
-#            for iseg in xrange(len(_start_list)):
-#                months = 0
-#                dt = relativedelta(months=+1)
-#                d = self.begDates[iseg]
-#                while d <self.endDates[iseg]:
-#                    d +=dt
-#                    months+=1
-#                self.job_sgmt.append("JOB_SGMT: 0000%02d00 000000"% months)
-#
-#            if self.verbose:
-#                print '\nn          start                  end'
-#                for iseg in xrange(len(_start_list)):
-#                    print iseg, ':', _start_list[iseg], '-', _end_list[iseg]
-
 
     def _parseInputFile(self, inpfile):
         """
@@ -554,7 +480,12 @@ class LDASsetup:
             line = line.strip()
             # blank line
             if not line:
-                continue
+               continue
+            if '"GEOSldas=>"' in line:
+               continue
+            # get "GEOSldas=>" default in GEOS_LandGrid.rc
+            if 'GEOSldas=>' in line:
+               line = line.split('GEOSldas=>')[1]
             # handle comments
             position = line.find('#')
             if position==0: # comment line
@@ -569,7 +500,9 @@ class LDASsetup:
             key = key.strip()
             val = val.strip()
             if not key or not val:
-                raise Exception(errstr % (linenum, inpfile))
+                print "WARNING: " + errstr % (linenum, inpfile)
+                continue
+                #raise Exception(errstr % (linenum, inpfile))
             if key in inpdict:
                 raise Exception('Duplicate key [%s] in [%s]' % (key, inpfile))
             inpdict[key] = val.strip()
@@ -622,7 +555,7 @@ class LDASsetup:
 
         # ensxxxx directories
         nSegments = self.nSegments
-        for iseg in xrange(nSegments):
+        for iseg in range(nSegments):
             _start = self.begDates[iseg]
             _end = self.endDates[iseg]
 
@@ -704,7 +637,7 @@ class LDASsetup:
         if 'SURFLAY' in self.rqdExeInp :
            dzsf = self.rqdExeInp['SURFLAY']
 
-        # These are dummy values for cold restart:
+        # These are dummy values for *cold* restart:
         wemin_in  = '13'  #  WEmin input/output for scale_catch(cn),
         wemin_out = '13'  #             
         if 'WEMIN_IN' in self.rqdExeInp :
@@ -720,7 +653,7 @@ class LDASsetup:
         sp.call(cmd,shell=True)
         # check if it is local or global
         with open('f2g.txt') as f2gfile :
-            head=[next(f2gfile) for x in xrange(2)]
+            head=[next(f2gfile) for x in range(2)]
             if(head[0].strip() != head[1].strip()) :
                 self.islocal= True
 
@@ -728,7 +661,7 @@ class LDASsetup:
         if self.islocal:
             newlocalTile = tile+'.domain'
             print "\nCreating local tile file :"+ newlocalTile
-            print "\nwith land type 1100 excluded....\n"
+            print "\n by excluding land type MAPL_Land_ExcludeFromDomain=1100...\n"
             cmd = './preprocess_ldas.x c_localtile ' + tile + ' ' + newlocalTile 
             print "cmd:   " + cmd
             sp.call(cmd,shell=True)
@@ -764,10 +697,9 @@ class LDASsetup:
         # link BC
         print "linking bcs..." 
         bcnames=['green','lai','ndvi','nirdf','visdf']
-        for ensid in self.ensids :
-            for bcln,bc in zip(bcnames,bcs) :
-                myBC=self.inpdir+'/'+bcln+ensid+'.data'
-                os.symlink(bc,myBC)
+        for bcln,bc in zip(bcnames,bcs) :
+           myBC=self.inpdir+'/'+bcln+'.data'
+           os.symlink(bc,myBC)
 
         # create and link restart 
         print "Creating and lining restart..."
@@ -798,15 +730,15 @@ class LDASsetup:
         rstdomain = self.rqdExeInp['RESTART_DOMAIN']
         rstpath0  = self.rqdExeInp['RESTART_PATH']
      
-        # just copy the landassim pert seed if it exist
-        for iens in xrange(self.nens) :
+        # just copy the landassim pert seed if it exists
+        for iens in range(self.nens) :
            _ensdir = self.ensdirs[iens]
            _ensid  = self.ensids[iens]
            landassim_seeds = rstpath + _ensdir + '/' + y4m2+'/' + rstid + '.landassim_obspertrseed_rst.'+y4m2d2_h2m2
-           if os.path.isfile(landassim_seeds) and self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' :
+           if os.path.isfile(landassim_seeds) and self.assim :
                _seeds = self.rstdir + _ensdir + '/' + y4m2+'/' + exp_id + '.landassim_obspertrseed_rst.'+y4m2d2_h2m2 
                shutil.copy(landassim_seeds, _seeds)
-               os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ensid +'_rst')
+               os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ _ensid +'_rst')
                self.has_landassim_seed = True
  
         cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, exp_dir,
@@ -830,7 +762,7 @@ class LDASsetup:
         #for ens in self.ensdirs :
         catchRstFile0  = ''
         vegdynRstFile0 = ''
-        for iens in xrange(self.nens) :
+        for iens in range(self.nens) :
             ens   = self.ensdirs[iens]
             ensid = self.ensids[iens]
             myCatchRst = myRstDir+'/'+self.catch +ensid +'_internal_rst'
@@ -861,7 +793,7 @@ class LDASsetup:
                 catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'_internal_rst.'+YYYYMMDD
 
             # catchment restart file
-            print 'catchRstFile1: ' +  catchRstFile
+            print 'catchRstFile: ' +  catchRstFile
             if os.path.isfile(catchRstFile) :
 
                 catchLocal = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
@@ -898,14 +830,14 @@ class LDASsetup:
                     vegdynRstFile0 = vegdynRstFile
             else :    
                 vegdynRstFile = vegdynRstFile0
-            _perturb = 1 if self.nens > 1 else 0
-            if (self.has_geos_pert and _perturb == 1) :
+
+            if (self.has_geos_pert and self.perturb == 1) :
                 pertRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                 pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                 shutil.copy(pertRstFile,pertLocal)
                 pertRstFile = pertLocal
 
-            if (self.has_ldassa_pert and _perturb == 1 ) :
+            if (self.has_ldassa_pert and self.perturb == 1 ) :
                 pertRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+ens+'.pert_ldas_rst.'+y4m2d2_h2m2+'z.bin'
                 pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                 print "Convert LDASsa pert " + ensid + " rst to GEOSldas rst"
@@ -917,23 +849,15 @@ class LDASsetup:
 
             os.symlink(catchRstFile, myCatchRst)
             os.symlink(vegdynRstFile,  myVegRst)
-            if ( (self.has_geos_pert or self.has_ldassa_pert) and  _perturb == 1 ):
+            if ( (self.has_geos_pert or self.has_ldassa_pert) and  self.perturb == 1 ):
                os.symlink(pertRstFile,  myPertRst)
 
         # catch_param restar file
         catch_param_file = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_catparam.'+y4m2d2_h2m2+'z.bin'
         assert os.path.isfile(catch_param_file), "need catch_param file %s" % catch_param_file
 
-        # mwRTM restart file
-        mwRTMRstFile = ""      
-        _assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
-        if 'MWRTM_FILE' in self.rqdExeInp :
+        if self.has_mwrtm :
             mwRTMRstFile = self.rqdExeInp['MWRTM_FILE']
-        elif _assim ==1 :
-            mwRTMRstFile= rcoutpath +'/' + y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
- 
-        if os.path.isfile(mwRTMRstFile) :
-            self.has_mwrtm = True
             mwRTMLocal = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
             if self.islocal :
                 print "Creating the local mwRTM restart file... \n"
@@ -993,18 +917,17 @@ class LDASsetup:
         etcdir = self.blddirLn + '/etc'
 
         #defalt nml
-        default_nml = glob.glob(etcdir+'/LDASsa_DEFAULT*.nml')
+        default_nml = glob.glob(etcdir+'/LDASsa_DEFAULT_inputs_*.nml')
         for nmlfile in default_nml:
             shortfile=self.rundir+'/'+nmlfile.split('/')[-1]
             shutil.copy2(nmlfile, shortfile)
          # special nml
         special_nml=[]
         if 'NML_INPUT_PATH' in self.rqdExeInp :
-            special_nml = glob.glob(self.rqdExeInp['NML_INPUT_PATH']+'/*SPECIAL*nml')
+            special_nml = glob.glob(self.rqdExeInp['NML_INPUT_PATH']+'/LDASsa_SPECIAL_inputs_*.nml')
         for nmlfile in special_nml:
-            if (_nens > 1) :
-                shortfile=nmlfile.split('/')[-1]
-                shutil.copy2(nmlfile, self.rundir+'/'+shortfile)
+            shortfile=nmlfile.split('/')[-1]
+            shutil.copy2(nmlfile, self.rundir+'/'+shortfile)
 
         # get optimzed NX and IMS
         if os.path.isfile('optimized_distribution'):
@@ -1054,16 +977,15 @@ class LDASsetup:
                     GRID='EASE ' + self.rqdExeInp['GRIDNAME'] + ' ' +tmprcfile
                     if '-CF' in self.rqdExeInp['GRIDNAME'] :
                         GRID ='CUBE ' + self.rqdExeInp['GRIDNAME'] + ' ' +tmprcfile
-                    _assim = '1' if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else '0'
-                    _perturb = '1' if self.nens > 1 else '0'
+                    _assim = '1' if self.assim else '0'
                     cmd ='./process_hist.csh '+ str(self.rqdExeInp['LSM_CHOICE']) + ' ' + str(self.rqdExeInp['AEROSOL_DEPOSITION']) + \
-                          ' ' + GRID + ' ' + str(self.rqdExeInp['RUN_IRRIG']) + ' ' + _assim + ' '+ _perturb
+                          ' ' + GRID + ' ' + str(self.rqdExeInp['RUN_IRRIG']) + ' ' + _assim + ' '+ str(self.nens)
                     print(cmd)
                     os.system(cmd)
                     #sp.call(cmd)       
                 for line in fileinput.input(tmprcfile,inplace=True):
                     print line.rstrip().replace('GEOSldas_expid',self.rqdExeInp['EXP_ID'])
-            # just copy en emty ExtData.rc
+            # just copy an empty ExtData.rc
             if shortfile=='ExtData.rc' :
                 shutil.copy2(rcfile, self.rundir+'/'+shortfile)
                 
@@ -1083,13 +1005,18 @@ class LDASsetup:
                     print line.rstrip().replace('END_DATE:',self.endDates[-1].strftime('END_DATE: %Y%m%d %H%M%S'))
                     
             if shortfile == 'LDAS.rc' :
-                default_ldasrcInp = self._parseInputFile(rcfile)
                 ldasrcInp = OrderedDict()
-                # default 
+                # land default 
+                default_surfrcInp = self._parseInputFile(etcdir+'/GEOS_SurfaceGridComp.rc')
+                for key,val in default_surfrcInp.iteritems() :
+                    ldasrcInp[key] = val
+
+                # ldas default, may overwrite land default 
+                default_ldasrcInp = self._parseInputFile(rcfile)
                 for key,val in default_ldasrcInp.iteritems() :
                     ldasrcInp[key] = val
 
-                # overide by the exeinp
+                # exeinp, may overwrite ldas default
                 for key,val in self.rqdExeInp.iteritems():
                     if key not in self.NoneLDASrcKeys:
                         ldasrcInp[key]= val
@@ -1098,22 +1025,17 @@ class LDASsetup:
                 #for key,val in optinxny.iteritems():
                 #    ldasrcInp[key]= val
 
-     
-                if (self.runmodel) :
-                    assert ldasrcInp['LAND_ASSIM'].upper() == 'NO', "--runmodel is used,should set LAND_ASSIM to NO"
-                else :
-                    assert ldasrcInp['LAND_ASSIM'].upper() == 'YES', "--runmodel is not used,should set LAND_ASSIM to YES"
-
                 # create BC in rc file
                 tmpl_ = ''
                 if self.nens >1 :
-                   ldasrcInp['PERTURBATIONS'] ='1'
                    tmpl_='%s' 
+                if self.perturb == 1:
+                   ldasrcInp['PERTURBATIONS'] ='1'
                 bcval=['../input/green','../input/lai','../input/ndvi','../input/nirdf','../input/visdf']
                 bckey=['GREEN','LAI','NDVI','NIRDF','VISDF']
                 for key, val in zip(bckey,bcval):
-                   keyn= key+'_FILE'
-                   valn= val+tmpl_+'.data'
+                   keyn = key+'_FILE'
+                   valn = val+'.data'
                    ldasrcInp[keyn]= valn
 
                 # create restart item in RC
@@ -1130,53 +1052,52 @@ class LDASsetup:
         
                 rstkey=[catch_,'VEGDYN']
                 rstval=[self.catch,'vegdyn']
-                _perturb = 1 if self.nens > 1 else 0
-                if((self.has_ldassa_pert or self.has_geos_pert) and _perturb == 1) :
-                   rstkey=[catch_,'VEGDYN','LANDPERT']
-                   rstval=[self.catch,'vegdyn','landpert']
 
-                _assim = 1 if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else 0
-                if self.has_mwrtm and _assim ==1 :
+                if self.has_mwrtm : # and _assim ==1 :
                    keyn='LANDASSIM_INTERNAL_RESTART_FILE'
                    valn='../input/restart/mwrtm_param_rst'
                    ldasrcInp[keyn]= valn
 
-                if self.has_landassim_seed and _assim ==1 :
-                   keyn='LANDASSIM_OBSPERTRSEED_RESTART_FILE'
-                   valn='../input/restart/landassim_obspertrseed%s_rst'
-                   ldasrcInp[keyn]= valn
-
-                if _assim == 1: 
-                   keyn='LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE'
-                   valn='landassim_obspertrseed%s_checkpoint'
-                   ldasrcInp[keyn]= valn
-
-                ensid =""
                 if self.nens > 1 :
-                   ensid ="%s"
                    keyn='ENS_ID_WIDTH'
                    valn='4'
+                   ldasrcInp[keyn]= valn
+
+                if self.has_landassim_seed and self.assim :
+                   keyn='LANDASSIM_OBSPERTRSEED_RESTART_FILE'
+                   valn='../input/restart/landassim_obspertrseed'+tmpl_+'_rst'
+                   ldasrcInp[keyn]= valn
+
+                if self.assim: 
+                   keyn='LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE'
+                   valn='landassim_obspertrseed'+tmpl_+'_checkpoint'
                    ldasrcInp[keyn]= valn
        
                 for key,val in zip(rstkey,rstval) :
                     keyn = key+ '_INTERNAL_RESTART_FILE'
-                    valn = '../input/restart/'+val+ensid+'_internal_rst'
+                    valn = '../input/restart/'+val+tmpl_+'_internal_rst'
                     ldasrcInp[keyn]= valn
                         
                 # checkpoint file and its type
                 keyn = catch_ + '_INTERNAL_CHECKPOINT_FILE'
-                valn = self.catch+ensid+'_internal_checkpoint'
+                valn = self.catch+tmpl_+'_internal_checkpoint'
                 ldasrcInp[keyn]= valn
 
-                if((self.has_ldassa_pert or self.has_geos_pert) and _perturb == 1):
-                    keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
-                    valn = 'landpert'+ensid+'_internal_checkpoint'
+                # specify LANDPERT restart file
+                if (self.perturb == 1):
+                    keyn = 'LANDPERT_INTERNAL_RESTART_FILE'
+                    valn = '../input/restart/landpert'+tmpl_+'_internal_rst'
                     ldasrcInp[keyn]= valn
-                    
-    
+                    # for lat/lon and EASE tile space, specify LANDPERT checkpoint file here (via MAPL);
+                    # for cube-sphere tile space, Landpert GC will set up LANDPERT checkpoint file 
+                    if ('-CF' not in self.rqdExeInp['GRIDNAME']):
+                        keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
+                        valn = 'landpert'+tmpl_+'_internal_checkpoint'
+                        ldasrcInp[keyn]= valn
+ 
                 # write LDAS.rc
                 fout =open(self.rundir+'/'+shortfile,'w')
-                ldasrcInp['NUM_LDAS_ENSEMBLE']=ldasrcInp.pop('NUM_ENSEMBLE')
+                # ldasrcInp['NUM_LDAS_ENSEMBLE']=ldasrcInp.pop('NUM_ENSEMBLE')
                 for key,val in optinxny.iteritems():
                     keyn=(key+":").ljust(36)
                     fout.write(keyn+str(val)+'\n')
@@ -1200,7 +1121,6 @@ class LDASsetup:
 
         _rm_name = self.rqdRmInp['rm_name']
         expid = self.rqdExeInp['EXP_ID']
-        #expdomain = self.rqdExeInp['EXP_DOMAIN']
         if _rm_name=='SLURM':
             directives = ''
             # REQUIRED directives account/time/ntasks
@@ -1255,7 +1175,7 @@ class LDASsetup:
         expid = self.rqdExeInp['EXP_ID']
         fout.write("\nsed -i 's/if($capdate<$enddate) sbatch /#if($capdate<$enddate) sbatch /g' lenkf.j\n\n")
         nSegments = self.nSegments
-        for iseg in xrange(nSegments):
+        for iseg in range(nSegments):
             if iseg ==0 :
                 fout.write("jobid%d=$(echo $(sbatch lenkf.j) | cut -d' ' -f 4)\n"%(iseg))
                 fout.write("echo $jobid%d\n"%iseg )
@@ -1314,7 +1234,7 @@ class LDASsetup:
         if 'job_name' in self.optRmInp :
             my_job = self.optRmInp['job_name']
 
-        my_constraint='hasw'
+        my_constraint=''
         if 'constraint' in self.optRmInp :
             my_constraint = self.optRmInp['constraint']
 
@@ -1357,23 +1277,29 @@ class LDASsetup:
                     elif 'MY_JOB' in line :
                         fout.write(line.replace('MY_JOB',my_job))
                     elif 'MY_CONS' in line :
-                        fout.write(line.replace('MY_CONS',my_constraint))
+                        if my_constraint!='' :
+                            fout.write(line.replace('MY_CONS',my_constraint))
                     elif 'MY_EXPID' in line :
                         fout.write(line.replace('MY_EXPID',self.rqdExeInp['EXP_ID']))
                     elif 'MY_EXPDOMAIN' in line :
                         fout.write(line.replace('MY_EXPDOMAIN',self.rqdExeInp['EXP_DOMAIN']))
-                    #elif 'MY_ESMADIR' in line :
-                    #    fout.write(line.replace('MY_ESMADIR',self.blddir))
-                    elif 'MY_ENSEMBLE' in line :
-                        fout.write(line.replace('MY_ENSEMBLE',str(self.rqdExeInp['NUM_ENSEMBLE'])))
                     elif 'MY_LOGFILE' in line :
                         fout.write(line.replace('MY_LOGFILE',my_logfile))
                     elif 'MY_ERRFILE' in line :
                         fout.write(line.replace('MY_ERRFILE',my_errfile))
                     elif 'MY_MODEL' in line :
                         fout.write(line.replace('MY_MODEL',self.catch))
-                    elif 'MY_MONTHLY' in line :
-                        fout.write(line.replace('MY_MONTHLY',str(self.rqdExeInp['MONTHLY_OUTPUT'])))                        
+                    elif 'MY_POSTPROC_HIST' in line :
+                        fout.write(line.replace('MY_POSTPROC_HIST',str(self.rqdExeInp['POSTPROC_HIST'])))                        
+                    elif 'MY_FIRST_ENS_ID' in line :
+                        fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
+                    elif 'MY_LADAS_COUPLING' in line :
+                        fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
+                    elif 'MY_ADAS_EXPDIR' in line :
+                        if self.ladas_coupling > 0:
+                           fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
+                    
+                        
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
                      
@@ -1398,13 +1324,13 @@ def _printExeInputKeys(rqdExeInpKeys):
     Private method: print sample exe input
     """
 
-    print '#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#'
-    print '#                                                          #'
-    print '#                 REQUIRED INPUTS                          #'
-    print '#                                                          #'
-    print '# These inputs are needed to set up output dir structure.  #'
-    print '#                                                          #'
-    print '#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#'
+    print '####################################################################################'
+    print '#                                                                                  #'
+    print '#                             REQUIRED INPUTS                                      #'
+    print '#                                                                                  #'
+    print '#             These inputs are needed to set up output dir structure.              #'
+    print '#                                                                                  #'
+    print '####################################################################################'
     print 
     print '############################################################'
     print '#                                                          #'
@@ -1413,13 +1339,12 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '# Format for start/end times is yyyymmdd hhmmss.           #'
     print '#                                                          #'
     print '############################################################'
-    print
-    print 'EXP_ID                  :'
-    print 'EXP_DOMAIN              :'
-    print 'NUM_ENSEMBLE            :'
-    print 'BEG_DATE                :'
-    print 'END_DATE                :'
-    
+    print 
+    print 'EXP_ID:'
+    print 'EXP_DOMAIN:'
+    print 'NUM_LDAS_ENSEMBLE:'
+    print 'BEG_DATE:'
+    print 'END_DATE:'
     print
     print '############################################################'
     print '#                                                          #'
@@ -1485,46 +1410,115 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#   RESTART_DOMAIN is NOT required.                        #'
     print '#                                                          #'
     print '############################################################'
-
     print
-    print 'RESTART                  :'
-    print '#RESTART_ID              :'
-    print '#RESTART_PATH            :'
-    print '#RESTART_DOMAIN          :'
-
+    print 'RESTART:'
+    print '#RESTART_ID:'
+    print '#RESTART_PATH:'
+    print '#RESTART_DOMAIN:'
     print
     print '############################################################'
     print '#                                                          #'
     print '#         SURFACE METEOROLOGICAL FORCING                   #'
     print '#                                                          #'
-    print '#  See README files in ./src/Applications/LDAS_App/doc     #'
+    print '#  See README file in ./doc                                #'
     print '#                                                          #'
+    print '#  Surface meteorological forcing time step is in seconds. #'
+    print '#                                                          #'     
     print '############################################################'
-
     print
-    print 'MET_TAG                 :'
-    print 'MET_PATH                :'
-    print 'FORCE_DTSTEP            :'
-
+    print 'MET_TAG:'
+    print 'MET_PATH:'
+    print 'FORCE_DTSTEP:'
     print
     print '############################################################'
     print '#                                                          #'
     print '#            LAND BOUNDARY CONDITIONS DIRECTORY            #'
     print '#                                                          #'
-    print '#  See README files in ./src/Applications/LDAS_App/doc     #'
+    print '#  See README file in ./doc                                #'
     print '#                                                          #'
     print '############################################################'
     print
-    print 'BCS_PATH                :'
+    print 'BCS_PATH:'
+    print
+    print '############################################################'
+    print '#                                                          #'
+    print '#                 LADAS COUPLING                           #'
+    print '#                                                          #'
+    print '# Coupling of LDAS to ADAS ("LADAS"):                      #'
+    print '#                                                          #'
+    print '#   0 -- LDAS not coupled with ADAS (default)              #'
+    print '#   1 -- LDAS coupled with central member of ADAS          #'
+    print '#   2 -- LDAS coupled with ens component of ADAS           #' 
+    print '#                                                          #' 
+    print '#  Requirements for LADAS_COUPLING > 0:                    #'
+    print '#                                                          #'     
+    print '#  (0) Specify ADAS_EXPDIR = [full_path]/[ADAS_EXPID]      #'
+    print '#                                                          #'
+    print '#  (1) BEG_DATE must be consistent with first cycle date   #'
+    print '#        and time of ADAS experiment (time is typically    #'
+    print '#        3z, 9z, 15z, or 21z)                              #'
+    print '#                                                          #'        
+    print '#  (2) EXP_DOMAIN must be global CS grid as in ADAS exp    #'
+    print '#                                                          #'
+    print '#  (3) MET_TAG  must be set to [ADAS_EXPID]__Nx+-          #'
+    print '#      MET_PATH must be set as follows for                 #'
+    print '#        LADAS_COUPLING = 1:                               #'        
+    print '#          [ADAS_EXPDIR]/lana/forc                         #'        
+    print '#        LADAS_COUPLING = 2:                               #'        
+    print '#          [ADAS_EXPDIR]/atmens/ensdiag/forc               #'
+    print '#      After ldas exp setup, verify the following link:    #'        
+    print '#        ../input/met_forcing/forc -> [MET_PATH]           #' 
+    print '#                                                          #'
+    print '#  (4) BCS_PATH must be consistent with that of            #'
+    print '#        [ADAS_EXPDIR][/run/lnbcs                          #'
+    print '#                                                          #'
+    print '#  (5) JOB_SGMT must match ADAS analysis window            #'
+    print '#        (typically 6h)                                    #'
+    print '#                                                          #'
+    print '#  (6) NUM_SGMT must be set to 1                           #'
+    print '#                                                          #'
+    print '#  (7) HISTORY:                                            #'
+    print '#      - instantaneous "catch_progn_incr" must be in       #'
+    print '#          HISTORY collection                              #'
+    print '#      - time step must match that of LDAS analysis        #'
+    print '#      - for LADAS_COUPLING=2, HISTORY must include        #'              
+    print '#          "catch_progn_incr[ENS_INDEX]"                   #'
+    print '#                                                          #'
+    print '############################################################'
+    print
+    print 'LADAS_COUPLING: 0'
+    print
     print
 
     _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from /bin directory
 
-    _f = open(_fn)
-    for line in _f:
-       sys.stdout.write(line)
-       sys.stdout.flush()
-    _f.close()
+    with open(_fn) as _f:
+       i_ = 1
+       for line in _f:
+          if ( i_ < 5 or i_ >10):     # ignore lines 5-10 - may need to change if GEOSldas_LDAS.rc is edited
+             sys.stdout.write(line)
+             sys.stdout.flush()
+          i_ += 1
+    print
+    print
+
+    _fn = '../etc/GEOS_SurfaceGridComp.rc'   # run ldas_setup from /bin directory
+
+    with open(_fn) as _f :
+       i_ = 1
+       for line in _f:
+         if ( 5<=i_ and i_<=21) :     # ignore lines 5-21 - may need to change if GEOS_SurfaceGridComp.rc is edited
+            i_ +=1
+            continue
+         if '"GEOSldas=>"' in line:
+           sys.stdout.write(line)
+         elif 'GEOSldas=>' in line:
+           line0 = line.split("GEOSldas=>")[1]
+           sys.stdout.write(line0)
+         elif not line.strip() or line.strip().startswith('#'):
+             sys.stdout.write(line)
+         sys.stdout.flush()
+         i_ += 1
     print
     print
  
@@ -1537,8 +1531,12 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# REQUIRED inputs'
     print '#'
     print '# NOTE:'
-    print '# (1) rm_name (resource manager name) is SLURM (PBS is no longer used)'
-    print '# (2) walltime is in the format hh:mm:ss'
+    print '# - rm_name    = resource manager name'
+    print '#                  [At NCCS: Use "SLURM"; PBS is no longer used.'
+    print '# - account    = computational project number'
+    print '#                  [At NCCS: Use command "getsponsor" to see available account number(s).]'  
+    print '# - walltime   = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
+    print '# - ntasks     = number of processors requested'
     print '#'
     for key in rqdRmInpKeys:
         print key.ljust(23), ':'
@@ -1547,9 +1545,9 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# OPTIONAL inputs'
     print '#'
     print '# NOTE:'
-    print '# (1) Default job_name is "exp_id"'
-    print '# (2) Default constraint is "hasw"'
-    print '# (3) Do not specify qos (quality-of-service) by default.  Specify "debug" for faster but limited service.'
+    print '# - job_name   = name of experiment; default is "exp_id"'
+    print '# - constraint = type of processors requested; default is no constraint.'
+    print '# - qos        = quality-of-service; do not specify by default; specify "debug" for faster but limited service.'
     print '#'
     for key in optRmInpKeys:
         print '#'+key.ljust(23), ':'
@@ -1611,27 +1609,27 @@ def parseCmdLine():
         help='input file with arguments for SLURM',
         )
     p_setup.add_argument(
+        '--account',
+        help='replace computing/sponsor account in batinp file',
+        type=str, default='None'
+        )
+    p_setup.add_argument(
         '--runmodel',
-        help='model run (no assimilation)',
+        help='Obsolete.',
         action='store_true',
         )
-    #p_setup.add_argument(
-    #    '--ForceReuseDir',
-    #    help='force re-use existing exp dir',
-    #    action='store_true',
-    #    )
     spltgrp = p_setup.add_mutually_exclusive_group()
     spltgrp.add_argument(
         '--daysperjob',
         type=int,
         metavar='N',
-        help='This option is no longer available.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
+        help='Obsolete.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
         )
     spltgrp.add_argument(
         '--monthsperjob',
         type=int,
         metavar='N',
-        help='This option is no longer available.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
+        help='Obsolete.  Use NUM_SGMT and JOB_SGMT in exeinp file.',
         )
 
     return p.parse_args()

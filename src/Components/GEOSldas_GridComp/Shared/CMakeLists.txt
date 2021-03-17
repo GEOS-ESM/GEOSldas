@@ -6,7 +6,7 @@ set (SRCS
   LDAS_ensdrv_functions.F90 my_matrix_functions.F90
   LDAS_EASE_conv.F90 LDAS_TileCoordRoutines.F90
   LDAS_RepairForcing.F90
-  LDAS_ensdrv_init_routines.F90 LDAS_ensdrv_mpi.F90
+  LDAS_ensdrv_mpi.F90
   )
 
 list (APPEND SRCS
@@ -15,5 +15,5 @@ list (APPEND SRCS
 
 esma_add_library(${this}
   SRCS ${SRCS}
-  DEPENDENCIES MAPL_Base  GEOS_Shared
+  DEPENDENCIES MAPL  GEOS_Shared
   INCLUDES ${INC_ESMF} ${INC_NETCDF})

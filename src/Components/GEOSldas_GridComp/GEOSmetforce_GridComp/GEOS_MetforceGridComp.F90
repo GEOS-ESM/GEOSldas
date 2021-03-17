@@ -10,7 +10,7 @@ module GEOS_MetforceGridCompMod
   use MAPL_Mod
 
   use LDAS_ensdrv_Globals, only: nodata_generic, nodata_tol_generic
-  use LDAS_ensdrv_Globals, only: logunit,master_logit,logit
+  use LDAS_ensdrv_Globals, only: logunit,logit   !,root_logit
   use LDAS_DateTimeMod, only: date_time_type, date_time_print
   use LDAS_TileCoordType, only: tile_coord_type
   use LDAS_TileCoordType, only: T_TILECOORD_STATE 
@@ -18,6 +18,7 @@ module GEOS_MetforceGridCompMod
   use LDAS_ForceMod, only: LDAS_GetForcing => get_forcing
   use LDAS_ForceMod, only: LDAS_move_new_force_to_old
   use LDAS_ForceMod, only: FileOpenedHash,GEOS_closefile
+  use LDAS_ForceMod, only: im_world_cs
   use LDAS_DriverTypes, only: met_force_type, assignment(=)
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_InterpMod, only: LDAS_TInterpForcing=>metforcing_tinterp
@@ -62,13 +63,13 @@ module GEOS_MetforceGridCompMod
   end type T_MET_FORCING
 
   ! Internal state and its wrapper
-  type T_DATAATM_STATE
+  type T_METFORCE_STATE
      private
      type(T_MET_FORCING) :: mf
-  end type T_DATAATM_STATE
-  type DATAATM_WRAP
-     type(T_DATAATM_STATE), pointer :: ptr=>null()
-  end type DATAATM_WRAP
+  end type T_METFORCE_STATE
+  type METFORCE_WRAP
+     type(T_METFORCE_STATE), pointer :: ptr=>null()
+  end type METFORCE_WRAP
 
   !! Wrapper to the tile_coord variable
   !type T_TILECOORD_STATE
@@ -104,8 +105,8 @@ contains
     character(len=ESMF_MAXSTR) :: comp_name
 
     ! Local variables
-    type(T_DATAATM_STATE), pointer :: internal
-    type(DATAATM_WRAP) :: wrap
+    type(T_METFORCE_STATE), pointer :: internal
+    type(METFORCE_WRAP) :: wrap
 
     ! Begin...
 
@@ -143,7 +144,7 @@ contains
     allocate(internal, stat=status)
     VERIFY_(status)
     wrap%ptr => internal
-    call ESMF_UserCompSetInternalState(gc, 'Dataatm_state', wrap, status)
+    call ESMF_UserCompSetInternalState(gc, 'METFORCE_state', wrap, status)
     VERIFY_(status)
 
     ! Set the state variable specs
@@ -572,8 +573,8 @@ contains
     type(T_MET_FORCING) :: mf
 
     ! Internal private state variables
-    type(T_DATAATM_STATE), pointer :: internal=>null()
-    type(DATAATM_WRAP) :: wrap
+    type(T_METFORCE_STATE), pointer :: internal=>null()
+    type(METFORCE_WRAP) :: wrap
     type(TILECOORD_WRAP) :: tcwrap
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
@@ -585,7 +586,9 @@ contains
 
     integer :: AEROSOL_DEPOSITION
     type(MAPL_LocStream) :: locstream
-
+    character(len=ESMF_MAXSTR) :: grid_type
+    type(ESMF_Grid) :: agrid
+    integer :: dims(ESMF_MAXDIM)
     ! Begin...
 
     ! Get component's name and setup traceback handle
@@ -606,7 +609,7 @@ contains
     VERIFY_(status)
 
     ! Get component's internal private state
-    call ESMF_UserCompGetInternalState(gc, 'Dataatm_state', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'METFORCE_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
 
@@ -627,6 +630,17 @@ contains
 
     call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", &
          DEFAULT=0, RC=STATUS)
+
+    call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
+    VERIFY_(STATUS)
+
+    if(trim(grid_type) == "Cubed-Sphere" ) then
+       call ESMF_GridCompGet(gc, grid=agrid, rc=status)
+       VERIFY_(status)
+       call MAPL_GridGet(agrid, globalCellCountPerDim=dims, rc=status) 
+       VERIFY_(STATUS)
+       im_world_cs = dims(1)
+    endif 
 
     ! Get MetForcing values and put them in Ldas' internal state
     ! Get resources needed to call LDAS_ForceMod::get_forcing()
@@ -767,8 +781,8 @@ contains
     type(date_time_type) :: force_time_prv, force_time_nxt, model_time_nxt
 
     ! Private internal state variables
-    type(T_DATAATM_STATE), pointer :: internal=>null()
-    type(DATAATM_WRAP) :: wrap
+    type(T_METFORCE_STATE), pointer :: internal=>null()
+    type(METFORCE_WRAP) :: wrap
     type(TILECOORD_WRAP) :: tcwrap ! LDAS' tile_coord variable
     type(tile_coord_type), pointer :: tile_coord(:)
 
@@ -851,7 +865,7 @@ contains
     VERIFY_(status)
 
     ! Get component's internal private state
-    call ESMF_UserCompGetInternalState(gc, 'Dataatm_state', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'METFORCE_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
  
@@ -936,7 +950,7 @@ contains
        call LDAS_move_new_force_to_old(internal%mf%DataNxt,internal%mf%DataPrv, &
            MERRA_file_specs,GEOS_Forcing,AEROSOL_DEPOSITION)
 
-       !if(master_logit) write(logunit,*) trim(Iam)//'::force_time_nxt: ', date_time_print(force_time_nxt)
+       !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_nxt: ', date_time_print(force_time_nxt)
 
        ! -compute-average-zenith-angle-over-daylight-part-of-forcing-interval-
        call MAPL_SunGetInsolation(                                              &
@@ -968,7 +982,7 @@ contains
 
     end if
 
-    !if(master_logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
+    !if(root_logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
     !if(logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
 
     ! Compute zenith angle at the next time step
@@ -997,7 +1011,7 @@ contains
        RETURN_(ESMF_FAILURE)
     end if
 
-    !if(master_logit) write(logunit,*)  trim(Iam)//'::zth max/min: ', maxval(zth), minval(zth)
+    !if(root_logit) write(logunit,*)  trim(Iam)//'::zth max/min: ', maxval(zth), minval(zth)
 
     ! -convert-mf%TimePrv-to-LDAS-datetime-
     call esmf2ldas(internal%mf%TimePrv, force_time_prv, rc=status)
@@ -1006,9 +1020,9 @@ contains
     ! -convert-ModelTimeNxt-to-LDAS-datetime-
     call esmf2ldas(ModelTimeNxt, model_time_nxt, rc=status)
 
-    !if(master_logit) write(logunit,*) trim(Iam)//'::force_time_prv: ', date_time_print(force_time_prv)
+    !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_prv: ', date_time_print(force_time_prv)
 
-    !if(master_logit) write(logunit,*) trim(Iam)//'::model_time_nxt: ', date_time_print(model_time_nxt)
+    !if(root_logit) write(logunit,*) trim(Iam)//'::model_time_nxt: ', date_time_print(model_time_nxt)
 
     ! Allocate memory for interpolated MetForcing data
     mf_nodata = nodata_generic
@@ -1031,7 +1045,7 @@ contains
          rc=status                                                              &
          )
     VERIFY_(status)
-    !if(master_logit) write(logunit,*) trim(Iam)//'::mf_ntp%tair max/min: ', maxval(mfDataNtp%Tair), minval(mfDataNtp%Tair)
+    !if(root_logit) write(logunit,*) trim(Iam)//'::mf_ntp%tair max/min: ', maxval(mfDataNtp%Tair), minval(mfDataNtp%Tair)
 
     ! Pointers to exports (allocate memory)
     call MAPL_GetPointer(export, Tair, 'Tair', alloc=.true., rc=status)
@@ -1239,8 +1253,8 @@ contains
 
     ! Local variables
     type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
-    type(T_DATAATM_STATE), pointer :: internal
-    type(DATAATM_WRAP) :: wrap
+    type(T_METFORCE_STATE), pointer :: internal
+    type(METFORCE_WRAP) :: wrap
     type(ESMF_Alarm) :: MetForcing
     !external :: GEOS_closefile
     ! Begin...
@@ -1255,7 +1269,7 @@ contains
     VERIFY_(status)
 
     ! Get component's internal private state
-    call ESMF_UserCompGetInternalState(gc, 'Dataatm_state', wrap, status)
+    call ESMF_UserCompGetInternalState(gc, 'METFORCE_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
 

@@ -68,7 +68,7 @@ case [0] :
 #SBATCH --time=1:00:00
 #SBATCH --ntasks=56
 #SBATCH --job-name=mkLDAS
-#SBATCH --constraint=hasw
+###SBATCH --constraint=hasw
 #SBATCH --qos=debug
 #SBATCH --output=mkLDAS.o
 #SBATCH --error=mkLDAS.e
@@ -153,27 +153,40 @@ case [1]:
 
         cd $EXPDIR/$EXPID/mk_restarts/
         echo '#\!/bin/csh -f ' > this.file
+
+        echo "#SBATCH --account=${SPONSORID}">> this.file   
+        echo "#SBATCH --time=1:00:00"        >> this.file  
+        echo "#SBATCH --ntasks=$NUMENS"      >> this.file     
+        echo "#SBATCH --job-name=mkRst"     >> this.file    
+        echo "#SBATCH --qos=debug"           >> this.file    
+        echo "#SBATCH --output=mkRst.o"     >> this.file 
+        echo "#SBATCH --error=mkRst.e"      >> this.file  
         echo 'source $INSTDIR/bin/g5_modules' >> this.file
         echo 'if ( -e /etc/os-release ) then' >> this.file
         echo '    module load nco/4.8.1'      >> this.file
         echo 'else'                           >> this.file
         echo '    module load other/nco-4.6.8-gcc-5.3-sp3 ' >> this.file
         echo 'endif' >> this.file
-        #echo 'setenv OMPI_MCA_shmem_mmap_enable_nfs_warning 0' >> this.file
         echo 'setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib' >> this.file
+
+        set mpi_mpmd = "${INSTDIR}/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k 0000 -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+        set j = 1
+        while ($j < $NUMENS)
+           set ENS = `printf '%04d' $j`
+           set mpi_mpmd = "${mpi_mpmd} : -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+           @ j++
+        end
+        echo $mpi_mpmd >> this.file
 
         set j = 0
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           echo  $INSTDIR/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}  >> this.file
-           echo  ncks -4  -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} >> this.file 
+           echo  "ncks -4  -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} &"  >> this.file
            @ j++
         end
-
-        chmod +x this.file
-        ./this.file
-        rm -f this.file
-        echo DONE > done_rst_file
+        echo 'wait' >> this.file
+        echo 'echo DONE > done_rst_file' >> this.file
+        sbatch this.file
         cd $PWD
         sleep 1
      else

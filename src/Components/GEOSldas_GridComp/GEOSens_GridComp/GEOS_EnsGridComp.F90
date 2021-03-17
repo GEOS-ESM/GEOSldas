@@ -8,9 +8,9 @@ module GEOS_EnsGridCompMod
   use ESMF
   use MAPL_Mod
   use lsm_routines, only: DZGT
-  use LDAS_ensdrv_Globals, only: nodata_generic
-  use catch_types, ONLY: cat_progn_type
-  use catch_types, only: cat_param_type
+  use catch_types,  only: cat_progn_type
+  use catch_types,  only: cat_param_type
+
   use, intrinsic :: ieee_arithmetic
   
   implicit none
@@ -20,17 +20,18 @@ module GEOS_EnsGridCompMod
   public :: SetServices
   public :: catch_progn
   public :: catch_param
+
   ! !DESCRIPTION: This GridComp collect ensemble member and then averages the vaiables form catchment
 
   !EOP
-  integer :: NUM_ENSEMBLE
-  integer :: collect_land_counter
-  integer :: collect_force_counter
-  integer,parameter :: NUM_SUBTILES=4
-  real, parameter      :: daylen = 86400.
+  integer            :: NUM_ENSEMBLE
+  integer            :: collect_land_counter
+  integer            :: collect_force_counter
+  integer, parameter :: NUM_SUBTILES=4
+  real               :: enavg_nodata_threshold
 
   type(cat_progn_type),dimension(:,:), allocatable :: catch_progn
-  type(cat_param_type),dimension(:), allocatable :: catch_param
+  type(cat_param_type),dimension(:  ), allocatable :: catch_param
 
 
 contains
@@ -71,7 +72,7 @@ contains
          )
     VERIFY_(status)
 
-    ! phase one: collect ensembl forces
+    ! phase one: collect forcing ensemble 
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
@@ -1720,6 +1721,10 @@ contains
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
 
+    ! nodata handling for ensemble average
+    _ASSERT( (MAPL_UNDEF>.9999*1.e15), Iam // ': nodata handling for ensemble average requires MAPL_UNDEF to be a very large number') 
+    enavg_nodata_threshold   = MAPL_UNDEF/(NUM_ENSEMBLE+1)   
+
     collect_land_counter     = 0
     collect_force_counter    = 0
 
@@ -3252,12 +3257,12 @@ contains
         if(associated(WCSF_enavg)) WCSF_enavg = WCSF_enavg/NUM_ENSEMBLE
         if(associated(WCRZ_enavg)) WCRZ_enavg = WCRZ_enavg/NUM_ENSEMBLE
         if(associated(WCPR_enavg)) WCPR_enavg = WCPR_enavg/NUM_ENSEMBLE
-        if(associated(TP1_enavg)) TP1_enavg = TP1_enavg/NUM_ENSEMBLE + MAPL_TICE
-        if(associated(TP2_enavg)) TP2_enavg = TP2_enavg/NUM_ENSEMBLE + MAPL_TICE
-        if(associated(TP3_enavg)) TP3_enavg = TP3_enavg/NUM_ENSEMBLE + MAPL_TICE
-        if(associated(TP4_enavg)) TP4_enavg = TP4_enavg/NUM_ENSEMBLE + MAPL_TICE
-        if(associated(TP5_enavg)) TP5_enavg = TP5_enavg/NUM_ENSEMBLE + MAPL_TICE
-        if(associated(TP6_enavg)) TP6_enavg = TP6_enavg/NUM_ENSEMBLE + MAPL_TICE
+        if(associated(TP1_enavg)) TP1_enavg = TP1_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
+        if(associated(TP2_enavg)) TP2_enavg = TP2_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
+        if(associated(TP3_enavg)) TP3_enavg = TP3_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
+        if(associated(TP4_enavg)) TP4_enavg = TP4_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
+        if(associated(TP5_enavg)) TP5_enavg = TP5_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
+        if(associated(TP6_enavg)) TP6_enavg = TP6_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
         if(associated(EMIS_enavg)) EMIS_enavg = EMIS_enavg/NUM_ENSEMBLE
         if(associated(ALBVR_enavg)) ALBVR_enavg = ALBVR_enavg/NUM_ENSEMBLE
         if(associated(ALBVF_enavg)) ALBVF_enavg = ALBVF_enavg/NUM_ENSEMBLE
@@ -3322,7 +3327,30 @@ contains
         if(associated(SPLAND_enavg)) SPLAND_enavg = SPLAND_enavg/NUM_ENSEMBLE
         if(associated(SPWATR_enavg)) SPWATR_enavg = SPWATR_enavg/NUM_ENSEMBLE
         if(associated(SPSNOW_enavg)) SPSNOW_enavg = SPSNOW_enavg/NUM_ENSEMBLE
-    endif
+
+        ! Deal with no-data-values
+        !
+        ! Surface temperature components may be nodata in some but not all ensemble members.
+        !   (Nodata values are assigned in GEOS_CatchGridComp.F90 when the associated 
+        !    area fraction is zero.)
+        !
+        ! For now, the ensemble average is set to nodata if any member has a nodata value.
+        !
+        ! Alternatively, only ensemble members with good values could be averaged, or the 
+        !   averaging could use the associated area fraction as averaging weights.
+        !
+        ! The simple detection implemented here relies on MAPL_UNDEF being many orders of 
+        !   magnitude larger than any valid values, which works fine for Earth surface 
+        !   temperatures as long as MAPL_UNDEF is 1.e15.
+        !
+        ! - reichle, 29 May 2020
+                
+        if(associated(TPSNOW_enavg))  where (TPSNOW_enavg > enavg_nodata_threshold)  TPSNOW_enavg = MAPL_UNDEF
+        if(associated(TPSAT_enavg ))  where (TPSAT_enavg  > enavg_nodata_threshold)  TPSAT_enavg  = MAPL_UNDEF
+        if(associated(TPWLT_enavg ))  where (TPWLT_enavg  > enavg_nodata_threshold)  TPWLT_enavg  = MAPL_UNDEF
+        if(associated(TPUNST_enavg))  where (TPUNST_enavg > enavg_nodata_threshold)  TPUNST_enavg = MAPL_UNDEF
+
+     end if     ! collect_land_counter==NUM_ENSEMBLE
 
     ! Turn timers off
     call MAPL_TimerOff(MAPL, "Collect_land")
@@ -3549,8 +3577,8 @@ end subroutine GET_CATCH_PARAM
     VERIFY_(status)
     Iam = trim(comp_name) // "::Finalize"
 
-    ! Get MAPL obj
-    call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
+   ! Call Finalize for every child
+    call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
     VERIFY_(status)
 
     ! End
