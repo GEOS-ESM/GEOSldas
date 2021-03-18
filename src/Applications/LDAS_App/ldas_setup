@@ -1268,7 +1268,7 @@ class LDASsetup:
                     elif 'MY_JOB' in line :
                         fout.write(line.replace('MY_JOB',my_job))
                     elif 'MY_CONS' in line :
-                        fout.write(line.replace('MY_CONS',self.optRmInp['constraint'])))
+                        fout.write(line.replace('MY_CONS',self.optRmInp['constraint']))
                     elif 'MY_EXPID' in line :
                         fout.write(line.replace('MY_EXPID',self.rqdExeInp['EXP_ID']))
                     elif 'MY_EXPDOMAIN' in line :
