@@ -462,6 +462,40 @@ class LDASsetup:
         tmp_expid = None
         tmp_expdir = None
 
+        # default is skylake
+        my_constraint='sky'
+        if 'constraint' in self.optRmInp :
+            my_constraint = self.optRmInp['constraint']
+        else:
+            self.optRmInp['constraint'] = my_constraint
+
+        if (my_constraint == 'sky'):
+           my_ntasks_per_node = 40
+        elif (my_constraint == 'hasw'):
+           my_ntasks_per_node = 28
+        else:
+           assert True, "wrong constraint"
+       
+        self.optRmInp['ntasks_per_node'] = my_ntasks_per_node
+
+        # default number of nodes
+        my_nodes = self.rqdRmInp['ntasks'] / my_ntasks_per_node
+        if self.rqdRmInp['ntasks'] % my_ntasks_per_node > 0 :
+           my_nodes = my_nodes + 1
+
+        # over write above default if specified
+        self.optRmInp['oserver_nodes'] = 1
+        if 'nodes' in self.optRmInp :
+           self.optRmInp['oserver_nodes'] = self.optRmInp['nodes'] - my_nodes
+           assert self.optRmInp['oserver_nodes'] >=0, "too few nodes"    
+        else:
+           self.optRmInp['nodes'] = my_nodes + self.optRmInp['oserver_nodes']
+
+        if (self.optRmInp['oserver_nodes'] >=1) :
+           self.rqdExeInp['WRITE_RESTART_BY_OSERVER'] = "YES"
+        # set default for now
+        if 'writers_per_node' not in self.optRmInp:
+           self.optRmInp['writers_per_node'] = 5
 
     def _parseInputFile(self, inpfile):
         """
@@ -1190,38 +1224,6 @@ class LDASsetup:
         if 'job_name' in self.optRmInp :
             my_job = self.optRmInp['job_name']
 
-        # default is skylake
-        my_constraint='sky'
-        if 'constraint' in self.optRmInp :
-            my_constraint = self.optRmInp['constraint']
-        else:
-            self.optRmInp['constraint'] = my_constraint
-
-        if (my_constraint == 'sky'):
-           my_ntasks_per_node = 40
-        elif (my_constraint == 'hasw'):
-           my_ntasks_per_node = 28
-        else:
-           assert True, "wrong constraint"
-       
-        self.optRmInp['ntasks_per_node'] = my_ntasks_per_node
-
-        # default number of nodes
-        my_nodes = self.rqdRmInp['ntasks'] / my_ntasks_per_node
-        if self.rqdRmInp['ntasks'] % my_ntasks_per_node > 0 :
-           my_nodes = my_nodes + 1
-
-        # over write above default if specified
-        self.optRmInp['oserver_nodes'] = 1
-        if 'nodes' in self.optRmInp :
-           self.optRmInp['oserver_nodes'] = self.optRmInp['nodes'] - my_nodes
-           assert self.optRmInp['oserver_nodes'] >=0, "too few nodes"    
-        else:
-           self.optRmInp['nodes'] = my_nodes + self.optRmInp['oserver_nodes']
-        # set default for now
-        if 'writers_per_node' not in self.optRmInp:
-           self.optRmInp['writers_per_node'] = 5
-
         start = self.begDates[0]
         expid = self.rqdExeInp['EXP_ID']
         myDateTime = '%04d%02d%02d_%02d%02dz' % \
@@ -1266,8 +1268,7 @@ class LDASsetup:
                     elif 'MY_JOB' in line :
                         fout.write(line.replace('MY_JOB',my_job))
                     elif 'MY_CONS' in line :
-                        if my_constraint!='' :
-                            fout.write(line.replace('MY_CONS',my_constraint))
+                        fout.write(line.replace('MY_CONS',self.optRmInp['constraint'])))
                     elif 'MY_EXPID' in line :
                         fout.write(line.replace('MY_EXPID',self.rqdExeInp['EXP_ID']))
                     elif 'MY_EXPDOMAIN' in line :

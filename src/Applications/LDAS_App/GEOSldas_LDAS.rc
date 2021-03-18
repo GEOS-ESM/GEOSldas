@@ -181,3 +181,7 @@ DYCORE: none
 # ---- For MAPL_RestartOptional
 #
 MAPL_ENABLE_BOOTSTRAP: YES
+
+#----- Write restart or checkpoint by oserver
+#
+WRITE_RESTART_BY_OSERVER: NO
