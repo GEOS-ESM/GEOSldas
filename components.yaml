@@ -29,7 +29,7 @@ GMAO_Shared:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.6.3
+  branch: hotfix/wjiang/gnu_size_unallocate
   develop: develop
 
 GEOSgcm_GridComp:
