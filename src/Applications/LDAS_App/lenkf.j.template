@@ -357,10 +357,13 @@ while ( $counter <= ${NUM_SGMT} )
    
    if( -e EGRESS.ldas ) then
       set rc = 0
+      echo GEOSldas Run Status: $rc
    else
       set rc = -1
+      echo GEOSldas Run Status: $rc
+      echo "ERROR: GEOSldas run FAILED, exit without post-processing"
+      exit
    endif
-   echo GEOSldas Run Status: $rc
     
    
    #######################################################################
