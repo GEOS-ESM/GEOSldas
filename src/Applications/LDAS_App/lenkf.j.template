@@ -14,7 +14,6 @@
 #SBATCH --time=MY_WALLTIME
 #SBATCH --nodes=MY_NODES --ntasks-per-node=MY_NTASKS_PER_NODE
 #SBATCH --job-name=MY_JOB
-#SBATCH --constraint=MY_CONS
 #SBATCH --qos=MY_QOS
 
 #######################################################################
