@@ -740,7 +740,14 @@ contains
     
     type(random_fields) :: rf
 
-    ! ---------------------------
+    
+    ! Use logical variable "stored_field" to figure out whether a second
+    ! standard-normal random field is available for perturbation field.
+    ! (in other words, this subroutine is most efficient if N_pert=even 
+    ! number, and it is least efficient if N_pert=1)
+
+    stored_field = .false.              
+
     do m=1,N_pert
 
        ! shorthand
@@ -806,14 +813,6 @@ contains
        !
        ! Note that rfg2d always produces a pair of random fields!
        !
-       ! Use logical variable "stored_field" to figure out whether a second
-       ! standard-normal random field is available for next ensemble member.
-       ! (in other words, this subroutine is most efficient if N_ens=even 
-       ! number, and it is least efficient if N_ens=1)
-      
-       ! Weiyuan notes: for esmf version, nothing is stored. Comment it out 
-       ! stored_field = .false.              
-       
        ! initialize instance rf of class random_fields
        ! this needs to be done for each pert field
        
@@ -827,16 +826,13 @@ contains
           
           ! NOTE: rfg2d_fft() relies on CXML math library (22 Feb 05)
           ! rfg2d_fft() now relies on Intel MKL (19 Jun 13)
-          !Weiyuan Note : move out this call. no save any more.
-          !              to make it efficient, generate one field
-          call rf%rfg2d_fft(Pert_rseed(:), ptr2rfield, ptr2rfield2)
-         ! if (.not. stored_field) then
-         !    call rf%rfg2d_fft(Pert_rseed(:), ptr2rfield, ptr2rfield2)
-         !    stored_field = .true.
-         ! else
-         !    rfield = rfield2
-         !    stored_field = .false.
-         ! end if
+          if (.not. stored_field) then
+             call rf%rfg2d_fft(Pert_rseed(:), ptr2rfield, ptr2rfield2)
+             stored_field = .true.
+          else
+             rfield = rfield2
+             stored_field = .false.
+          end if
           
        end if
        
