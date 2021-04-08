@@ -366,7 +366,7 @@ contains
 
     integer, dimension(NRANDSEED,N_ens), intent(inout) :: Pert_rseed
 
-    real, dimension(N_pert, pert_grid_l%N_lon, pert_grid_l%N_lat, N_ens), intent(inout) :: Pert_ntrmdt
+    real, dimension(pert_grid_l%N_lon, pert_grid_l%N_lat, N_pert, N_ens), intent(inout) :: Pert_ntrmdt
 
     ! Pert are N_pert cross-correlated perturbation
     ! fields that are rotated and scaled versions of Pert_ntrmdt
@@ -383,7 +383,7 @@ contains
     ! perturbed fields.  This is best done outside this subroutine
     ! after the perturbations have been applied.    
 
-    real, dimension(N_pert, pert_grid_l%N_lon, pert_grid_l%N_lat, N_ens), intent(  out) :: Pert
+    real, dimension(pert_grid_l%N_lon, pert_grid_l%N_lat, N_pert, N_ens), intent(  out) :: Pert
 
     ! If initialize_rseed==.true., set initial random seed vector.
     ! If initialize_rseed==.true., the first row of Pert_rseed must be
@@ -503,7 +503,7 @@ contains
 
           do i=1,pert_grid_l%N_lon
 
-             call adjust_mean(pert_grid_l%N_lat, N_ens, Pert_ntrmdt(m,i,:,:) )
+             call adjust_mean(pert_grid_l%N_lat, N_ens, Pert_ntrmdt(i,:,m,:) )
 
           end do
 
@@ -520,15 +520,15 @@ contains
 
           ! rotate to get desired multivariate correlations
 
-          do i=1,pert_grid_l%N_lon
-             do j=1,pert_grid_l%N_lat
+          do j=1,pert_grid_l%N_lat
+             do i=1,pert_grid_l%N_lon
 
                 tmp_grid(i,j) = 0.
 
                 do mm=1,N_pert
 
                    tmp_grid(i,j) = tmp_grid(i,j) + &
-                        pert_param(m)%ccorr(mm,i,j) * Pert_ntrmdt(mm,i,j,n)
+                        pert_param(m)%ccorr(mm,i,j) * Pert_ntrmdt(i,j,mm,n)
 
                 end do
 
@@ -542,8 +542,8 @@ contains
 
           ! scale
 
-          do i=1,pert_grid_l%N_lon
-             do j=1,pert_grid_l%N_lat
+          do j=1,pert_grid_l%N_lat
+             do i=1,pert_grid_l%N_lon
 
                 tmpreal = pert_param(m)%mean(i,j) + &
                      pert_param(m)%std(i,j) * tmp_grid(i,j)
@@ -552,11 +552,11 @@ contains
 
                 case (0)        ! additive
 
-                   Pert(m,i,j,n) = tmpreal
+                   Pert(i,j,m,n) = tmpreal
 
                 case (1)        ! multiplicative and lognormal
 
-                   Pert(m,i,j,n) = exp(tmpreal)
+                   Pert(i,j,m,n) = exp(tmpreal)
 
                 case default
 
@@ -939,7 +939,7 @@ contains
 
     integer, dimension(NRANDSEED,N_ens), intent(inout) :: Pert_rseed
 
-    real, dimension(N_pert,pert_grid_l%N_lon,pert_grid_l%N_lat,N_ens), &
+    real, dimension(pert_grid_l%N_lon, pert_grid_l%N_lat, N_pert, N_ens), &
          intent(inout) :: Pert_ntrmdt
 
     logical, intent(in) :: initialize   ! switch
@@ -1130,9 +1130,9 @@ contains
           ! propagate AR(1) 
 
           if (white_in_time) then
-             Pert_ntrmdt(m,:,:,n) = rfield(xstart:xend, ystart:yend)
+             Pert_ntrmdt(:,:,m,n) = rfield(xstart:xend, ystart:yend)
           else
-             Pert_ntrmdt(m,:,:,n) = cc*Pert_ntrmdt(m,:,:,n) + dd*rfield(xstart:xend, ystart:yend)
+             Pert_ntrmdt(:,:,m,n) = cc*Pert_ntrmdt(:,:,m,n) + dd*rfield(xstart:xend, ystart:yend)
           end if
 
        end do ! n=1,N_ens
