@@ -973,6 +973,10 @@ contains
        allocate(internal%ppert_ntrmdt(n_lon_g, n_lat_g, N_PROGN_PERT_MAX), source=0.0)
        allocate(internal%pert_rseed_r8(NRANDSEED), source=0.0d0)
        
+       fpert_ntrmdt => internal%fpert_ntrmdt      
+       ppert_ntrmdt => internal%ppert_ntrmdt      
+       pert_rseed_r8 => internal%pert_rseed_r8      
+
        call MAPL_GetResource(MAPL, rst_fname_tmp, 'LANDPERT_INTERNAL_RESTART_FILE:',DEFAULT='NONE', rc=status)
        VERIFY_(status)
 
@@ -988,29 +992,36 @@ contains
           f_exist = .false.
           if ( IAmRoot) then
             inquire(file=rst_fname, exist=f_exist)
-            if (f_exist) call read_pert_rst(trim(rst_fname),internal%fpert_ntrmdt,internal%ppert_ntrmdt, internal%pert_rseed_r8) 
+            if (f_exist) call read_pert_rst(trim(rst_fname), fpert_ntrmdt, ppert_ntrmdt, pert_rseed_r8) 
           endif
           call MAPL_CommsBcast(vm, data=f_exist,  N=1, ROOT=0,rc=status) 
           if (f_exist) then
              n = n_lat_g*n_lon_g*N_FORCE_PERT_MAX
-             call c_f_pointer(c_loc(internal%fpert_ntrmdt(1,1,1)), pert_ptr, [n])
+
+             block
+               type(c_ptr) :: cptr
+               cptr = c_loc(fpert_ntrmdt(1,1,1))
+               call c_f_pointer(cptr, pert_ptr, [n])
+             end block
+
              call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
              VERIFY_(status)
              pert_ptr=>null()
 
              n = n_lat_g*n_lon_g*N_PROGN_PERT_MAX
-             call c_f_pointer(c_loc(internal%ppert_ntrmdt(1,1,1)), pert_ptr, [n])
+             block
+               type(c_ptr) :: cptr
+               cptr = c_loc(ppert_ntrmdt(1,1,1))
+               call c_f_pointer(cptr, pert_ptr, [n])
+             end block
              call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
              VERIFY_(status)
              pert_ptr=>null()
 
-             call MAPL_CommsBcast(vm, data=internal%pert_rseed_r8, N=NRANDSEED, ROOT=0,rc=status)
+             call MAPL_CommsBcast(vm, data=pert_rseed_r8, N=NRANDSEED, ROOT=0,rc=status)
              VERIFY_(status)
           endif
        endif 
-       fpert_ntrmdt => internal%fpert_ntrmdt      
-       ppert_ntrmdt => internal%ppert_ntrmdt      
-       pert_rseed_r8 => internal%pert_rseed_r8      
        lon1 = internal%pgrid_l%i_offg + 1
        lon2 = internal%pgrid_l%i_offg + n_lon
        lat1 = internal%pgrid_l%j_offg + 1
