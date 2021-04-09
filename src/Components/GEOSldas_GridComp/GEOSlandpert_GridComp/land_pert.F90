@@ -60,13 +60,13 @@ module land_pert_routines
   public :: get_sqrt_corr_matrix
   public :: get_init_Pert_rseed
 
-  interface get_pert
-     module procedure GEOSldas_get_pert, LDASsa_get_pert
-  end interface
+  !interface get_pert
+  !   module procedure GEOSldas_get_pert, LDASsa_get_pert
+  !end interface
   
-  interface propagate_pert
-     module procedure GEOSldas_propagate_pert, LDASsa_propagate_pert
-  end interface
+  !interface propagate_pert
+  !   module procedure GEOSldas_propagate_pert, LDASsa_propagate_pert
+  !end interface
   
   ! **********************************************************************
 
@@ -224,7 +224,7 @@ contains
     
     if (.not. diagn_only) then    
          call propagate_pert(                        &
-         N_pert, pert_grid_l, pert_grid_f,           &
+         N_pert,1, pert_grid_l, pert_grid_f,         &
          dtstep,                                     &
          Pert_rseed,                                 &
          pert_param,                                 &
@@ -315,7 +315,7 @@ contains
 
   ! ******************************************************************
   
-  subroutine LDASsa_get_pert(                         &
+  subroutine get_pert(                         &
        N_pert, N_ens,                                 &
        pert_grid_l, pert_grid_f,                      &
        dtstep,                                        &
@@ -571,7 +571,7 @@ contains
        end do  ! end loop through ensemble members (1:N_ens)
     end do     ! end loop through different fields (1:N_pert)
 
-  end subroutine LDASsa_get_pert
+  end subroutine get_pert
 
   
   subroutine get_init_Pert_rseed( ens_id, init_Pert_rseed )
@@ -901,7 +901,7 @@ contains
     
   end subroutine GEOSldas_propagate_pert
 
-  subroutine LDASsa_propagate_pert(                       &
+  subroutine propagate_pert(                       &
        N_pert, N_ens, pert_grid_l, pert_grid_f, dtstep, &
        Pert_rseed,                                 &
        pert_param,                                 &
@@ -1142,7 +1142,7 @@ contains
 
     end do ! m=1,N_pert
 
-  end subroutine LDASsa_propagate_pert
+  end subroutine propagate_pert
 
   ! ******************************************************************
   
