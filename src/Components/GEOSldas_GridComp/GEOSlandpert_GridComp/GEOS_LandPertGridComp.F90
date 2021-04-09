@@ -1415,7 +1415,7 @@ contains
          fpert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
-         ! propagate_pert in NOT called
+         ! propagate_pert is NOT called
          diagnose_pert_only=.true.                                              &
          )
 
@@ -1446,7 +1446,7 @@ contains
          ppert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
-        ! propagate_pert in NOT called
+        ! propagate_pert is NOT called
          diagnose_pert_only=.true.                                              &
          )
 
@@ -1950,8 +1950,6 @@ contains
                fpert_grid,                                                         &
                initialize_rseed=.false.,                                           &
                initialize_ntrmdt=.false.,                                          &
-               ! propagate_pert is called
-               !diagnose_pert_only=.false.                                          &
                ! Weiyuan notes: propagate_pert is called in GenerateRaw, not here
                diagnose_pert_only=.true.                                           &
                )
@@ -2452,9 +2450,7 @@ contains
             ppert_grid,                                                         &
             initialize_rseed=.false.,                                           &
             initialize_ntrmdt=.false.,                                          &
-            ! propagate_pert is called
-            ! diagnose_pert_only=.false.                                          &
-            !Weiyuan notes:  propagate_pert is called in GenerateRaw
+            ! Weiyuan notes: propagate_pert is called in GenerateRaw, not here
             diagnose_pert_only=.true.                                           &
             )
        call MAPL_TimerOn(MAPL, '-GetPert')
