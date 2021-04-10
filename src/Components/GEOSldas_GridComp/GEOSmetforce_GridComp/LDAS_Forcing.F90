@@ -1957,14 +1957,14 @@ contains
     real,    parameter :: nodata_era5       = 1.e20
     character(40), dimension(N_era5_vars), parameter :: era5_name = (/ &
          'DIR_SWdown',   &   !  (1)
-         'LWdown'    ,   &   !  (2)
-         'Snowf'     ,   &   !  (3)
-         'Rainf'     ,   &   !  (4)
-         'Tair'      ,   &   !  (5)
-         'Qair'      ,   &   !  (6)
-         'Wind'      ,   &   !  (7)
-         'PSurf'     ,   &   !  (8) 
-         'UREF'      /)      !  (9)  at 10m   
+         'LWdown    ',   &   !  (2)
+         'Snowf     ',   &   !  (3)
+         'Rainf     ',   &   !  (4)
+         'Tair      ',   &   !  (5)
+         'Qair      ',   &   !  (6)
+         'Wind      ',   &   !  (7)
+         'PSurf     ',   &   !  (8) 
+         'UREF      '/)      !  (9)  at 10m   
 
     ! local variables
     real,    dimension(era5_grid_N_lon,era5_grid_N_lat) :: tmp_grid,era5_lat2D,era5_lon2D
@@ -2110,7 +2110,7 @@ contains
     ! loop over variables and read them
     do era5_var = 1,N_era5_vars
        ! get var ID
-       ierr = NF90_INQ_VARID(ftn,era5_name(era5_var),era5_varid)
+       ierr = NF90_INQ_VARID(ftn,trim(era5_name(era5_var)),era5_varid)
        ! get variable
        ierr = NF90_GET_VAR(ftn,era5_varid,tmp_vec,start,icount)
 
