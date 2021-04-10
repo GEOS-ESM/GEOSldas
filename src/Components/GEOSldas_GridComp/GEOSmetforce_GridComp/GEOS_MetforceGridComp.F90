@@ -583,6 +583,7 @@ contains
     integer :: ForceDtStep
     type(met_force_type) :: mf_nodata
     logical :: MERRA_file_specs,GEOS_Forcing
+    logical :: ERA5_Forcing  
 
     integer :: AEROSOL_DEPOSITION
     type(MAPL_LocStream) :: locstream
@@ -714,13 +715,14 @@ contains
          internal%mf%hinterp,                                                   &
          MERRA_file_specs,                                                      &
          GEOS_Forcing,                                                          &
+         ERA5_Forcing,                                                          & 
          internal%mf%DataNxt,                                                   &
          AEROSOL_DEPOSITION,                                                    &
          .true.                                                                 &
          )
     VERIFY_(status)
     call LDAS_move_new_force_to_old(internal%mf%DataNxt,internal%mf%DataPrv,   &
-           MERRA_file_specs,GEOS_Forcing, AEROSOL_DEPOSITION)
+           MERRA_file_specs,GEOS_Forcing,ERA5_forcing, AEROSOL_DEPOSITION)
 
     ! DataPrv is not well defined here
     ! print *, 'prv%tair max/min: ', maxval(internal%mf%DataPrv%Tair), minval(internal%mf%DataPrv%Tair)
@@ -801,6 +803,7 @@ contains
     type(met_force_type) :: mf_nodata
 
     logical :: MERRA_file_specs,GEOS_Forcing
+    logical :: ERA5_forcing 
     integer :: AEROSOL_DEPOSITION
     ! Export pointers
     real, pointer :: Tair(:)=>null()
@@ -943,12 +946,13 @@ contains
             internal%mf%hinterp,                                                &
             MERRA_file_specs,                                                   &
             GEOS_Forcing,                                                       &
+            ERA5_Forcing,                                                       &
             internal%mf%DataNxt,                                                &
             AEROSOL_DEPOSITION,                                                 &
             .false.                                                             &
             )
        call LDAS_move_new_force_to_old(internal%mf%DataNxt,internal%mf%DataPrv, &
-           MERRA_file_specs,GEOS_Forcing,AEROSOL_DEPOSITION)
+           MERRA_file_specs,GEOS_Forcing,ERA5_forcing, AEROSOL_DEPOSITION)
 
        !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_nxt: ', date_time_print(force_time_nxt)
 

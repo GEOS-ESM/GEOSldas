@@ -72,7 +72,6 @@ module LDAS_ForceMod
   ! The above three parameters are moved to repairForcingmod ! W.Jiang
 
   character(10), private :: tmpstring10
-  character(40), private :: tmpstring40
 
   real, contiguous, pointer :: ptrShForce(:,:)=>null()
 
@@ -93,7 +92,7 @@ contains
 
   subroutine get_forcing( date_time, force_dtstep, met_path, met_tag, &
        N_catd, tile_coord, met_hinterp,                               &
-       MERRA_file_specs, GEOS_Forcing, met_force_obs_tile_new,        &
+       MERRA_file_specs, GEOS_Forcing, ERA5_Forcing, met_force_obs_tile_new,        & 
        AEROSOL_DEPOSITION,init, alb_from_SWnet )
     
     ! Read and check meteorological forcing data for the domain.
@@ -123,6 +122,7 @@ contains
     ! reichle,      25 Sep   2009 - removed unneeded inputs 
     ! reichle,      23 Feb   2016 - new and more efficient work-around to make GEOS-5 
     !                                forcing work with LDASsa time convention for forcing data
+    ! borescan,     01 Feb   2021 - added ERA5 forcing 
 
     implicit none
     
@@ -139,6 +139,7 @@ contains
     
     logical,intent(out) :: MERRA_file_specs
     logical,intent(out) :: GEOS_forcing
+    logical,intent(out) :: ERA5_forcing 
 
     type(met_force_type), dimension(N_catd), intent(out) :: &
          met_force_obs_tile_new
@@ -187,6 +188,8 @@ contains
 
     GEOS_forcing                   = .false.        
 
+    ERA5_forcing                   = .false.        
+
     met_force_obs_tile_new%SWnet   = nodata_generic
     met_force_obs_tile_new%PARdrct = nodata_generic
     met_force_obs_tile_new%PARdffs = nodata_generic
@@ -208,7 +211,23 @@ contains
        
        call repair_forcing( N_catd, met_force_obs_tile_new, &
             echo=.true., tile_coord=tile_coord )
-              
+
+    elseif (index(met_tag, 'ERA5_netcdf')/=0) then 
+
+       ERA5_forcing = .true. 
+
+       call get_ERA5_netcdf(date_time_tmp, met_path, N_catd, tile_coord, &
+            met_force_obs_tile_new, nodata_forcing)
+
+       ! check for nodata values and unphysical values
+       ! (check here, not outside "if" block, because of GEOSgcm case)
+
+       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
+            met_force_obs_tile_new)
+
+       call repair_forcing( N_catd, met_force_obs_tile_new, &
+            echo=.true., tile_coord=tile_coord )
+
     elseif (index(met_tag, 'GLDAS_2x2_5_netcdf')/=0) then
        
        call get_GLDAS_2x2_5_netcdf(date_time_tmp, met_path, N_catd, tile_coord, &
@@ -439,15 +458,16 @@ contains
    end subroutine get_forcing
 
 !*****************************
-   subroutine LDAS_move_new_force_to_old(new_force,old_force,MERRA_file_specs, GEOS_forcing,AEROSOL_DEPOSITION)
+   subroutine LDAS_move_new_force_to_old(new_force,old_force,MERRA_file_specs, GEOS_forcing,ERA5_forcing,AEROSOL_DEPOSITION)
      implicit none
      type(met_force_type), dimension(:), intent(inout) :: new_force
      type(met_force_type), dimension(:), intent(inout) :: old_force
      logical,intent(in) :: MERRA_file_specs
      logical,intent(in) :: GEOS_forcing
+     logical,intent(in) :: ERA5_forcing  
      integer, intent(in) :: AEROSOL_DEPOSITION
 
-     if (.not. GEOS_forcing) return
+     if (.not. GEOS_forcing .and. .not. ERA5_forcing) return
 
      old_force%Rainf_C = new_force%Rainf_C
      old_force%Rainf   = new_force%Rainf
@@ -1898,7 +1918,277 @@ contains
     enddo
     
   end subroutine get_conus_netcdf
-  
+    ! ****************************************************************  
+
+  subroutine get_ERA5_netcdf(date_time, met_path, N_catd, tile_coord, &
+       met_force_new, nodata_forcing )
+
+    ! read ERA5 NetCDF files obtained and shared by LIS group to extract 
+    ! forcing data and load it into tile space (must use nearest neighbor
+    ! interpolation in runsetup)
+
+    ! borescan 01 Feb 2021
+
+    use netcdf
+    implicit none
+    include 'mpif.h'
+
+    type(date_time_type), intent(in) :: date_time
+    character(*),         intent(in) :: met_path
+    integer,              intent(in) :: N_catd
+
+    type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+
+    type(met_force_type) , dimension(N_catd), intent(inout) :: met_force_new
+    real,                                     intent(out)   :: nodata_forcing
+
+    ! ERA5 grid and netcdf parameters 
+    integer, parameter :: era5_grid_N_lon   = 1440
+    integer, parameter :: era5_grid_N_lat   =  720
+    real,    parameter :: era5_grid_ll_lon  = -180.0000
+    real,    parameter :: era5_grid_ll_lat  =  -90.0000 
+    real,    parameter :: era5_grid_dlon    =    0.25
+    real,    parameter :: era5_grid_dlat    =    0.25
+    integer, parameter :: N_era5_compressed = 340819
+
+    ! ERA5 forcing time step in hours
+    integer, parameter :: dt_era5_in_hours  = 1
+    integer, parameter :: N_era5_vars       = 9
+    real,    parameter :: nodata_era5       = 1.e20
+    character(40), dimension(N_era5_vars), parameter :: era5_name = (/ &
+         'DIR_SWdown',   &   !  (1)
+         'LWdown'    ,   &   !  (2)
+         'Snowf'     ,   &   !  (3)
+         'Rainf'     ,   &   !  (4)
+         'Tair'      ,   &   !  (5)
+         'Qair'      ,   &   !  (6)
+         'Wind'      ,   &   !  (7)
+         'PSurf'     ,   &   !  (8) 
+         'UREF'      /)      !  (9)  at 10m   
+
+    ! local variables
+    real,    dimension(era5_grid_N_lon,era5_grid_N_lat) :: tmp_grid,era5_lat2D,era5_lon2D
+    integer, dimension(N_era5_compressed)               :: land_i_gldas,land_j_gldas,p2g,RefH
+    real,    dimension(N_era5_compressed)               :: era5_lon,era5_lat
+    integer, dimension(N_catd)                          :: i_ind, j_ind
+    real,    dimension(N_era5_compressed)               :: tmp_vec
+    real,    dimension(N_catd,N_era5_vars)              :: force_array
+    integer, dimension(2)                               :: start, icount
+    integer :: k, n, hours_in_month, era5_var, ierr, ncid,era5_varid,ii_el,ftn
+    real    :: tol,  this_lon, this_lat, geos2era_tile_SQdistance
+    character(4)                :: YYYY
+    character(2)                :: MM
+    character(300)              :: fname
+    character(len=*), parameter :: Iam = 'get_ERA5_netcdf'
+    character(len=400)          :: err_msg
+    ! era5_SQdistance is a half diagonal of 0.25deg grid box squared
+    real, parameter             :: era5_SQdistance = 0.03125  ![degrees] (0.125**2+0.125**2)
+
+    nodata_forcing = nodata_era5
+
+    tol = abs(nodata_forcing*nodata_tolfrac_generic)
+
+    ! assemble year and month strings
+    write (YYYY,'(i4.4)') date_time%year
+    write (MM,  '(i2.2)') date_time%month
+
+    start(1)  = 1
+    icount(1) = N_era5_compressed
+
+    ! time dimension (first entry in ERA5_NetCDF file is at 00Z)
+    if ( (date_time%min/=0) .or. (date_time%sec/=0) .or.     &
+         (mod(date_time%hour,dt_era5_in_hours)/=0)      ) then
+
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'timing ERROR!!')
+
+    end if
+
+    hours_in_month = (date_time%day-1)*24 + date_time%hour
+
+    start(2)  = hours_in_month / dt_era5_in_hours + 1
+    icount(2) = 1
+
+    ! compute indices for the nearest neighbor interpolation from ERA5 grid 
+    ! to tile space
+
+    do k=1,N_catd
+
+       ! ll_lon and ll_lat refer to lower left corner of grid cell
+       ! (as opposed to the grid point in the center of the grid cell)
+
+       this_lon = tile_coord(k)%com_lon
+       this_lat = tile_coord(k)%com_lat
+
+       ! geos's lat/lons add a small number (i.e. 0.0001) to avoid computational
+       ! rounding that leads to random placement of the matching ERA5 grid at
+       ! certain lat/lon bands
+       i_ind(k) = ceiling( (this_lon+0.0001 - era5_grid_ll_lon)/era5_grid_dlon )
+       j_ind(k) = ceiling( (this_lat+0.0001 - era5_grid_ll_lat)/era5_grid_dlat )
+
+       ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180 
+       ! we now have i_ind=(grid%N_lon+1) 
+       ! This needs to be fixed as fallows:
+       if (i_ind(k)>era5_grid_N_lon)  i_ind(k)=1
+
+    end do
+    ! read parameters (same for all data variables and time steps)
+
+    ! First read the point2grid variable from the mapping.nc file
+    ! 'point2grid' is used to calculate i and j indices for the tmp_grid
+
+    fname = trim(met_path) // '/mapping.nc'
+
+    if(root_logit) write (logunit,*) 'get netcdf params from ' // trim(fname)
+
+    ierr = NF90_OPEN(fname,NF90_NOWRITE,ftn)
+    if (ierr/=0) then
+       err_msg = 'error opening netcdf file'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    end if
+
+    ! read P2G from the nc file
+    ierr = NF90_INQ_VARID(ftn,'P2G',era5_varid)
+    ierr = NF90_GET_VAR(ftn, era5_varid, p2g)
+
+    ! calculate x and y indices corresponding to each 1D array element (i.e. tile
+    ! space)
+    do ii_el=1,N_era5_compressed
+      land_i_gldas(ii_el)=mod((p2g(ii_el)),era5_grid_N_lon)
+      if(land_i_gldas(ii_el) .eq. 0) land_i_gldas(ii_el)=era5_grid_N_lon
+
+      land_j_gldas(ii_el)=floor((p2g(ii_el))/float(era5_grid_N_lon))+1
+      if (mod(p2g(ii_el),era5_grid_N_lon) .eq. 0) land_j_gldas(ii_el)=land_j_gldas(ii_el)-1
+    end do
+
+    ! close NC file
+    ierr = NF90_CLOSE(ftn)
+
+    ! Get forcing data geolocation (to be used for Exclude list creation)
+    ! Read in LON and LAT values from only one Forcing file. This information
+    ! is static! Just make sure to use a file where the info is available (since not
+    ! all ERA5 LIS files carry this info)
+
+    fname = trim(met_path) // '/FORCING_201807.nc'
+
+    if(root_logit) write (logunit,*) 'get ERA5 LIS file forcing data lat/lons from ' // trim(fname)
+
+    ierr = NF90_OPEN(fname,NF90_NOWRITE,ftn)
+    if (ierr/=0) then
+       err_msg = 'error opening netcdf file'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    end if
+
+    ! read Longitude and Latitude from nc file 
+    ierr = NF90_INQ_VARID(ftn,'LON',era5_varid)
+    ierr = NF90_GET_VAR(ftn, era5_varid, era5_lon)
+    ierr = NF90_INQ_VARID(ftn,'LAT',era5_varid)
+    ierr = NF90_GET_VAR(ftn, era5_varid, era5_lat)
+
+    ! populate lat/lon 2D arrays
+    do n=1,N_era5_compressed
+       era5_lat2D(land_i_gldas(n), land_j_gldas(n) ) = era5_lat(n)
+       era5_lon2D(land_i_gldas(n), land_j_gldas(n) ) = era5_lon(n)
+    end do
+
+    ! close NC file
+    ierr = NF90_CLOSE(ftn)
+
+    ! read Forcing data (for the date corresponding to LIS file) 
+
+    ! open file
+    fname = trim(met_path) // '/FORCING_' // YYYY // MM // '.nc'
+
+    if(root_logit) write (logunit,*) 'opening ' // trim(fname)
+
+    ierr = NF90_OPEN(fname,NF90_NOWRITE,ftn)
+
+    if (ierr/=0) then
+       err_msg = 'error opening netcdf file'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    end if
+
+    ! loop over variables and read them
+    do era5_var = 1,N_era5_vars
+       ! get var ID
+       ierr = NF90_INQ_VARID(ftn,era5_name(era5_var),era5_varid)
+       ! get variable
+       ierr = NF90_GET_VAR(ftn,era5_varid,tmp_vec,start,icount)
+
+       ! feed the temporary 2D array with data form this variable
+       do n=1,N_era5_compressed
+          tmp_grid(land_i_gldas(n),land_j_gldas(n)) = tmp_vec(n)
+       end do
+
+       ! interpolate to tile space
+       do k=1,N_catd
+          ! if the GEOS tile is not within the 0.125*sqrt(2) deg of the matching ERA5
+          ! tile, asign a missing value to it (this will trigger Exclude list flagging)
+          ! otherwise, feed with colocated tmp_grid element
+
+          geos2era_tile_SQdistance =                                             &
+             (tile_coord(k)%com_lon+0.0001 - era5_lon2D(i_ind(k),j_ind(k)))**2 + &
+             (tile_coord(k)%com_lat+0.0001 - era5_lat2D(i_ind(k),j_ind(k)))**2 
+
+          if (geos2era_tile_SQdistance .gt. era5_SQdistance) then
+            force_array(k,era5_var) = nodata_forcing  
+          else
+            force_array(k,era5_var) = tmp_grid(i_ind(k),j_ind(k))
+          endif
+       end do
+
+    end do ! era5_var
+
+    ! close NC file
+    ierr = NF90_CLOSE(ftn)
+
+    ! All variables in ERA5 files, are already in correct units. 
+    ! No need for conversions. Just feed into the met_force_new structure. 
+    !  force_array(:, 1) = DIR_SWdown W/m2     ; flux  ;(ssrd)
+    !  force_array(:, 2) = LWdown     W/m2     ; flux  ;(strd)
+    !  force_array(:, 3) = Snowf      kg/m2/s  ; flux  ;(sf)
+    !  force_array(:, 4) = Rainf      kg/m2/s  ; flux  ;(cp+lsp-sf)
+    !  force_array(:, 5) = Tair       K        ; state ;(corresponds to T at the lowest model layer (~10m))
+    !  force_array(:, 6) = Qair       kg/kg    ; state ;(corresponds to Q at the lowest model layer (~10m))
+    !  force_array(:, 7) = Wind       m/s      ; state ;(sqrt(u2+v2))
+    !  force_array(:, 8) = PSurf      Pa       ; state ;(derived from lnsp)
+
+    met_force_new%SWdown  = force_array(:,1)
+    met_force_new%LWdown  = force_array(:,2)
+    met_force_new%Tair    = force_array(:,5)
+    met_force_new%Qair    = force_array(:,6)
+    met_force_new%Wind    = force_array(:,7)
+    met_force_new%Psurf   = force_array(:,8)
+    met_force_new%RefH    = force_array(:,9)
+
+   ! rain and snow:
+   do k=1,N_catd
+
+       ! snowfall
+       if (abs(force_array(k,3)-nodata_era5)<tol) then
+          met_force_new(k)%Snowf   = nodata_forcing
+       else
+          met_force_new(k)%Snowf   = force_array(k,3)
+       end if
+
+       ! rainfall
+       if (abs(force_array(k,4)-nodata_era5)<tol) then
+          met_force_new(k)%Rainf   = nodata_forcing
+       else
+          met_force_new(k)%Rainf   = force_array(k,4) 
+       end if
+
+       ! always set convective precip to zero
+       met_force_new(k)%Rainf_C = 0.
+
+   end do
+
+    ! Currently not available from ERA5 files (nodata_generic = -9999.)
+    met_force_new%SWnet    = nodata_generic 
+    met_force_new%PARdrct  = nodata_generic 
+    met_force_new%PARdffs  = nodata_generic 
+
+  end subroutine get_ERA5_netcdf
+
   ! ****************************************************************  
    
   subroutine get_GLDAS_2x2_5_netcdf(date_time, met_path, N_catd, tile_coord, &
@@ -5329,6 +5619,7 @@ contains
     
     logical, parameter :: create_ExcludeList = .false.
     
+    
     character(len=*), parameter :: Iam = 'check_forcing_nodata_2'
     character(len=400) :: err_msg
     
@@ -5349,7 +5640,6 @@ contains
           if (create_ExcludeList) then
              
              N_exclude = N_exclude + 1
-
              write (9999,*) tile_coord(i)%tile_id
              
           else

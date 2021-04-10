@@ -91,6 +91,10 @@ GEOS forcing with experiment-specific file names, incl. FP (__DEPRECATED__), FP-
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
+ERA5 forcing
+```
+  MET_PATH : /discover/nobackup/projects/lis/MET_FORCING/ERA5/
+```
 
 COMMONLY USED values for `MET_TAG`:
 ------------------------------------
@@ -227,6 +231,10 @@ COMMONLY USED values for `MET_TAG`:
 ```
   MET_TAG  : GEOS.fp.asm__precCPCULLKG5FPv3                  ! (precip corr with late-look CPCU)
   MET_TAG  : GEOS.fp.asm__precCPCUFLKG5FPv3                  ! (precip corr with first-look CPCU)
+```
+#### ERA5
+```
+  MET_TAG  : ERA5_netcdf
 ```
 
 Boundary Conditions  
