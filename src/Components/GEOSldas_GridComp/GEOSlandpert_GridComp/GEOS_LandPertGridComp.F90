@@ -41,9 +41,6 @@ module GEOS_LandPertGridCompMod
   use LDAS_TileCoordRoutines, only: grid2tile, tile2grid_simple, tile_mask_grid
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
-  !use catch_types, only: cat_param_type
-  !use catch_incr, only: check_catch_progn
-  !use GEOS_EnsGridCompMod,      only: cat_param=>catch_param
  
   implicit none
 
@@ -926,16 +923,6 @@ contains
     VERIFY_(status)
     IAmRoot = MAPL_Am_I_Root(vm)
 
-    ! Read force/progn perturbations time steps - convert to intervals
-   ! call read_ens_prop_inputs(kw_echo = .false., &
-   !         kw_force_pert_dtstep = internal%ForcePert%dtstep)
-   ! call ESMF_TimeIntervalSet(ForcePert_DT, s=internal%ForcePert%dtstep, rc=status)
-   ! VERIFY_(status)
-   ! call read_ens_prop_inputs(kw_echo = .false., &
-   !         kw_progn_pert_dtstep = internal%PrognPert%dtstep )
-   ! call ESMF_TimeIntervalSet(PrognPert_DT, s=internal%PrognPert%dtstep, rc=status)
-   ! VERIFY_(status)
-   ! -ForcePert-
 
     call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
     call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="NO_ID", RC=STATUS)
@@ -1142,12 +1129,13 @@ contains
        ! -ForcePert-
        call propagate_pert(                                                     &
             internal%ForcePert%npert,                                           &
+            1,                                                                  &
             internal%pgrid_l, internal%pgrid_f,                                 &
             ! arbitrary dtstep
             -1.0,                                                               &
             pert_rseed,                                                         &
             internal%ForcePert%param,                                           &
-            fpert_ntrmdt(lon1:lon2,lat1:lat2,     &
+            fpert_ntrmdt(lon1:lon2,lat1:lat2,                                   &
                          1:internal%ForcePert%npert),                           &
             ! initialize
             .true.                                                              &
@@ -1156,12 +1144,13 @@ contains
        ! -prognostics-
        call propagate_pert(                                                     &
             internal%PrognPert%npert,                                           &
+            1,                                                                  &
             internal%pgrid_l, internal%pgrid_f,                                 &
             ! arbitrary dtstep
             -1.0,                                                               &
             pert_rseed,                                                         &
             internal%PrognPert%param,                                           &
-            ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),                       &
+            ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),       &
             ! initialize
             .true.                                                              &
             )
@@ -1221,7 +1210,7 @@ contains
     ! -Now-check-pert-dtstep-
     call check_pert_dtstep(                                                     &
          model_dtstep,                                                          &
-         current_time, stop_time,                                                 &
+         current_time, stop_time,                                               &
          internal%PrognPert%npert, internal%ForcePert%npert,                    &
          internal%PrognPert%dtstep, internal%ForcePert%dtstep                   &
          )
@@ -1417,6 +1406,7 @@ contains
 
     call get_pert(                                                              &
          internal%ForcePert%npert,                                              &
+         1,                                                                     &
          internal%pgrid_l, internal%pgrid_f,                                    &
          real(internal%ForcePert%dtstep),                                       &
          internal%ForcePert%param,                                              &
@@ -1425,18 +1415,11 @@ contains
          fpert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
-         ! propagate_pert in NOT called
+         ! propagate_pert is NOT called
          diagnose_pert_only=.true.                                              &
          )
 
     do ipert=1,internal%ForcePert%npert
-       !call MAPL_LocStreamTransform(                                            &
-       !     locstream,                                                          &
-       !     input=fpert_grid(:,:,ipert),                                        &
-       !     output=internal%ForcePert%DataPrv(:,ipert),                         &
-       !     rc=status                                                           &
-       !     )
-       !VERIFY_(status)
        call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 fpert_grid(:,:,ipert), internal%ForcePert%DataPrv(:,ipert))
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -1454,6 +1437,7 @@ contains
     
     call get_pert(                                                              &
          internal%PrognPert%npert,                                              &
+         1,                                                                     &
          internal%pgrid_l, internal%pgrid_f,                                    &
          real(internal%PrognPert%dtstep),                                       &
          internal%PrognPert%param,                                              &
@@ -1462,18 +1446,11 @@ contains
          ppert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
-        ! propagate_pert in NOT called
+        ! propagate_pert is NOT called
          diagnose_pert_only=.true.                                              &
          )
 
     do ipert=1,internal%PrognPert%npert
-       !call MAPL_LocStreamTransform(                                            &
-       !     locstream,                                                          &
-       !     input=ppert_grid(:,:,ipert),                                        &
-       !     output=internal%PrognPert%DataPrv(:,ipert),                         &
-       !     rc=status                                                           &
-       !     )
-       !VERIFY_(status)
        call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataPrv(:,ipert))
        call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -1697,6 +1674,7 @@ contains
     ! -ForcePert-
        call propagate_pert(                                                   &
           internal%ForcePert%npert,                                           &
+          1,                                                                  &
           internal%pgrid_l, internal%pgrid_f,                                 &
           real(internal%ForcePert%dtstep),                                    &
           pert_rseed,                                                         &
@@ -1724,11 +1702,12 @@ contains
     ! -prognostics-
         call propagate_pert(                                                  &
            internal%PrognPert%npert,                                          &
+           1,                                                                 &
            internal%pgrid_l, internal%pgrid_f,                                &
            real(internal%PrognPert%dtstep),                                   &
            pert_rseed,                                                        &
            internal%PrognPert%param,                                          &
-           ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),                      &
+           ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),      &
            .false.                                                            &
           )
 
@@ -1959,20 +1938,20 @@ contains
           ! adjust mean
           fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) =                           &
                 fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert)+fpert_enavg(:,:,:)
+
           call get_pert(                                                           &
                internal%ForcePert%npert,                                           &
+               1,                                                                  &
                internal%pgrid_l, internal%pgrid_f,                                 &
                real(internal%ForcePert%dtstep),                                    &
                internal%ForcePert%param,                                           &
                pert_rseed,                                                         &
-               fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),                       &
+               fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),       &
                fpert_grid,                                                         &
                initialize_rseed=.false.,                                           &
                initialize_ntrmdt=.false.,                                          &
-               ! propagate_pert is called
-               !diagnose_pert_only=.false.                                          &
                ! Weiyuan notes: propagate_pert is called in GenerateRaw, not here
-               diagnose_pert_only=.true.                                          &
+               diagnose_pert_only=.true.                                           &
                )
 
           call MAPL_TimerOff(MAPL, '-GetPert')
@@ -1980,13 +1959,6 @@ contains
           ! -convert-nxt-gridded-perturbations-to-tile-
           call MAPL_TimerOn(MAPL, '-LocStreamTransform')
           do ipert=1,internal%ForcePert%npert
-             !call MAPL_LocStreamTransform(                                         &
-             !     locstream,                                                       &
-             !     input=fpert_grid(:,:,ipert),                                     &
-             !     output=internal%ForcePert%DataNxt(:,ipert),                      &
-             !     rc=status                                                        &
-             !     )
-             !VERIFY_(status)
              call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_grid(:,:,ipert), &
                   internal%ForcePert%DataNxt(:,ipert))
              call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -2469,31 +2441,23 @@ contains
 
        call get_pert(                                                           &
             internal%PrognPert%npert,                                           &
+            1,                                                                  &
             internal%pgrid_l, internal%pgrid_f,                                 &
             real(internal%PrognPert%dtstep),                                    &
             internal%PrognPert%param,                                           &
             pert_rseed,                                                         &
-            ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),                       &
+            ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),       &
             ppert_grid,                                                         &
             initialize_rseed=.false.,                                           &
             initialize_ntrmdt=.false.,                                          &
-            ! propagate_pert is called
-            ! diagnose_pert_only=.false.                                          &
-            !Weiyuan notes:  propagate_pert is called in GenerateRaw
-            diagnose_pert_only=.true.                                          &
+            ! Weiyuan notes: propagate_pert is called in GenerateRaw, not here
+            diagnose_pert_only=.true.                                           &
             )
        call MAPL_TimerOn(MAPL, '-GetPert')
 
        ! -convert-nxt-gridded-perturbations-to-tile-
        call MAPL_TimerOn(MAPL, '-LocStreamTransform')
        do ipert=1,internal%PrognPert%npert
-          !call MAPL_LocStreamTransform(                                         &
-          !     locstream,                                                       &
-          !     input=ppert_grid(:,:,ipert),                                     &
-          !     output=internal%PrognPert%DataNxt(:,ipert),                      &
-          !     rc=status                                                        &
-          !     )
-          !VERIFY_(status)
           call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataNxt(:,ipert))
           call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
@@ -2976,85 +2940,4 @@ contains
        end subroutine check  
   end subroutine
 
-!  subroutine check_cat_progns(N_cat, cat_param, tc1, tc2, tc4,               &
-!!          qa1,qa2,qa4, capac                       &
-!          catdef,                                  &
-!          rzexc, srfexc,                                  &
-!         ghtcnt1,ghtcnt2,ghtcnt3,ghtcnt4,ghtcnt5,ghtcnt6, &
-!         wesnn1,wesnn2,wesnn3, &
-!         htsnnn1,htsnnn2,htsnnn3, &
-!         sndzn1, sndzn2,sndzn3)
-!       implicit none
-!       integer, intent(in) :: N_cat
-!       type(cat_param_type), dimension(N_cat), intent(in)    :: cat_param
-!       real,    dimension(       N_cat), intent(inout) :: TC1, TC2, TC4
-!       !real,    dimension(       N_cat), intent(inout) :: TC1, TC2, TC4, Qa1, Qa2, Qa4
-!       real,    dimension(       N_cat), intent(inout) :: CATDEF, RZEXC, SRFEXC
-!       real,    dimension(N_cat), intent(inout) :: GHTCNT1,GHTCNT2,GHTCNT3,GHTCNT4,GHTCNT5,GHTCNT6
-!       real,    dimension(N_cat), intent(inout) :: WESNN1, HTSNNN1, SNDZN1
-!       real,    dimension(N_cat), intent(inout) :: WESNN2, HTSNNN2, SNDZN2
-!       real,    dimension(N_cat), intent(inout) :: WESNN3, HTSNNN3, SNDZN3
-!
-!       real,    dimension(6,N_cat) :: GHTCNT
-!       real,    dimension(3,N_cat) :: WESNN, HTSNNN, SNDZN
-!       real,    dimension( N_cat)  :: Qa1, Qa2, Qa4, capac
-!
-!       GHTCNT(1,:)=GHTCNT1(:)
-!       GHTCNT(2,:)=GHTCNT2(:)
-!       GHTCNT(3,:)=GHTCNT3(:)
-!       GHTCNT(4,:)=GHTCNT4(:)
-!       GHTCNT(5,:)=GHTCNT5(:)
-!       GHTCNT(6,:)=GHTCNT6(:)
-!
-!       WESNN(1,:) = WESNN1(:)
-!       WESNN(2,:) = WESNN2(:)
-!       WESNN(3,:) = WESNN3(:)
-!
-!       sndzn(1,:) = sndzn1(:)
-!       sndzn(2,:) = sndzn2(:)
-!       sndzn(3,:) = sndzn3(:)
-!
-!       htsnnn(1,:) = htsnnn1(:)
-!       htsnnn(2,:) = htsnnn2(:)
-!       htsnnn(3,:) = htsnnn3(:)
-!
-!      ! just for the interface. QA event didn't change
-!      Qa1 = 0.0
-!      Qa2 = 0.0
-!      Qa4 = 0.0
-!      capac = 0.0
-!
-!       call check_catch_progn( N_cat, cat_param%vegcls, cat_param%dzsf,         &
-!         cat_param%vgwmax,  cat_param%cdcr1, cat_param%cdcr2,                &
-!         cat_param%psis, cat_param%bee, cat_param%poros, cat_param%wpwet,    &
-!         cat_param%ars1, cat_param%ars2, cat_param%ars3,                     &
-!         cat_param%ara1, cat_param%ara2, cat_param%ara3, cat_param%ara4,     &
-!         cat_param%arw1, cat_param%arw2, cat_param%arw3, cat_param%arw4,     &
-!         tc1, tc2, tc4,                        &
-!         qa1, qa2, qa4,                        &
-!         capac,catdef,                         &
-!         rzexc, srfexc,                        &
-!         ghtcnt, wesnn, htsnnn, sndzn )
-!
-!       GHTCNT1(:) = GHTCNT(1,:)
-!       GHTCNT2(:) = GHTCNT(2,:)
-!       GHTCNT3(:) = GHTCNT(3,:)
-!       GHTCNT4(:) = GHTCNT(4,:)
-!       GHTCNT5(:) = GHTCNT(5,:)
-!       GHTCNT6(:) = GHTCNT(6,:)
-!       
-!       WESNN1(:) = WESNN(1,:)
-!       WESNN2(:) = WESNN(2,:)
-!       WESNN3(:) = WESNN(3,:)
-!       
-!       sndzn1(:) = sndzn(1,:)
-!       sndzn2(:) = sndzn(2,:)
-!       sndzn3(:) = sndzn(3,:)
-!
-!       htsnnn1(:) = htsnnn(1,:)
-!       htsnnn2(:) = htsnnn(2,:)
-!       htsnnn3(:) = htsnnn(3,:)
-!
-! end subroutine check_cat_progns
-    
 end module GEOS_LandPertGridCompMod
