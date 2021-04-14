@@ -47,7 +47,7 @@ by `MET_HINTERP` (see optional parameters in `exeinp` input file to ldas_setup).
 COMMONLY USED values for `MET_PATH`:
 ------------------------------------
 
-Legacy datasets
+#### Legacy datasets
 ```
   MET_PATH : [XXX]/l_data/ECMWF/GRID/CORRECTED/netcdf/
   MET_PATH : [XXX]/l_data/GLDAS/netcdf/
@@ -55,46 +55,51 @@ Legacy datasets
   MET_PATH : [XXX]/l_data/RedArk/RedArk_subbasin_forcing/red_ark_forc/
 ```
 
-MERRA  forcing (including precip-corrected MERRA forcing)
+#### ERA5 (LDAS-Monde via NASA LIS group)
+```
+  MET_PATH : /discover/nobackup/projects/lis/MET_FORCING/ERA5/
+```
+
+### GEOS-based datasets
+
+#### MERRA  forcing (including precip-corrected MERRA forcing)
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA_land_forcing/ 
 ```
 
-MERRA2 forcing (including precip-corrected MERRA forcing)
+#### MERRA2 forcing (including precip-corrected MERRA forcing)
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/ 
 ```
 
-SMAP_Nature_v03
+#### SMAP_Nature_v03
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-SMAP_Nature_v04, SMAP_Nature_v04.1
+#### SMAP_Nature_v04, SMAP_Nature_v04.1
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-SMAP_Nature_v05, v7.2, v8.1, v8.3;  SMAP L4_SM Version 4
+#### SMAP_Nature_v05, v7.2, v8.1, v8.3;  SMAP L4_SM Version 4
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/  ! before 1/1/2015
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/   ! after  1/1/2015
 ```
 
-GEOS FP forcing with "seamless" file names, for use with MET_TAG=GEOS.fp.asm[__prec*] (__PREFERRED__);  
+#### GEOS FP forcing with "seamless" file names, for use with MET_TAG=GEOS.fp.asm[__prec*] (__PREFERRED__);  
 SMAP L4_SM Version 5  
 ```
   MET_PATH : /discover/nobackup/projects/gmao/smap/SMAP_L4/GEOS/FP/
 ```
 
-GEOS forcing with experiment-specific file names, incl. FP (__DEPRECATED__), FP-IT/RP-IT, and precip-corrected GEOS forcing
+#### GEOS forcing with experiment-specific file names, incl. FP (__DEPRECATED__), FP-IT/RP-IT, and precip-corrected GEOS forcing
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
-ERA5 forcing
-```
-  MET_PATH : /discover/nobackup/projects/lis/MET_FORCING/ERA5/
-```
+
+
 
 COMMONLY USED values for `MET_TAG`:
 ------------------------------------
@@ -106,6 +111,13 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GSWP2_1x1_netcdf
   MET_TAG  : RedArk_ASCII
 ```
+
+#### ERA5 (LDAS-Monde via NASA LIS group)
+```
+  MET_TAG  : ERA5_LIS
+```
+
+### GEOS-based datasets
 
 #### MERRA
 ```
@@ -232,10 +244,7 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GEOS.fp.asm__precCPCULLKG5FPv3                  ! (precip corr with late-look CPCU)
   MET_TAG  : GEOS.fp.asm__precCPCUFLKG5FPv3                  ! (precip corr with first-look CPCU)
 ```
-#### ERA5
-```
-  MET_TAG  : ERA5_netcdf
-```
+
 
 Boundary Conditions  
 ================================================================================

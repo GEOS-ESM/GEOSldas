@@ -86,31 +86,32 @@ module LDAS_ForceMod
   type(local_grid), target :: local_info
   ! for cubed sphere forcing checking, initialized by GEOS_MetforceGridComp
   integer, public :: im_world_cs = 0
+
 contains
 
   ! ********************************************************************
 
-  subroutine get_forcing( date_time, force_dtstep, met_path, met_tag, &
-       N_catd, tile_coord, met_hinterp,                               &
-       MERRA_file_specs, GEOS_Forcing, ERA5_Forcing, met_force_obs_tile_new,        & 
-       AEROSOL_DEPOSITION,init, alb_from_SWnet )
+  subroutine get_forcing( date_time, force_dtstep, met_path, met_tag,        &
+       N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                  &
+       MERRA_file_specs, bkwd_looking_fluxes, met_force_obs_tile_new,        & 
+       init )
     
     ! Read and check meteorological forcing data for the domain.
     !
     ! time convention:
     ! - forcing states (such as Tair) are snapshots at date_time
-    ! - forcing fluxes (such as SWdn) are time avg over *subsequent* forcing
-    !    interval (date_time:date_time+force_dtstep)    
+    ! - forcing fluxes (such as SWdn) are time avg over *subsequent* (*forward-looking*) 
+    !    forcing interval (date_time:date_time+force_dtstep)    
     !
-    ! The above time convention is heritage from older versions of the 
+    ! The above time convention was inherited from older versions of the 
     ! off-line driver and creates problems with "operational" forcing
-    ! data from GEOS5.  For "operational" integrations, the forward-looking
+    ! data from GEOS.  For "operational" integrations, the forward-looking
     ! forcing fluxes are not available for "met_force_obs_tile_new".  
     !
-    ! As a work-around, the output parameter "move_met_force_obs_new_to_old"
-    ! is used to treat "operational" forcing data sets accordingly in the
-    ! main program.  This work-around replaces an older work-around that 
-    ! was less efficient.
+    ! For datasets that provide fluxes over the forcing interval that *precedes*
+    ! date_time_new, the output parameter "bkwd_looking_fluxes" must be set to .true.,
+    ! so that subroutine LDAS_move_new_force_to_old() can time-shift the fields
+    ! accordingly.
     !
     ! When LDASsa is integrated within the coupled GEOS5 DAS, initial (time-avg)
     ! "tavg1_2d_*_Nx" files are not available.  Use optional "init" flag to 
@@ -122,34 +123,48 @@ contains
     ! reichle,      25 Sep   2009 - removed unneeded inputs 
     ! reichle,      23 Feb   2016 - new and more efficient work-around to make GEOS-5 
     !                                forcing work with LDASsa time convention for forcing data
-    ! borescan,     01 Feb   2021 - added ERA5 forcing 
-
+    ! borescan,     01 Feb   2021 - added ERA5_LIS forcing 
+    ! reichle,      12 Apr   2021 - removed obsolete optional input "alb_from_SWnet"
+    !                             - replaced "GEOS_forcing" switch with "bkwd_looking_fluxes"
+    !                             - added checks for supported options of MET_HINTERP and
+    !                                AEROSOL_DEPOSITION
+    
     implicit none
+
+    ! intent in:
     
     type(date_time_type), intent(in) :: date_time
     
-    integer, intent(in) :: force_dtstep
+    integer,              intent(in) :: force_dtstep
 
-    character(*),       intent(in) :: met_path
-    character(*),       intent(in) :: met_tag
+    character(*),         intent(in) :: met_path
+    character(*),         intent(in) :: met_tag
 
-    integer,              intent(in) :: N_catd, met_hinterp
+    integer,              intent(in) :: N_catd, MET_HINTERP, AEROSOL_DEPOSITION
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+
+    ! intent out:
     
-    logical,intent(out) :: MERRA_file_specs
-    logical,intent(out) :: GEOS_forcing
-    logical,intent(out) :: ERA5_forcing 
+    logical,              intent(out) :: MERRA_file_specs
+    logical,              intent(out) :: bkwd_looking_fluxes
 
     type(met_force_type), dimension(N_catd), intent(out) :: &
          met_force_obs_tile_new
-    integer,intent(in) :: AEROSOL_DEPOSITION
-    logical, intent(in), optional  :: init, alb_from_SWnet        
 
+    ! optional:
+    
+    logical, intent(in), optional  :: init
+
+    ! -------------------
+    
     ! local variables
     
-    real :: nodata_forcing
-
+    real    :: nodata_forcing
+    
+    logical :: supported_option_MET_HINTERP          ! for consistency check of resource parameter settings
+    logical :: supported_option_AEROSOL_DEPOSITION   ! for consistency check of resource parameter settings
+    
     type(date_time_type) :: date_time_tmp
     
     character(len=*), parameter :: Iam = 'get_forcing'
@@ -167,7 +182,8 @@ contains
     
     met_force_obs_tile_new%RefH  = DEFAULT_REFH
     
-    ! set SWnet, PARdrct, PARdffs to nodata_generic
+    ! initialize SWnet, PARdrct, PARdffs to nodata_generic 
+    !
     ! (Note that nodata_forcing is set to the native no-data-value
     !  in the individual get_*() subroutines and used to communicate with
     !  check_forcing_nodata.  AFTER the call to check_forcing_nodata all forcing 
@@ -179,20 +195,31 @@ contains
     ! reichle,  5 Mar 2009 -- deleted ParDrct, ParDffs after testing found no impact
     ! reichle, 22 Jul 2010 -- fixed treatment of SWnet nodata values
     ! reichle, 20 Dec 2011 -- reinstated PARdrct and PARdffs for MERRA-Land file specs
-
+    
+    met_force_obs_tile_new%SWnet   = nodata_generic
+    met_force_obs_tile_new%PARdrct = nodata_generic
+    met_force_obs_tile_new%PARdffs = nodata_generic
+    
     ! ---------------------------------------------------------------------------------
     !
     ! initialize 
     
-    MERRA_file_specs               = .false.
+    MERRA_file_specs                        = .false.
 
-    GEOS_forcing                   = .false.        
+    bkwd_looking_fluxes                     = .false.
 
-    ERA5_forcing                   = .false.        
+    ! every forcing data reader must support the default settings:
+    ! 
+    !   MET_HINTER         = 0 : nearest neighbor
+    !   AEROSOL_DEPOSITION = 0 : *no* aerosol deposition
+    !
+    ! initialize "supported_option_*" to .true. for defaults and .false. otherwise; then
+    !  set to .true. in individual forcing readers for any non-default options that are
+    !  supported for the selected met_tag 
+    
+    supported_option_MET_HINTERP        = (MET_HINTERP        == 0)
 
-    met_force_obs_tile_new%SWnet   = nodata_generic
-    met_force_obs_tile_new%PARdrct = nodata_generic
-    met_force_obs_tile_new%PARdffs = nodata_generic
+    supported_option_AEROSOL_DEPOSITION = (AEROSOL_DEPOSITION == 0)
 
     ! ---------------------------------------------------------------------------------
     !
@@ -212,11 +239,13 @@ contains
        call repair_forcing( N_catd, met_force_obs_tile_new, &
             echo=.true., tile_coord=tile_coord )
 
-    elseif (index(met_tag, 'ERA5_netcdf')/=0) then 
+    elseif (index(met_tag, 'ERA5_LIS')/=0) then 
 
-       ERA5_forcing = .true. 
-
-       call get_ERA5_netcdf(date_time_tmp, met_path, N_catd, tile_coord, &
+       ! subroutine get_ERA5_LIS() provides backward-looking fluxes
+       
+       bkwd_looking_fluxes            = .true.        
+              
+       call get_ERA5_LIS(date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
 
        ! check for nodata values and unphysical values
@@ -354,20 +383,17 @@ contains
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
        if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
-
-       GEOS_forcing = .true.
-
-       ! note "met_tag" in call to get_GEOSgcm_gfio (interface differs
-       ! from other get_* subroutines)
        
-       !call get_GEOSgcm_gfio(  date_time_tmp, met_path, met_tag, &
-       !     N_catd, tile_coord, &
-       !     met_force_obs_tile_new, nodata_forcing)
+       ! subroutine get_GEOS() provides backward-looking fluxes 
        
-       call get_GEOS( date_time_tmp, force_dtstep,                           &
-            met_path, met_tag, N_catd, tile_coord, met_hinterp,              &
-            met_force_obs_tile_new, nodata_forcing, MERRA_file_specs,        &
-            AEROSOL_DEPOSITION, init )
+       bkwd_looking_fluxes            = .true.
+
+       call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,       &
+            N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,            &
+            supported_option_MET_HINTERP,                                   &
+            supported_option_AEROSOL_DEPOSITION,                            &            
+            met_force_obs_tile_new, nodata_forcing, MERRA_file_specs,       &
+            init )
        
        ! check for nodata values and unphysical values
        ! (check here, not outside "if" block, because of GEOSgcm case)
@@ -423,52 +449,38 @@ contains
        
     end if
 
-    ! make sure SWnet is generally available if needed to back out albedo
-    ! (only works for GEOS forcing, e.g., MERRA, FP, FP-IT)
-    !
-    ! NOTE: need to check here because GEOS forcing is the default
-    !       forcing data set in the "if... elseif... elseif... else..."
-    !       statement above, that is, it is only asserted here whether
-    !       the requested forcing data are GEOS.
+    ! stop if a supported_option_* switch remains .false.
     
-    if (present(alb_from_SWnet)) then
-       
-       if ( (.not. GEOS_forcing) .and. (alb_from_SWnet) ) then
-          
-          ! stop if per nml inputs the albedo should be backed
-          ! out from SWnet but forcing data is not GEOS
-
-          err_msg = 'requested nml input [alb_from_SWnet=.true.] ' // &
-               '*only* works with GEOS forcing'
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          
-       end if
-
-    end if
-
-    ! stop if anything other than nearest-neighbor met forcing interpolation was 
-    ! requested for a non-GEOS5 forcing dataset
-    
-    if ((.not. GEOS_forcing) .and. (met_hinterp>0)) then
-       err_msg = 'for non-GEOS forcing, only ' // &
-            'nearest-neighbor interpolation is available'
+    if (.not. supported_option_MET_HINTERP)        then
+       err_msg = 'selected MET_HINTERP option not supported for met_tag ' &
+            //  trim(met_tag)
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
-    
-   end subroutine get_forcing
 
-!*****************************
-   subroutine LDAS_move_new_force_to_old(new_force,old_force,MERRA_file_specs, GEOS_forcing,ERA5_forcing,AEROSOL_DEPOSITION)
+    if (.not. supported_option_AEROSOL_DEPOSITION) then
+       err_msg = 'selected AEROSOL_DEPOSITION option not supported for met_tag ' &
+            //  trim(met_tag)
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    end if
+
+  end subroutine get_forcing
+
+   !**************************************************************************************
+
+   subroutine LDAS_move_new_force_to_old( MERRA_file_specs, AEROSOL_DEPOSITION, &
+        new_force, old_force )
+
+     ! call this subroutine ONLY if the forcing reader provides backward-looking fluxes
+     ! - reichle, 14 Apr 2021
+     
      implicit none
+     
+     logical, intent(in) :: MERRA_file_specs
+     integer, intent(in) :: AEROSOL_DEPOSITION
+     
      type(met_force_type), dimension(:), intent(inout) :: new_force
      type(met_force_type), dimension(:), intent(inout) :: old_force
-     logical,intent(in) :: MERRA_file_specs
-     logical,intent(in) :: GEOS_forcing
-     logical,intent(in) :: ERA5_forcing  
-     integer, intent(in) :: AEROSOL_DEPOSITION
-
-     if (.not. GEOS_forcing .and. .not. ERA5_forcing) return
-
+     
      old_force%Rainf_C = new_force%Rainf_C
      old_force%Rainf   = new_force%Rainf
      old_force%Snowf   = new_force%Snowf
@@ -478,7 +490,6 @@ contains
      old_force%PARdrct = new_force%PARdrct
      old_force%PARdffs = new_force%PARdffs
 
-
      new_force%Rainf_C = nodata_generic
      new_force%Rainf   = nodata_generic
      new_force%Snowf   = nodata_generic
@@ -487,21 +498,20 @@ contains
      new_force%SWnet   = nodata_generic
      new_force%PARdrct = nodata_generic
      new_force%PARdffs = nodata_generic
-
      
      ! [moved here from below, reichle, 28 Jan 2021]
      ! treat Wind as flux when forcing with MERRA
      if (MERRA_file_specs) then
-         old_force%Wind  = new_force%Wind
-         new_force%Wind  = nodata_generic
+        old_force%Wind  = new_force%Wind
+        new_force%Wind  = nodata_generic
      endif
-
+     
      ! not sure what exactly the following fields are and
      ! whether it makes sense to include them here
      ! - reichle, 28 Jan 2021
      !
      if( AEROSOL_DEPOSITION /=0) then
-
+        
         old_force%DUDP001 = new_force%DUDP001
         old_force%DUDP002 = new_force%DUDP002
         old_force%DUDP003 = new_force%DUDP003
@@ -1918,17 +1928,34 @@ contains
     enddo
     
   end subroutine get_conus_netcdf
-    ! ****************************************************************  
 
-  subroutine get_ERA5_netcdf(date_time, met_path, N_catd, tile_coord, &
+  ! ****************************************************************  
+  
+  subroutine get_ERA5_LIS(date_time, met_path, N_catd, tile_coord, &
        met_force_new, nodata_forcing )
 
-    ! read ERA5 NetCDF files obtained and shared by LIS group to extract 
-    ! forcing data and load it into tile space (must use nearest neighbor
-    ! interpolation in runsetup)
-
-    ! borescan 01 Feb 2021
-
+    ! Read ERA5 NetCDF files maintained and shared by the NASA LIS group
+    ! and based on forcing data put together originally for LDAS-Monde.
+    !
+    ! Forcing data are interpolated into tile space using nearest-neighbor;
+    ! select MET_HINTERP accordingly during run configuration.
+    !
+    ! Note that the LDAS-Monde data used here *differ* from the published 
+    ! ERA5 data that are available through the Copernicus Climate Change 
+    ! Service (C3S) Climate Data Store.
+    !
+    ! Both the LDAS-Monde and the public data are on 1/4-deg lat/lon grids,
+    ! but the grids are offset by 1/2 grid cell in both the lat and long directions.
+    ! Also, the grid of the public data has 721 latitude points.
+    !
+    ! Moreover, the LDAS-Monde data provide temperature and humidity for the
+    ! lowest atmospheric model level (~10 m), which are not available from the
+    ! C3S Climate Data Store.
+    !    
+    ! borescan+reichle, 14 Apr 2021
+    !
+    ! ----------------------------------------------------------
+    
     use netcdf
     implicit none
     include 'mpif.h'
@@ -1942,7 +1969,8 @@ contains
     type(met_force_type) , dimension(N_catd), intent(inout) :: met_force_new
     real,                                     intent(out)   :: nodata_forcing
 
-    ! ERA5 grid and netcdf parameters 
+    ! ERA5 grid and netcdf parameters
+    
     integer, parameter :: era5_grid_N_lon   = 1440
     integer, parameter :: era5_grid_N_lat   =  720
     real,    parameter :: era5_grid_ll_lon  = -180.0000
@@ -1950,11 +1978,10 @@ contains
     real,    parameter :: era5_grid_dlon    =    0.25
     real,    parameter :: era5_grid_dlat    =    0.25
     integer, parameter :: N_era5_compressed = 340819
-
-    ! ERA5 forcing time step in hours
-    integer, parameter :: dt_era5_in_hours  = 1
+    integer, parameter :: dt_era5_in_hours  = 1                 ! ERA5 forcing time step in hours
     integer, parameter :: N_era5_vars       = 9
     real,    parameter :: nodata_era5       = 1.e20
+    
     character(40), dimension(N_era5_vars), parameter :: era5_name = (/ &
          'DIR_SWdown',   &   !  (1)
          'LWdown    ',   &   !  (2)
@@ -1967,23 +1994,29 @@ contains
          'UREF      '/)      !  (9)  at 10m   
 
     ! local variables
-    real,    dimension(era5_grid_N_lon,era5_grid_N_lat) :: tmp_grid,era5_lat2D,era5_lon2D
-    integer, dimension(N_era5_compressed)               :: land_i_gldas,land_j_gldas,p2g,RefH
-    real,    dimension(N_era5_compressed)               :: era5_lon,era5_lat
+
+    real,    dimension(era5_grid_N_lon,era5_grid_N_lat) :: tmp_grid, era5_lat2D, era5_lon2D
+    integer, dimension(N_era5_compressed)               :: land_i_era5, land_j_era5, p2g
+    real,    dimension(N_era5_compressed)               :: era5_lon, era5_lat
     integer, dimension(N_catd)                          :: i_ind, j_ind
     real,    dimension(N_era5_compressed)               :: tmp_vec
     real,    dimension(N_catd,N_era5_vars)              :: force_array
     integer, dimension(2)                               :: start, icount
-    integer :: k, n, hours_in_month, era5_var, ierr, ncid,era5_varid,ii_el,ftn
+
+    integer :: k, n, hours_in_month, era5_var, ierr, ncid, era5_varid, kk
     real    :: tol,  this_lon, this_lat, geos2era_tile_SQdistance
+
     character(4)                :: YYYY
     character(2)                :: MM
     character(300)              :: fname
-    character(len=*), parameter :: Iam = 'get_ERA5_netcdf'
+    character(len=*), parameter :: Iam = 'get_ERA5_LIS'
     character(len=400)          :: err_msg
+
     ! era5_SQdistance is a half diagonal of 0.25deg grid box squared
     real, parameter             :: era5_SQdistance = 0.03125  ![degrees] (0.125**2+0.125**2)
 
+    ! ----------------------------------------------------------------------------------------
+    
     nodata_forcing = nodata_era5
 
     tol = abs(nodata_forcing*nodata_tolfrac_generic)
@@ -1992,12 +2025,15 @@ contains
     write (YYYY,'(i4.4)') date_time%year
     write (MM,  '(i2.2)') date_time%month
 
+    ! compressed space dimension (always read global vector)
+    
     start(1)  = 1
     icount(1) = N_era5_compressed
 
-    ! time dimension (first entry in ERA5_NetCDF file is at 00Z)
-    if ( (date_time%min/=0) .or. (date_time%sec/=0) .or.     &
-         (mod(date_time%hour,dt_era5_in_hours)/=0)      ) then
+    ! time dimension (first entry in ERA5_LIS file is at 00Z)
+
+    if ( (date_time%min/=0) .or. (date_time%sec/=0) .or.           &
+         (mod(date_time%hour,dt_era5_in_hours)/=0)        ) then
 
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'timing ERROR!!')
 
@@ -2012,56 +2048,66 @@ contains
     ! to tile space
 
     do k=1,N_catd
-
+       
        ! ll_lon and ll_lat refer to lower left corner of grid cell
        ! (as opposed to the grid point in the center of the grid cell)
-
+       
        this_lon = tile_coord(k)%com_lon
        this_lat = tile_coord(k)%com_lat
-
-       ! geos's lat/lons add a small number (i.e. 0.0001) to avoid computational
-       ! rounding that leads to random placement of the matching ERA5 grid at
-       ! certain lat/lon bands
-       i_ind(k) = ceiling( (this_lon+0.0001 - era5_grid_ll_lon)/era5_grid_dlon )
-       j_ind(k) = ceiling( (this_lat+0.0001 - era5_grid_ll_lat)/era5_grid_dlat )
+       
+       ! add small offsets to avoid unpredictable assignment of
+       ! regularly spaced tiles (such as from the EASEv2 tile space)
+       ! to ERA5 grid cells along certain lat/lon values
+       ! (that is, make it easier to reproduce the mapping done here
+       !  in separate postprocessing analysis scripts)
+       
+       this_lon = this_lon + 0.0001
+       this_lat = this_lat + 0.0001
+       
+       i_ind(k) = ceiling( (this_lon - era5_grid_ll_lon)/era5_grid_dlon )
+       j_ind(k) = ceiling( (this_lat - era5_grid_ll_lat)/era5_grid_dlat )
 
        ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180 
        ! we now have i_ind=(grid%N_lon+1) 
-       ! This needs to be fixed as fallows:
+       ! This needs to be fixed as follows:
+       
        if (i_ind(k)>era5_grid_N_lon)  i_ind(k)=1
-
+       
     end do
+    
     ! read parameters (same for all data variables and time steps)
 
-    ! First read the point2grid variable from the mapping.nc file
+    ! First read the point2grid (p2g) variable from the mapping.nc file
     ! 'point2grid' is used to calculate i and j indices for the tmp_grid
 
     fname = trim(met_path) // '/mapping.nc'
 
     if(root_logit) write (logunit,*) 'get netcdf params from ' // trim(fname)
 
-    ierr = NF90_OPEN(fname,NF90_NOWRITE,ftn)
+    ierr = NF90_OPEN(fname,NF90_NOWRITE,ncid)
     if (ierr/=0) then
        err_msg = 'error opening netcdf file'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
 
     ! read P2G from the nc file
-    ierr = NF90_INQ_VARID(ftn,'P2G',era5_varid)
-    ierr = NF90_GET_VAR(ftn, era5_varid, p2g)
-
+    ierr = NF90_INQ_VARID(ncid,'P2G',era5_varid)
+    ierr = NF90_GET_VAR(ncid, era5_varid, p2g)
+    
     ! calculate x and y indices corresponding to each 1D array element (i.e. tile
     ! space)
-    do ii_el=1,N_era5_compressed
-      land_i_gldas(ii_el)=mod((p2g(ii_el)),era5_grid_N_lon)
-      if(land_i_gldas(ii_el) .eq. 0) land_i_gldas(ii_el)=era5_grid_N_lon
-
-      land_j_gldas(ii_el)=floor((p2g(ii_el))/float(era5_grid_N_lon))+1
-      if (mod(p2g(ii_el),era5_grid_N_lon) .eq. 0) land_j_gldas(ii_el)=land_j_gldas(ii_el)-1
+    do kk=1,N_era5_compressed
+       
+       land_i_era5(kk)=mod((p2g(kk)),era5_grid_N_lon)
+       if(land_i_era5(kk) .eq. 0) land_i_era5(kk)=era5_grid_N_lon
+       
+       land_j_era5(kk)=floor((p2g(kk))/float(era5_grid_N_lon))+1
+       if (mod(p2g(kk),era5_grid_N_lon) .eq. 0) land_j_era5(kk)=land_j_era5(kk)-1
+       
     end do
-
+    
     ! close NC file
-    ierr = NF90_CLOSE(ftn)
+    ierr = NF90_CLOSE(ncid)
 
     ! Get forcing data geolocation (to be used for Exclude list creation)
     ! Read in LON and LAT values from only one Forcing file. This information
@@ -2072,26 +2118,26 @@ contains
 
     if(root_logit) write (logunit,*) 'get ERA5 LIS file forcing data lat/lons from ' // trim(fname)
 
-    ierr = NF90_OPEN(fname,NF90_NOWRITE,ftn)
+    ierr = NF90_OPEN(fname,NF90_NOWRITE,ncid)
     if (ierr/=0) then
        err_msg = 'error opening netcdf file'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
 
     ! read Longitude and Latitude from nc file 
-    ierr = NF90_INQ_VARID(ftn,'LON',era5_varid)
-    ierr = NF90_GET_VAR(ftn, era5_varid, era5_lon)
-    ierr = NF90_INQ_VARID(ftn,'LAT',era5_varid)
-    ierr = NF90_GET_VAR(ftn, era5_varid, era5_lat)
+    ierr = NF90_INQ_VARID(ncid,'LON',era5_varid)
+    ierr = NF90_GET_VAR(ncid, era5_varid, era5_lon)
+    ierr = NF90_INQ_VARID(ncid,'LAT',era5_varid)
+    ierr = NF90_GET_VAR(ncid, era5_varid, era5_lat)
 
     ! populate lat/lon 2D arrays
     do n=1,N_era5_compressed
-       era5_lat2D(land_i_gldas(n), land_j_gldas(n) ) = era5_lat(n)
-       era5_lon2D(land_i_gldas(n), land_j_gldas(n) ) = era5_lon(n)
+       era5_lat2D(land_i_era5(n), land_j_era5(n) ) = era5_lat(n)
+       era5_lon2D(land_i_era5(n), land_j_era5(n) ) = era5_lon(n)
     end do
 
     ! close NC file
-    ierr = NF90_CLOSE(ftn)
+    ierr = NF90_CLOSE(ncid)
 
     ! read Forcing data (for the date corresponding to LIS file) 
 
@@ -2100,23 +2146,26 @@ contains
 
     if(root_logit) write (logunit,*) 'opening ' // trim(fname)
 
-    ierr = NF90_OPEN(fname,NF90_NOWRITE,ftn)
+    ierr = NF90_OPEN(fname,NF90_NOWRITE,ncid)
 
     if (ierr/=0) then
        err_msg = 'error opening netcdf file'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
 
-    ! loop over variables and read them
-    do era5_var = 1,N_era5_vars
-       ! get var ID
-       ierr = NF90_INQ_VARID(ftn,trim(era5_name(era5_var)),era5_varid)
-       ! get variable
-       ierr = NF90_GET_VAR(ftn,era5_varid,tmp_vec,start,icount)
+    ! loop through forcing variables
 
-       ! feed the temporary 2D array with data form this variable
+    do era5_var = 1,N_era5_vars
+       
+       ierr = NF90_INQ_VARID(ncid,trim(era5_name(era5_var)),era5_varid)   ! get var ID
+       ierr = NF90_GET_VAR(ncid,era5_varid,tmp_vec,start,icount)          ! read variable
+       
+       ! put data on global grid
+       
+       tmp_grid  = nodata_forcing    ! initialize 
+
        do n=1,N_era5_compressed
-          tmp_grid(land_i_gldas(n),land_j_gldas(n)) = tmp_vec(n)
+          tmp_grid(land_i_era5(n),land_j_era5(n)) = tmp_vec(n)
        end do
 
        ! interpolate to tile space
@@ -2139,7 +2188,7 @@ contains
     end do ! era5_var
 
     ! close NC file
-    ierr = NF90_CLOSE(ftn)
+    ierr = NF90_CLOSE(ncid)
 
     ! All variables in ERA5 files, are already in correct units. 
     ! No need for conversions. Just feed into the met_force_new structure. 
@@ -2152,42 +2201,21 @@ contains
     !  force_array(:, 7) = Wind       m/s      ; state ;(sqrt(u2+v2))
     !  force_array(:, 8) = PSurf      Pa       ; state ;(derived from lnsp)
 
-    met_force_new%SWdown  = force_array(:,1)
-    met_force_new%LWdown  = force_array(:,2)
-    met_force_new%Tair    = force_array(:,5)
-    met_force_new%Qair    = force_array(:,6)
-    met_force_new%Wind    = force_array(:,7)
-    met_force_new%Psurf   = force_array(:,8)
-    met_force_new%RefH    = force_array(:,9)
+    met_force_new%SWdown   = force_array(:,1)
+    met_force_new%LWdown   = force_array(:,2)
+    met_force_new%Snowf    = force_array(:,3)        
+    met_force_new%Rainf    = force_array(:,4) 
+    met_force_new%Rainf_C  = 0.                     ! always set convective precip to zero
+    met_force_new%Tair     = force_array(:,5)
+    met_force_new%Qair     = force_array(:,6)
+    met_force_new%Wind     = force_array(:,7)
+    met_force_new%Psurf    = force_array(:,8)
+    met_force_new%RefH     = force_array(:,9)
 
-   ! rain and snow:
-   do k=1,N_catd
+    ! do not touch %SWnet, %PARdrct, and %PARdffs, which are not avaibable from ERA5_LIS;
+    ! already initialized to nodata_generic in get_forcing().
 
-       ! snowfall
-       if (abs(force_array(k,3)-nodata_era5)<tol) then
-          met_force_new(k)%Snowf   = nodata_forcing
-       else
-          met_force_new(k)%Snowf   = force_array(k,3)
-       end if
-
-       ! rainfall
-       if (abs(force_array(k,4)-nodata_era5)<tol) then
-          met_force_new(k)%Rainf   = nodata_forcing
-       else
-          met_force_new(k)%Rainf   = force_array(k,4) 
-       end if
-
-       ! always set convective precip to zero
-       met_force_new(k)%Rainf_C = 0.
-
-   end do
-
-    ! Currently not available from ERA5 files (nodata_generic = -9999.)
-    met_force_new%SWnet    = nodata_generic 
-    met_force_new%PARdrct  = nodata_generic 
-    met_force_new%PARdffs  = nodata_generic 
-
-  end subroutine get_ERA5_netcdf
+  end subroutine get_ERA5_LIS
 
   ! ****************************************************************  
    
@@ -2688,9 +2716,12 @@ contains
   
   ! *************************************************************************
   
-  subroutine get_GEOS(date_time, force_dtstep,                             &
-       met_path, met_tag, N_catd, tile_coord, met_hinterp,                 &
-       met_force_new, nodata_forcing, MERRA_file_specs,AEROSOL_DEPOSITION, init )
+  subroutine get_GEOS( date_time, force_dtstep, met_path, met_tag,        &
+       N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,               &
+       supported_option_MET_HINTERP,                                      &
+       supported_option_AEROSOL_DEPOSITION,                               &            
+       met_force_new, nodata_forcing, MERRA_file_specs,                   &
+       init )
     
     ! reichle,  5 March 2008 - adapted from get_GEOSgcm_gfio to work with DAS
     !                           and MERRA file specs
@@ -2754,46 +2785,63 @@ contains
 
     use netcdf
     implicit none
+
+    ! intent in:
     
     type(date_time_type), intent(in) :: date_time           ! date/time of 'inst' forcing
     
-    integer, intent(in) :: force_dtstep
+    integer,              intent(in) :: force_dtstep
 
     ! e.g.: met_path = '/land/reichle/GEOS5_land_forcings/'
     !       met_tag  = 'js4rt_b7p1'                         (GEOSgcm exp label)
     
-    character(*),       intent(in) :: met_path
-    character(*),        intent(in) :: met_tag
+    character(*),         intent(in) :: met_path
+    character(*),         intent(in) :: met_tag
     
-    integer,              intent(in) :: N_catd, met_hinterp
+    integer,              intent(in) :: N_catd, MET_HINTERP, AEROSOL_DEPOSITION
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+
+    ! intent inout:
+
+    logical, intent(inout) :: supported_option_MET_HINTERP
+    logical, intent(inout) :: supported_option_AEROSOL_DEPOSITION
     
     type(met_force_type), dimension(N_catd), intent(inout) :: met_force_new
+
+    ! intent out:
     
-    real, intent(out) :: nodata_forcing
+    real,    intent(out) :: nodata_forcing
     
     logical, intent(out) :: MERRA_file_specs       ! original MERRA only, not MERRA-2
-    integer,intent(in)   :: AEROSOL_DEPOSITION
+
+    ! optional:
+    
     logical, intent(in), optional :: init
 
+    ! -----------------------------------------
+    
     ! local variables
     
-    integer, parameter :: N_G5DAS_vars = 13        ! also applies to MERRA-2
-    integer, parameter :: N_MERRA_vars = 14
+    integer, parameter :: N_G5DAS_vars   = 13   ! same as for MERRA-2 (excl Aerosol vars)
+    integer, parameter :: N_MERRA_vars   = 14
+    integer, parameter :: N_MERRA2_vars  = 13   ! same as for G5DAS (excl Aerosol vars)
+    integer, parameter :: N_Aerosol_vars = 60   ! additional aerosol forcing vars for GOSWIM (w/ MERRA-2 only for now)
+
+    integer, parameter :: N_MERRA2plusAerosol_vars = N_MERRA2_vars + N_Aerosol_vars
+    
     integer, parameter :: N_defs_cols  =  5    
-    integer, parameter :: N_MERRA2_vars = 73
 
     real,    parameter :: nodata_GEOSgcm = 1.e15   !9.9999999e+14
     
-    character(40), dimension(N_G5DAS_vars,  N_defs_cols) :: G5DAS_defs
-    character(40), dimension(N_MERRA_vars,  N_defs_cols) :: MERRA_defs
-    character(40), dimension(N_MERRA2_vars,  N_defs_cols) :: M2INT_defs
-    character(40), dimension(N_MERRA2_vars,  N_defs_cols) :: M2COR_defs
+    character(40), dimension(N_G5DAS_vars,              N_defs_cols) :: G5DAS_defs
+    character(40), dimension(N_MERRA_vars,              N_defs_cols) :: MERRA_defs
+    character(40), dimension(N_MERRA2plusAerosol_vars,  N_defs_cols) :: M2INT_defs
+    character(40), dimension(N_MERRA2plusAerosol_vars,  N_defs_cols) :: M2COR_defs
 
     character(40), dimension(:,:), allocatable :: GEOSgcm_defs
 
-    ! NOTE: met_path prec_path, and met_tag for current ('inst') time and fwd and bkwd 'tavg' 
+    ! NOTE: met_path, prec_path, and met_tag for current ('inst') time and fwd and bkwd 'tavg' 
     !       times differ at stream boundaries -- jkolassa+reichle, 17 Dec 2019
 
     type(date_time_type) :: date_time_inst, date_time_fwd, date_time_bkwd, date_time_tmp
@@ -3107,25 +3155,20 @@ contains
     
     ! initialize to most likely values, overwrite below as needed
     
-    N_GEOSgcm_vars       = N_G5DAS_vars 
-    
     MERRA_file_specs     = .false.
     
     met_file_ext         = 'nc4'       
-
+    
     daily_met_files      = .false.
     
     precip_corr_file_ext = 'nc4'
     
-    !allocate(GEOSgcm_defs(max(N_G5DAS_vars,N_MERRA_vars),N_defs_cols))
-    
     if     (met_tag(4:8)=='merra') then   ! MERRA
-
-       if (AEROSOL_DEPOSITION /= 0) then
-           stop " only merr2 has aerosol_deposition"
-       endif     
        
+       ! AEROSOL_DEPOSITION /= 0 is NOT supported
+
        N_GEOSgcm_vars = N_MERRA_vars
+       
        allocate(GEOSgcm_defs(N_GEOSgcm_vars,N_defs_cols))
 
        GEOSgcm_defs(1:N_GEOSgcm_vars,:) = MERRA_defs
@@ -3146,11 +3189,25 @@ contains
             met_path_bkwd, prec_path_bkwd, met_tag_bkwd, use_prec_corr )
 
     elseif (met_tag(1:2)=='M2') then      ! MERRA-2
+       
+       select case (AEROSOL_DEPOSITION)
 
-       if (AEROSOL_DEPOSITION /= 0) then
+       case (0)  ! no aerosols (default)
+          
           N_GEOSgcm_vars = N_MERRA2_vars
-       endif     
+          
+       case (1)  ! with aerosols
+          
+          supported_option_AEROSOL_DEPOSITION = .true.  
+          
+          N_GEOSgcm_vars = N_MERRA2plusAerosol_vars 
 
+       case default
+          
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported AEROSOL_DEPOSITION option')
+          
+       end select
+       
        allocate(GEOSgcm_defs(N_GEOSgcm_vars,N_defs_cols))
        
        if     (met_tag(1:5)=='M2INT') then
@@ -3178,13 +3235,14 @@ contains
        call parse_MERRA2_met_tag( met_path, met_tag, date_time_bkwd,         &
             met_path_bkwd, prec_path_bkwd, met_tag_bkwd, use_prec_corr )
        
-    else
-                                  ! GEOS-5 DAS
-       if (AEROSOL_DEPOSITION /= 0) then
-           stop " only merr2 has aerosol_deposition"
-       endif     
+    else     ! GEOS ADAS (FP)
+       
+       ! AEROSOL_DEPOSITION /= 0 is NOT supported
+       
+       N_GEOSgcm_vars = N_G5DAS_vars 
        
        allocate(GEOSgcm_defs(N_GEOSgcm_vars,N_defs_cols))
+
        GEOSgcm_defs(1:N_G5DAS_vars,  :) = G5DAS_defs
        
        call parse_G5DAS_met_tag( met_path, met_tag, date_time_inst,          &
@@ -3315,7 +3373,7 @@ contains
 
        ! open file, extract coord info, prep horizontal interpolation info (if not done already)
 
-       call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,met_hinterp)
+       call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,MET_HINTERP)
 
        !fid = ptrNode%fid 
 
@@ -3355,6 +3413,7 @@ contains
           end if
 
        endif
+       
        ! ----------------------------------------------    
        !
        ! read global gridded field of given variable
@@ -3365,10 +3424,9 @@ contains
            call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error reading gfio file')
        endif 
 
-
        ! interpolate to tile space
        
-       select case (met_hinterp)
+       select case (MET_HINTERP)
 
        case (0)  ! nearest-neighbor interpolation
           
@@ -3379,6 +3437,8 @@ contains
           end do
 
        case (1)  ! bilinear interpolation
+          
+          supported_option_MET_HINTERP = .true. 
           
           do k=1,N_catd
              this_lon = tile_coord(k)%com_lon
@@ -3393,6 +3453,10 @@ contains
              force_array(k,GEOSgcm_var) = BilinearInterpolation(this_lon, this_lat, &
                   x1(k), x2(k), y1(k), y2(k), fnbr, nodata_forcing, tol)
           end do
+
+       case default
+
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported MET_HINTERP option')
           
        end select
 
@@ -3424,7 +3488,7 @@ contains
                met_path_tmp, met_tag_tmp,                                        &
                GEOSgcm_defs(GEOSgcm_var,:), met_file_ext)
 
-          call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,met_hinterp)
+          call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,MET_HINTERP)
 
           !fid = ptrNode%fid
 
@@ -3454,7 +3518,7 @@ contains
 
              ! interpolate to tile space and in time
        
-             select case (met_hinterp)
+             select case (MET_HINTERP)
                 
              case (0)  ! nearest-neighbor interpolation
                 
@@ -3494,14 +3558,18 @@ contains
                            y1(k), y2(k), fnbr, nodata_forcing, tol))
                    end if
                 end do
-
+                
+             case default
+                
+                call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported MET_HINTERP option')
+                
              end select
              
           end if    ! if (fid>0)
           
        end if       ! if (minimize_shift) .and. [...]
        
-    end do
+    end do          ! do GEOSgcm_var = 1,N_GEOSgcm_vars
 
     call FileOpenedHash%free( GEOS_closefile,.false. )
 

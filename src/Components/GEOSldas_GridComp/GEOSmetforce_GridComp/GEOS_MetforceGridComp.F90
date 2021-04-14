@@ -704,6 +704,7 @@ contains
     ! -convert-mf%TimePrv-to-LDAS-datetime-
     call esmf2ldas(mf%TimePrv, force_time_prv, rc=status)
     VERIFY_(status)
+    
     ! -now-get-the-initial-forcings-
     call LDAS_GetForcing(                                                       &
          force_time_prv,                                                        &
@@ -713,20 +714,18 @@ contains
          land_nt_local,                                                         &
          tile_coord,                                                            &
          internal%mf%hinterp,                                                   &
-         MERRA_file_specs,                                                      &
-         GEOS_Forcing,                                                          &
-         ERA5_Forcing,                                                          & 
-         internal%mf%DataNxt,                                                   &
          AEROSOL_DEPOSITION,                                                    &
-         .true.                                                                 &
+         MERRA_file_specs,                                                      &
+         backward_looking_fluxes,                                               &
+         internal%mf%DataNxt,                                                   &
+         .true.                                                                 &      ! init
          )
     VERIFY_(status)
-    call LDAS_move_new_force_to_old(internal%mf%DataNxt,internal%mf%DataPrv,   &
-           MERRA_file_specs,GEOS_Forcing,ERA5_forcing, AEROSOL_DEPOSITION)
-
-    ! DataPrv is not well defined here
-    ! print *, 'prv%tair max/min: ', maxval(internal%mf%DataPrv%Tair), minval(internal%mf%DataPrv%Tair)
-    ! print *, 'nxt%tair max/min: ', maxval(internal%mf%DataNxt%Tair), minval(internal%mf%DataNxt%Tair)
+    
+    if (backward_looking_fluxes)                                                &
+         call LDAS_move_new_force_to_old(                                       &
+         MERRA_file_specs, AEROSOL_DEPOSITION,                                  &
+         internal%mf%DataNxt, internal%mf%DataPrv )
 
     ! Turn timer off
     call MAPL_TimerOff(MAPL, "Initialize")
@@ -944,17 +943,18 @@ contains
             land_nt_local,                                                      &
             tile_coord,                                                         &
             internal%mf%hinterp,                                                &
-            MERRA_file_specs,                                                   &
-            GEOS_Forcing,                                                       &
-            ERA5_Forcing,                                                       &
-            internal%mf%DataNxt,                                                &
             AEROSOL_DEPOSITION,                                                 &
-            .false.                                                             &
+            MERRA_file_specs,                                                   &
+            backward_looking_fluxes,                                            &
+            internal%mf%DataNxt,                                                &
+            .false.                                                             &      ! init
             )
-       call LDAS_move_new_force_to_old(internal%mf%DataNxt,internal%mf%DataPrv, &
-           MERRA_file_specs,GEOS_Forcing,ERA5_forcing, AEROSOL_DEPOSITION)
-
-       !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_nxt: ', date_time_print(force_time_nxt)
+       VERIFY_(status)
+       
+       if (backward_looking_fluxes)                                             &
+            call LDAS_move_new_force_to_old(                                    &
+            MERRA_file_specs, AEROSOL_DEPOSITION,                               &
+            internal%mf%DataNxt, internal%mf%DataPrv )
 
        ! -compute-average-zenith-angle-over-daylight-part-of-forcing-interval-
        call MAPL_SunGetInsolation(                                              &
