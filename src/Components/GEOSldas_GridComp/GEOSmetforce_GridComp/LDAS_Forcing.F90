@@ -2004,16 +2004,13 @@ contains
     integer, dimension(2)                               :: start, icount
 
     integer :: k, n, hours_in_month, era5_var, ierr, ncid, era5_varid, kk
-    real    :: tol,  this_lon, this_lat, geos2era_tile_SQdistance
+    real    :: tol,  this_lon, this_lat  
 
     character(4)                :: YYYY
     character(2)                :: MM
     character(300)              :: fname
     character(len=*), parameter :: Iam = 'get_ERA5_LIS'
     character(len=400)          :: err_msg
-
-    ! era5_SQdistance is a half diagonal of 0.25deg grid box squared
-    real, parameter             :: era5_SQdistance = 0.03125  ![degrees] (0.125**2+0.125**2)
 
     ! ----------------------------------------------------------------------------------------
     
@@ -2067,12 +2064,6 @@ contains
        i_ind(k) = ceiling( (this_lon - era5_grid_ll_lon)/era5_grid_dlon )
        j_ind(k) = ceiling( (this_lat - era5_grid_ll_lat)/era5_grid_dlat )
 
-       ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180 
-       ! we now have i_ind=(grid%N_lon+1) 
-       ! This needs to be fixed as follows:
-       
-       if (i_ind(k)>era5_grid_N_lon)  i_ind(k)=1
-       
     end do
     
     ! read parameters (same for all data variables and time steps)
@@ -2109,36 +2100,6 @@ contains
     ! close NC file
     ierr = NF90_CLOSE(ncid)
 
-    ! Get forcing data geolocation (to be used for Exclude list creation)
-    ! Read in LON and LAT values from only one Forcing file. This information
-    ! is static! Just make sure to use a file where the info is available (since not
-    ! all ERA5 LIS files carry this info)
-
-    fname = trim(met_path) // '/FORCING_201807.nc'
-
-    if(root_logit) write (logunit,*) 'get ERA5 LIS file forcing data lat/lons from ' // trim(fname)
-
-    ierr = NF90_OPEN(fname,NF90_NOWRITE,ncid)
-    if (ierr/=0) then
-       err_msg = 'error opening netcdf file'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-    end if
-
-    ! read Longitude and Latitude from nc file 
-    ierr = NF90_INQ_VARID(ncid,'LON',era5_varid)
-    ierr = NF90_GET_VAR(ncid, era5_varid, era5_lon)
-    ierr = NF90_INQ_VARID(ncid,'LAT',era5_varid)
-    ierr = NF90_GET_VAR(ncid, era5_varid, era5_lat)
-
-    ! populate lat/lon 2D arrays
-    do n=1,N_era5_compressed
-       era5_lat2D(land_i_era5(n), land_j_era5(n) ) = era5_lat(n)
-       era5_lon2D(land_i_era5(n), land_j_era5(n) ) = era5_lon(n)
-    end do
-
-    ! close NC file
-    ierr = NF90_CLOSE(ncid)
-
     ! read Forcing data (for the date corresponding to LIS file) 
 
     ! open file
@@ -2169,21 +2130,9 @@ contains
        end do
 
        ! interpolate to tile space
-       do k=1,N_catd
-          ! if the GEOS tile is not within the 0.125*sqrt(2) deg of the matching ERA5
-          ! tile, asign a missing value to it (this will trigger Exclude list flagging)
-          ! otherwise, feed with colocated tmp_grid element
-
-          geos2era_tile_SQdistance =                                             &
-             (tile_coord(k)%com_lon+0.0001 - era5_lon2D(i_ind(k),j_ind(k)))**2 + &
-             (tile_coord(k)%com_lat+0.0001 - era5_lat2D(i_ind(k),j_ind(k)))**2 
-
-          if (geos2era_tile_SQdistance .gt. era5_SQdistance) then
-            force_array(k,era5_var) = nodata_forcing  
-          else
+      do k=1,N_catd
             force_array(k,era5_var) = tmp_grid(i_ind(k),j_ind(k))
-          endif
-       end do
+      end do
 
     end do ! era5_var
 

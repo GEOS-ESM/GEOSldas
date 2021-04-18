@@ -582,8 +582,8 @@ contains
     integer :: land_nt_local
     integer :: ForceDtStep
     type(met_force_type) :: mf_nodata
-    logical :: MERRA_file_specs,GEOS_Forcing
-    logical :: ERA5_Forcing  
+    logical :: MERRA_file_specs
+    logical :: backward_looking_fluxes  
 
     integer :: AEROSOL_DEPOSITION
     type(MAPL_LocStream) :: locstream
@@ -801,8 +801,8 @@ contains
     real, allocatable :: tmpreal(:)
     type(met_force_type) :: mf_nodata
 
-    logical :: MERRA_file_specs,GEOS_Forcing
-    logical :: ERA5_forcing 
+    logical :: MERRA_file_specs
+    logical :: backward_looking_fluxes 
     integer :: AEROSOL_DEPOSITION
     ! Export pointers
     real, pointer :: Tair(:)=>null()
@@ -1142,6 +1142,7 @@ contains
     PARdffs = mfDataNtp%PARdffs
     Wind = mfDataNtp%Wind
     RefH = mfDataNtp%RefH
+
 
     if(AEROSOL_DEPOSITION /=0) then
       DUDP(:, 1) = mfDataNtp%DUDP001
