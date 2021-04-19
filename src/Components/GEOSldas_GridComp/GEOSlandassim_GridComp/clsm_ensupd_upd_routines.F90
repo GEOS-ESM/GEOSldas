@@ -3339,8 +3339,8 @@ contains
     !
     ! get gridded perturbations
     
-    allocate(Obs_pert_ntrmdt(N_obs_param,pert_grid_lH%N_lon,pert_grid_lH%N_lat,N_ens))
-    allocate(Obs_pert_grid(  N_obs_param,pert_grid_lH%N_lon,pert_grid_lH%N_lat,N_ens))
+    allocate(Obs_pert_ntrmdt(pert_grid_lH%N_lon, pert_grid_lH%N_lat, N_assim_species, N_ens))
+    allocate(Obs_pert_grid(  pert_grid_lH%N_lon, pert_grid_lH%N_lat, N_assim_species, N_ens))
 
     call get_pert(                                                        &
          N_assim_species, N_ens,                                          &
@@ -3348,8 +3348,8 @@ contains
          dtstep,                                                          &
          obs_pert_param,                                                  &
          Pert_rseed,                                                      &
-         Obs_pert_ntrmdt(1:N_assim_species,:,:,:),                        &
-         Obs_pert_grid(  1:N_assim_species,:,:,:)              )
+         Obs_pert_ntrmdt,                                                 &
+         Obs_pert_grid )
 
     ! clean up
 
@@ -3373,7 +3373,7 @@ contains
        
        j = ind_species2obsparam(Observations(k)%species)
        
-       Obs_pert(k,1:N_ens) = Obs_pert_grid( j, lon_ind, lat_ind, 1:N_ens )
+       Obs_pert(k,1:N_ens) = Obs_pert_grid( lon_ind, lat_ind, j, 1:N_ens )
        
        Obs_pert(k,1:N_ens) = Obs_pert(k,1:N_ens) * sqrt(Observations(k)%obsvar)
        
