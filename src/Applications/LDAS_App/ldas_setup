@@ -469,7 +469,7 @@ class LDASsetup:
 
         # over write above default if specified
         if 'oserver_nodes' not in self.optRmInp :
-           self.optRmInp['oserver_nodes'] = 1
+           self.optRmInp['oserver_nodes'] = 0
         
         self.optRmInp['nodes'] = my_nodes + int(self.optRmInp['oserver_nodes'])
 
@@ -1240,7 +1240,9 @@ class LDASsetup:
                         fout.write(line.replace('MY_WALLTIME',self.rqdRmInp['walltime']))
                     elif 'MY_NODES' in line :
                         line_ = line.replace('MY_NODES',str(self.optRmInp['nodes']))
-                        fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.optRmInp['ntasks-per-node'])))
+                        fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
+                        if int(intself.rqdRmInp['ntasks-per-node']) > 28:
+                           fout.write("#SBATCH --constraint=sky\n")
                     elif 'MY_OSERVER_NODES' in line :
                         fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
                     elif 'MY_WRITERS_NPES' in line :
