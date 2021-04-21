@@ -26,7 +26,9 @@
 ! ------------------------------------------------------------
 
 module land_pert_routines
-  
+
+  use ESMF
+
   use LDAS_PertTypes,                   ONLY:     & 
        pert_param_type,                           &
        allocate_pert_param
@@ -460,8 +462,11 @@ contains
     integer :: tmpInt, xstart, xend, ystart, yend
 
     type(random_fields) :: rf
+    type(ESMF_VM) :: vm
+    integer :: mpicomm, status  
 
-    ! ---------------------------
+    call ESMF_VmGetCurrent(vm, rc=status)
+    call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
 
     do m=1,N_pert
 
@@ -539,7 +544,8 @@ contains
        ! initialize instance rf of class random_fields
        ! this needs to be done for each pert field
 
-       call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat )
+       !call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat )
+       call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat, comm=mpicomm )
 
        do n=1,N_ens
 

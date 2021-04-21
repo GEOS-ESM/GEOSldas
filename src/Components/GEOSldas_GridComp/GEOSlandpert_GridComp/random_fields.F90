@@ -33,6 +33,8 @@
 module random_fields_class
 
 #ifdef MKL_AVAILABLE
+  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
+  use mpi
   use MKL_DFTI
 #else
   use nr_fft,                           ONLY:     &
@@ -58,8 +60,15 @@ module random_fields_class
      integer :: N_x_fft, N_y_fft ! computed by calc_fft_grid
      real, allocatable :: field1_fft(:,:), field2_fft(:,:)
      integer :: fft_lens(2) ! length of each dim for 2D transform
+     integer :: comm
 #ifdef MKL_AVAILABLE
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle
+     type(DFTI_DESCRIPTOR), pointer :: Desc_Handle_dim1
+     type(DFTI_DESCRIPTOR), pointer :: Desc_Handle_dim2
+     integer, allocatable :: send_types(:)
+     integer, allocatable :: recv_types(:)
+     integer, allocatable :: dim1_counts(:)
+     integer, allocatable :: dim2_counts(:)
 #endif
    contains
      procedure, public  :: initialize
@@ -73,16 +82,19 @@ module random_fields_class
 contains
 
   ! constructor (set parameter values), allocate memory
-  subroutine initialize(this, Nx, Ny, var, lx, ly, dx, dy)
+  subroutine initialize(this, Nx, Ny, var, lx, ly, dx, dy, comm)
 
     ! input/output variables [NEED class(random_fields)
     ! instead of type(random_fields)] - F2003 quirk?!?
     class(random_fields), intent(inout) :: this
     integer, intent(in) :: Nx, Ny
     real, intent(in) :: var, lx, ly, dx, dy
+    integer, optional, intent(in) :: comm
     
     ! local variable
-    integer :: mklstat
+    integer :: mklstat, ierror, i, j
+    integer :: rank, npes, local_dim1, local_dim2, remainer
+    integer :: N1, N2, gcount(2), lstart(2), Stride(2)
 
     ! set obj param vals
     this%N_x = Nx
@@ -105,13 +117,89 @@ contains
     allocate(this%field2_fft(this%N_x_fft, this%N_y_fft))
 
 #ifdef MKL_AVAILABLE
-    ! allocate mem and init mkl dft
-    mklstat = DftiCreateDescriptor(this%Desc_Handle, DFTI_SINGLE, DFTI_COMPLEX, 2, this%fft_lens)
-    if (mklstat/=DFTI_NO_ERROR) call quit('DftiCreateDescriptor failed!')
+    if (present(comm)) then
+       this%comm = comm
 
-    ! initialize for actual dft computation
-    mklstat = DftiCommitDescriptor(this%Desc_Handle)
-    if (mklstat/=DFTI_NO_ERROR) call quit('DftiCommitDescriptor failed!')
+       call MPI_COMM_rank(comm, rank, ierror)
+       call MPI_COMM_size(comm, npes, ierror)
+       allocate(this%dim1_counts(npes),this%dim2_counts(npes))
+       allocate(this%send_types(npes), this%recv_types(npes))
+       gcount(1) = this%fft_lens(1)
+       gcount(2) = this%fft_lens(2)
+       N1 = gcount(1)
+       N2 = gcount(2)
+
+       ! distribution of the grid for fft
+
+       local_dim1 = N1/npes
+       this%dim1_counts = local_dim1
+       remainer = mod(N1, npes)
+       this%dim1_counts(1:remainer) = local_dim1 + 1
+       local_dim1 = this%dim1_counts(rank+1) 
+
+       local_dim2 = N2/npes
+       this%dim2_counts = local_dim2
+       remainer = mod(N2, npes)
+       this%dim2_counts(1:remainer) = local_dim2 + 1
+       local_dim2 = this%dim2_counts(rank+1)
+       
+       ! create type for AllToAll comunication
+
+       do j = 1, npes
+         if (j /= rank +1) cycle
+         ! re-use lstart as offset
+         lstart = 0
+         lstart(2) = sum(this%dim2_counts(1:j-1))
+
+         !define types for blocks of rows for each column
+         do i = 1, npes
+           lstart(1) = sum(this%dim1_counts(1:i-1))
+           call MPI_type_create_subarray(2, gcount, [this%dim1_counts(i), this%dim2_counts(j)], lstart , &
+                MPI_ORDER_FORTRAN, MPI_COMPLEX, this%recv_types(i), ierror)
+           call MPI_type_commit(this%recv_types(i),ierror)
+         enddo
+
+         ! re-use lstart as offset
+         lstart = 0
+         lstart(1) = sum(this%dim1_counts(1:j-1))
+         do i = 1, npes
+            lstart(2) = sum(this%dim2_counts(1:i-1))
+            call MPI_type_create_subarray(2,gcount, [this%dim1_counts(j), this%dim2_counts(i)], lstart , &
+                 MPI_ORDER_FORTRAN, MPI_COMPLEX, this%send_types(i), ierror)
+            call MPI_type_commit(this%send_types(i),ierror)
+         enddo
+       enddo
+
+       mklstat = DftiCreateDescriptor(this%Desc_Handle_Dim1, DFTI_SINGLE,&
+                                DFTI_COMPLEX, 1, N1 )
+       mklstat = DftiCreateDescriptor(this%Desc_Handle_Dim2, DFTI_SINGLE,&
+                                DFTI_COMPLEX, 1, N2 )
+
+       ! perform local_dim2 one-dimensional transforms along 1st dimension
+       mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_NUMBER_OF_TRANSFORMS, local_dim2 )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_INPUT_DISTANCE, N1 )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_OUTPUT_DISTANCE, N1 )
+       mklstat = DftiCommitDescriptor( this%Desc_Handle_Dim1 )
+       ! mklstat = DftiComputeForward( this%Desc_Handle_Dim1, X )
+       ! local_dim1 one-dimensional transforms along 2nd dimension
+       Stride(1) = 0; Stride(2) = local_dim1
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_NUMBER_OF_TRANSFORMS, local_dim1)
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_INPUT_DISTANCE, 1 )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_OUTPUT_DISTANCE, 1 )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_INPUT_STRIDES, Stride )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_OUTPUT_STRIDES, Stride )
+       mklstat = DftiCommitDescriptor( this%Desc_Handle_Dim2 )
+      !mklstat = DftiComputeForward( this%Desc_Handle_Dim2, X )
+    else
+       this%comm = MPI_COMM_NULL
+       ! allocate mem and init mkl dft
+       mklstat = DftiCreateDescriptor(this%Desc_Handle, DFTI_SINGLE, DFTI_COMPLEX, 2, this%fft_lens)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiCreateDescriptor failed!')
+
+       ! initialize for actual dft computation
+       mklstat = DftiCommitDescriptor(this%Desc_Handle)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiCommitDescriptor failed!')
+    endif
 #endif
 
   end subroutine initialize
@@ -125,15 +213,31 @@ contains
     class(random_fields), intent(inout) :: this
 
     ! local variable
-    integer :: mklstat
+    integer :: mklstat, i , npes, ierror
 
     ! deallocate memory
     if(allocated(this%field1_fft)) deallocate(this%field1_fft)
     if(allocated(this%field2_fft)) deallocate(this%field2_fft)
 
 #ifdef MKL_AVAILABLE
-    mklstat = DftiFreeDescriptor(this%Desc_Handle)
-    if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor failed!')
+    if (this%comm == MPI_COMM_NULL) then
+       mklstat = DftiFreeDescriptor(this%Desc_Handle)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor failed!')
+    else
+
+       mklstat = DftiFreeDescriptor(this%Desc_Handle_dim1)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor dim1 failed!')
+       mklstat = DftiFreeDescriptor(this%Desc_Handle_dim2)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor dim2 failed!')
+
+       call MPi_Comm_Size(this%comm, npes, ierror)
+
+       do i = 1, npes
+          call Mpi_type_free(this%send_types(i), ierror)
+          call Mpi_type_free(this%recv_types(i), ierror)
+       enddo
+
+    endif
 #endif
 
   end subroutine finalize
@@ -328,6 +432,12 @@ contains
 #ifdef MKL_AVAILABLE
     integer :: mklstat
     complex, allocatable :: z_inout(:)
+    complex, allocatable :: tmp_field(:,:)
+    complex, allocatable :: tmp_field_dim1(:,:)
+    complex, allocatable :: tmp_field_dim2(:,:)
+    integer :: n1, n2, npes, rank, ldim1, ldim2, ierror
+    complex, pointer  :: X(:)
+    integer, allocatable :: sdisp(:), send_count(:), rdisp(:), recv_count(:)
 #else
     real, allocatable :: tmpdata(:)
 #endif
@@ -376,33 +486,84 @@ contains
 #ifdef MKL_AVAILABLE
     ! use MKL FFT
     ! fill temporary 1D array
-    allocate(z_inout(N_xy_fft))
-    k = 0
-    do j=1,N_y_fft
-       do i=1,N_x_fft
-          k=k+1
-          z_inout(k) = cmplx(this%field1_fft(i,j),this%field2_fft(i,j))
+    if (this%comm == MPI_COMM_NULL) then
+       allocate(z_inout(N_xy_fft))
+       k = 0
+       do j=1,N_y_fft
+          do i=1,N_x_fft
+             k=k+1
+             z_inout(k) = cmplx(this%field1_fft(i,j),this%field2_fft(i,j))
+          end do
+       end do    
+
+       ! compute in-place backward transform (scale=1)
+       ! NOTE: MKL backward transform is the same as NR forward transform
+       mklstat = DftiComputeBackward(this%Desc_Handle, z_inout)
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiComputeBackward failed!')
+
+       ! extract random fields from z_inout
+       z_inout = z_inout/N_xy_fft_real
+       k = 0
+       do j=1,N_y_fft
+          do i=1,N_x_fft      
+             k=k+1
+             this%field1_fft(i,j) = real(z_inout(k))
+             this%field2_fft(i,j) = aimag(z_inout(k))
+          end do
        end do
-    end do    
 
-    ! compute in-place backward transform (scale=1)
-    ! NOTE: MKL backward transform is the same as NR forward transform
-    mklstat = DftiComputeBackward(this%Desc_Handle, z_inout)
-    if (mklstat/= DFTI_NO_ERROR) call quit('DftiComputeBackward failed!')
+       deallocate(z_inout)
+    else
+       call MPI_comm_size(this%comm, npes, ierror)
+       call MPI_comm_rank(this%comm, rank, ierror)
+       allocate( tmp_field(N_x_fft, N_y_fft))
+       tmp_field = cmplx(this%field1_fft,this%field2_fft)
 
-    ! extract random fields from z_inout
-    z_inout = z_inout/N_xy_fft_real
-    k = 0
-    do j=1,N_y_fft
-       do i=1,N_x_fft      
-          k=k+1
-          this%field1_fft(i,j) = real(z_inout(k))
-          this%field2_fft(i,j) = aimag(z_inout(k))
-       end do
-    end do
+       n1 = sum(this%dim1_counts(1:rank)) + 1
+       n2 = sum(this%dim1_counts(1:rank+1)) 
+       ldim1  = this%dim1_counts(rank+1)
+         
+       allocate(tmp_field_dim1(ldim1, N_y_fft))
+       tmp_field_dim1 = tmp_field(n1:n2,:)
 
-    deallocate(z_inout)
+       call c_f_pointer (c_loc(tmp_field_dim1(1,1)), X, [ldim1*N_y_fft])
+       mklstat = DftiComputeBackward( this%Desc_Handle_Dim2, X )
+       tmp_field(n1:n2,:) = tmp_field_dim1
 
+       allocate(sdisp(npes), rdisp(npes), send_count(npes), recv_count(npes))
+       send_count = 1
+       recv_count = 1
+       sdisp  = 0
+       rdisp  = 0
+
+       call MPI_ALLTOALLW(tmp_field, send_count, sdisp, this%send_types, &
+                          tmp_field, recv_count, rdisp, this%recv_types, &
+                          this%comm, ierror)
+
+       n1 = sum(this%dim2_counts(1:rank)) + 1
+       n2 = sum(this%dim2_counts(1:rank+1)) 
+       ldim2  = this%dim2_counts(rank+1)
+
+       allocate(tmp_field_dim2(N_x_fft, ldim2))
+       tmp_field_dim2 = tmp_field(:,n1:n2)
+
+       call c_f_pointer (c_loc(tmp_field_dim2(1,1)), X, [N_x_fft*ldim2])
+       mklstat = DftiComputeBackward( this%Desc_Handle_Dim1, X )
+       tmp_field(:,n1:n2) = tmp_field_dim2
+
+       do i = 1, npes
+          recv_count(i) = N_x_fft*this%dim2_counts(i)
+          rdisp(i)      = sum(recv_count(1:i-1))
+       enddo
+
+       call MPI_AllGatherV(tmp_field_dim2, N_x_fft*ldim2, MPI_COMPLEX, &
+                           tmp_field, recv_count, rdisp, MPI_COMPLEX, this%comm, ierror)
+       
+       this%field1_fft = real(tmp_field)
+       this%field2_fft = aimag(tmp_field)
+
+       deallocate(sdisp, rdisp, send_count, recv_count, tmp_field_dim1, tmp_field_dim2, tmp_field)
+    endif
 #else  
     ! use nr_fft
     ! fill tmpdata according to Figs 12.2.2
