@@ -358,7 +358,7 @@ while ( $counter <= ${NUM_SGMT} )
 
    @ total_npes = MY_NODES * MY_NTASKS_PER_NODE
 
-   if (oserver_nodes == 0) then
+   if ($oserver_nodes == 0) then
       set oserver_options = ""
    else
       set oserver_options = "--oserver_type multigroup --nodes_output_server $oserver_nodes  --npes_backend_pernode $writers"
