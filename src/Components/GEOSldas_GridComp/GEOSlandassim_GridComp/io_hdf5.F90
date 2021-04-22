@@ -23,6 +23,7 @@
 module io_hdf5
 
   use hdf5
+  use iso_fortran_env
 
   implicit none
 
@@ -239,7 +240,7 @@ contains
 
     ! input/output variables
     class (hdf5read), intent(inout) :: this
-    real(8), intent(out) :: data1D(:)
+    real(REAL64), intent(out) :: data1D(:)
 
     ! local variable
     integer :: hdf5err
@@ -376,7 +377,7 @@ program test_read
      real, pointer, dimension(:) :: lon => null()
      integer, pointer, dimension(:) :: row => null()
      integer, pointer, dimension(:) :: flag => null()
-     real(8), pointer, dimension(:) :: tb_time => null()
+     real(REAL64), pointer, dimension(:) :: tb_time => null()
      character(len=24), pointer, dimension(:) :: tb_time_utc_aft => null()
   end type MyDataType
   type(MyDataType), dimension(1) :: data
