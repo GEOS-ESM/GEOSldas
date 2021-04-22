@@ -12,7 +12,7 @@ module my_matrix_functions
 
   public :: row_variance
   public :: row_std
-  public :: adjust_mean
+  !public :: adjust_mean
   !public :: matrix_std
   public :: unique_rows_3col
   
@@ -367,6 +367,7 @@ contains
 
   ! ------------------------------------------------------------------
   
+#if 0
   subroutine adjust_mean( N_row, N_col, A, M )
     
     ! adjust N_row by N_col matrix A such that 
@@ -405,6 +406,7 @@ contains
     end do
     
   end subroutine adjust_mean
+#endif
   
   ! ------------------------------------------------------------------
 
