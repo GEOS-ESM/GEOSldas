@@ -59,18 +59,11 @@ module LDAS_ForceMod
   public :: get_forcing
   public :: LDAS_move_new_force_to_old
   public :: GEOS_closefile
-  type(Hash_Table),public :: FileOpenedHash
 
-  !public :: ignore_SWNET_for_snow
-  !logical         :: ignore_SWNET_for_snow  ! fixes sibalb bug in MERRA snow albedo
+  type(Hash_Table), public :: FileOpenedHash
 
   real, parameter :: DEFAULT_REFH   = 10.   ! m
   
-  ! real, parameter :: SWDN_MAX       = 1360. ! W/m2
-  ! real, parameter :: LWDN_EMISS_MIN = 0.5   ! min effective emissivity for LWdown
-  ! real, parameter :: LWDN_EMISS_MAX = 1.0   ! max effective emissivity for LWdown
-  ! The above three parameters are moved to repairForcingmod ! W.Jiang
-
   character(10), private :: tmpstring10
 
   real, contiguous, pointer :: ptrShForce(:,:)=>null()
@@ -79,8 +72,8 @@ module LDAS_ForceMod
      integer :: N_lon = 0
      integer :: N_lat = 0
      integer :: N_cat = 0
-     integer,allocatable :: i1(:),i2(:),j1(:),j2(:)
-     real,allocatable :: x1(:),x2(:),y1(:),y2(:)
+     integer, allocatable :: i1(:),i2(:),j1(:),j2(:)
+     real,    allocatable :: x1(:),x2(:),y1(:),y2(:)
   end type local_grid
 
   type(local_grid), target :: local_info
@@ -97,6 +90,12 @@ contains
        init )
     
     ! Read and check meteorological forcing data for the domain.
+    !
+    ! forcing readers must provide ALL of the surface meteorological fields in the
+    !   met_force_type structure EXCEPT:
+    !   - PARdrct, PARdffs : if not available, will be backfilled as fraction of SWdown
+    !   - SWnet            : obsolete
+    !   - aerosol forcing  : currently defunct
     !
     ! time convention:
     ! - forcing states (such as Tair) are snapshots at date_time
@@ -128,6 +127,9 @@ contains
     !                             - replaced "GEOS_forcing" switch with "bkwd_looking_fluxes"
     !                             - added checks for supported options of MET_HINTERP and
     !                                AEROSOL_DEPOSITION
+    ! reichle,      22 Apr   2021 - clean up:
+    !                               - calls to check_forcing_nodata() and repair_forcing()
+    !                               - handling nodata-values in PARdrct, PARdffs
     
     implicit none
 
@@ -160,7 +162,9 @@ contains
     
     ! local variables
     
-    real    :: nodata_forcing
+    real    :: nodata_forcing, tol
+
+    logical :: PAR_available                         ! indicate whether reader provides PARdrct, PARdffs
     
     logical :: supported_option_MET_HINTERP          ! for consistency check of resource parameter settings
     logical :: supported_option_AEROSOL_DEPOSITION   ! for consistency check of resource parameter settings
@@ -183,14 +187,12 @@ contains
     !  within specific subroutine)
     
     met_force_obs_tile_new%RefH  = DEFAULT_REFH
-    
-    ! initialize SWnet, PARdrct, PARdffs to nodata_generic 
-    !
-    ! (Note that nodata_forcing is set to the native no-data-value
+
+    ! Note that "nodata_forcing" is set to the native nodata-value
     !  in the individual get_*() subroutines and used to communicate with
     !  check_forcing_nodata.  AFTER the call to check_forcing_nodata all forcing 
-    !  fields EXCEPT SWnet must NOT be no-data values, and SWnet must be 
-    !  nodata_generic if unavailable.)
+    !  fields EXCEPT SWnet must NOT be nodata values, and SWnet must be 
+    !  nodata_generic if unavailable.
     !
     ! reichle+qliu,  8 Oct 2008
     ! reichle, 23 Feb 2009 -- same goes for ParDrct, ParDffs
@@ -198,20 +200,22 @@ contains
     ! reichle, 22 Jul 2010 -- fixed treatment of SWnet nodata values
     ! reichle, 20 Dec 2011 -- reinstated PARdrct and PARdffs for MERRA-Land file specs
     
+    ! initialize SWnet to nodata_generic 
+
     met_force_obs_tile_new%SWnet   = nodata_generic
-    met_force_obs_tile_new%PARdrct = nodata_generic
-    met_force_obs_tile_new%PARdffs = nodata_generic
     
     ! ---------------------------------------------------------------------------------
     !
     ! initialize 
     
-    MERRA_file_specs                        = .false.
+    MERRA_file_specs                    = .false.
 
-    bkwd_looking_fluxes                     = .false.
+    bkwd_looking_fluxes                 = .false.
 
-    unlimited_Qair                          = .false.   ! default for call to repair_forcing
-    unlimited_LWdown                        = .false.   ! default for call to repair_forcing
+    PAR_available                       = .false.  ! default; so far, only GEOS forcing provides PAR
+    
+    unlimited_Qair                      = .false.  ! default for call to repair_forcing
+    unlimited_LWdown                    = .false.  ! default for call to repair_forcing
     
     ! every forcing data reader must support the default settings:
     ! 
@@ -305,6 +309,16 @@ contains
        if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
        
        ! subroutine get_GEOS() provides backward-looking fluxes 
+       !
+       ! Subroutine get_GEOS() reads forcing fluxes from "previous"
+       ! interval, not from "subsequent" interval, because in operational
+       ! applications the "subsequent" fluxes for "met_force_new" are not
+       ! available.  The following lines restore consistency with the
+       ! time convention stated above.  Note that only "old" fluxes
+       ! are needed in subroutine interpolate_to_timestep(), and
+       ! "met_force_obs_tile_new" is set to nodata for forcing fluxes.
+       ! The time convention is restored through a call to subroutine
+       ! LDAS_move_new_force_to_old().
        
        bkwd_looking_fluxes            = .true.
        
@@ -317,77 +331,80 @@ contains
        
        unlimited_Qair                 = .true.
        unlimited_LWdown               = .true.
-       
-       call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,       &
-            N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,            &
-            supported_option_MET_HINTERP,                                   &
-            supported_option_AEROSOL_DEPOSITION,                            &            
-            met_force_obs_tile_new, nodata_forcing, MERRA_file_specs,       &
+
+       call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,                 &
+            N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                      &
+            supported_option_MET_HINTERP,                                             &
+            supported_option_AEROSOL_DEPOSITION,                                      &            
+            met_force_obs_tile_new, nodata_forcing, PAR_available, MERRA_file_specs,  &
             init )
        
-       ! Subroutine get_GEOS() reads forcing fluxes from "previous"
-       ! interval, not from "subsequent" interval, because in operational
-       ! applications the "subsequent" fluxes for "met_force_new" are not
-       ! available.  The following lines restore consistency with the
-       ! time convention stated above.  Note that only "old" fluxes
-       ! are needed in subroutine interpolate_to_timestep(), and
-       ! "met_force_obs_tile_new" is set to nodata for forcing fluxes.
-       
-       ! The calls below are moved to LDAS_move_new_force_to_old
-       
-       ! Note also "bkwd_looking_fluxes" switch. - reichle, 22 Apr 2021
-       
-       ! met_force_obs_tile_old%Rainf_C = met_force_obs_tile_new%Rainf_C
-       ! met_force_obs_tile_old%Rainf   = met_force_obs_tile_new%Rainf
-       ! met_force_obs_tile_old%Snowf   = met_force_obs_tile_new%Snowf
-       ! met_force_obs_tile_old%LWdown  = met_force_obs_tile_new%LWdown
-       ! met_force_obs_tile_old%SWdown  = met_force_obs_tile_new%SWdown
-       ! met_force_obs_tile_old%SWnet   = met_force_obs_tile_new%SWnet
-       ! met_force_obs_tile_old%PARdrct = met_force_obs_tile_new%PARdrct
-       ! met_force_obs_tile_old%PARdffs = met_force_obs_tile_new%PARdffs
-       
-       ! treat Wind as flux when forcing with MERRA
-       
-       ! if (MERRA_file_specs) met_force_obs_tile_old%Wind  = met_force_obs_tile_new%Wind
-       
-       ! met_force_obs_tile_new%Rainf_C = nodata_generic
-       ! met_force_obs_tile_new%Rainf   = nodata_generic
-       ! met_force_obs_tile_new%Snowf   = nodata_generic
-       ! met_force_obs_tile_new%LWdown  = nodata_generic
-       ! met_force_obs_tile_new%SWdown  = nodata_generic
-       ! met_force_obs_tile_new%SWnet   = nodata_generic
-       ! met_force_obs_tile_new%PARdrct = nodata_generic
-       ! met_force_obs_tile_new%PARdffs = nodata_generic
-
-       ! if (MERRA_file_specs) met_force_obs_tile_new%Wind = nodata_generic
-       
     end if
+
+    ! ------------------
+    !
+    ! backfill PAR:
+    !
+    ! PAR might be missing for one of the following reasons:
+    ! - the reader did not provide PAR
+    ! - the reader provides PAR but owing to a land mask difference between
+    !     the forcing data and the LDAS simulation, some tiles may not have PAR 
+    ! - the reader provides PAR but there are gaps in the original dataset
+    !
+    ! if PAR was not available at all from the forcing reader, assign "nodata_forcing"
+
+    if (.not. PAR_available) then
+       met_force_obs_tile_new%PARdrct = nodata_forcing
+       met_force_obs_tile_new%PARdffs = nodata_forcing
+    end if
+
+    ! the nodata-value for all forcing fields (except SWnet) is now "nodata_forcing"
     
-    ! check for nodata values, possibly fill with neighboring data
+    ! where PAR is not available for any of the above reasons:
+    ! - assume half of SWdown is photosynthetically active
+    ! - assume half of PAR is direct, half diffuse
     
-    call check_forcing_nodata( N_catd, tile_coord, nodata_forcing,             &
+    tol = abs(nodata_forcing*nodata_tolfrac_generic)
+    
+    where (                                                                       &
+         (abs(met_force_obs_tile_new%PARdrct-nodata_forcing) < tol)  .and.        &
+         (abs(met_force_obs_tile_new%SWdown -nodata_forcing) < tol)            )
+       met_force_obs_tile_new%PARdrct = 0.5*0.5*met_force_obs_tile_new%SWdown
+       met_force_obs_tile_new%PARdffs = met_force_obs_tile_new%PARdrct
+    end where
+    
+    ! ------------------
+    !
+    ! check for nodata values and fill with neighboring data if sensible;
+    !   otherwise, check_forcing_nodata() will abort
+    
+    call check_forcing_nodata( N_catd, tile_coord, nodata_forcing,                &
          met_force_obs_tile_new )
     
+    ! ------------------
+    !
     ! reset unphysical or inconsistent forcing values
     
-    call repair_forcing( N_catd, met_force_obs_tile_new,                       &
-         echo=.true., tile_coord=tile_coord,                                   &
+    call repair_forcing( N_catd, met_force_obs_tile_new,                          &
+         echo=.true., tile_coord=tile_coord,                                      &
          unlimited_Qair=unlimited_Qair, unlimited_LWdown=unlimited_LWdown )
     
+    ! ------------------
+    !
     ! stop if a supported_option_* switch remains .false.
     
     if (.not. supported_option_MET_HINTERP)        then
-       err_msg = 'selected MET_HINTERP option not supported for met_tag ' &
+       err_msg = 'selected MET_HINTERP option not supported for met_tag '         &
             //  trim(met_tag)
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
-
+    
     if (.not. supported_option_AEROSOL_DEPOSITION) then
-       err_msg = 'selected AEROSOL_DEPOSITION option not supported for met_tag ' &
+       err_msg = 'selected AEROSOL_DEPOSITION option not supported for met_tag '  &
             //  trim(met_tag)
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
-
+    
   end subroutine get_forcing
 
    !**************************************************************************************
@@ -395,6 +412,7 @@ contains
    subroutine LDAS_move_new_force_to_old( MERRA_file_specs, AEROSOL_DEPOSITION, &
         new_force, old_force )
 
+     ! move *flux*-type forcing data from "new" to "old";
      ! call this subroutine ONLY if the forcing reader provides backward-looking fluxes
      ! - reichle, 14 Apr 2021
      
@@ -844,7 +862,7 @@ contains
     
     do k=1,N_catd
        
-       ! set convective precip to zero for no-data-values
+       ! set convective precip to zero for nodata-values
        
        if (abs(force_array(k,1)-nodata_berg)<tol) force_array(k,1) = 0.
        
@@ -2590,11 +2608,11 @@ contains
   
   ! *************************************************************************
   
-  subroutine get_GEOS( date_time, force_dtstep, met_path, met_tag,        &
-       N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,               &
-       supported_option_MET_HINTERP,                                      &
-       supported_option_AEROSOL_DEPOSITION,                               &            
-       met_force_new, nodata_forcing, MERRA_file_specs,                   &
+  subroutine get_GEOS( date_time, force_dtstep, met_path, met_tag,             &
+       N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                    &
+       supported_option_MET_HINTERP,                                           &
+       supported_option_AEROSOL_DEPOSITION,                                    &            
+       met_force_new, nodata_forcing, PAR_available, MERRA_file_specs,         &
        init )
     
     ! reichle,  5 March 2008 - adapted from get_GEOSgcm_gfio to work with DAS
@@ -2687,7 +2705,8 @@ contains
     
     real,    intent(out) :: nodata_forcing
     
-    logical, intent(out) :: MERRA_file_specs       ! original MERRA only, not MERRA-2
+    logical, intent(out) :: PAR_available              
+    logical, intent(out) :: MERRA_file_specs       ! original MERRA specs, not MERRA-2
 
     ! optional:
     
@@ -2706,7 +2725,7 @@ contains
     
     integer, parameter :: N_defs_cols  =  5    
 
-    real,    parameter :: nodata_GEOSgcm = 1.e15   !9.9999999e+14
+    real,    parameter :: nodata_GEOSgcm = 1.e15   
     
     character(40), dimension(N_G5DAS_vars,              N_defs_cols) :: G5DAS_defs
     character(40), dimension(N_MERRA_vars,              N_defs_cols) :: MERRA_defs
@@ -3001,12 +3020,16 @@ contains
     
     use_prec_corr = .false.  ! use corrected precip dataset (other than native "M2COR_defs")
     
-    ! use same no-data-value on input and output so that "nodata-check" can be
+    ! use same nodata-value on input and output so that "nodata-check" can be
     ! omitted when no arithmetic is needed
     
     nodata_forcing = nodata_GEOSgcm 
     
     tol = abs(nodata_forcing*nodata_tolfrac_generic)    
+
+    ! all GEOS forcing datasets provide PAR (so far)
+
+    PAR_available = .true.
     
     ! input variable "date_time" is for reading instantaneous ('inst') forcing variables
 
@@ -5455,15 +5478,18 @@ contains
   ! ****************************************************************
    
   subroutine check_forcing_nodata( N_catd, tile_coord, nodata_forcing, met_force )
-    
-    ! check input forcing for no-data-values
+
+    ! Check for nodata values in met_force and fill with "neighboring" data if sensible;
+    !   otherwise, check_forcing_nodata() will abort.
+    ! Upon successful exit, there will *not* be nodata-values in met_force except
+    !   possibly RefH and SWnet, which are not checked.
     !
     ! (Note: subroutine repair_forcing() checks for unphysical values.)
     !
     ! Owing to differences in land masks, some land-only forcing datasets may have
-    !  only no-data-values for some GEOS land tiles.  There may also be intermittent
-    !  no-data-values in the forcing dataset.    
-    ! If a no-data-value is encountered, use the value from the "next" tile, where
+    !  only nodata-values for some GEOS land tiles.  There may also be intermittent
+    !  nodata-values in the forcing dataset.    
+    ! If a nodata-value is encountered, use the value from the "next" tile, where
     !  "next" is next in tile order, provided the "next" tile is within "max_distance".
     !  Abort if this does not work.
     ! The "next" tile approach is used to avoid the costly determination of the nearest
@@ -5474,7 +5500,8 @@ contains
     ! reichle, 13 May 2003
     ! reichle, 13 Jun 2005
     ! reichle, 12 Feb 2021 - added "max_distance" limit, revised comments
-
+    ! reichle, 22 Apr 2021 - PAR must now also have "good" data at this stage, added to checks
+    
     implicit none
     
     integer, intent(in) :: N_catd
@@ -5501,26 +5528,21 @@ contains
     call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%Snowf  )
     call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%LWdown )
     call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%SWdown )
+    call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%PARdrct)
+    call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%PARdffs)
     call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%Wind   )
-
+    
     ! do NOT call check_forcing_nodata_2() for "RefH" and "SWnet" (these are typically 
     ! from GCM or DAS files and should not have any problems to begin with)
     ! reichle+qliu,  8 Oct 2008    
-
+    
     ! for SWnet change nodata_forcing to nodata_generic  -- reichle, 22 Jul 2010
     
     tol = abs(nodata_forcing*nodata_tolfrac_generic)    
     
-    do i=1,N_catd
-       
-       if ( abs(met_force(i)%SWnet-nodata_forcing) < tol ) then
-          
-          met_force(i)%SWnet = nodata_generic
-          
-       end if
-       
-    end do
-    
+    where (abs(met_force%SWnet-nodata_forcing) < tol ) 
+       met_force%SWnet = nodata_generic
+    endwhere
     
   end subroutine check_forcing_nodata
   
@@ -5553,7 +5575,7 @@ contains
     
     ! Set the following logical to .true. to generate an "ExcludeList"
     ! for a given forcing data set.  The list contains all tiles for
-    ! which the specified forcing dataset has only no-data-values
+    ! which the specified forcing dataset has only nodata-values
     ! within "max_distance".  The list will end up in the file
     ! "fort.9999".  Next, run "ldas_setup" again and exclude the
     ! tiles in this list from the simulation domain (see "ExcludeList"
@@ -5573,11 +5595,11 @@ contains
 
     do i=1,N_catd
        
-       ! no-data-value checks 
+       ! nodata-value checks 
        
        i_next = min(i+1,N_catd) 
        
-       if (abs(force_vec(i)-nodata_forcing)<tol) then   ! forcing is no-data at tile i
+       if (abs(force_vec(i)-nodata_forcing)<tol) then   ! forcing is nodata at tile i
           
           if (create_ExcludeList) then
              
@@ -5598,16 +5620,16 @@ contains
                 ! "next" tile has good forcing data and is within "max_distance"
                 !  --> use forcing from "next" tile for tile i, add note in log file.
                 
-                if (root_logit)  write (logunit,*) 'forcing has no-data-value in tile ID = ', &
+                if (root_logit)  write (logunit,*) 'forcing has nodata-value in tile ID = ', &
                      tile_coord(i)%tile_id, '. Using forcing from nearby tile.'
                 force_vec(i)=force_vec(i_next)
-                   
+                
              else
 
                 ! cannot find forcing data for tile i, abort with message
                 
                 write (tmpstring10,*) tile_coord(i)%tile_id
-                err_msg = 'forcing has no-data-value in tile ID = ' // trim(tmpstring10) //     &
+                err_msg = 'forcing has nodata-value in tile ID = ' // trim(tmpstring10) //     &
                      '. No good forcing nearby. ' //                                            &
                      'Use compile-time switch "create_ExcludeList" to create ' //               &
                      'a complete list for use in "ldas_setup".'  

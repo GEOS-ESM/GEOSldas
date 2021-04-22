@@ -64,9 +64,9 @@ module LDAS_DriverTypes
      real :: PARdffs              ! Photosynth. Active Radiation (diffuse)  [W/m2]
      real :: Wind                 ! wind speed at RefH                      [m/s]
      real :: RefH                 ! reference height for Tair, Qair, Wind   [m]
-!
-!GOSWIN
-!
+     
+     ! GOSWIM aerosol forcing
+     !
      real :: DUDP001              ! below all units are                     [kg/m2/s]
      real :: DUDP002
      real :: DUDP003

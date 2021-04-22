@@ -489,102 +489,100 @@ contains
 
        ! -----------------------------------
 
-       ! PARdffs is no-data-value for most forcing data sets (except MERRA, G5DAS)
+       ! PARdffs 
+       ! "PARdrct" and "PARdffs" now backfilled and checked for nodata-values before this
+       !   subroutine is first called. - wjiang+reichle, 22 Apr 2021 
 
-       if( .not. LDAS_is_nodata(met_force(i)%PARdffs)) then
+       if (field(1:3)=='all' .or. field(1:7)=='PARdffs') then
 
-          if (field(1:3)=='all' .or. field(1:7)=='PARdffs') then
-
-             if ((warn) .and. (met_force(i)%PARdffs < 0. )) then
-
-                write (tmpstr13a,'(e13.5)') met_force(i)%PARdffs    ! convert real to string
-
-                if (root_logit) &
-                write (logunit,'(200A)') 'repair_forcing: PARdffs < 0. in tile ID ' //&
-                     tile_id_str // ': met_force(i)%PARdffs = ' // tmpstr13a
-
-                problem_tile=.true.
-
-             end if
-
-             met_force(i)%PARdffs  = max( 0.,       met_force(i)%PARdffs)
-
-             ! upper threshold for PARdffs = 0.6 of solar incoming radiation
-             ! (after analysis if May and Dec cases from MERRA Scout)
-             ! - reichle, 24 Feb 2009)
-
-             ! updated to threshold of 0.8 after brief analysis of hourly MERRA data
-             ! for Jul 2003 (courtesy of Greg Walker)
-             ! - reichle, 20 Dec 2011
-
-             tmp_maxPar = 0.8*met_force(i)%SWdown
-
-             if ((warn) .and. (met_force(i)%PARdffs > tmp_maxPar+tmpadd_warn_PAR )) then
-
-                write (tmpstr13a,'(e13.5)') tmp_maxPar           ! convert real to string
-                write (tmpstr13b,'(e13.5)') met_force(i)%PARdffs ! convert real to string
-
-                if (root_logit) &
-                write (logunit,'(200A)') 'repair_forcing: PARdffs > ' // tmpstr13a //   &
-                     ' in tile ID ' // tile_id_str // ': met_force(i)%PARdffs = ' //    &
-                     tmpstr13b
-
-                problem_tile=.true.
-
-             end if
-
-             met_force(i)%PARdffs  = min( met_force(i)%PARdffs,tmp_maxPar)
-
+          if ((warn) .and. (met_force(i)%PARdffs < 0. )) then
+             
+             write (tmpstr13a,'(e13.5)') met_force(i)%PARdffs    ! convert real to string
+             
+             if (root_logit) &
+                  write (logunit,'(200A)') 'repair_forcing: PARdffs < 0. in tile ID ' //&
+                  tile_id_str // ': met_force(i)%PARdffs = ' // tmpstr13a
+             
+             problem_tile=.true.
+             
           end if
+          
+          met_force(i)%PARdffs  = max( 0.,       met_force(i)%PARdffs)
+          
+          ! upper threshold for PARdffs = 0.6 of solar incoming radiation
+          ! (after analysis if May and Dec cases from MERRA Scout)
+          ! - reichle, 24 Feb 2009)
+          
+          ! updated to threshold of 0.8 after brief analysis of hourly MERRA data
+          ! for Jul 2003 (courtesy of Greg Walker)
+          ! - reichle, 20 Dec 2011
+          
+          tmp_maxPar = 0.8*met_force(i)%SWdown
+          
+          if ((warn) .and. (met_force(i)%PARdffs > tmp_maxPar+tmpadd_warn_PAR )) then
+             
+             write (tmpstr13a,'(e13.5)') tmp_maxPar           ! convert real to string
+             write (tmpstr13b,'(e13.5)') met_force(i)%PARdffs ! convert real to string
+             
+             if (root_logit) &
+                  write (logunit,'(200A)') 'repair_forcing: PARdffs > ' // tmpstr13a //   &
+                  ' in tile ID ' // tile_id_str // ': met_force(i)%PARdffs = ' //    &
+                  tmpstr13b
+             
+             problem_tile=.true.
+             
+          end if
+          
+          met_force(i)%PARdffs  = min( met_force(i)%PARdffs,tmp_maxPar)
+          
        end if
 
        ! -----------------------------------
 
-       ! PARdrct is no-data-value for most forcing data sets (except MERRA, G5DAS)
+       ! PARdrct
+       ! "PARdrct" and "PARdffs" now backfilled and checked for nodata-values before this
+       !   subroutine is first called. - wjiang+reichle, 22 Apr 2021 
        !
        ! MUST "repair" PARdffs *before* PARdrct
+       
+       if (field(1:3)=='all' .or. field(1:7)=='PARdrct') then
 
-       if( .not. LDAS_is_nodata(met_force(i)%PARdrct) ) then
-
-          if (field(1:3)=='all' .or. field(1:7)=='PARdrct') then
-
-             if ((warn) .and. (met_force(i)%PARdrct < 0. )) then
-
-                write (tmpstr13a,'(e13.5)') met_force(i)%PARdrct ! convert real to string
-
-                if (root_logit) &
-                write (logunit,'(200A)') 'repair_forcing: PARdrct < 0. in tile ID ' //&
-                     tile_id_str // ': met_force(i)%PARdrct = ' // tmpstr13a
-
-                problem_tile=.true.
-
-             end if
-
-             met_force(i)%PARdrct  = max( 0.,       met_force(i)%PARdrct)
-
-             ! upper threshold for PARdrct = SWdown - PARdffs
-
-             tmp_maxPar = met_force(i)%SWdown - met_force(i)%PARdffs
-
-             if ((warn) .and. (met_force(i)%PARdrct > tmp_maxPar+tmpadd_warn_PAR )) then
-
-                write (tmpstr13a,'(e13.5)') tmp_maxPar           ! convert real to string
-                write (tmpstr13b,'(e13.5)') met_force(i)%PARdrct ! convert real to string
-
-                if (root_logit) &
-                write (logunit,'(200A)') 'repair_forcing: PARdrct > ' // tmpstr13a //   &
-                     ' in tile ID ' // tile_id_str // ': met_force(i)%PARdrct = ' //    &
-                     tmpstr13b
-
-                problem_tile=.true.
-
-             end if
-
-             met_force(i)%PARdrct  = min( met_force(i)%PARdrct,tmp_maxPar)
-
+          if ((warn) .and. (met_force(i)%PARdrct < 0. )) then
+             
+             write (tmpstr13a,'(e13.5)') met_force(i)%PARdrct ! convert real to string
+             
+             if (root_logit) &
+                  write (logunit,'(200A)') 'repair_forcing: PARdrct < 0. in tile ID ' //&
+                  tile_id_str // ': met_force(i)%PARdrct = ' // tmpstr13a
+             
+             problem_tile=.true.
+             
           end if
+          
+          met_force(i)%PARdrct  = max( 0.,       met_force(i)%PARdrct)
+          
+          ! upper threshold for PARdrct = SWdown - PARdffs
+          
+          tmp_maxPar = met_force(i)%SWdown - met_force(i)%PARdffs
+          
+          if ((warn) .and. (met_force(i)%PARdrct > tmp_maxPar+tmpadd_warn_PAR )) then
+             
+             write (tmpstr13a,'(e13.5)') tmp_maxPar           ! convert real to string
+             write (tmpstr13b,'(e13.5)') met_force(i)%PARdrct ! convert real to string
+             
+             if (root_logit) &
+                  write (logunit,'(200A)') 'repair_forcing: PARdrct > ' // tmpstr13a //   &
+                  ' in tile ID ' // tile_id_str // ': met_force(i)%PARdrct = ' //    &
+                  tmpstr13b
+             
+             problem_tile=.true.
+             
+          end if
+          
+          met_force(i)%PARdrct  = min( met_force(i)%PARdrct,tmp_maxPar)
+          
        end if
-
+    
        ! ------------------------------------------------------
        !
        ! count problematic tiles
