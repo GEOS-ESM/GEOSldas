@@ -164,6 +164,8 @@ contains
     
     logical :: supported_option_MET_HINTERP          ! for consistency check of resource parameter settings
     logical :: supported_option_AEROSOL_DEPOSITION   ! for consistency check of resource parameter settings
+
+    logical :: unlimited_Qair, unlimited_LWdown      ! options for repair_forcing()
     
     type(date_time_type) :: date_time_tmp
     
@@ -208,6 +210,9 @@ contains
 
     bkwd_looking_fluxes                     = .false.
 
+    unlimited_Qair                          = .false.   ! default for call to repair_forcing
+    unlimited_LWdown                        = .false.   ! default for call to repair_forcing
+    
     ! every forcing data reader must support the default settings:
     ! 
     !   MET_HINTER         = 0 : nearest neighbor
@@ -230,15 +235,6 @@ contains
        call get_Berg_netcdf(       date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
     elseif (index(met_tag, 'ERA5_LIS')/=0) then 
 
        ! subroutine get_ERA5_LIS() provides backward-looking fluxes
@@ -248,29 +244,16 @@ contains
        call get_ERA5_LIS(date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
 
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new)
-
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
+       ! model-based dataset; call repair_forcing() without certain limitations
+       
+       unlimited_Qair                 = .true.
+       unlimited_LWdown               = .true.
+       
     elseif (index(met_tag, 'GLDAS_2x2_5_netcdf')/=0) then
        
        call get_GLDAS_2x2_5_netcdf(date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
     elseif (index(met_tag, 'Viviana_OK')/=0) then
        
        ! vmaggion & reichle, 17 July 2008
@@ -287,98 +270,35 @@ contains
           
        end if
 
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
     elseif (index(met_tag, 'GSWP2_1x1_netcdf')/=0) then
        
        call get_GSWP2_1x1_netcdf(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
-
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
 
     elseif (index(met_tag, 'RedArk_ASCII')/=0) then
        
        call get_RedArk_ASCII(      date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
     elseif (index(met_tag, 'RedArk_GOLD')/=0) then
        
        call get_RedArk_GOLD(       date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
     elseif (index(met_tag, 'RedArk_Princeton')/=0) then
        
        call get_RedArk_Princeton(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
-       
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
        
     elseif (index(met_tag, 'Princeton_netcdf')/=0) then ! tyamada+reichle, 17 Jul 2007   
        
        call get_Princeton_netcdf(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-       
     elseif (index(met_tag, 'conus_0.5d_netcdf')/=0) then ! sarith+reichle, 17 Jul 2007   
        
        call get_conus_netcdf(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
-       
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
        
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
@@ -387,30 +307,23 @@ contains
        ! subroutine get_GEOS() provides backward-looking fluxes 
        
        bkwd_looking_fluxes            = .true.
-
-       call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,       &
-            N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,            &
-            supported_option_MET_HINTERP,                                   &
-            supported_option_AEROSOL_DEPOSITION,                            &            
-            met_force_obs_tile_new, nodata_forcing, MERRA_file_specs,       &
-            init )
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-
-       ! call repair_forcing with switch "unlimited_Qair=.true." for GEOS5 forcing
+       ! call repair_forcing with switch "unlimited_Qair=.true." 
        ! (default is to limit Qair so that it does not exceed Qair_sat)
        ! reichle+qliu,  8 Oct 2008
        ! 
        ! likewise for "unlimited_LWdown=.true."
        ! reichle, 11 Feb 2009       
        
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord,             &
-            unlimited_Qair=.true., unlimited_LWdown=.true. )
+       unlimited_Qair                 = .true.
+       unlimited_LWdown               = .true.
+       
+       call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,       &
+            N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,            &
+            supported_option_MET_HINTERP,                                   &
+            supported_option_AEROSOL_DEPOSITION,                            &            
+            met_force_obs_tile_new, nodata_forcing, MERRA_file_specs,       &
+            init )
        
        ! Subroutine get_GEOS() reads forcing fluxes from "previous"
        ! interval, not from "subsequent" interval, because in operational
@@ -419,36 +332,48 @@ contains
        ! time convention stated above.  Note that only "old" fluxes
        ! are needed in subroutine interpolate_to_timestep(), and
        ! "met_force_obs_tile_new" is set to nodata for forcing fluxes.
-
-      ! The calls below are moved to LDAS_move_new_force_to_old
-
-
-      ! met_force_obs_tile_old%Rainf_C = met_force_obs_tile_new%Rainf_C
-      ! met_force_obs_tile_old%Rainf   = met_force_obs_tile_new%Rainf
-      ! met_force_obs_tile_old%Snowf   = met_force_obs_tile_new%Snowf
-      ! met_force_obs_tile_old%LWdown  = met_force_obs_tile_new%LWdown
-      ! met_force_obs_tile_old%SWdown  = met_force_obs_tile_new%SWdown
-      ! met_force_obs_tile_old%SWnet   = met_force_obs_tile_new%SWnet
-      ! met_force_obs_tile_old%PARdrct = met_force_obs_tile_new%PARdrct
-      ! met_force_obs_tile_old%PARdffs = met_force_obs_tile_new%PARdffs
-
+       
+       ! The calls below are moved to LDAS_move_new_force_to_old
+       
+       ! Note also "bkwd_looking_fluxes" switch. - reichle, 22 Apr 2021
+       
+       ! met_force_obs_tile_old%Rainf_C = met_force_obs_tile_new%Rainf_C
+       ! met_force_obs_tile_old%Rainf   = met_force_obs_tile_new%Rainf
+       ! met_force_obs_tile_old%Snowf   = met_force_obs_tile_new%Snowf
+       ! met_force_obs_tile_old%LWdown  = met_force_obs_tile_new%LWdown
+       ! met_force_obs_tile_old%SWdown  = met_force_obs_tile_new%SWdown
+       ! met_force_obs_tile_old%SWnet   = met_force_obs_tile_new%SWnet
+       ! met_force_obs_tile_old%PARdrct = met_force_obs_tile_new%PARdrct
+       ! met_force_obs_tile_old%PARdffs = met_force_obs_tile_new%PARdffs
+       
        ! treat Wind as flux when forcing with MERRA
+       
+       ! if (MERRA_file_specs) met_force_obs_tile_old%Wind  = met_force_obs_tile_new%Wind
+       
+       ! met_force_obs_tile_new%Rainf_C = nodata_generic
+       ! met_force_obs_tile_new%Rainf   = nodata_generic
+       ! met_force_obs_tile_new%Snowf   = nodata_generic
+       ! met_force_obs_tile_new%LWdown  = nodata_generic
+       ! met_force_obs_tile_new%SWdown  = nodata_generic
+       ! met_force_obs_tile_new%SWnet   = nodata_generic
+       ! met_force_obs_tile_new%PARdrct = nodata_generic
+       ! met_force_obs_tile_new%PARdffs = nodata_generic
 
-      ! if (MERRA_file_specs) met_force_obs_tile_old%Wind  = met_force_obs_tile_new%Wind
-
-      ! met_force_obs_tile_new%Rainf_C = nodata_generic
-      ! met_force_obs_tile_new%Rainf   = nodata_generic
-      ! met_force_obs_tile_new%Snowf   = nodata_generic
-      ! met_force_obs_tile_new%LWdown  = nodata_generic
-      ! met_force_obs_tile_new%SWdown  = nodata_generic
-      ! met_force_obs_tile_new%SWnet   = nodata_generic
-      ! met_force_obs_tile_new%PARdrct = nodata_generic
-      ! met_force_obs_tile_new%PARdffs = nodata_generic
-!
-      ! if (MERRA_file_specs) met_force_obs_tile_new%Wind = nodata_generic
+       ! if (MERRA_file_specs) met_force_obs_tile_new%Wind = nodata_generic
        
     end if
-
+    
+    ! check for nodata values, possibly fill with neighboring data
+    
+    call check_forcing_nodata( N_catd, tile_coord, nodata_forcing,             &
+         met_force_obs_tile_new )
+    
+    ! reset unphysical or inconsistent forcing values
+    
+    call repair_forcing( N_catd, met_force_obs_tile_new,                       &
+         echo=.true., tile_coord=tile_coord,                                   &
+         unlimited_Qair=unlimited_Qair, unlimited_LWdown=unlimited_LWdown )
+    
     ! stop if a supported_option_* switch remains .false.
     
     if (.not. supported_option_MET_HINTERP)        then
