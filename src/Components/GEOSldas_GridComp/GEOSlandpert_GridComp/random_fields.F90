@@ -142,7 +142,7 @@ contains
        remainer = mod(N2, npes)
        this%dim2_counts(1:remainer) = local_dim2 + 1
        local_dim2 = this%dim2_counts(rank+1)
-       
+
        ! create type for AllToAll comunication
 
        do j = 1, npes
@@ -189,7 +189,7 @@ contains
        mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_INPUT_STRIDES, Stride )
        mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_OUTPUT_STRIDES, Stride )
        mklstat = DftiCommitDescriptor( this%Desc_Handle_Dim2 )
-      !mklstat = DftiComputeForward( this%Desc_Handle_Dim2, X )
+       !mklstat = DftiComputeForward( this%Desc_Handle_Dim2, X )
     else
        this%comm = MPI_COMM_NULL
        ! allocate mem and init mkl dft
@@ -236,7 +236,7 @@ contains
           call Mpi_type_free(this%send_types(i), ierror)
           call Mpi_type_free(this%recv_types(i), ierror)
        enddo
-
+       deallocate(this%send_types, this%recv_types, this%dim1_counts, this%dim2_counts)
     endif
 #endif
 
