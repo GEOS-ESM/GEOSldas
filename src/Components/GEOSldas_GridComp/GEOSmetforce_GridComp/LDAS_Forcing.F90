@@ -368,7 +368,7 @@ contains
     
     where (                                                                       &
          (abs(met_force_obs_tile_new%PARdrct-nodata_forcing) < tol)  .and.        &
-         (abs(met_force_obs_tile_new%SWdown -nodata_forcing) < tol)            )
+         (abs(met_force_obs_tile_new%SWdown -nodata_forcing) > tol)            )
        met_force_obs_tile_new%PARdrct = 0.5*0.5*met_force_obs_tile_new%SWdown
        met_force_obs_tile_new%PARdffs = met_force_obs_tile_new%PARdrct
     end where
