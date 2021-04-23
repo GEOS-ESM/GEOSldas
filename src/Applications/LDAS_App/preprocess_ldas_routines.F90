@@ -2164,7 +2164,7 @@ contains
           
           tmpint = 0
           j = j+face(k) 
-          
+          forward = .true.
           do n = n1,n2
              tmpint=tmpint+landPosition(n)
              if((local+1) == j .and. n < n2) cycle
@@ -2172,11 +2172,14 @@ contains
                 local = local + 1
                 local_land(local)=tmpint
                 JMS(local)=n-n0
+                tmpint=0
+                n0=n
                 cycle
              endif
              if(tmpint .ge. avg_land) then
                 local = local + 1
-                if (forward .or. n-n0 ==1) then
+                if (n-n0 == 1) forward =.true.
+                if (forward) then
                    local_land(local)=tmpint
                    JMS(local)=n-n0
                    tmpint=0
@@ -2193,7 +2196,10 @@ contains
           enddo
           local = j
        enddo
-       
+      if( sum(JMS) /= JMGLOB) then
+          print*, sum(JMS), JMGLOB
+          stop ("wrong cs-domain distribution in the first place")
+       endif 
        ! adjust JMS.rc make make sure no process has 0 or 1
        j = 1
        do k = 1,6
@@ -2511,29 +2517,30 @@ contains
       n2 = k*IMGLOB
       tmpint = 0
       forward = .true.
-      n0=n1
+      n0 = n1-1
       do n = n1,n2
          tmpint=tmpint+landPosition(n)
          if(local == face(k) .and. n < n2) cycle ! all lefteover goes to the last process
          if(n==n2) then
             local_land(local)=tmpint
             local = local + 1
-            exit
+            cycle
          endif
          if(tmpint .ge. avg_land) then
-            if (forward .or. n-n0 ==1) then
+            if (n -n0 == 1) forward = .true. ! if only one step, should not got backward
+            if (forward) then
                local_land(local)=tmpint
                tmpint=0
-               n0=n
+               n0 = n
                forward = .false.
             else
                local_land(local) = tmpint - landPosition(n)
                tmpint = landPosition(n)
-               n0=n-1
+               n0 = n-1
                forward = .true.
             endif
             local = local + 1
-        endif
+         endif
       enddo
       
       f = 0.0
