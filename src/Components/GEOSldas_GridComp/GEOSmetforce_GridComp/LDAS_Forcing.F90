@@ -239,20 +239,6 @@ contains
        call get_Berg_netcdf(       date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-    elseif (index(met_tag, 'ERA5_LIS')/=0) then 
-
-       ! subroutine get_ERA5_LIS() provides backward-looking fluxes
-       
-       bkwd_looking_fluxes            = .true.        
-              
-       call get_ERA5_LIS(date_time_tmp, met_path, N_catd, tile_coord, &
-            met_force_obs_tile_new, nodata_forcing)
-
-       ! model-based dataset; call repair_forcing() without certain limitations
-       
-       unlimited_Qair                 = .true.
-       unlimited_LWdown               = .true.
-       
     elseif (index(met_tag, 'GLDAS_2x2_5_netcdf')/=0) then
        
        call get_GLDAS_2x2_5_netcdf(date_time_tmp, met_path, N_catd, tile_coord, &
@@ -304,24 +290,47 @@ contains
        call get_conus_netcdf(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
+    elseif (index(met_tag, 'ERA5_LIS')/=0) then 
+              
+       call get_ERA5_LIS(date_time_tmp, met_path, N_catd, tile_coord, &
+            met_force_obs_tile_new, nodata_forcing)
+
+       ! Subroutine get_ERA5_LIS() provided backward-looking fluxes.
+       ! The time convention stated above is restored through a later call to subroutine
+       ! LDAS_move_new_force_to_old().
+       
+       bkwd_looking_fluxes            = .true.        
+
+       ! model-based dataset; call repair_forcing() below without certain limitations
+       
+       unlimited_Qair                 = .true.
+       unlimited_LWdown               = .true.
+       
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
        if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
        
-       ! subroutine get_GEOS() provides backward-looking fluxes 
+       call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,                 &
+            N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                      &
+            supported_option_MET_HINTERP,                                             &
+            supported_option_AEROSOL_DEPOSITION,                                      &            
+            met_force_obs_tile_new, nodata_forcing, PAR_available, MERRA_file_specs,  &
+            init )
+
+       ! subroutine get_GEOS() provided backward-looking fluxes. 
+       ! The time convention is restored through a later call to subroutine
+       ! LDAS_move_new_force_to_old().
        !
        ! Subroutine get_GEOS() reads forcing fluxes from "previous"
        ! interval, not from "subsequent" interval, because in operational
        ! applications the "subsequent" fluxes for "met_force_new" are not
-       ! available.  The following lines restore consistency with the
-       ! time convention stated above.  Note that only "old" fluxes
-       ! are needed in subroutine interpolate_to_timestep(), and
-       ! "met_force_obs_tile_new" is set to nodata for forcing fluxes.
-       ! The time convention is restored through a call to subroutine
-       ! LDAS_move_new_force_to_old().
+       ! available.  Note that only "old" fluxes are needed in time interpolation
+       ! (module LDAS_InterpMod).
        
        bkwd_looking_fluxes            = .true.
        
+       ! model-based dataset; call repair_forcing() below without certain limitations
+       !
        ! call repair_forcing with switch "unlimited_Qair=.true." 
        ! (default is to limit Qair so that it does not exceed Qair_sat)
        ! reichle+qliu,  8 Oct 2008
@@ -332,13 +341,6 @@ contains
        unlimited_Qair                 = .true.
        unlimited_LWdown               = .true.
 
-       call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,                 &
-            N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                      &
-            supported_option_MET_HINTERP,                                             &
-            supported_option_AEROSOL_DEPOSITION,                                      &            
-            met_force_obs_tile_new, nodata_forcing, PAR_available, MERRA_file_specs,  &
-            init )
-       
     end if
 
     ! ------------------
