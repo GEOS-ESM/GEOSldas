@@ -73,10 +73,9 @@ contains
     !
     ! tmpfac=1.02 corresponds approximately to relative humidity above 1.02
 
-    real, parameter :: tmpfac_warn_Qair   = 1.2    ! 1.02
+    real, parameter :: tmpfac_warn_Qair   = 1.2     ! [-]
 
-    real, parameter :: tmpadd_warn_SWnet  = 1.e-2                 ! [W/m2]
-    real, parameter :: tmpadd_warn_PAR    = tmpadd_warn_SWnet
+    real, parameter :: tmpadd_warn_PAR    = 1.e-2   ! [W/m2]
 
     real, parameter :: tmp_warn_Prec      = 3.e-10  ! [m/s]  (1.e-10m/s ~ 3mm/year)
 
@@ -333,7 +332,7 @@ contains
 
        ! --------------------------------
 
-       ! wind must be positive
+       ! wind speed must be positive
        ! (zero wind creates problem in turbulence calculations;
        !  warn only if wind is negative)
 
@@ -441,50 +440,6 @@ contains
 
           met_force(i)%SWdown  = min( SWDN_MAX, met_force(i)%SWdown)
 
-       end if
-
-       ! -----------------------------------
-
-       ! SWnet is no-data-value for most forcing data sets (except MERRA, G5DAS)
-
-       if( .not. LDAS_is_nodata(met_force(i)%SWnet) ) then
-
-          if (field(1:3)=='all' .or. field(1:7)=='SWnet  ') then
-
-             if ((warn) .and. (met_force(i)%SWnet < 0. )) then
-
-                write (tmpstr13a,'(e13.5)') met_force(i)%SWnet    ! convert real to string
-
-                if (root_logit) &
-                write (logunit,'(200A)') 'repair_forcing: SWnet < 0. in tile ID ' //&
-                     tile_id_str // ': met_force(i)%SWnet = ' // tmpstr13a
-
-                problem_tile=.true.
-
-             end if
-
-             met_force(i)%SWnet  = max( 0.,       met_force(i)%SWnet)
-
-             ! net solar radiation must be less than solar incoming radiation
-
-             if ( (warn) .and. &
-                  (met_force(i)%SWnet > met_force(i)%SWdown+tmpadd_warn_SWnet)) then
-
-                write (tmpstr13a,'(e13.5)') met_force(i)%SWnet    ! convert real to string
-                write (tmpstr13b,'(e13.5)') met_force(i)%SWdown   ! convert real to string
-
-                if (root_logit) &
-                write (logunit,'(200A)') 'repair_forcing: SWnet > SWdown in tile ID ' //  &
-                     tile_id_str // ': met_force(i)%SWnet = ' // tmpstr13a //             &
-                     ', met_force(i)%SWdown = ' // tmpstr13b
-
-                problem_tile=.true.
-
-             end if
-
-             met_force(i)%SWnet  = min( met_force(i)%SWnet,met_force(i)%SWdown)
-
-          end if
        end if
 
        ! -----------------------------------
