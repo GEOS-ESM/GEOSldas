@@ -33,7 +33,7 @@
 module random_fields_class
 
 #ifdef MKL_AVAILABLE
-  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
+  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer, c_ptr
   use mpi
   use MKL_DFTI
 #else
@@ -433,11 +433,12 @@ contains
     integer :: mklstat
     complex, allocatable :: z_inout(:)
     complex, allocatable :: tmp_field(:,:)
-    complex, allocatable :: tmp_field_dim1(:,:)
-    complex, allocatable :: tmp_field_dim2(:,:)
+    complex, pointer :: tmp_field_dim1(:,:)
+    complex, pointer :: tmp_field_dim2(:,:)
     integer :: n1, n2, npes, rank, ldim1, ldim2, ierror
     complex, pointer  :: X(:)
     integer, allocatable :: sdisp(:), send_count(:), rdisp(:), recv_count(:)
+    type (c_ptr) :: cptr
 #else
     real, allocatable :: tmpdata(:)
 #endif
@@ -525,8 +526,8 @@ contains
          
        allocate(tmp_field_dim1(ldim1, N_y_fft))
        tmp_field_dim1 = tmp_field(n1:n2,:)
-
-       call c_f_pointer (c_loc(tmp_field_dim1(1,1)), X, [ldim1*N_y_fft])
+       cptr = c_loc(tmp_field_dim1(1,1))
+       call c_f_pointer (cptr, X, [ldim1*N_y_fft])
        mklstat = DftiComputeBackward( this%Desc_Handle_Dim2, X )
        tmp_field(n1:n2,:) = tmp_field_dim1
 
@@ -546,8 +547,8 @@ contains
 
        allocate(tmp_field_dim2(N_x_fft, ldim2))
        tmp_field_dim2 = tmp_field(:,n1:n2)
-
-       call c_f_pointer (c_loc(tmp_field_dim2(1,1)), X, [N_x_fft*ldim2])
+       cptr = c_loc(tmp_field_dim2(1,1))
+       call c_f_pointer (cptr, X, [N_x_fft*ldim2])
        mklstat = DftiComputeBackward( this%Desc_Handle_Dim1, X )
        tmp_field(:,n1:n2) = tmp_field_dim2
 
