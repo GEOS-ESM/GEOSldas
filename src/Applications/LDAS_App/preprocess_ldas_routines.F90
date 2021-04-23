@@ -2036,7 +2036,8 @@ contains
     real :: rate,rates(60),maxf(60)
     integer :: IMGLOB, JMGLOB
     integer :: face(6),face_land(6)
-    
+    logical :: forward
+
     inquire(file=trim(fname),exist=file_exist)
     if( .not. file_exist) stop ( "tile file not exist")
     read (arg,*) N_proc
@@ -2152,14 +2153,14 @@ contains
           n2 = k*IMGLOB
           
           do i=1,60
-             rates(i) = (i-1)*0.1
+             rates(i) = -0.3 + i*0.01
           enddo
           
           maxf=rms_cs(rates)
           i=minloc(maxf,DIM=1)
           rate = rates(i)
           avg_land = ceiling(1.0*face_land(k)/face(k))
-          avg_land = avg_land - nint(rate*avg_land/face(k))
+          avg_land = avg_land - nint(rate*avg_land)
           
           tmpint = 0
           j = j+face(k) 
@@ -2167,13 +2168,28 @@ contains
           do n = n1,n2
              tmpint=tmpint+landPosition(n)
              if((local+1) == j .and. n < n2) cycle
-             if((tmpint .ge. avg_land) .or. (n==n2)) then
+             if(n==n2) then
                 local = local + 1
                 local_land(local)=tmpint
                 JMS(local)=n-n0
-                tmpint=0
-                n0=n
+                cycle
              endif
+             if(tmpint .ge. avg_land) then
+                local = local + 1
+                if (forward .or. n-n0 ==1) then
+                   local_land(local)=tmpint
+                   JMS(local)=n-n0
+                   tmpint=0
+                   n0=n
+                   forward = .false.
+                else
+                   local_land(local)=tmpint - landPosition(n)
+                   JMS(local)=n-1-n0
+                   tmpint=landPosition(n)
+                   n0=n-1
+                   forward = .true.
+                endif
+            endif
           enddo
           local = j
        enddo
@@ -2336,7 +2352,7 @@ contains
        if(sum(landPosition) /= total_land) print*, "wrong counting of land"
        
        do n=1,60
-          rates(n) = (n-1)*0.15
+          rates(n) = -0.3 + (n-1)*0.01
        enddo
        
        maxf=rms(rates)
@@ -2352,19 +2368,35 @@ contains
        ! in case that the last processors don't have any land tiles,
        ! we can increase ther rates
        
-       avg_land = avg_land - nint(rate*avg_land/N_proc)
+       avg_land = avg_land - nint(rate*avg_land)
        print*,"re adjust the avg_land",avg_land
        tmpint = 0
        local = 1
        n0 = s-1
+       forward = .true.
        do n=s,e
           tmpint=tmpint+landPosition(n)
           if(local == N_proc .and. n < e) cycle ! all lefteover goes to the last process
-          if((tmpint .ge. avg_land) .or. (n==e)) then
+          if( n==e ) then
              local_land(local)=tmpint
              IMS(local)=n-n0
-             tmpint=0
-             n0=n
+             exit
+          endif
+
+          if( tmpint .ge. avg_land ) then
+             if (forward .or. n-n0 == 1 ) then
+                local_land(local)=tmpint
+                IMS(local)=n-n0
+                tmpint=0
+                n0=n
+                forward = .false.
+             else
+                local_land(local) = tmpint - landPosition(n)
+                IMS(local)=(n-1)-n0
+                tmpint= landPosition(n)
+                n0 = n-1
+                forward = .true.
+             endif
              local = local + 1
           endif
        enddo
@@ -2410,24 +2442,39 @@ contains
       integer :: n0,proc,n
       integer :: avg_land
       integer,allocatable :: local_land(:)
-      
+      logical :: forward
+ 
       allocate (local_land(N_proc))
       local_land = 0
       avg_land = ceiling(1.0*total_land/N_proc)
-      avg_land = avg_land -nint(rates*avg_land/N_proc)
-      
+      avg_land = avg_land -nint(rates*avg_land)
+
+      forward = .true.      
       tmpint = 0
       local = 1
       n0 = s-1
       do n=s,e
          tmpint=tmpint+landPosition(n)
          if(local == N_proc .and. n < e) cycle ! all lefteover goes to the last process
-         if((tmpint .ge. avg_land) .or. (n==e)) then
-            local_land(local)=tmpint
-            tmpint=0
-            n0=n
-            local = local + 1
-         endif
+         if( n==e ) then
+             local_land(local)=tmpint
+             exit
+          endif
+
+          if( tmpint .ge. avg_land ) then
+             if (forward .or. n-n0 == 1 ) then
+                local_land(local)=tmpint
+                tmpint=0
+                n0=n
+                forward = .false.
+             else
+                local_land(local) = tmpint - landPosition(n)
+                tmpint= landPosition(n)
+                n0 = n-1
+                forward = .true.
+             endif
+             local = local + 1
+          endif
       enddo
       f = 0.0
       do proc = 1, N_proc
@@ -2445,12 +2492,13 @@ contains
       integer :: proc,n
       integer :: avg_land
       integer,allocatable :: local_land(:)
-      integer :: n1,n2
-      
+      integer :: n1,n2,n0
+      logical :: forward
+
       allocate (local_land(face(k)))
       local_land = 0
       avg_land = ceiling(1.0*face_land(k)/face(k))
-      avg_land = avg_land -nint(rates*avg_land/face(k))
+      avg_land = avg_land -nint(rates*avg_land)
       if (avg_land <=0) then
          f = face_land(k)
          return
@@ -2462,14 +2510,30 @@ contains
       n1 = (k-1)*IMGLOB+1
       n2 = k*IMGLOB
       tmpint = 0
+      forward = .true.
+      n0=n1
       do n = n1,n2
          tmpint=tmpint+landPosition(n)
          if(local == face(k) .and. n < n2) cycle ! all lefteover goes to the last process
-         if((tmpint .ge. avg_land) .or. (n==n2)) then
-            local_land(local)= tmpint
-            tmpint=0
+         if(n==n2) then
+            local_land(local)=tmpint
             local = local + 1
+            exit
          endif
+         if(tmpint .ge. avg_land) then
+            if (forward .or. n-n0 ==1) then
+               local_land(local)=tmpint
+               tmpint=0
+               n0=n
+               forward = .false.
+            else
+               local_land(local) = tmpint - landPosition(n)
+               tmpint = landPosition(n)
+               n0=n-1
+               forward = .true.
+            endif
+            local = local + 1
+        endif
       enddo
       
       f = 0.0

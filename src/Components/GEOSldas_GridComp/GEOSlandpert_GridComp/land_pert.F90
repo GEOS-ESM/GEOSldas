@@ -544,8 +544,8 @@ contains
        ! initialize instance rf of class random_fields
        ! this needs to be done for each pert field
 
-       !call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat )
-       call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat, comm=mpicomm )
+       call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat )
+       !call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat, comm=mpicomm )
 
        do n=1,N_ens
 
