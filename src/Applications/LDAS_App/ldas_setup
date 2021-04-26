@@ -467,7 +467,7 @@ class LDASsetup:
         if self.rqdRmInp['ntasks_model'] % my_ntasks_per_node > 0 :
            my_nodes = my_nodes + 1
 
-        # over write above default if specified
+        # default is set to 0 ( no output server)
         if 'oserver_nodes' not in self.optRmInp :
            self.optRmInp['oserver_nodes'] = 0
         
