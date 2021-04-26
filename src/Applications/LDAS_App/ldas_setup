@@ -1519,7 +1519,7 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# NOTE:'
     print '# - job_name   = name of experiment; default is "exp_id"'
     print '# - qos        = quality-of-service; do not specify by default; specify "debug" for faster but limited service.'
-    print '# - oserver_nodes    = number of nodes for oserver ( default is 1 ), set it to 0 expicilty if no output server needed'
+    print '# - oserver_nodes    = number of nodes for oserver ( default is 0 )'
     print '# - writers-per-node = tasks per oserver_node for writing ( default is 5 ),'
     print '#                      total_writers = writers-per-node * oserver_nodes >=2 '
     print '#'
