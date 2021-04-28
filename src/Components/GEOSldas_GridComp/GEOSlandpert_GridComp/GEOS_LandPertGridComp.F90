@@ -2044,9 +2044,8 @@ contains
              !   backfilled in get_forcing(), arrive here with only "good" values
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdrct)
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdffs)
-             ! must repair "dffs" first, then "drct" !!!
-             call repair_forcing(land_nt_local, mfPert, fieldname='PARdffs')
-             call repair_forcing(land_nt_local, mfPert, fieldname='PARdrct')
+             ! must repair "PARdrct" and "PARdffs" together
+             call repair_forcing(land_nt_local, mfPert, fieldname='PAR')
           case('lw')
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%LWdown)
              call repair_forcing(land_nt_local, mfPert, fieldname='LWdown')

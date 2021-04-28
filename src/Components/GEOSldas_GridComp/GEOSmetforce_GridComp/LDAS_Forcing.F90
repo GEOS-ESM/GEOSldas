@@ -385,6 +385,7 @@ contains
     
     call repair_forcing( N_catd, met_force_obs_tile_new,                          &
          echo=.true., tile_coord=tile_coord,                                      &
+         fieldname='all',                                                         &
          unlimited_Qair=unlimited_Qair, unlimited_LWdown=unlimited_LWdown )
     
     ! ------------------

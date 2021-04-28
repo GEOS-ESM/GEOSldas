@@ -140,13 +140,13 @@ contains
     end if
 
     ! --------------------------------
-
+    
     kk = 0   ! counter for number of problematic tiles
-
+    
     do i=1,N_catd
-
+       
        problem_tile = .false.
-
+       
        if (warn) write (tile_id_str,'(i16)') tile_coord(i)%tile_id  ! convert integer to string
 
        ! precip and snowfall must be non-negative
@@ -154,7 +154,7 @@ contains
        ! fix Rainf first, otherwise cannot use Rainf to constrain Rainf_C
        ! reichle, 11 Aug 2010
 
-       if (field(1:3)=='all' .or. field(1:7)=='Rainf  '  ) then
+       if (field(1:3)=='all' .or. field(1:5)=='Rainf') then
 
           if ((warn) .and. (met_force(i)%Rainf < -tmp_warn_Prec)) then
 
@@ -208,7 +208,7 @@ contains
 
        end if
 
-       if (field(1:3)=='all' .or. field(1:7)=='Snowf  '  ) then
+       if (field(1:3)=='all' .or. field(1:5)=='Snowf') then
 
           if ((warn) .and. (met_force(i)%Snowf < -tmp_warn_Prec)) then
 
@@ -228,7 +228,7 @@ contains
 
        ! --------------------------------
 
-       if (field(1:3)=='all' .or. field(1:7)=='Tair   ') then
+       if (field(1:3)=='all' .or. field(1:4)=='Tair') then
 
           ! temperatures must not be too low or too high
 
@@ -265,7 +265,7 @@ contains
 
        ! --------------------------------
 
-       if (field(1:3)=='all' .or. field(1:7)=='Psurf  ') then
+       if (field(1:3)=='all' .or. field(1:5)=='Psurf') then
 
           ! surface air pressure must not be too high
 
@@ -288,7 +288,7 @@ contains
 
        ! specific humidity must not be negative
 
-       if (field(1:3)=='all' .or. field(1:7)=='Qair   ') then
+       if (field(1:3)=='all' .or. field(1:4)=='Qair') then
 
           if ((warn) .and. (met_force(i)%Qair < 0.)) then
 
@@ -336,7 +336,7 @@ contains
        ! (zero wind creates problem in turbulence calculations;
        !  warn only if wind is negative)
 
-       if (field(1:3)=='all' .or. field(1:7)=='Wind   ') then
+       if (field(1:3)=='all' .or. field(1:4)=='Wind') then
 
           if ((warn) .and. (met_force(i)%Wind < 0.)) then
 
@@ -356,7 +356,7 @@ contains
 
        ! --------------------------------
 
-       if (field(1:3)=='all' .or. field(1:7)=='LWdown ') then
+       if (field(1:3)=='all' .or. field(1:6)=='LWdown') then
 
           if (.not. unlimited_LWdown_tmp) then
 
@@ -406,7 +406,7 @@ contains
 
        ! -----------------------------------
 
-       if (field(1:3)=='all' .or. field(1:7)=='SWdown ') then
+       if (field(1:3)=='all' .or. field(1:6)=='SWdown') then
 
           if ((warn) .and. (met_force(i)%SWdown < 0. )) then
 
@@ -444,12 +444,13 @@ contains
 
        ! -----------------------------------
 
-       ! PARdffs 
+       ! PARdrct and PARdffs (must be repaired together)
+       !
        ! "PARdrct" and "PARdffs" now backfilled and checked for nodata-values before this
        !   subroutine is first called. - wjiang+reichle, 22 Apr 2021 
 
-       if (field(1:3)=='all' .or. field(1:7)=='PARdffs') then
-
+       if (field(1:3)=='all' .or. field(1:3)=='PAR') then
+          
           if ((warn) .and. (met_force(i)%PARdffs < 0. )) then
              
              write (tmpstr13a,'(e13.5)') met_force(i)%PARdffs    ! convert real to string
@@ -489,19 +490,11 @@ contains
           end if
           
           met_force(i)%PARdffs  = min( met_force(i)%PARdffs,tmp_maxPar)
+
+          ! ---------------------------------------
+          !
+          ! MUST "repair" PARdrct *after* PARdffs
           
-       end if
-
-       ! -----------------------------------
-
-       ! PARdrct
-       ! "PARdrct" and "PARdffs" now backfilled and checked for nodata-values before this
-       !   subroutine is first called. - wjiang+reichle, 22 Apr 2021 
-       !
-       ! MUST "repair" PARdffs *before* PARdrct
-       
-       if (field(1:3)=='all' .or. field(1:7)=='PARdrct') then
-
           if ((warn) .and. (met_force(i)%PARdrct < 0. )) then
              
              write (tmpstr13a,'(e13.5)') met_force(i)%PARdrct ! convert real to string
@@ -561,7 +554,7 @@ contains
 
        ! ------------------------------------------------------
 
-    end do
+    end do   ! do i=1,N_catd   (loop through tiles)
 
   end subroutine repair_forcing
 
