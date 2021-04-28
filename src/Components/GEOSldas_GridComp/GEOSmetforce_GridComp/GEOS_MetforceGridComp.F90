@@ -257,17 +257,6 @@ contains
 
     call MAPL_AddExportSpec(                                                    &
          gc,                                                                    &
-         SHORT_NAME = "SWnet",                                                  &
-         LONG_NAME  = "downward_net_shortwave_radiation",                       &
-         UNITS      = "W m-2",                                                  &
-         DIMS       = MAPL_DimsTileOnly,                                        &
-         VLOCATION  = MAPL_VlocationNone,                                       &
-         rc         = status                                                    &
-         )
-    VERIFY_(status)
-
-    call MAPL_AddExportSpec(                                                    &
-         gc,                                                                    &
          SHORT_NAME = "PARdrct",                                                &
          LONG_NAME  = "photosynth_active_radiation_direct",                     &
          UNITS      = "W m-2",                                                  &
@@ -814,7 +803,6 @@ contains
     real, pointer :: RainfSnowf(:)=>null()
     real, pointer :: LWdown(:)=>null()
     real, pointer :: SWdown(:)=>null()
-    real, pointer :: SWnet(:)=>null()
     real, pointer :: PARdrct(:)=>null()
     real, pointer :: PARdffs(:)=>null()
     real, pointer :: Wind(:)=>null()
@@ -1070,8 +1058,6 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(export, SWdown, 'SWdown', alloc=.true., rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, SWnet, 'SWnet', alloc=.true., rc=status)
-    VERIFY_(status)
     call MAPL_GetPointer(export, PARdrct, 'PARdrct', alloc=.true., rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, PARdffs, 'PARdffs', alloc=.true., rc=status)
@@ -1137,7 +1123,6 @@ contains
     RainfSnowf= Rainf+Snowf 
     LWdown = mfDataNtp%LWdown
     SWdown = mfDataNtp%SWdown
-    SWnet = mfDataNtp%SWnet
     PARdrct = mfDataNtp%PARdrct
     PARdffs = mfDataNtp%PARdffs
     Wind = mfDataNtp%Wind

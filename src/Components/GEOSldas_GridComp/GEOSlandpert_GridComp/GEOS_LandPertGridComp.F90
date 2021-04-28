@@ -284,17 +284,6 @@ contains
 
     call MAPL_AddImportSpec(                                                    &
          gc,                                                                    &
-         SHORT_NAME = "SWnet",                                                  &
-         LONG_NAME  = "downward_net_shortwave_radiation",                       &
-         UNITS      = "W m-2",                                                  &
-         DIMS       = MAPL_DimsTileOnly,                                        &
-         VLOCATION  = MAPL_VlocationNone,                                       &
-         rc         = status                                                    &
-         )
-    VERIFY_(status)
-
-    call MAPL_AddImportSpec(                                                    &
-         gc,                                                                    &
          SHORT_NAME = "PARdrct",                                                &
          LONG_NAME  = "photosynth_active_radiation_direct",                     &
          UNITS      = "W m-2",                                                  &
@@ -1791,7 +1780,6 @@ contains
     real, pointer :: Snowf(:)=>null()
     real, pointer :: LWdown(:)=>null()
     real, pointer :: SWdown(:)=>null()
-    real, pointer :: SWnet(:)=>null()
     real, pointer :: PARdrct(:)=>null()
     real, pointer :: PARdffs(:)=>null()
     real, pointer :: Wind(:)=>null()
@@ -2007,8 +1995,6 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(import, SWdown, 'SWdown', rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(import, SWnet, 'SWnet', rc=status)
-    VERIFY_(status)
     call MAPL_GetPointer(import, PARdrct, 'PARdrct', rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(import, PARdffs, 'PARdffs', rc=status)
@@ -2032,7 +2018,6 @@ contains
     mfPert%Snowf = Snowf
     mfPert%LWdown = LWdown
     mfPert%SWdown = SWdown
-    mfPert%SWnet = SWnet
     mfPert%PARdrct = PARdrct
     mfPert%PARdffs = PARdffs
     mfPert%Wind = Wind
@@ -2059,17 +2044,8 @@ contains
              !   backfilled in get_forcing(), arrive here with only "good" values
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdrct)
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdffs)
-             ! Special handling for SWnet
-             do itile=1,land_nt_local
-                if (abs(mfPert(itile)%SWnet-nodata_generic)>nodata_tol_generic) then
-                   tmpRealArrDim1(1) = mfPert(itile)%SWnet
-                   call apply_pert(PertParam, [FORCEPERT(itile,ipert)], tmpRealArrDim1)
-                   mfPert(itile)%SWnet = tmpRealArrDim1(1)
-                end if
-             end do
-             call repair_forcing(land_nt_local, mfPert, fieldname='SWnet')
-             call repair_forcing(land_nt_local, mfPert, fieldname='PARdffs')
-             call repair_forcing(land_nt_local, mfPert, fieldname='PARdrct')
+             ! must repair "PARdrct" and "PARdffs" together
+             call repair_forcing(land_nt_local, mfPert, fieldname='PAR')
           case('lw')
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%LWdown)
              call repair_forcing(land_nt_local, mfPert, fieldname='LWdown')

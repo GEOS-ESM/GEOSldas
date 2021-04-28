@@ -1590,7 +1590,6 @@ contains
     met_force(:)%LWdown  = LWDNSRF_enavg(:)
     met_force(:)%SWdown  = DRPAR_enavg(:)+DFPAR_enavg(:)+DRNIR_enavg(:) + &
          DFNIR_enavg(:)+DRUVR_enavg(:)+DFUVR_enavg(:)
-    met_force(:)%SWnet   = SWLAND(:)
     met_force(:)%PARdrct = DRPAR_enavg(:)
     met_force(:)%PARdffs = DFPAR_enavg(:)
     met_force(:)%wind    = UU_enavg(:)
@@ -1650,12 +1649,10 @@ contains
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Qair, mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Psurf, mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Rainf_c, mask=mask, rc=status); _VERIFY(STATUS)
-       
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Rainf,  mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%Snowf,  mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%LWdown, mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%SWdown, mask=mask, rc=status); _VERIFY(STATUS)
-       call MAPL_VarWrite(unit, tilegrid, met_force(:)%SWnet,  mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%PARdrct,mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%PARdffs, mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid, met_force(:)%wind, mask=mask, rc=status); _VERIFY(STATUS)
