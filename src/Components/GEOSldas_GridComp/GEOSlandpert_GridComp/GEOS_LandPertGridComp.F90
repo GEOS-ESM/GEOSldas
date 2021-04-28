@@ -2043,9 +2043,10 @@ contains
              ! wjiang+reichle, 22 Apr 2021 - "PARdrct" and "PARdffs" now 
              !   backfilled in get_forcing(), arrive here with only "good" values
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdrct)
-             call repair_forcing(land_nt_local, mfPert, fieldname='PARdrct')
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdffs)
+             ! must repair "dffs" first, then "drct" !!!
              call repair_forcing(land_nt_local, mfPert, fieldname='PARdffs')
+             call repair_forcing(land_nt_local, mfPert, fieldname='PARdrct')
           case('lw')
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%LWdown)
              call repair_forcing(land_nt_local, mfPert, fieldname='LWdown')
