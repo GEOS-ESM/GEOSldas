@@ -284,17 +284,6 @@ contains
 
     call MAPL_AddImportSpec(                                                    &
          gc,                                                                    &
-         SHORT_NAME = "SWnet",                                                  &
-         LONG_NAME  = "downward_net_shortwave_radiation",                       &
-         UNITS      = "W m-2",                                                  &
-         DIMS       = MAPL_DimsTileOnly,                                        &
-         VLOCATION  = MAPL_VlocationNone,                                       &
-         rc         = status                                                    &
-         )
-    VERIFY_(status)
-
-    call MAPL_AddImportSpec(                                                    &
-         gc,                                                                    &
          SHORT_NAME = "PARdrct",                                                &
          LONG_NAME  = "photosynth_active_radiation_direct",                     &
          UNITS      = "W m-2",                                                  &
@@ -1791,7 +1780,6 @@ contains
     real, pointer :: Snowf(:)=>null()
     real, pointer :: LWdown(:)=>null()
     real, pointer :: SWdown(:)=>null()
-    real, pointer :: SWnet(:)=>null()
     real, pointer :: PARdrct(:)=>null()
     real, pointer :: PARdffs(:)=>null()
     real, pointer :: Wind(:)=>null()
@@ -2007,8 +1995,6 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(import, SWdown, 'SWdown', rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(import, SWnet, 'SWnet', rc=status)
-    VERIFY_(status)
     call MAPL_GetPointer(import, PARdrct, 'PARdrct', rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(import, PARdffs, 'PARdffs', rc=status)
@@ -2032,7 +2018,6 @@ contains
     mfPert%Snowf = Snowf
     mfPert%LWdown = LWdown
     mfPert%SWdown = SWdown
-    mfPert%SWnet = SWnet
     mfPert%PARdrct = PARdrct
     mfPert%PARdffs = PARdffs
     mfPert%Wind = Wind
@@ -2054,27 +2039,13 @@ contains
           case('sw')
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%SWdown)
              call repair_forcing(land_nt_local, mfPert, fieldname='SWdown')
-             ! Special handling for SWnet
-             do itile=1,land_nt_local
-                if (abs(mfPert(itile)%SWnet-nodata_generic)>nodata_tol_generic) then
-                   tmpRealArrDim1(1) = mfPert(itile)%SWnet
-                   call apply_pert(PertParam, [FORCEPERT(itile,ipert)], tmpRealArrDim1)
-                   mfPert(itile)%SWnet = tmpRealArrDim1(1)
-                end if
-                ! reichle, 20 Dec 2011 - add perts to "PARdrct" and "PARdffs"
-                if (abs(mfPert(itile)%PARdrct-nodata_generic)>nodata_tol_generic) then
-                   ! assume PARdffs is available whenever PARdrct is
-                   tmpRealArrDim1(1) = mfPert(itile)%PARdrct
-                   call apply_pert(PertParam, [FORCEPERT(itile,ipert)], tmpRealArrDim1)
-                   mfPert(itile)%PARdrct = tmpRealArrDim1(1)
-                   tmpRealArrDim1(1) = mfPert(itile)%PARdffs
-                   call apply_pert(PertParam, [FORCEPERT(itile,ipert)], tmpRealArrDim1)
-                   mfPert(itile)%PARdffs = tmpRealArrDim1(1)         ! bug fix, rreichle+qliu, May 2019
-                end if
-             end do
-             call repair_forcing(land_nt_local, mfPert, fieldname='SWnet')
-             call repair_forcing(land_nt_local, mfPert, fieldname='PARdffs')
-             call repair_forcing(land_nt_local, mfPert, fieldname='PARdrct')
+             ! reichle, 20 Dec 2011 - add perts to "PARdrct" and "PARdffs"
+             ! wjiang+reichle, 22 Apr 2021 - "PARdrct" and "PARdffs" now 
+             !   backfilled in get_forcing(), arrive here with only "good" values
+             call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdrct)
+             call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdffs)
+             ! must repair "PARdrct" and "PARdffs" together
+             call repair_forcing(land_nt_local, mfPert, fieldname='PAR')
           case('lw')
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%LWdown)
              call repair_forcing(land_nt_local, mfPert, fieldname='LWdown')
@@ -2147,16 +2118,10 @@ contains
     PSpert = Psurf
     DZpert = RefH
     ! -par-
-    where (abs(mfPert%PARdrct-nodata_generic)<nodata_tol_generic)
-       ! If PAR components are not available:
-       !   assume half of SWdown is photosynthetically active
-       !   assume half of PAR is direct, half diffuse
-       DRPARpert = 0.5*0.5*mfPert%SWdown
-       DFPARpert = DRPARpert
-    elsewhere
-       DRPARpert = mfPert%PARdrct
-       DFPARpert = mfPert%PARdffs
-    end where
+    ! wjiang+reichle, 22 Apr 2021 - "PARdrct" and "PARdffs" now 
+    !   backfilled in get_forcing(), arrive here with only "good" values
+    DRPARpert = mfPert%PARdrct
+    DFPARpert = mfPert%PARdffs
     ! -nir-and-uvr-
     ! S-V=I+U where S=SWdown, V=DRPAR+DFPAR, I=DRNIR+DFNIR, U=DRUVR+DFUVR
     ! => U=0.5*S-V, I=0.5*S

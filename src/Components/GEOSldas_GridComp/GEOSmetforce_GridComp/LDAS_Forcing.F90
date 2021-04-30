@@ -59,20 +59,12 @@ module LDAS_ForceMod
   public :: get_forcing
   public :: LDAS_move_new_force_to_old
   public :: GEOS_closefile
-  type(Hash_Table),public :: FileOpenedHash
 
-  !public :: ignore_SWNET_for_snow
-  !logical         :: ignore_SWNET_for_snow  ! fixes sibalb bug in MERRA snow albedo
+  type(Hash_Table), public :: FileOpenedHash
 
   real, parameter :: DEFAULT_REFH   = 10.   ! m
   
-  ! real, parameter :: SWDN_MAX       = 1360. ! W/m2
-  ! real, parameter :: LWDN_EMISS_MIN = 0.5   ! min effective emissivity for LWdown
-  ! real, parameter :: LWDN_EMISS_MAX = 1.0   ! max effective emissivity for LWdown
-  ! The above three parameters are moved to repairForcingmod ! W.Jiang
-
   character(10), private :: tmpstring10
-  character(40), private :: tmpstring40
 
   real, contiguous, pointer :: ptrShForce(:,:)=>null()
 
@@ -80,38 +72,44 @@ module LDAS_ForceMod
      integer :: N_lon = 0
      integer :: N_lat = 0
      integer :: N_cat = 0
-     integer,allocatable :: i1(:),i2(:),j1(:),j2(:)
-     real,allocatable :: x1(:),x2(:),y1(:),y2(:)
+     integer, allocatable :: i1(:),i2(:),j1(:),j2(:)
+     real,    allocatable :: x1(:),x2(:),y1(:),y2(:)
   end type local_grid
 
   type(local_grid), target :: local_info
   ! for cubed sphere forcing checking, initialized by GEOS_MetforceGridComp
   integer, public :: im_world_cs = 0
+
 contains
 
   ! ********************************************************************
 
-  subroutine get_forcing( date_time, force_dtstep, met_path, met_tag, &
-       N_catd, tile_coord, met_hinterp,                               &
-       MERRA_file_specs, GEOS_Forcing, met_force_obs_tile_new,        &
-       AEROSOL_DEPOSITION,init, alb_from_SWnet )
+  subroutine get_forcing( date_time, force_dtstep, met_path, met_tag,        &
+       N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                  &
+       MERRA_file_specs, bkwd_looking_fluxes, met_force_obs_tile_new,        & 
+       init )
     
     ! Read and check meteorological forcing data for the domain.
     !
+    ! forcing readers must provide ALL of the surface meteorological fields in the
+    !   met_force_type structure EXCEPT:
+    !   - PARdrct, PARdffs : if not available, will be backfilled as fraction of SWdown
+    !   - aerosol forcing  : currently defunct
+    !
     ! time convention:
     ! - forcing states (such as Tair) are snapshots at date_time
-    ! - forcing fluxes (such as SWdn) are time avg over *subsequent* forcing
-    !    interval (date_time:date_time+force_dtstep)    
+    ! - forcing fluxes (such as SWdn) are time avg over *subsequent* (*forward-looking*) 
+    !    forcing interval (date_time:date_time+force_dtstep)    
     !
-    ! The above time convention is heritage from older versions of the 
+    ! The above time convention was inherited from older versions of the 
     ! off-line driver and creates problems with "operational" forcing
-    ! data from GEOS5.  For "operational" integrations, the forward-looking
+    ! data from GEOS.  For "operational" integrations, the forward-looking
     ! forcing fluxes are not available for "met_force_obs_tile_new".  
     !
-    ! As a work-around, the output parameter "move_met_force_obs_new_to_old"
-    ! is used to treat "operational" forcing data sets accordingly in the
-    ! main program.  This work-around replaces an older work-around that 
-    ! was less efficient.
+    ! For datasets that provide fluxes over the forcing interval that *precedes*
+    ! date_time_new, the output parameter "bkwd_looking_fluxes" must be set to .true.,
+    ! so that subroutine LDAS_move_new_force_to_old() can time-shift the fields
+    ! accordingly.
     !
     ! When LDASsa is integrated within the coupled GEOS5 DAS, initial (time-avg)
     ! "tavg1_2d_*_Nx" files are not available.  Use optional "init" flag to 
@@ -123,32 +121,56 @@ contains
     ! reichle,      25 Sep   2009 - removed unneeded inputs 
     ! reichle,      23 Feb   2016 - new and more efficient work-around to make GEOS-5 
     !                                forcing work with LDASsa time convention for forcing data
-
+    ! reichle,      12 Apr   2021 - removed obsolete optional input "alb_from_SWnet"
+    !                             - replaced "GEOS_forcing" switch with "bkwd_looking_fluxes"
+    !                             - added checks for supported options of MET_HINTERP and
+    !                                AEROSOL_DEPOSITION
+    ! reichle,      22 Apr   2021 - clean up:
+    !                               - calls to check_forcing_nodata() and repair_forcing()
+    !                               - handling nodata-values in PARdrct, PARdffs
+    ! reichle,      23 Apr   2021 - clean up:
+    !                               - removed SWnet from met_force_type
+    
     implicit none
+
+    ! intent in:
     
     type(date_time_type), intent(in) :: date_time
     
-    integer, intent(in) :: force_dtstep
+    integer,              intent(in) :: force_dtstep
 
-    character(*),       intent(in) :: met_path
-    character(*),       intent(in) :: met_tag
+    character(*),         intent(in) :: met_path
+    character(*),         intent(in) :: met_tag
 
-    integer,              intent(in) :: N_catd, met_hinterp
+    integer,              intent(in) :: N_catd, MET_HINTERP, AEROSOL_DEPOSITION
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+
+    ! intent out:
     
-    logical,intent(out) :: MERRA_file_specs
-    logical,intent(out) :: GEOS_forcing
+    logical,              intent(out) :: MERRA_file_specs
+    logical,              intent(out) :: bkwd_looking_fluxes
 
     type(met_force_type), dimension(N_catd), intent(out) :: &
          met_force_obs_tile_new
-    integer,intent(in) :: AEROSOL_DEPOSITION
-    logical, intent(in), optional  :: init, alb_from_SWnet        
 
+    ! optional:
+    
+    logical, intent(in), optional  :: init
+
+    ! -------------------
+    
     ! local variables
     
-    real :: nodata_forcing
+    real    :: nodata_forcing, tol
 
+    logical :: PAR_available                         ! indicate whether reader provides PARdrct, PARdffs
+    
+    logical :: supported_option_MET_HINTERP          ! for consistency check of resource parameter settings
+    logical :: supported_option_AEROSOL_DEPOSITION   ! for consistency check of resource parameter settings
+
+    logical :: unlimited_Qair, unlimited_LWdown      ! options for repair_forcing()
+    
     type(date_time_type) :: date_time_tmp
     
     character(len=*), parameter :: Iam = 'get_forcing'
@@ -165,31 +187,43 @@ contains
     !  within specific subroutine)
     
     met_force_obs_tile_new%RefH  = DEFAULT_REFH
-    
-    ! set SWnet, PARdrct, PARdffs to nodata_generic
-    ! (Note that nodata_forcing is set to the native no-data-value
+
+    ! Note that "nodata_forcing" is set to the native nodata-value
     !  in the individual get_*() subroutines and used to communicate with
     !  check_forcing_nodata.  AFTER the call to check_forcing_nodata all forcing 
-    !  fields EXCEPT SWnet must NOT be no-data values, and SWnet must be 
-    !  nodata_generic if unavailable.)
+    !  fields must NOT be nodata values.
     !
     ! reichle+qliu,  8 Oct 2008
     ! reichle, 23 Feb 2009 -- same goes for ParDrct, ParDffs
     ! reichle,  5 Mar 2009 -- deleted ParDrct, ParDffs after testing found no impact
     ! reichle, 22 Jul 2010 -- fixed treatment of SWnet nodata values
     ! reichle, 20 Dec 2011 -- reinstated PARdrct and PARdffs for MERRA-Land file specs
-
+    
     ! ---------------------------------------------------------------------------------
     !
     ! initialize 
     
-    MERRA_file_specs               = .false.
+    MERRA_file_specs                    = .false.
 
-    GEOS_forcing                   = .false.        
+    bkwd_looking_fluxes                 = .false.
 
-    met_force_obs_tile_new%SWnet   = nodata_generic
-    met_force_obs_tile_new%PARdrct = nodata_generic
-    met_force_obs_tile_new%PARdffs = nodata_generic
+    PAR_available                       = .false.  ! default; so far, only GEOS forcing provides PAR
+    
+    unlimited_Qair                      = .false.  ! default for call to repair_forcing
+    unlimited_LWdown                    = .false.  ! default for call to repair_forcing
+    
+    ! every forcing data reader must support the default settings:
+    ! 
+    !   MET_HINTER         = 0 : nearest neighbor
+    !   AEROSOL_DEPOSITION = 0 : *no* aerosol deposition
+    !
+    ! initialize "supported_option_*" to .true. for defaults and .false. otherwise; then
+    !  set to .true. in individual forcing readers for any non-default options that are
+    !  supported for the selected met_tag 
+    
+    supported_option_MET_HINTERP        = (MET_HINTERP        == 0)
+
+    supported_option_AEROSOL_DEPOSITION = (AEROSOL_DEPOSITION == 0)
 
     ! ---------------------------------------------------------------------------------
     !
@@ -200,29 +234,11 @@ contains
        call get_Berg_netcdf(       date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-              
     elseif (index(met_tag, 'GLDAS_2x2_5_netcdf')/=0) then
        
        call get_GLDAS_2x2_5_netcdf(date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
     elseif (index(met_tag, 'Viviana_OK')/=0) then
        
        ! vmaggion & reichle, 17 July 2008
@@ -239,249 +255,186 @@ contains
           
        end if
 
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
     elseif (index(met_tag, 'GSWP2_1x1_netcdf')/=0) then
        
        call get_GSWP2_1x1_netcdf(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
-
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
 
     elseif (index(met_tag, 'RedArk_ASCII')/=0) then
        
        call get_RedArk_ASCII(      date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
     elseif (index(met_tag, 'RedArk_GOLD')/=0) then
        
        call get_RedArk_GOLD(       date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-
     elseif (index(met_tag, 'RedArk_Princeton')/=0) then
        
        call get_RedArk_Princeton(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
-       
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
        
     elseif (index(met_tag, 'Princeton_netcdf')/=0) then ! tyamada+reichle, 17 Jul 2007   
        
        call get_Princeton_netcdf(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-       
     elseif (index(met_tag, 'conus_0.5d_netcdf')/=0) then ! sarith+reichle, 17 Jul 2007   
        
        call get_conus_netcdf(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )
-       
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord )
-       
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
        if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
+       
+       call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,                 &
+            N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                      &
+            supported_option_MET_HINTERP,                                             &
+            supported_option_AEROSOL_DEPOSITION,                                      &            
+            met_force_obs_tile_new, nodata_forcing, PAR_available, MERRA_file_specs,  &
+            init )
 
-       GEOS_forcing = .true.
-
-       ! note "met_tag" in call to get_GEOSgcm_gfio (interface differs
-       ! from other get_* subroutines)
+       ! subroutine get_GEOS() provided backward-looking fluxes. 
+       ! The time convention is restored through a later call to subroutine
+       ! LDAS_move_new_force_to_old().
+       !
+       ! Subroutine get_GEOS() reads forcing fluxes from "previous"
+       ! interval, not from "subsequent" interval, because in operational
+       ! applications the "subsequent" fluxes for "met_force_new" are not
+       ! available.  Note that only "old" fluxes are needed in time interpolation
+       ! (module LDAS_InterpMod).
        
-       !call get_GEOSgcm_gfio(  date_time_tmp, met_path, met_tag, &
-       !     N_catd, tile_coord, &
-       !     met_force_obs_tile_new, nodata_forcing)
+       bkwd_looking_fluxes            = .true.
        
-       call get_GEOS( date_time_tmp, force_dtstep,                           &
-            met_path, met_tag, N_catd, tile_coord, met_hinterp,              &
-            met_force_obs_tile_new, nodata_forcing, MERRA_file_specs,        &
-            AEROSOL_DEPOSITION, init )
-       
-       ! check for nodata values and unphysical values
-       ! (check here, not outside "if" block, because of GEOSgcm case)
-       
-       call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-            met_force_obs_tile_new )    
-
-       ! call repair_forcing with switch "unlimited_Qair=.true." for GEOS5 forcing
+       ! model-based dataset; call repair_forcing() below without certain limitations
+       !
+       ! call repair_forcing with switch "unlimited_Qair=.true." 
        ! (default is to limit Qair so that it does not exceed Qair_sat)
        ! reichle+qliu,  8 Oct 2008
        ! 
        ! likewise for "unlimited_LWdown=.true."
        ! reichle, 11 Feb 2009       
        
-       call repair_forcing( N_catd, met_force_obs_tile_new, &
-            echo=.true., tile_coord=tile_coord,             &
-            unlimited_Qair=.true., unlimited_LWdown=.true. )
-       
-       ! Subroutine get_GEOS() reads forcing fluxes from "previous"
-       ! interval, not from "subsequent" interval, because in operational
-       ! applications the "subsequent" fluxes for "met_force_new" are not
-       ! available.  The following lines restore consistency with the
-       ! time convention stated above.  Note that only "old" fluxes
-       ! are needed in subroutine interpolate_to_timestep(), and
-       ! "met_force_obs_tile_new" is set to nodata for forcing fluxes.
+       unlimited_Qair                 = .true.
+       unlimited_LWdown               = .true.
 
-      ! The calls below are moved to LDAS_move_new_force_to_old
-
-
-      ! met_force_obs_tile_old%Rainf_C = met_force_obs_tile_new%Rainf_C
-      ! met_force_obs_tile_old%Rainf   = met_force_obs_tile_new%Rainf
-      ! met_force_obs_tile_old%Snowf   = met_force_obs_tile_new%Snowf
-      ! met_force_obs_tile_old%LWdown  = met_force_obs_tile_new%LWdown
-      ! met_force_obs_tile_old%SWdown  = met_force_obs_tile_new%SWdown
-      ! met_force_obs_tile_old%SWnet   = met_force_obs_tile_new%SWnet
-      ! met_force_obs_tile_old%PARdrct = met_force_obs_tile_new%PARdrct
-      ! met_force_obs_tile_old%PARdffs = met_force_obs_tile_new%PARdffs
-
-       ! treat Wind as flux when forcing with MERRA
-
-      ! if (MERRA_file_specs) met_force_obs_tile_old%Wind  = met_force_obs_tile_new%Wind
-
-      ! met_force_obs_tile_new%Rainf_C = nodata_generic
-      ! met_force_obs_tile_new%Rainf   = nodata_generic
-      ! met_force_obs_tile_new%Snowf   = nodata_generic
-      ! met_force_obs_tile_new%LWdown  = nodata_generic
-      ! met_force_obs_tile_new%SWdown  = nodata_generic
-      ! met_force_obs_tile_new%SWnet   = nodata_generic
-      ! met_force_obs_tile_new%PARdrct = nodata_generic
-      ! met_force_obs_tile_new%PARdffs = nodata_generic
-!
-      ! if (MERRA_file_specs) met_force_obs_tile_new%Wind = nodata_generic
-       
     end if
 
-    ! make sure SWnet is generally available if needed to back out albedo
-    ! (only works for GEOS forcing, e.g., MERRA, FP, FP-IT)
+    ! ------------------
     !
-    ! NOTE: need to check here because GEOS forcing is the default
-    !       forcing data set in the "if... elseif... elseif... else..."
-    !       statement above, that is, it is only asserted here whether
-    !       the requested forcing data are GEOS.
-    
-    if (present(alb_from_SWnet)) then
-       
-       if ( (.not. GEOS_forcing) .and. (alb_from_SWnet) ) then
-          
-          ! stop if per nml inputs the albedo should be backed
-          ! out from SWnet but forcing data is not GEOS
+    ! backfill PAR:
+    !
+    ! PAR might be missing for one of the following reasons:
+    ! - the reader did not provide PAR
+    ! - the reader provides PAR but owing to a land mask difference between
+    !     the forcing data and the LDAS simulation, some tiles may not have PAR 
+    ! - the reader provides PAR but there are gaps in the original dataset
+    !
+    ! if PAR was not available at all from the forcing reader, assign "nodata_forcing"
 
-          err_msg = 'requested nml input [alb_from_SWnet=.true.] ' // &
-               '*only* works with GEOS forcing'
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          
-       end if
-
+    if (.not. PAR_available) then
+       met_force_obs_tile_new%PARdrct = nodata_forcing
+       met_force_obs_tile_new%PARdffs = nodata_forcing
     end if
 
-    ! stop if anything other than nearest-neighbor met forcing interpolation was 
-    ! requested for a non-GEOS5 forcing dataset
+    ! the nodata-value for all forcing fields is now "nodata_forcing"
     
-    if ((.not. GEOS_forcing) .and. (met_hinterp>0)) then
-       err_msg = 'for non-GEOS forcing, only ' // &
-            'nearest-neighbor interpolation is available'
+    ! where PAR is not available for any of the above reasons:
+    ! - assume half of SWdown is photosynthetically active
+    ! - assume half of PAR is direct, half diffuse
+    
+    tol = abs(nodata_forcing*nodata_tolfrac_generic)
+    
+    where (                                                                       &
+         (abs(met_force_obs_tile_new%PARdrct-nodata_forcing) < tol)  .and.        &
+         (abs(met_force_obs_tile_new%SWdown -nodata_forcing) > tol)            )
+       met_force_obs_tile_new%PARdrct = 0.5*0.5*met_force_obs_tile_new%SWdown
+       met_force_obs_tile_new%PARdffs = met_force_obs_tile_new%PARdrct
+    end where
+    
+    ! ------------------
+    !
+    ! check for nodata values and fill with neighboring data if sensible;
+    !   otherwise, check_forcing_nodata() will abort
+    
+    call check_forcing_nodata( N_catd, tile_coord, nodata_forcing,                &
+         met_force_obs_tile_new )
+    
+    ! ------------------
+    !
+    ! reset unphysical or inconsistent forcing values
+    
+    call repair_forcing( N_catd, met_force_obs_tile_new,                          &
+         echo=.true., tile_coord=tile_coord,                                      &
+         fieldname='all',                                                         &
+         unlimited_Qair=unlimited_Qair, unlimited_LWdown=unlimited_LWdown )
+    
+    ! ------------------
+    !
+    ! stop if a supported_option_* switch remains .false.
+    
+    if (.not. supported_option_MET_HINTERP)        then
+       err_msg = 'selected MET_HINTERP option not supported for met_tag '         &
+            //  trim(met_tag)
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
     
-   end subroutine get_forcing
+    if (.not. supported_option_AEROSOL_DEPOSITION) then
+       err_msg = 'selected AEROSOL_DEPOSITION option not supported for met_tag '  &
+            //  trim(met_tag)
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+    end if
+    
+  end subroutine get_forcing
 
-!*****************************
-   subroutine LDAS_move_new_force_to_old(new_force,old_force,MERRA_file_specs, GEOS_forcing,AEROSOL_DEPOSITION)
+   !**************************************************************************************
+
+   subroutine LDAS_move_new_force_to_old( MERRA_file_specs, AEROSOL_DEPOSITION, &
+        new_force, old_force )
+
+     ! move *flux*-type forcing data from "new" to "old";
+     ! call this subroutine ONLY if the forcing reader provides backward-looking fluxes
+     ! - reichle, 14 Apr 2021
+     
      implicit none
+     
+     logical, intent(in) :: MERRA_file_specs
+     integer, intent(in) :: AEROSOL_DEPOSITION
+     
      type(met_force_type), dimension(:), intent(inout) :: new_force
      type(met_force_type), dimension(:), intent(inout) :: old_force
-     logical,intent(in) :: MERRA_file_specs
-     logical,intent(in) :: GEOS_forcing
-     integer, intent(in) :: AEROSOL_DEPOSITION
-
-     if (.not. GEOS_forcing) return
-
+     
      old_force%Rainf_C = new_force%Rainf_C
      old_force%Rainf   = new_force%Rainf
      old_force%Snowf   = new_force%Snowf
      old_force%LWdown  = new_force%LWdown
      old_force%SWdown  = new_force%SWdown
-     old_force%SWnet   = new_force%SWnet
      old_force%PARdrct = new_force%PARdrct
      old_force%PARdffs = new_force%PARdffs
-
 
      new_force%Rainf_C = nodata_generic
      new_force%Rainf   = nodata_generic
      new_force%Snowf   = nodata_generic
      new_force%LWdown  = nodata_generic
      new_force%SWdown  = nodata_generic
-     new_force%SWnet   = nodata_generic
      new_force%PARdrct = nodata_generic
      new_force%PARdffs = nodata_generic
-
      
      ! [moved here from below, reichle, 28 Jan 2021]
      ! treat Wind as flux when forcing with MERRA
      if (MERRA_file_specs) then
-         old_force%Wind  = new_force%Wind
-         new_force%Wind  = nodata_generic
+        old_force%Wind  = new_force%Wind
+        new_force%Wind  = nodata_generic
      endif
-
+     
      ! not sure what exactly the following fields are and
      ! whether it makes sense to include them here
      ! - reichle, 28 Jan 2021
      !
      if( AEROSOL_DEPOSITION /=0) then
-
+        
         old_force%DUDP001 = new_force%DUDP001
         old_force%DUDP002 = new_force%DUDP002
         old_force%DUDP003 = new_force%DUDP003
@@ -889,7 +842,7 @@ contains
     
     do k=1,N_catd
        
-       ! set convective precip to zero for no-data-values
+       ! set convective precip to zero for nodata-values
        
        if (abs(force_array(k,1)-nodata_berg)<tol) force_array(k,1) = 0.
        
@@ -1898,7 +1851,7 @@ contains
     enddo
     
   end subroutine get_conus_netcdf
-  
+
   ! ****************************************************************  
    
   subroutine get_GLDAS_2x2_5_netcdf(date_time, met_path, N_catd, tile_coord, &
@@ -2398,9 +2351,12 @@ contains
   
   ! *************************************************************************
   
-  subroutine get_GEOS(date_time, force_dtstep,                             &
-       met_path, met_tag, N_catd, tile_coord, met_hinterp,                 &
-       met_force_new, nodata_forcing, MERRA_file_specs,AEROSOL_DEPOSITION, init )
+  subroutine get_GEOS( date_time, force_dtstep, met_path, met_tag,             &
+       N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                    &
+       supported_option_MET_HINTERP,                                           &
+       supported_option_AEROSOL_DEPOSITION,                                    &            
+       met_force_new, nodata_forcing, PAR_available, MERRA_file_specs,         &
+       init )
     
     ! reichle,  5 March 2008 - adapted from get_GEOSgcm_gfio to work with DAS
     !                           and MERRA file specs
@@ -2464,46 +2420,64 @@ contains
 
     use netcdf
     implicit none
+
+    ! intent in:
     
     type(date_time_type), intent(in) :: date_time           ! date/time of 'inst' forcing
     
-    integer, intent(in) :: force_dtstep
+    integer,              intent(in) :: force_dtstep
 
     ! e.g.: met_path = '/land/reichle/GEOS5_land_forcings/'
     !       met_tag  = 'js4rt_b7p1'                         (GEOSgcm exp label)
     
-    character(*),       intent(in) :: met_path
-    character(*),        intent(in) :: met_tag
+    character(*),         intent(in) :: met_path
+    character(*),         intent(in) :: met_tag
     
-    integer,              intent(in) :: N_catd, met_hinterp
+    integer,              intent(in) :: N_catd, MET_HINTERP, AEROSOL_DEPOSITION
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+
+    ! intent inout:
+
+    logical, intent(inout) :: supported_option_MET_HINTERP
+    logical, intent(inout) :: supported_option_AEROSOL_DEPOSITION
     
     type(met_force_type), dimension(N_catd), intent(inout) :: met_force_new
+
+    ! intent out:
     
-    real, intent(out) :: nodata_forcing
+    real,    intent(out) :: nodata_forcing
     
-    logical, intent(out) :: MERRA_file_specs       ! original MERRA only, not MERRA-2
-    integer,intent(in)   :: AEROSOL_DEPOSITION
+    logical, intent(out) :: PAR_available              
+    logical, intent(out) :: MERRA_file_specs       ! original MERRA specs, not MERRA-2
+
+    ! optional:
+    
     logical, intent(in), optional :: init
 
+    ! -----------------------------------------
+    
     ! local variables
     
-    integer, parameter :: N_G5DAS_vars = 13        ! also applies to MERRA-2
-    integer, parameter :: N_MERRA_vars = 14
-    integer, parameter :: N_defs_cols  =  5    
-    integer, parameter :: N_MERRA2_vars = 73
+    integer, parameter :: N_G5DAS_vars   = 12   ! same as for MERRA-2 (excl Aerosol vars)
+    integer, parameter :: N_MERRA_vars   = 13
+    integer, parameter :: N_MERRA2_vars  = 12   ! same as for G5DAS (excl Aerosol vars)
+    integer, parameter :: N_Aerosol_vars = 60   ! additional aerosol forcing vars for GOSWIM (w/ MERRA-2 only for now)
 
-    real,    parameter :: nodata_GEOSgcm = 1.e15   !9.9999999e+14
+    integer, parameter :: N_MERRA2plusAerosol_vars = N_MERRA2_vars + N_Aerosol_vars
     
-    character(40), dimension(N_G5DAS_vars,  N_defs_cols) :: G5DAS_defs
-    character(40), dimension(N_MERRA_vars,  N_defs_cols) :: MERRA_defs
-    character(40), dimension(N_MERRA2_vars,  N_defs_cols) :: M2INT_defs
-    character(40), dimension(N_MERRA2_vars,  N_defs_cols) :: M2COR_defs
+    integer, parameter :: N_defs_cols  =  5    
+
+    real,    parameter :: nodata_GEOSgcm = 1.e15   
+    
+    character(40), dimension(N_G5DAS_vars,              N_defs_cols) :: G5DAS_defs
+    character(40), dimension(N_MERRA_vars,              N_defs_cols) :: MERRA_defs
+    character(40), dimension(N_MERRA2plusAerosol_vars,  N_defs_cols) :: M2INT_defs
+    character(40), dimension(N_MERRA2plusAerosol_vars,  N_defs_cols) :: M2COR_defs
 
     character(40), dimension(:,:), allocatable :: GEOSgcm_defs
 
-    ! NOTE: met_path prec_path, and met_tag for current ('inst') time and fwd and bkwd 'tavg' 
+    ! NOTE: met_path, prec_path, and met_tag for current ('inst') time and fwd and bkwd 'tavg' 
     !       times differ at stream boundaries -- jkolassa+reichle, 17 Dec 2019
 
     type(date_time_type) :: date_time_inst, date_time_fwd, date_time_bkwd, date_time_tmp
@@ -2560,18 +2534,17 @@ contains
     ! lfo_inst/tavg data available from 11 Jun 2013 (start of GEOS-5 ADAS version 5.11)
 
     G5DAS_defs( 1,:)=[character(len=40):: 'SWGDN   ','tavg','tavg1_2d_lfo_Nx','diag','F'] 
-    G5DAS_defs( 2,:)=[character(len=40):: 'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    G5DAS_defs( 3,:)=[character(len=40):: 'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    G5DAS_defs( 4,:)=[character(len=40):: 'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    G5DAS_defs( 5,:)=[character(len=40):: 'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    G5DAS_defs( 6,:)=[character(len=40):: 'PRECCU  ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    G5DAS_defs( 7,:)=[character(len=40):: 'PRECLS  ','tavg','tavg1_2d_lfo_Nx','diag','F']  
-    G5DAS_defs( 8,:)=[character(len=40):: 'PRECSNO ','tavg','tavg1_2d_lfo_Nx','diag','F'] 
-    G5DAS_defs( 9,:)=[character(len=40):: 'PS      ','inst','inst1_2d_lfo_Nx','diag','S']  
-    G5DAS_defs(10,:)=[character(len=40):: 'HLML    ','inst','inst1_2d_lfo_Nx','diag','S']
-    G5DAS_defs(11,:)=[character(len=40):: 'TLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
-    G5DAS_defs(12,:)=[character(len=40):: 'QLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
-    G5DAS_defs(13,:)=[character(len=40):: 'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S']    
+    G5DAS_defs( 2,:)=[character(len=40):: 'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 3,:)=[character(len=40):: 'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 4,:)=[character(len=40):: 'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 5,:)=[character(len=40):: 'PRECCU  ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    G5DAS_defs( 6,:)=[character(len=40):: 'PRECLS  ','tavg','tavg1_2d_lfo_Nx','diag','F']  
+    G5DAS_defs( 7,:)=[character(len=40):: 'PRECSNO ','tavg','tavg1_2d_lfo_Nx','diag','F'] 
+    G5DAS_defs( 8,:)=[character(len=40):: 'PS      ','inst','inst1_2d_lfo_Nx','diag','S']  
+    G5DAS_defs( 9,:)=[character(len=40):: 'HLML    ','inst','inst1_2d_lfo_Nx','diag','S']
+    G5DAS_defs(10,:)=[character(len=40):: 'TLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    G5DAS_defs(11,:)=[character(len=40):: 'QLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    G5DAS_defs(12,:)=[character(len=40):: 'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S']    
 
 
     ! MERRA-2 file specs with uncorrected (AGCM) precip from the "int" Collection
@@ -2585,79 +2558,78 @@ contains
     !       - reichle, 7 Dec 2015
 
     M2INT_defs( 1,:)=[character(len=40):: 'SWGDN   ','tavg','tavg1_2d_rad_Nx','diag','F']  ! use "rad" Collection
-    M2INT_defs( 2,:)=[character(len=40):: 'SWLAND  ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    M2INT_defs( 3,:)=[character(len=40):: 'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    M2INT_defs( 4,:)=[character(len=40):: 'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    M2INT_defs( 5,:)=[character(len=40):: 'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    M2INT_defs( 6,:)=[character(len=40):: 'PRECCU  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
-    M2INT_defs( 7,:)=[character(len=40):: 'PRECLS  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
-    M2INT_defs( 8,:)=[character(len=40):: 'PRECSN  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
-    M2INT_defs( 9,:)=[character(len=40):: 'PS      ','inst','inst1_2d_lfo_Nx','diag','S']  
-    M2INT_defs(10,:)=[character(len=40):: 'HLML    ','inst','inst1_2d_lfo_Nx','diag','S']
-    M2INT_defs(11,:)=[character(len=40):: 'TLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
-    M2INT_defs(12,:)=[character(len=40):: 'QLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
-    M2INT_defs(13,:)=[character(len=40):: 'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2INT_defs( 2,:)=[character(len=40):: 'LWGAB   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 3,:)=[character(len=40):: 'PARDR   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 4,:)=[character(len=40):: 'PARDF   ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2INT_defs( 5,:)=[character(len=40):: 'PRECCU  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
+    M2INT_defs( 6,:)=[character(len=40):: 'PRECLS  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
+    M2INT_defs( 7,:)=[character(len=40):: 'PRECSN  ','tavg','tavg1_2d_int_Nx','diag','F']  ! uncorrected
+    M2INT_defs( 8,:)=[character(len=40):: 'PS      ','inst','inst1_2d_lfo_Nx','diag','S']  
+    M2INT_defs( 9,:)=[character(len=40):: 'HLML    ','inst','inst1_2d_lfo_Nx','diag','S']
+    M2INT_defs(10,:)=[character(len=40):: 'TLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2INT_defs(11,:)=[character(len=40):: 'QLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2INT_defs(12,:)=[character(len=40):: 'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S']    
 
-    M2INT_defs(14,:)=[character(len=40):: 'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(15,:)=[character(len=40):: 'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(16,:)=[character(len=40):: 'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(17,:)=[character(len=40):: 'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(18,:)=[character(len=40):: 'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(19,:)=[character(len=40):: 'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(20,:)=[character(len=40):: 'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(21,:)=[character(len=40):: 'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(22,:)=[character(len=40):: 'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(23,:)=[character(len=40):: 'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(24,:)=[character(len=40):: 'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(25,:)=[character(len=40):: 'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(26,:)=[character(len=40):: 'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(27,:)=[character(len=40):: 'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(28,:)=[character(len=40):: 'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(29,:)=[character(len=40):: 'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(30,:)=[character(len=40):: 'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(31,:)=[character(len=40):: 'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(32,:)=[character(len=40):: 'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(33,:)=[character(len=40):: 'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(34,:)=[character(len=40):: 'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(35,:)=[character(len=40):: 'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(36,:)=[character(len=40):: 'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(37,:)=[character(len=40):: 'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(38,:)=[character(len=40):: 'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(39,:)=[character(len=40):: 'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(40,:)=[character(len=40):: 'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(41,:)=[character(len=40):: 'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(42,:)=[character(len=40):: 'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(43,:)=[character(len=40):: 'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(44,:)=[character(len=40):: 'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(45,:)=[character(len=40):: 'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(46,:)=[character(len=40):: 'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(47,:)=[character(len=40):: 'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(48,:)=[character(len=40):: 'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(49,:)=[character(len=40):: 'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(50,:)=[character(len=40):: 'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(51,:)=[character(len=40):: 'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(52,:)=[character(len=40):: 'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(53,:)=[character(len=40):: 'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(54,:)=[character(len=40):: 'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(55,:)=[character(len=40):: 'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(56,:)=[character(len=40):: 'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(57,:)=[character(len=40):: 'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(58,:)=[character(len=40):: 'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(59,:)=[character(len=40):: 'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(60,:)=[character(len=40):: 'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(61,:)=[character(len=40):: 'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(62,:)=[character(len=40):: 'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(63,:)=[character(len=40):: 'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(64,:)=[character(len=40):: 'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(65,:)=[character(len=40):: 'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(66,:)=[character(len=40):: 'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(67,:)=[character(len=40):: 'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(68,:)=[character(len=40):: 'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(69,:)=[character(len=40):: 'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(70,:)=[character(len=40):: 'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(71,:)=[character(len=40):: 'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(72,:)=[character(len=40):: 'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2INT_defs(73,:)=[character(len=40):: 'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(13,:)=[character(len=40):: 'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(14,:)=[character(len=40):: 'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(15,:)=[character(len=40):: 'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(16,:)=[character(len=40):: 'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(17,:)=[character(len=40):: 'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(18,:)=[character(len=40):: 'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(19,:)=[character(len=40):: 'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(20,:)=[character(len=40):: 'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(21,:)=[character(len=40):: 'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(22,:)=[character(len=40):: 'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(23,:)=[character(len=40):: 'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(24,:)=[character(len=40):: 'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(25,:)=[character(len=40):: 'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(26,:)=[character(len=40):: 'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(27,:)=[character(len=40):: 'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(28,:)=[character(len=40):: 'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(29,:)=[character(len=40):: 'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(30,:)=[character(len=40):: 'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(31,:)=[character(len=40):: 'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(32,:)=[character(len=40):: 'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(33,:)=[character(len=40):: 'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(34,:)=[character(len=40):: 'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(35,:)=[character(len=40):: 'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(36,:)=[character(len=40):: 'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(37,:)=[character(len=40):: 'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(38,:)=[character(len=40):: 'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(39,:)=[character(len=40):: 'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(40,:)=[character(len=40):: 'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(41,:)=[character(len=40):: 'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(42,:)=[character(len=40):: 'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(43,:)=[character(len=40):: 'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(44,:)=[character(len=40):: 'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(45,:)=[character(len=40):: 'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(46,:)=[character(len=40):: 'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(47,:)=[character(len=40):: 'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(48,:)=[character(len=40):: 'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(49,:)=[character(len=40):: 'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(50,:)=[character(len=40):: 'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(51,:)=[character(len=40):: 'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(52,:)=[character(len=40):: 'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(53,:)=[character(len=40):: 'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(54,:)=[character(len=40):: 'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(55,:)=[character(len=40):: 'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(56,:)=[character(len=40):: 'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(57,:)=[character(len=40):: 'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(58,:)=[character(len=40):: 'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(59,:)=[character(len=40):: 'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(60,:)=[character(len=40):: 'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(61,:)=[character(len=40):: 'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(62,:)=[character(len=40):: 'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(63,:)=[character(len=40):: 'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(64,:)=[character(len=40):: 'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(65,:)=[character(len=40):: 'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(66,:)=[character(len=40):: 'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(67,:)=[character(len=40):: 'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(68,:)=[character(len=40):: 'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(69,:)=[character(len=40):: 'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(70,:)=[character(len=40):: 'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(71,:)=[character(len=40):: 'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2INT_defs(72,:)=[character(len=40):: 'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
 
 
     ! MERRA-2 file specs with corrected precip, which could be either
@@ -2673,79 +2645,78 @@ contains
     ! NOTE: Use SWGDN from the "rad" Collection (see comment above).
 
     M2COR_defs( 1,:)=[character(len=40):: 'SWGDN      ','tavg','tavg1_2d_rad_Nx','diag','F']  ! use "rad" Collection
-    M2COR_defs( 2,:)=[character(len=40):: 'SWLAND     ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    M2COR_defs( 3,:)=[character(len=40):: 'LWGAB      ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    M2COR_defs( 4,:)=[character(len=40):: 'PARDR      ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    M2COR_defs( 5,:)=[character(len=40):: 'PARDF      ','tavg','tavg1_2d_lfo_Nx','diag','F']
-    M2COR_defs( 6,:)=[character(len=40):: 'PRECCUCORR ','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections
-    M2COR_defs( 7,:)=[character(len=40):: 'PRECLSCORR ','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections  
-    M2COR_defs( 8,:)=[character(len=40):: 'PRECSNOCORR','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections 
-    M2COR_defs( 9,:)=[character(len=40):: 'PS         ','inst','inst1_2d_lfo_Nx','diag','S']  
-    M2COR_defs(10,:)=[character(len=40):: 'HLML       ','inst','inst1_2d_lfo_Nx','diag','S']
-    M2COR_defs(11,:)=[character(len=40):: 'TLML       ','inst','inst1_2d_lfo_Nx','diag','S']    
-    M2COR_defs(12,:)=[character(len=40):: 'QLML       ','inst','inst1_2d_lfo_Nx','diag','S']    
-    M2COR_defs(13,:)=[character(len=40):: 'SPEEDLML   ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2COR_defs( 2,:)=[character(len=40):: 'LWGAB      ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 3,:)=[character(len=40):: 'PARDR      ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 4,:)=[character(len=40):: 'PARDF      ','tavg','tavg1_2d_lfo_Nx','diag','F']
+    M2COR_defs( 5,:)=[character(len=40):: 'PRECCUCORR ','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections
+    M2COR_defs( 6,:)=[character(len=40):: 'PRECLSCORR ','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections  
+    M2COR_defs( 7,:)=[character(len=40):: 'PRECSNOCORR','tavg','tavg1_2d_lfo_Nx','diag','F']  ! MERRA-2 built-in corrections 
+    M2COR_defs( 8,:)=[character(len=40):: 'PS         ','inst','inst1_2d_lfo_Nx','diag','S']  
+    M2COR_defs( 9,:)=[character(len=40):: 'HLML       ','inst','inst1_2d_lfo_Nx','diag','S']
+    M2COR_defs(10,:)=[character(len=40):: 'TLML       ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2COR_defs(11,:)=[character(len=40):: 'QLML       ','inst','inst1_2d_lfo_Nx','diag','S']    
+    M2COR_defs(12,:)=[character(len=40):: 'SPEEDLML   ','inst','inst1_2d_lfo_Nx','diag','S']    
 
-    M2COR_defs(14,:)=[character(len=40):: 'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(15,:)=[character(len=40):: 'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(16,:)=[character(len=40):: 'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(17,:)=[character(len=40):: 'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(18,:)=[character(len=40):: 'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(19,:)=[character(len=40):: 'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(20,:)=[character(len=40):: 'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(21,:)=[character(len=40):: 'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(22,:)=[character(len=40):: 'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(23,:)=[character(len=40):: 'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(24,:)=[character(len=40):: 'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(25,:)=[character(len=40):: 'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(26,:)=[character(len=40):: 'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(27,:)=[character(len=40):: 'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(28,:)=[character(len=40):: 'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(29,:)=[character(len=40):: 'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(30,:)=[character(len=40):: 'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(31,:)=[character(len=40):: 'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(32,:)=[character(len=40):: 'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(33,:)=[character(len=40):: 'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(34,:)=[character(len=40):: 'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(35,:)=[character(len=40):: 'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(36,:)=[character(len=40):: 'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(37,:)=[character(len=40):: 'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(38,:)=[character(len=40):: 'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(39,:)=[character(len=40):: 'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(40,:)=[character(len=40):: 'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(41,:)=[character(len=40):: 'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(42,:)=[character(len=40):: 'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(43,:)=[character(len=40):: 'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(44,:)=[character(len=40):: 'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(45,:)=[character(len=40):: 'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(46,:)=[character(len=40):: 'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(47,:)=[character(len=40):: 'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(48,:)=[character(len=40):: 'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(49,:)=[character(len=40):: 'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(50,:)=[character(len=40):: 'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(51,:)=[character(len=40):: 'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(52,:)=[character(len=40):: 'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(53,:)=[character(len=40):: 'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(54,:)=[character(len=40):: 'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(55,:)=[character(len=40):: 'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(56,:)=[character(len=40):: 'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(57,:)=[character(len=40):: 'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(58,:)=[character(len=40):: 'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(59,:)=[character(len=40):: 'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(60,:)=[character(len=40):: 'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(61,:)=[character(len=40):: 'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(62,:)=[character(len=40):: 'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(63,:)=[character(len=40):: 'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(64,:)=[character(len=40):: 'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(65,:)=[character(len=40):: 'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(66,:)=[character(len=40):: 'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(67,:)=[character(len=40):: 'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(68,:)=[character(len=40):: 'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(69,:)=[character(len=40):: 'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(70,:)=[character(len=40):: 'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(71,:)=[character(len=40):: 'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(72,:)=[character(len=40):: 'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
-    M2COR_defs(73,:)=[character(len=40):: 'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(13,:)=[character(len=40):: 'DUDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(14,:)=[character(len=40):: 'DUDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(15,:)=[character(len=40):: 'DUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(16,:)=[character(len=40):: 'DUDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(17,:)=[character(len=40):: 'DUDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(18,:)=[character(len=40):: 'DUSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(19,:)=[character(len=40):: 'DUSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(20,:)=[character(len=40):: 'DUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(21,:)=[character(len=40):: 'DUSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(22,:)=[character(len=40):: 'DUSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(23,:)=[character(len=40):: 'DUWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(24,:)=[character(len=40):: 'DUWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(25,:)=[character(len=40):: 'DUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(26,:)=[character(len=40):: 'DUWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(27,:)=[character(len=40):: 'DUWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(28,:)=[character(len=40):: 'DUSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(29,:)=[character(len=40):: 'DUSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(30,:)=[character(len=40):: 'DUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(31,:)=[character(len=40):: 'DUSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(32,:)=[character(len=40):: 'DUSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(33,:)=[character(len=40):: 'BCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(34,:)=[character(len=40):: 'BCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(35,:)=[character(len=40):: 'BCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(36,:)=[character(len=40):: 'BCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(37,:)=[character(len=40):: 'BCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(38,:)=[character(len=40):: 'BCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(39,:)=[character(len=40):: 'BCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(40,:)=[character(len=40):: 'BCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(41,:)=[character(len=40):: 'OCDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(42,:)=[character(len=40):: 'OCDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(43,:)=[character(len=40):: 'OCSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(44,:)=[character(len=40):: 'OCSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(45,:)=[character(len=40):: 'OCWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(46,:)=[character(len=40):: 'OCWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(47,:)=[character(len=40):: 'OCSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(48,:)=[character(len=40):: 'OCSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(49,:)=[character(len=40):: 'SUDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(50,:)=[character(len=40):: 'SUSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(51,:)=[character(len=40):: 'SUWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(52,:)=[character(len=40):: 'SUSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(53,:)=[character(len=40):: 'SSDP001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(54,:)=[character(len=40):: 'SSDP002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(55,:)=[character(len=40):: 'SSDP003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(56,:)=[character(len=40):: 'SSDP004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(57,:)=[character(len=40):: 'SSDP005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(58,:)=[character(len=40):: 'SSSV001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(59,:)=[character(len=40):: 'SSSV002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(60,:)=[character(len=40):: 'SSSV003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(61,:)=[character(len=40):: 'SSSV004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(62,:)=[character(len=40):: 'SSSV005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(63,:)=[character(len=40):: 'SSWT001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(64,:)=[character(len=40):: 'SSWT002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(65,:)=[character(len=40):: 'SSWT003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(66,:)=[character(len=40):: 'SSWT004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(67,:)=[character(len=40):: 'SSWT005    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(68,:)=[character(len=40):: 'SSSD001    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(69,:)=[character(len=40):: 'SSSD002    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(70,:)=[character(len=40):: 'SSSD003    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(71,:)=[character(len=40):: 'SSSD004    ','tavg','tavg1_2d_adg_Nx','diag','F']
+    M2COR_defs(72,:)=[character(len=40):: 'SSSD005    ','tavg','tavg1_2d_adg_Nx','diag','F']
 
     
     ! MERRA file specs
@@ -2765,20 +2736,19 @@ contains
     !                                                                     collection
     
     MERRA_defs( 1,:)=[character(len=40):: 'SWGDN  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "rad"
-    MERRA_defs( 2,:)=[character(len=40):: 'SWLAND ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
-    MERRA_defs( 3,:)=[character(len=40):: 'LWGAB  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "rad"
-    MERRA_defs( 4,:)=[character(len=40):: 'PARDR  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
-    MERRA_defs( 5,:)=[character(len=40):: 'PARDF  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
-    MERRA_defs( 6,:)=[character(len=40):: 'PRECTOT','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
-    MERRA_defs( 7,:)=[character(len=40):: 'PRECCON','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
-    MERRA_defs( 8,:)=[character(len=40):: 'PRECSNO','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
-    MERRA_defs( 9,:)=[character(len=40):: 'PS     ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "slv"
-    MERRA_defs(10,:)=[character(len=40):: 'HLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
-    MERRA_defs(11,:)=[character(len=40):: 'TLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
-    MERRA_defs(12,:)=[character(len=40):: 'QLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
-    MERRA_defs(13,:)=[character(len=40):: 'ULML   ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
-    MERRA_defs(14,:)=[character(len=40):: 'VLML   ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
-    
+    MERRA_defs( 2,:)=[character(len=40):: 'LWGAB  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "rad"
+    MERRA_defs( 3,:)=[character(len=40):: 'PARDR  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 4,:)=[character(len=40):: 'PARDF  ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 5,:)=[character(len=40):: 'PRECTOT','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 6,:)=[character(len=40):: 'PRECCON','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
+    MERRA_defs( 7,:)=[character(len=40):: 'PRECSNO','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "lnd"
+    MERRA_defs( 8,:)=[character(len=40):: 'PS     ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "slv"
+    MERRA_defs( 9,:)=[character(len=40):: 'HLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
+    MERRA_defs(10,:)=[character(len=40):: 'TLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
+    MERRA_defs(11,:)=[character(len=40):: 'QLML   ','tavg','tavg1_2d_lfo_Nx','diag','S']    ! "flx"
+    MERRA_defs(12,:)=[character(len=40):: 'ULML   ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
+    MERRA_defs(13,:)=[character(len=40):: 'VLML   ','tavg','tavg1_2d_lfo_Nx','diag','F']    ! "flx"
+
     ! --------------------------------------------------------------------
     !
     ! preparations
@@ -2789,12 +2759,16 @@ contains
     
     use_prec_corr = .false.  ! use corrected precip dataset (other than native "M2COR_defs")
     
-    ! use same no-data-value on input and output so that "nodata-check" can be
+    ! use same nodata-value on input and output so that "nodata-check" can be
     ! omitted when no arithmetic is needed
     
     nodata_forcing = nodata_GEOSgcm 
     
     tol = abs(nodata_forcing*nodata_tolfrac_generic)    
+
+    ! all GEOS forcing datasets provide PAR (so far)
+
+    PAR_available = .true.
     
     ! input variable "date_time" is for reading instantaneous ('inst') forcing variables
 
@@ -2817,25 +2791,20 @@ contains
     
     ! initialize to most likely values, overwrite below as needed
     
-    N_GEOSgcm_vars       = N_G5DAS_vars 
-    
     MERRA_file_specs     = .false.
     
     met_file_ext         = 'nc4'       
-
+    
     daily_met_files      = .false.
     
     precip_corr_file_ext = 'nc4'
     
-    !allocate(GEOSgcm_defs(max(N_G5DAS_vars,N_MERRA_vars),N_defs_cols))
-    
     if     (met_tag(4:8)=='merra') then   ! MERRA
-
-       if (AEROSOL_DEPOSITION /= 0) then
-           stop " only merr2 has aerosol_deposition"
-       endif     
        
+       ! AEROSOL_DEPOSITION /= 0 is NOT supported
+
        N_GEOSgcm_vars = N_MERRA_vars
+       
        allocate(GEOSgcm_defs(N_GEOSgcm_vars,N_defs_cols))
 
        GEOSgcm_defs(1:N_GEOSgcm_vars,:) = MERRA_defs
@@ -2856,11 +2825,25 @@ contains
             met_path_bkwd, prec_path_bkwd, met_tag_bkwd, use_prec_corr )
 
     elseif (met_tag(1:2)=='M2') then      ! MERRA-2
+       
+       select case (AEROSOL_DEPOSITION)
 
-       if (AEROSOL_DEPOSITION /= 0) then
+       case (0)  ! no aerosols (default)
+          
           N_GEOSgcm_vars = N_MERRA2_vars
-       endif     
+          
+       case (1)  ! with aerosols
+          
+          supported_option_AEROSOL_DEPOSITION = .true.  
+          
+          N_GEOSgcm_vars = N_MERRA2plusAerosol_vars 
 
+       case default
+          
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported AEROSOL_DEPOSITION option')
+          
+       end select
+       
        allocate(GEOSgcm_defs(N_GEOSgcm_vars,N_defs_cols))
        
        if     (met_tag(1:5)=='M2INT') then
@@ -2888,13 +2871,14 @@ contains
        call parse_MERRA2_met_tag( met_path, met_tag, date_time_bkwd,         &
             met_path_bkwd, prec_path_bkwd, met_tag_bkwd, use_prec_corr )
        
-    else
-                                  ! GEOS-5 DAS
-       if (AEROSOL_DEPOSITION /= 0) then
-           stop " only merr2 has aerosol_deposition"
-       endif     
+    else     ! GEOS ADAS (FP)
+       
+       ! AEROSOL_DEPOSITION /= 0 is NOT supported
+       
+       N_GEOSgcm_vars = N_G5DAS_vars 
        
        allocate(GEOSgcm_defs(N_GEOSgcm_vars,N_defs_cols))
+
        GEOSgcm_defs(1:N_G5DAS_vars,  :) = G5DAS_defs
        
        call parse_G5DAS_met_tag( met_path, met_tag, date_time_inst,          &
@@ -3025,7 +3009,7 @@ contains
 
        ! open file, extract coord info, prep horizontal interpolation info (if not done already)
 
-       call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,met_hinterp)
+       call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,MET_HINTERP)
 
        !fid = ptrNode%fid 
 
@@ -3065,6 +3049,7 @@ contains
           end if
 
        endif
+       
        ! ----------------------------------------------    
        !
        ! read global gridded field of given variable
@@ -3075,10 +3060,9 @@ contains
            call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error reading gfio file')
        endif 
 
-
        ! interpolate to tile space
        
-       select case (met_hinterp)
+       select case (MET_HINTERP)
 
        case (0)  ! nearest-neighbor interpolation
           
@@ -3089,6 +3073,8 @@ contains
           end do
 
        case (1)  ! bilinear interpolation
+          
+          supported_option_MET_HINTERP = .true. 
           
           do k=1,N_catd
              this_lon = tile_coord(k)%com_lon
@@ -3103,6 +3089,10 @@ contains
              force_array(k,GEOSgcm_var) = BilinearInterpolation(this_lon, this_lat, &
                   x1(k), x2(k), y1(k), y2(k), fnbr, nodata_forcing, tol)
           end do
+
+       case default
+
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported MET_HINTERP option')
           
        end select
 
@@ -3134,7 +3124,7 @@ contains
                met_path_tmp, met_tag_tmp,                                        &
                GEOSgcm_defs(GEOSgcm_var,:), met_file_ext)
 
-          call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,met_hinterp)
+          call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,MET_HINTERP)
 
           !fid = ptrNode%fid
 
@@ -3164,7 +3154,7 @@ contains
 
              ! interpolate to tile space and in time
        
-             select case (met_hinterp)
+             select case (MET_HINTERP)
                 
              case (0)  ! nearest-neighbor interpolation
                 
@@ -3204,14 +3194,18 @@ contains
                            y1(k), y2(k), fnbr, nodata_forcing, tol))
                    end if
                 end do
-
+                
+             case default
+                
+                call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported MET_HINTERP option')
+                
              end select
              
           end if    ! if (fid>0)
           
        end if       ! if (minimize_shift) .and. [...]
        
-    end do
+    end do          ! do GEOSgcm_var = 1,N_GEOSgcm_vars
 
     call FileOpenedHash%free( GEOS_closefile,.false. )
 
@@ -3229,19 +3223,18 @@ contains
     !                     M2COR
     !
     ! force_array(:, 1) = SWGDN      SWGDN   W/m2    (downward shortwave)     
-    ! force_array(:, 2) = SWLAND     SWLAND  W/m2    (net shortwave)      
-    ! force_array(:, 3) = LWGAB      LWGAB   W/m2    ("absorbed" longwave)
-    ! force_array(:, 4) = PARDR      PARDR   W/m2    (direct  PAR)
-    ! force_array(:, 5) = PARDF      PARDF   W/m2    (diffuse PAR)
-    ! force_array(:, 6) = PRECCU[*]  PRECTOT kg/m2/s (*see below*)
-    ! force_array(:, 7) = PRECLS[*]  PRECCON kg/m2/s (*see below*)
-    ! force_array(:, 8) = PRECSN[*]  PRECSNO kg/m2/s (*see below*)
-    ! force_array(:, 9) = PS         PS      Pa      (surface air pressure)      
-    ! force_array(:,10) = HLML       HLML    m       (height of lowest model level "LML")
-    ! force_array(:,11) = TLML       TLML    K       (air temperature   at LML)
-    ! force_array(:,12) = QLML       QLML    kg/kg   (air spec humidity at LML)
-    ! force_array(:,13) = SPEEDLML   ULML    m/s     (wind speed/U-wind at LML)
-    ! force_array(:,14) = n/a        VLML    m/s     (           V-wind at LML)
+    ! force_array(:, 2) = LWGAB      LWGAB   W/m2    ("absorbed" longwave)
+    ! force_array(:, 3) = PARDR      PARDR   W/m2    (direct  PAR)
+    ! force_array(:, 4) = PARDF      PARDF   W/m2    (diffuse PAR)
+    ! force_array(:, 5) = PRECCU[*]  PRECTOT kg/m2/s (*see below*)
+    ! force_array(:, 6) = PRECLS[*]  PRECCON kg/m2/s (*see below*)
+    ! force_array(:, 7) = PRECSN[*]  PRECSNO kg/m2/s (*see below*)
+    ! force_array(:, 8) = PS         PS      Pa      (surface air pressure)      
+    ! force_array(:, 9) = HLML       HLML    m       (height of lowest model level "LML")
+    ! force_array(:,10) = TLML       TLML    K       (air temperature   at LML)
+    ! force_array(:,11) = QLML       QLML    kg/kg   (air spec humidity at LML)
+    ! force_array(:,12) = SPEEDLML   ULML    m/s     (wind speed/U-wind at LML)
+    ! force_array(:,13) = n/a        VLML    m/s     (           V-wind at LML)
     !
     !  PRECTOT           kg/m2/s  (total       rain+snow) = PRECCU+PRECLS+PRECSNO
     !  PRECCON           kg/m2/s  (convective  rain+snow)
@@ -3250,16 +3243,15 @@ contains
     !  PRECSNO           kg/m2/s  (total       snow)
     
     met_force_new%SWdown    = force_array(:, 1)
-    met_force_new%SWnet     = force_array(:, 2)
-    met_force_new%LWdown    = force_array(:, 3)
-    met_force_new%PARdrct   = force_array(:, 4)
-    met_force_new%PARdffs   = force_array(:, 5)
+    met_force_new%LWdown    = force_array(:, 2)
+    met_force_new%PARdrct   = force_array(:, 3)
+    met_force_new%PARdffs   = force_array(:, 4)
     
-    met_force_new%Psurf     = force_array(:, 9)
+    met_force_new%Psurf     = force_array(:, 8)
     
-    met_force_new%RefH      = force_array(:,10)
-    met_force_new%Tair      = force_array(:,11)
-    met_force_new%Qair      = force_array(:,12)
+    met_force_new%RefH      = force_array(:, 9)
+    met_force_new%Tair      = force_array(:,10)
+    met_force_new%Qair      = force_array(:,11)
     
     do k=1,N_catd
 
@@ -3267,30 +3259,30 @@ contains
        
        if (MERRA_file_specs) then
           
-          if ( abs(force_array(k,13)-nodata_GEOSgcm)<tol .or.           &
-               abs(force_array(k,14)-nodata_GEOSgcm)<tol      ) then
+          if ( abs(force_array(k,12)-nodata_GEOSgcm)<tol .or.           &
+               abs(force_array(k,13)-nodata_GEOSgcm)<tol      ) then
              
              met_force_new(k)%Wind = nodata_forcing
              
           else
              
              met_force_new(k)%Wind = &
-                  sqrt( force_array(k,13)**2 + force_array(k,14)**2 )
+                  sqrt( force_array(k,12)**2 + force_array(k,13)**2 )
              
           end if
           
        else  ! G5DAS file specs
           
-          met_force_new(k)%Wind = force_array(k,13)
+          met_force_new(k)%Wind = force_array(k,12)
           
        end if
        
        
        ! rainfall
        
-       if ( (abs(force_array(k,6)-nodata_GEOSgcm)<tol) .or.               &
-            (abs(force_array(k,7)-nodata_GEOSgcm)<tol) .or.               &
-            (abs(force_array(k,8)-nodata_GEOSgcm)<tol)       )  then
+       if ( (abs(force_array(k,5)-nodata_GEOSgcm)<tol) .or.               &
+            (abs(force_array(k,6)-nodata_GEOSgcm)<tol) .or.               &
+            (abs(force_array(k,7)-nodata_GEOSgcm)<tol)       )  then
           
           met_force_new(k)%Rainf   = nodata_forcing
           met_force_new(k)%Rainf_C = nodata_forcing
@@ -3300,18 +3292,18 @@ contains
           
           if (MERRA_file_specs) then
              
-             if (force_array(k,6)>0) then
+             if (force_array(k,5)>0) then
                 
-                met_force_new(k)%Snowf = force_array(k,8)
+                met_force_new(k)%Snowf = force_array(k,7)
 
                 ! total_rain = total_precip - total_snow
                 
-                met_force_new(k)%Rainf = force_array(k,6) - force_array(k,8)
+                met_force_new(k)%Rainf = force_array(k,5) - force_array(k,7)
                 
                 ! conv_rain = (conv_precip/total_precip) * total_rain
                 
                 met_force_new(k)%Rainf_C = &
-                     force_array(k,7)/force_array(k,6)*met_force_new(k)%Rainf
+                     force_array(k,6)/force_array(k,5)*met_force_new(k)%Rainf
           
              else   
                 
@@ -3325,9 +3317,9 @@ contains
              
              ! G5DAS file specs
              
-             met_force_new(k)%Rainf   = force_array(k,6)+force_array(k,7)
-             met_force_new(k)%Rainf_C = force_array(k,6)
-             met_force_new(k)%Snowf   = force_array(k,8)
+             met_force_new(k)%Rainf   = force_array(k,5)+force_array(k,6)
+             met_force_new(k)%Rainf_C = force_array(k,5)
+             met_force_new(k)%Snowf   = force_array(k,7)
              
           end if
           
@@ -3336,67 +3328,67 @@ contains
     end do
 
     if(AEROSOL_DEPOSITION /=0) then
-       met_force_new%DUDP001   = force_array(:,14)
-       met_force_new%DUDP002   = force_array(:,15)
-       met_force_new%DUDP003   = force_array(:,16)
-       met_force_new%DUDP004   = force_array(:,17)
-       met_force_new%DUDP005   = force_array(:,18)
-       met_force_new%DUSV001   = force_array(:,19)
-       met_force_new%DUSV002   = force_array(:,20)
-       met_force_new%DUSV003   = force_array(:,21)
-       met_force_new%DUSV004   = force_array(:,22)
-       met_force_new%DUSV005   = force_array(:,23)
-       met_force_new%DUWT001   = force_array(:,24)
-       met_force_new%DUWT002   = force_array(:,25)
-       met_force_new%DUWT003   = force_array(:,26)
-       met_force_new%DUWT004   = force_array(:,27)
-       met_force_new%DUWT005   = force_array(:,28)
-       met_force_new%DUSD001   = force_array(:,29)
-       met_force_new%DUSD002   = force_array(:,30)
-       met_force_new%DUSD003   = force_array(:,31)
-       met_force_new%DUSD004   = force_array(:,32)
-       met_force_new%DUSD005   = force_array(:,33)
-       met_force_new%BCDP001   = force_array(:,34)
-       met_force_new%BCDP002   = force_array(:,35)
-       met_force_new%BCSV001   = force_array(:,36)
-       met_force_new%BCSV002   = force_array(:,37)
-       met_force_new%BCWT001   = force_array(:,38)
-       met_force_new%BCWT002   = force_array(:,39)
-       met_force_new%BCSD001   = force_array(:,40)
-       met_force_new%BCSD002   = force_array(:,41)
-       met_force_new%OCDP001   = force_array(:,42)
-       met_force_new%OCDP002   = force_array(:,43)
-       met_force_new%OCSV001   = force_array(:,44)
-       met_force_new%OCSV002   = force_array(:,45)
-       met_force_new%OCWT001   = force_array(:,46)
-       met_force_new%OCWT002   = force_array(:,47)
-       met_force_new%OCSD001   = force_array(:,48)
-       met_force_new%OCSD002   = force_array(:,49)
-       met_force_new%SUDP003   = force_array(:,50)
-       met_force_new%SUSV003   = force_array(:,51)
-       met_force_new%SUWT003   = force_array(:,52)
-       met_force_new%SUSD003   = force_array(:,53)
-       met_force_new%SSDP001   = force_array(:,54)
-       met_force_new%SSDP002   = force_array(:,55)       
-       met_force_new%SSDP003   = force_array(:,56)
-       met_force_new%SSDP004   = force_array(:,57)
-       met_force_new%SSDP005   = force_array(:,58)
-       met_force_new%SSSV001   = force_array(:,59)
-       met_force_new%SSSV002   = force_array(:,60)
-       met_force_new%SSSV003   = force_array(:,61)
-       met_force_new%SSSV004   = force_array(:,62)
-       met_force_new%SSSV005   = force_array(:,63)
-       met_force_new%SSWT001   = force_array(:,64)
-       met_force_new%SSWT002   = force_array(:,65)
-       met_force_new%SSWT003   = force_array(:,66)
-       met_force_new%SSWT004   = force_array(:,67)
-       met_force_new%SSWT005   = force_array(:,68)
-       met_force_new%SSSD001   = force_array(:,69)
-       met_force_new%SSSD002   = force_array(:,70)
-       met_force_new%SSSD003   = force_array(:,71)
-       met_force_new%SSSD004   = force_array(:,72)
-       met_force_new%SSSD005   = force_array(:,73)
-    endif
+       met_force_new%DUDP001   = force_array(:,13)
+       met_force_new%DUDP002   = force_array(:,14)
+       met_force_new%DUDP003   = force_array(:,15)
+       met_force_new%DUDP004   = force_array(:,16)
+       met_force_new%DUDP005   = force_array(:,17)
+       met_force_new%DUSV001   = force_array(:,18)
+       met_force_new%DUSV002   = force_array(:,19)
+       met_force_new%DUSV003   = force_array(:,20)
+       met_force_new%DUSV004   = force_array(:,21)
+       met_force_new%DUSV005   = force_array(:,22)
+       met_force_new%DUWT001   = force_array(:,23)
+       met_force_new%DUWT002   = force_array(:,24)
+       met_force_new%DUWT003   = force_array(:,25)
+       met_force_new%DUWT004   = force_array(:,26)
+       met_force_new%DUWT005   = force_array(:,27)
+       met_force_new%DUSD001   = force_array(:,28)
+       met_force_new%DUSD002   = force_array(:,29)
+       met_force_new%DUSD003   = force_array(:,30)
+       met_force_new%DUSD004   = force_array(:,31)
+       met_force_new%DUSD005   = force_array(:,32)
+       met_force_new%BCDP001   = force_array(:,33)
+       met_force_new%BCDP002   = force_array(:,34)
+       met_force_new%BCSV001   = force_array(:,35)
+       met_force_new%BCSV002   = force_array(:,36)
+       met_force_new%BCWT001   = force_array(:,37)
+       met_force_new%BCWT002   = force_array(:,38)
+       met_force_new%BCSD001   = force_array(:,39)
+       met_force_new%BCSD002   = force_array(:,40)
+       met_force_new%OCDP001   = force_array(:,41)
+       met_force_new%OCDP002   = force_array(:,42)
+       met_force_new%OCSV001   = force_array(:,43)
+       met_force_new%OCSV002   = force_array(:,44)
+       met_force_new%OCWT001   = force_array(:,45)
+       met_force_new%OCWT002   = force_array(:,46)
+       met_force_new%OCSD001   = force_array(:,47)
+       met_force_new%OCSD002   = force_array(:,48)
+       met_force_new%SUDP003   = force_array(:,49)
+       met_force_new%SUSV003   = force_array(:,50)
+       met_force_new%SUWT003   = force_array(:,51)
+       met_force_new%SUSD003   = force_array(:,52)
+       met_force_new%SSDP001   = force_array(:,53)
+       met_force_new%SSDP002   = force_array(:,54)       
+       met_force_new%SSDP003   = force_array(:,55)
+       met_force_new%SSDP004   = force_array(:,56)
+       met_force_new%SSDP005   = force_array(:,57)
+       met_force_new%SSSV001   = force_array(:,58)
+       met_force_new%SSSV002   = force_array(:,59)
+       met_force_new%SSSV003   = force_array(:,60)
+       met_force_new%SSSV004   = force_array(:,61)
+       met_force_new%SSSV005   = force_array(:,62)
+       met_force_new%SSWT001   = force_array(:,63)
+       met_force_new%SSWT002   = force_array(:,64)
+       met_force_new%SSWT003   = force_array(:,65)
+       met_force_new%SSWT004   = force_array(:,66)
+       met_force_new%SSWT005   = force_array(:,67)
+       met_force_new%SSSD001   = force_array(:,68)
+       met_force_new%SSSD002   = force_array(:,69)
+       met_force_new%SSSD003   = force_array(:,70)
+       met_force_new%SSSD004   = force_array(:,71)
+       met_force_new%SSSD005   = force_array(:,72)
+    endif                                      
     
     deallocate(force_array)
     
@@ -3733,39 +3725,8 @@ contains
 
     end if
 
-    ! use "ignore_SWNET_for_snow" to fix snow albedo bug in MERRA forcing:
-    !
-    ! For "MERRA-Land" do *not* use MERRA SWNET for snow-covered surface
-    !  because of the bug in the call to sibalb() in MERRA.  This is communicated
-    !  to subroutine propagate_cat() via "ignore_SWNET_for_snow=.true."
-    ! In all other cases, "ignore_SWNET_for_snow=.false."
-    !
-    !!if (use_prec_corr) then
-    !!
-    !!   ! MERRA-Land
-    !!
-    !!   ignore_SWNET_for_snow = .true.
-    !!   
-    !!   write (logunit,*) 'ignore_SWNET_for_snow = ', ignore_SWNET_for_snow
-    !!   
-    !!else
-    !!
-    !!   ! MERRA replay
-    !!   
-    !!   ignore_SWNET_for_snow = .false.
-    !!   
-    !!end if
-    !
-    ! The above fix did not work in MPI because subroutine get_forcing() is 
-    ! only called by the root process.  All other processes are unaware of
-    ! any changes to "ignore_SWnet_for_snow" from its uninitialized value
-    ! because an MPI broadcast was missing. 
-    ! As of April 2015, "ignore_SWnet_for_snow" is no longer meaningful.
-    ! - reichle,  2 Apr 2015
- 
   end subroutine parse_MERRA_met_tag
   
-  ! ****************************************************************
   ! ****************************************************************
 
   subroutine parse_MERRA2_met_tag( met_path_in, met_tag_in, date_time, &
@@ -5223,15 +5184,18 @@ contains
   ! ****************************************************************
    
   subroutine check_forcing_nodata( N_catd, tile_coord, nodata_forcing, met_force )
-    
-    ! check input forcing for no-data-values
+
+    ! Check for nodata values in met_force and fill with "neighboring" data if sensible;
+    !   otherwise, check_forcing_nodata() will abort.
+    ! Upon successful exit, there will *not* be nodata-values in met_force except
+    !   possibly RefH, which is not checked.
     !
     ! (Note: subroutine repair_forcing() checks for unphysical values.)
     !
     ! Owing to differences in land masks, some land-only forcing datasets may have
-    !  only no-data-values for some GEOS land tiles.  There may also be intermittent
-    !  no-data-values in the forcing dataset.    
-    ! If a no-data-value is encountered, use the value from the "next" tile, where
+    !  only nodata-values for some GEOS land tiles.  There may also be intermittent
+    !  nodata-values in the forcing dataset.    
+    ! If a nodata-value is encountered, use the value from the "next" tile, where
     !  "next" is next in tile order, provided the "next" tile is within "max_distance".
     !  Abort if this does not work.
     ! The "next" tile approach is used to avoid the costly determination of the nearest
@@ -5242,7 +5206,8 @@ contains
     ! reichle, 13 May 2003
     ! reichle, 13 Jun 2005
     ! reichle, 12 Feb 2021 - added "max_distance" limit, revised comments
-
+    ! reichle, 22 Apr 2021 - PAR must now also have "good" data at this stage, added to checks
+    
     implicit none
     
     integer, intent(in) :: N_catd
@@ -5252,12 +5217,6 @@ contains
     real,    intent(in) :: nodata_forcing
     
     type(met_force_type), dimension(N_catd), intent(inout) :: met_force
-    
-    ! local variables
-    
-    integer :: i
-    
-    real    :: tol
     
     ! ------------------------------------------------------------
     
@@ -5269,26 +5228,11 @@ contains
     call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%Snowf  )
     call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%LWdown )
     call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%SWdown )
+    call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%PARdrct)
+    call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%PARdffs)
     call check_forcing_nodata_2(N_catd,tile_coord,nodata_forcing,met_force%Wind   )
-
-    ! do NOT call check_forcing_nodata_2() for "RefH" and "SWnet" (these are typically 
-    ! from GCM or DAS files and should not have any problems to begin with)
-    ! reichle+qliu,  8 Oct 2008    
-
-    ! for SWnet change nodata_forcing to nodata_generic  -- reichle, 22 Jul 2010
     
-    tol = abs(nodata_forcing*nodata_tolfrac_generic)    
-    
-    do i=1,N_catd
-       
-       if ( abs(met_force(i)%SWnet-nodata_forcing) < tol ) then
-          
-          met_force(i)%SWnet = nodata_generic
-          
-       end if
-       
-    end do
-    
+    ! do NOT call check_forcing_nodata_2() for "RefH" (should not have any problems)
     
   end subroutine check_forcing_nodata
   
@@ -5321,13 +5265,14 @@ contains
     
     ! Set the following logical to .true. to generate an "ExcludeList"
     ! for a given forcing data set.  The list contains all tiles for
-    ! which the specified forcing dataset has only no-data-values
+    ! which the specified forcing dataset has only nodata-values
     ! within "max_distance".  The list will end up in the file
     ! "fort.9999".  Next, run "ldas_setup" again and exclude the
     ! tiles in this list from the simulation domain (see "ExcludeList"
     ! in "exeinp" setup file.)
     
     logical, parameter :: create_ExcludeList = .false.
+    
     
     character(len=*), parameter :: Iam = 'check_forcing_nodata_2'
     character(len=400) :: err_msg
@@ -5340,16 +5285,15 @@ contains
 
     do i=1,N_catd
        
-       ! no-data-value checks 
+       ! nodata-value checks 
        
        i_next = min(i+1,N_catd) 
        
-       if (abs(force_vec(i)-nodata_forcing)<tol) then   ! forcing is no-data at tile i
+       if (abs(force_vec(i)-nodata_forcing)<tol) then   ! forcing is nodata at tile i
           
           if (create_ExcludeList) then
              
              N_exclude = N_exclude + 1
-
              write (9999,*) tile_coord(i)%tile_id
              
           else
@@ -5366,16 +5310,16 @@ contains
                 ! "next" tile has good forcing data and is within "max_distance"
                 !  --> use forcing from "next" tile for tile i, add note in log file.
                 
-                if (root_logit)  write (logunit,*) 'forcing has no-data-value in tile ID = ', &
+                if (root_logit)  write (logunit,*) 'forcing has nodata-value in tile ID = ', &
                      tile_coord(i)%tile_id, '. Using forcing from nearby tile.'
                 force_vec(i)=force_vec(i_next)
-                   
+                
              else
 
                 ! cannot find forcing data for tile i, abort with message
                 
                 write (tmpstring10,*) tile_coord(i)%tile_id
-                err_msg = 'forcing has no-data-value in tile ID = ' // trim(tmpstring10) //     &
+                err_msg = 'forcing has nodata-value in tile ID = ' // trim(tmpstring10) //     &
                      '. No good forcing nearby. ' //                                            &
                      'Use compile-time switch "create_ExcludeList" to create ' //               &
                      'a complete list for use in "ldas_setup".'  
