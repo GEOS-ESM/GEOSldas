@@ -469,13 +469,12 @@ contains
     ! real :: Snowf                ! total snowfall                          [kg/m2/s]
     ! real :: LWdown               ! downward longwave radiation             [W/m2]
     ! real :: SWdown               ! downward shortwave radiation            [W/m2]
-    ! real :: SWnet                ! downward net shortwave radiation        [W/m2]
     ! real :: PARdrct              ! Photosynth. Active Radiation (direct)   [W/m2]
     ! real :: PARdffs              ! Photosynth. Active Radiation (diffuse)  [W/m2]
     ! real :: Wind                 ! wind speed at RefH                      [m/s]
     ! real :: RefH                 ! reference height for Tair, Qair, Wind   [m]
     
-    N_real = 13
+    N_real = 12
 
     icount = 2
     
