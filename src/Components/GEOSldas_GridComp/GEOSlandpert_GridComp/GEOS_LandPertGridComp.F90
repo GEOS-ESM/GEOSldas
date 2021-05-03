@@ -1057,6 +1057,17 @@ contains
 
     call get_force_pert_param(internal%pgrid_l, internal%ForcePert%npert, internal%ForcePert%param)
     _ASSERT(internal%ForcePert%npert==size(internal%ForcePert%param), "ForcePert: param size does not match npert")
+    call MAPL_CommsBcast(vm, data=internal%ForcePert%npert, N=1, ROOT=0,rc=status)
+    if (size(internal%ForcePert%param) == 0) then
+       allocate(internal%ForcePert%param(internal%ForcePert%npert))
+    endif
+    do n = 1, internal%ForcePert%npert
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%xcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%ycorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%tcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%coarsen, N=1, ROOT=0,rc=status)
+    enddo
+
     call get_progn_pert_param(internal%pgrid_l, internal%PrognPert%npert, internal%PrognPert%param)
     _ASSERT(internal%PrognPert%npert==size(internal%PrognPert%param), "PrognPert: param size does not match npert")
 
