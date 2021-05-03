@@ -121,7 +121,9 @@ contains
     ! reichle,      25 Sep   2009 - removed unneeded inputs 
     ! reichle,      23 Feb   2016 - new and more efficient work-around to make GEOS-5 
     !                                forcing work with LDASsa time convention for forcing data
+
     ! borescan,     01 Feb   2021 - added ERA5_LIS forcing 
+
     ! reichle,      12 Apr   2021 - removed obsolete optional input "alb_from_SWnet"
     !                             - replaced "GEOS_forcing" switch with "bkwd_looking_fluxes"
     !                             - added checks for supported options of MET_HINTERP and
@@ -164,6 +166,7 @@ contains
     ! local variables
     
     real    :: nodata_forcing, tol
+
 
     logical :: PAR_available                         ! indicate whether reader provides PARdrct, PARdffs
     
@@ -286,6 +289,7 @@ contains
        call get_conus_netcdf(  date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
+
     elseif (index(met_tag, 'ERA5_LIS')/=0) then 
               
        call get_ERA5_LIS(date_time_tmp, met_path, N_catd, tile_coord, &
@@ -302,6 +306,7 @@ contains
        unlimited_Qair                 = .true.
        unlimited_LWdown               = .true.
        
+
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
        if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
@@ -387,6 +392,7 @@ contains
          echo=.true., tile_coord=tile_coord,                                      &
          fieldname='all',                                                         &
          unlimited_Qair=unlimited_Qair, unlimited_LWdown=unlimited_LWdown )
+
     
     ! ------------------
     !
@@ -1868,6 +1874,7 @@ contains
     enddo
     
   end subroutine get_conus_netcdf
+
 
   ! ****************************************************************  
   
