@@ -3343,7 +3343,7 @@ contains
     allocate(Obs_pert_grid(  pert_grid_lH%N_lon, pert_grid_lH%N_lat, N_assim_species, N_ens))
 
     call get_pert(                                                        &
-         N_assim_species, N_ens,                                          &
+         N_assim_species, N_assim_species, N_ens,                         &
          pert_grid_lH, pert_grid_f,                                       &  ! switched order (reichle, 17 Jul 2020)
          dtstep,                                                          &
          obs_pert_param,                                                  &
