@@ -331,7 +331,18 @@ contains
        
        call repair_forcing( N_catd, met_force_obs_tile_new, &
             echo=.true., tile_coord=tile_coord )
-       
+    
+   elseif (index(met_tag, 'AODAS_BC_netcdf')/=0) then ! jpark50, 20 Apr 2021
+
+         call get_BC_AODAS( date_time_tmp, met_path, N_catd, tile_coord, &
+              met_hinterp, met_force_obs_tile_new, nodata_forcing)
+
+         call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
+              met_force_obs_tile_new )
+
+         call repair_forcing( N_catd, met_force_obs_tile_new, &
+              echo=.true., tile_coord=tile_coord )
+      
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
        if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
@@ -5221,7 +5232,225 @@ contains
   end subroutine get_GSWP2_1x1_netcdf
   
   ! ****************************************************************
-   
+  subroutine get_BC_AODAS(date_time, met_path, N_catd, tile_coord, &
+    met_hinterp, met_force_new, nodata_forcing)
+     use netcdf
+     implicit none
+     include 'mpif.h'
+     type(date_time_type), intent(in) :: date_time
+
+     character(*), intent(in) :: met_path
+
+     integer, intent(in) :: N_catd, met_hinterp
+
+     type(tile_coord_type), dimension(:), pointer :: tile_coord
+
+     type(met_force_type), dimension(:), intent(inout) :: met_force_new
+
+     real, intent(out) :: nodata_forcing
+
+     ! AODAS grid and netcdf parameters (Resampled onto the MERRA2 grid during preprocessing)
+     integer, parameter :: GEOSgcm_grid_N_lon  = 576
+     integer, parameter :: GEOSgcm_grid_N_lat  = 361
+     real,    parameter :: GEOSgcm_grid_dlon   = 0.625
+     real,    parameter :: GEOSgcm_grid_dlat   = 0.5
+     real,    parameter :: GEOSgcm_grid_ll_lon = -180. - GEOSgcm_grid_dlon/2.
+     real,    parameter :: GEOSgcm_grid_ll_lat =  -90. - GEOSgcm_grid_dlat/2.
+     
+     parameter :: dt_GEOSgcm_in_hours = 1
+     integer, parameter :: N_GEOSgcm_vars = 11
+     real,    parameter :: nodata_GEOSgcm = -9999.
+
+    character(40), dimension(N_GEOSgcm_vars), parameter :: GEOSgcm_name = &
+         (/ &
+         'PRECCUCORR ', &  !  1 - flux, convective_precipitation, kg m-2 s-1
+         'PRECSNOCORR', &  !  2 - flux, snowfall, kg m-2 s-1
+         'PRECLSCORR ', &  !  3 - flux, total_precipitation, kg m-2 s-1
+         'LWGAB      ', &  !  4 - flux, surface_absorbed_longwave_radiation, W m-2
+         'SWGDN      ', &  !  5 - flux, surface_incoming_shortwave_flux, W m-2
+         'Psurf      ', &  !  6 - state, surface_pressure, Pa
+         'QLML       ', &  !  7  - state, surface_specific_humidity, kg kg-1
+         'TLML       ', &  !  8 - state, surface_air_temperature, K
+         'SPEEDML    ', &  !  9 - state, surface_wind_speed, ms-1
+         'HLML       ', &  ! 10 - state, surface_layer_height, m
+         'SWLAND     '  &  ! 11 - flux, net_shortwave_land, W m-2
+         /)
+
+  ! local variables
+    integer, dimension(N_catd) :: i_ind, j_ind
+
+    real, dimension(N_catd, N_GEOSgcm_vars)                 :: force_array
+    integer, dimension(3)      :: iicount, iistart
+    integer                    :: k, hours_in_month, GEOSgcm_var, ierr, ncid, nciv_data, &
+                                  fid, rc, nv_id
+    integer                    :: status
+
+    real                       :: tol, this_lon, this_lat, dt_GEOSgcm_in_seconds
+
+    character(  4)             :: YYYY, HHMM
+    character(  2)             :: MM, DD
+    character(300)             :: fname
+
+    integer                    :: YYYYMMDD, HHMMSS
+
+    character(len=*), parameter :: Iam = 'get_BC_AODAS'
+    character(len=400) :: err_msg
+    logical :: file_exists, single_time_in_file
+
+    dt_GEOSgcm_in_seconds = real(3600*dt_GEOSgcm_in_hours)
+
+    nodata_forcing = nodata_GEOSgcm
+
+    tol = abs(nodata_forcing*nodata_tolfrac_generic)
+
+    ! obtain year and month strings
+    write (YYYY, '(i4.4)') date_time%year
+    write (MM,   '(i2.2)') date_time%month
+    write (DD,   '(i2.2)') date_time%day
+    write (HHMM, '(i4.4)') date_time%hour*100 + date_time%min
+
+    iistart(1)  = 1
+    iicount(1) = GEOSgcm_grid_N_lon
+
+    iistart(2)  = 1
+    iicount(2) = GEOSgcm_grid_N_lat
+
+    if ( (date_time%min/=0) .or. (date_time%sec/=0) .or.   &
+         (mod(date_time%hour, dt_GEOSgcm_in_hours)/=0) ) then
+
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'timing ERROR!!')
+
+    endif
+
+    hours_in_month = (date_time%day-1)*24 + date_time%hour
+
+    iistart(3)  = hours_in_month / dt_GEOSgcm_in_hours + 1
+    iicount(3) = 1
+
+    do k=1,N_catd
+       ! ll_lon and ll_lat refer to lower left corner of grid cell
+       ! (as opposed to the grid point in the center of the grid cell)
+
+       this_lon = tile_coord(k)%com_lon
+       this_lat = tile_coord(k)%com_lat
+
+       i_ind(k) = ceiling((this_lon - GEOSgcm_grid_ll_lon)/GEOSgcm_grid_dlon)
+       j_ind(k) = ceiling((this_lat - GEOSgcm_grid_ll_lat)/GEOSgcm_grid_dlat)
+
+       if (i_ind(k)>GEOSgcm_grid_N_lon)  i_ind(k)=1
+
+    end do
+
+    ! open input file
+    fname = trim(met_path) // '/S2S_hourly_' // YYYY// MM// '.nc4'
+
+    if(root_logit) write (logunit,*) 'opening ' // trim(fname)
+
+    call GEOS_openfile(FileOpenedHash,fname,fid,tile_coord,met_hinterp,rc)
+    if (rc<0) then
+           call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error opening file')
+    endif
+
+   ! loop over variables
+    do GEOSgcm_var = 1,N_GEOSgcm_vars
+
+       ! 1=lon, 2=lat, 3=time, 4=PRECCUCORR, 5=PRECNOCORR, 6=PRECLSCORR, 7=LWGAB, 8=SWGDN,
+       ! 9=Psurf, 10=QLML, 11=TLML, 12=HLML, 13=SPEEDML, 14=SWLAND
+
+       !if (logit) write (logunit,*) "GEOSGCM_var, GEOSgcm_name(GEOSgcm_var): ", GEOSgcm_var, GEOSgcm_name(GEOSgcm_var)
+          if (GEOSgcm_var==1) then
+
+          if( size(ptrShForce,1) /= GEOSgcm_grid_N_lon .or.    &
+              size(ptrShForce,2) /= GEOSgcm_grid_N_lat ) then
+             call MAPL_SyncSharedMemory(rc=status)
+             VERIFY_(status)
+             if (associated(ptrShForce)) then
+                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
+                VERIFY_(status)
+             endif
+             call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
+             VERIFY_(status)
+             call MAPL_SyncSharedMemory(rc=status)
+             VERIFY_(status)
+          end if
+         endif
+       rc = 0
+       call MAPL_SyncSharedMemory(rc=status)
+
+     if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
+        rc= NF90_INQ_VARID( fid, trim(GEOSgcm_name(GEOSgcm_var)), nv_id)
+        _ASSERT( rc == nf90_noerr, "nf90 error")
+       rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount)
+     endif
+
+     call MAPL_SyncSharedMemory(rc=status)
+         !if (logit) write (logunit,*) GEOSgcm_name(GEOSgcm_var)
+       do k = 1, N_catd
+          force_array(k, GEOSgcm_var) = ptrShForce(i_ind(k), j_ind(k))
+          !debuging
+          !if (k==100) then
+          !if (logit) write (logunit,*), "variable =", ptrShForce(i_ind(k), j_ind(k))
+          !endif
+       end do
+
+    end do ! N_GEOSgcm_vars
+
+    ! Rainf = convective rainfall + large-scale rainfall
+    ! follow code in GEOS_SurfaceGridComp.F90 to compute convective and large-scale rain
+    ! from convective precip, total precip, and total snowfall
+      do k=1,N_catd
+
+      if ( (abs(force_array(k,1)-nodata_GEOSgcm)<tol) .or.               &
+           (abs(force_array(k,2)-nodata_GEOSgcm)<tol) .or.               &
+           (abs(force_array(k,3)-nodata_GEOSgcm)<tol)       )  then
+
+         met_force_new(k)%Rainf_C = nodata_forcing
+         met_force_new(k)%Snowf   = nodata_forcing
+         met_force_new(k)%Rainf   = nodata_forcing
+
+      else
+
+         met_force_new(k)%Snowf   = force_array(k,2)
+         met_force_new(k)%Rainf   = force_array(k,3) - force_array(k,2)
+         if (force_array(k,3) > 0.) then
+            met_force_new(k)%Rainf_C = force_array(k,1) * (1.0 - force_array(k,2)/force_array(k,3))
+         end if
+
+         ! ensure that large-scale rainfall >=0
+         if (met_force_new(k)%Rainf - met_force_new(k)%Rainf_C < 0.) then
+            met_force_new(k)%Rainf_C = met_force_new(k)%Rainf
+         end if
+
+      end if
+
+    end do
+
+    met_force_new%LWdown    = force_array(:, 4)
+    met_force_new%SWdown    = force_array(:, 5)
+    met_force_new%Psurf     = force_array(:, 6)
+    met_force_new%Qair      = force_array(:, 7)
+    met_force_new%Tair      = force_array(:, 8)
+    met_force_new%Wind      = force_array(:, 9)
+    met_force_new%RefH      = force_array(:, 10)
+    met_force_new%SWnet     = force_array(:, 11)
+
+    met_force_new%Rainf_C   = max(met_force_new%Rainf_C, 0.)
+    met_force_new%Snowf     = max(met_force_new%Snowf, 0.)
+    met_force_new%Rainf     = max(met_force_new%Rainf, 0.)
+    met_force_new%LWdown    = max(met_force_new%LWdown, 0.)
+    met_force_new%SWdown    = max(met_force_new%SWdown, 0.)
+    met_force_new%Psurf     = max(met_force_new%Psurf, 0.)
+    met_force_new%Qair      = max(met_force_new%Qair, 0.)
+    met_force_new%Tair      = max(met_force_new%Tair, 0.)
+    met_force_new%Wind      = max(met_force_new%Wind, 0.)
+    met_force_new%RefH      = max(met_force_new%RefH, 0.)
+    met_force_new%SWnet     = max(met_force_new%SWnet, 0.)
+
+  end subroutine get_BC_AODAS
+  ! ****************************************************************
+
+
+  !************************************************************
   subroutine check_forcing_nodata( N_catd, tile_coord, nodata_forcing, met_force )
     
     ! check input forcing for no-data-values and unphysical values
