@@ -379,20 +379,8 @@ contains
 
     if (logit) write (logunit,*) 'get_enkf_increments(): enter at ', &
          date_string, ', ', time_string
-
-    ! ----------------------------------------------------------------------
-    !
-    ! check whether it is time for assimilation
-
-    secs_in_day = date_time%hour*3600 + date_time%min*60 + date_time%sec
-
-    if (centered_update)  secs_in_day = secs_in_day + dtstep_assim/2
-
-    if (mod(secs_in_day, dtstep_assim)/=0) then
-
-       if (logit) write (logunit,*) 'NO EnKF increments for ', date_time2string(date_time)
-
-    else
+    if (logit) write (logunit,*) 'get_enkf_increments(): enter at anal time ', &
+         date_time2string(date_time)
 
        ! proceed with update
 
@@ -511,7 +499,7 @@ contains
           call date_and_time(date_string, time_string)  ! f90 intrinsic function
 
           if (logit) write (logunit,'(400A)') 'computing innovations starting at ' // &
-               date_string // ', ' // time_string
+                date_string // ', ' // time_string
 
           ! compute model forecast of observations
           ! (ensemble mean "obs_pred" is also stored in Observations_l%fcst)
@@ -1192,16 +1180,13 @@ contains
             N_catl, N_catf, N_obsl, tile_coord_f, tile_grid_g, N_catl_vec, low_ind,  &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn       )
 
-    end if
-
-    ! ---------------------------------------------------------------------------
-
-    ! end timer
 
     call date_and_time(date_string, time_string)
 
     if (logit) write (logunit,*) 'get_enkf_increments(): exit at ', &
-         date_string, ', ', time_string
+         date_string, ', ', time_string 
+    if (logit) write (logunit,*) 'get_enkf_increments(): exit at anal time ', &
+         date_time2string(date_time) 
 
   end subroutine get_enkf_increments
 

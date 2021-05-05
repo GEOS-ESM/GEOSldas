@@ -30,8 +30,8 @@ module GEOS_LandAssimGridCompMod
   use LDAS_ensdrv_mpi,           only: root_proc
   use LDAS_ensdrv_mpi,           only: MPI_obs_param_type 
   
-  use LDAS_DateTimeMod,          only: date_time_type 
-  use LDAS_ensdrv_Globals,       only: logunit, LDAS_is_nodata, nodata_generic
+  use LDAS_DateTimeMod,          only: date_time_type, date_time2string  
+  use LDAS_ensdrv_Globals,       only: logit, logunit, LDAS_is_nodata, nodata_generic
   
   use LDAS_ConvertMod,           only: esmf2ldas
   use LDAS_DriverTypes,          only: met_force_type
@@ -1045,7 +1045,8 @@ contains
     type(ESMF_Alarm)             :: LandAssimAlarm
     type(ESMF_TimeInterval)      :: LandAssim_DT
     integer                      :: LandAssimDTstep
-    type(ESMF_TimeInterval)      :: ModelTimeStep
+    type(ESMF_TimeInterval)      :: ModelTimeStep 
+    type(ESMF_Time)              :: rrTime
 
     ! locals
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -1148,17 +1149,7 @@ contains
     
     call ESMF_TimeIntervalSet(LandAssim_DT, s=LandAssimDtStep, rc=status)
     _VERIFY(status)
-    
-    LandAssimAlarm = ESMF_AlarmCreate(                                          &
-         clock,                                                                 &
-         name='LandAssim',                                                      &
-         ringTime=CurrentTime+Landassim_DT-ModelTimeStep,                       &
-         ringInterval=Landassim_DT,                                             &
-         ringTimeStepCount=1,                                                   &
-         sticky=.false.,                                                        &
-         rc=status                                                              &
-         )
-    _VERIFY(status)
+
 
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     _VERIFY(status)
@@ -1284,7 +1275,28 @@ contains
     call MPI_BCAST(out_ObsFcstAna,        1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_smapL4SMaup,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
-    
+   
+!set LandAssimAlarm with option of centered update 
+    if (centered_update)then
+       rrTime = CurrentTime+Landassim_DT/2-ModelTimeStep 
+   else
+       rrTime = CurrentTime+Landassim_DT-ModelTimeStep 
+   endif
+
+
+    LandAssimAlarm = ESMF_AlarmCreate(                                          &
+         clock,                                                                 &
+         name='LandAssim',                                                      &
+         ringTime=rrTime,                       &
+         ringInterval=Landassim_DT,                                             &
+         ringTimeStepCount=1,                                                   &
+         sticky=.false.,                                                        &
+         rc=status                                                              &
+         )
+    _VERIFY(status)
+
+!----
+ 
     if (.not. root_proc)  allocate(obs_param(N_obs_param)) 
     
     call MPI_BCAST(obs_param,   N_obs_param, MPI_OBS_PARAM_TYPE, 0,MPICOMM,mpierr)
@@ -1728,7 +1740,10 @@ contains
 
     ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    
+         if (logit) write (logunit,*) 'call enKF increments at ',          &
+              date_time2string(date_time_new),                             &
+              '  centered update = ', centered_update
+
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
@@ -1762,18 +1777,11 @@ contains
     ! time for assimilation, even if there were no observations
     ! - reichle, 29 Aug 2014           
     
-    secs_in_day = &
-         date_time_new%hour*3600 + date_time_new%min*60 + date_time_new%sec
-    
-    if (centered_update)  secs_in_day = secs_in_day + dtstep_assim/2
-    
     ! WY note : Here N_catg is not the global land tile number
     ! but a maximum global_id this simulation covers. 
     ! Need to find the number 
     N_catg = maxval(rf2g)
-    
-    if (mod(secs_in_day, dtstep_assim)==0) then
-       
+ 
        call output_incr_etc( out_ObsFcstAna,                             &
             date_time_new, trim(out_path), trim(exp_id),                 &
             N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
@@ -1856,8 +1864,7 @@ contains
             trim(exp_id), NUM_ENSEMBLE, N_catl, N_catf, N_obsl, tile_coord_rf,     &
             tcinternal%grid_g, N_catl_vec, low_ind,                                &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn   )
-       
-    end if   ! (mod(secs_in_day, dtstep_assim)==0)    (time for assimilation)
+ 
     
     fresh_incr = .false.
     
