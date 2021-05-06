@@ -289,13 +289,7 @@ contains
 
          call get_BC_AODAS( date_time_tmp, met_path, N_catd, tile_coord, &
               met_hinterp, met_force_obs_tile_new, nodata_forcing)
-
-         call check_forcing_nodata( N_catd, tile_coord, nodata_forcing, &
-              met_force_obs_tile_new )
-
-         call repair_forcing( N_catd, met_force_obs_tile_new, &
-              echo=.true., tile_coord=tile_coord )
-     
+    
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
        if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
@@ -5199,15 +5193,12 @@ contains
      implicit none
      include 'mpif.h'
      type(date_time_type), intent(in) :: date_time
-
      character(*), intent(in) :: met_path
-
      integer, intent(in) :: N_catd, met_hinterp
 
      type(tile_coord_type), dimension(:), pointer :: tile_coord
 
      type(met_force_type), dimension(:), intent(inout) :: met_force_new
-
      real, intent(out) :: nodata_forcing
 
      ! AODAS grid and netcdf parameters (Resampled onto the MERRA2 grid during preprocessing)
@@ -5218,12 +5209,11 @@ contains
      real,    parameter :: GEOSgcm_grid_ll_lon = -180. - GEOSgcm_grid_dlon/2.
      real,    parameter :: GEOSgcm_grid_ll_lat =  -90. - GEOSgcm_grid_dlat/2.
 
-     parameter :: dt_GEOSgcm_in_hours = 1
-     integer, parameter :: N_GEOSgcm_vars = 11
+     integer, parameter :: dt_GEOSgcm_in_hours = 1
+     integer, parameter :: N_GEOSgcm_vars = 10
      real,    parameter :: nodata_GEOSgcm = -9999.
 
-    character(40), dimension(N_GEOSgcm_vars), parameter :: GEOSgcm_name = &
-         (/ &
+    character(40), dimension(N_GEOSgcm_vars), parameter :: GEOSgcm_name = (/ & 
          'PRECCUCORR ', &  !  1 - flux, convective_precipitation, kg m-2 s-1
          'PRECSNOCORR', &  !  2 - flux, snowfall, kg m-2 s-1
          'PRECLSCORR ', &  !  3 - flux, total_precipitation, kg m-2 s-1
@@ -5233,9 +5223,8 @@ contains
          'QLML       ', &  !  7  - state, surface_specific_humidity, kg kg-1
          'TLML       ', &  !  8 - state, surface_air_temperature, K
          'SPEEDML    ', &  !  9 - state, surface_wind_speed, ms-1
-         'HLML       ', &  ! 10 - state, surface_layer_height, m
-         'SWLAND     '  &  ! 11 - flux, net_shortwave_land, W m-2
-         /)
+         'HLML       '/)  ! 10 - state, surface_layer_height, m
+        
 
   ! local variables
     integer, dimension(N_catd) :: i_ind, j_ind
@@ -5264,7 +5253,7 @@ contains
 
     tol = abs(nodata_forcing*nodata_tolfrac_generic)
 
-    ! obtain year and month strings
+    ! assemble year and month strings
     write (YYYY, '(i4.4)') date_time%year
     write (MM,   '(i2.2)') date_time%month
     write (DD,   '(i2.2)') date_time%day
@@ -5314,7 +5303,7 @@ contains
     do GEOSgcm_var = 1,N_GEOSgcm_vars
 
        ! 1=lon, 2=lat, 3=time, 4=PRECCUCORR, 5=PRECNOCORR, 6=PRECLSCORR, 7=LWGAB, 8=SWGDN,
-       ! 9=Psurf, 10=QLML, 11=TLML, 12=HLML, 13=SPEEDML, 14=SWLAND
+       ! 9=Psurf, 10=QLML, 11=TLML, 12=HLML, 13=SPEEDML
 
        !if (logit) write (logunit,*) "GEOSGCM_var, GEOSgcm_name(GEOSgcm_var): ", GEOSgcm_var, GEOSgcm_name(GEOSgcm_var)
           if (GEOSgcm_var==1) then
@@ -5390,7 +5379,6 @@ contains
     met_force_new%Tair      = force_array(:, 8)
     met_force_new%Wind      = force_array(:, 9)
     met_force_new%RefH      = force_array(:, 10)
-    met_force_new%SWnet     = force_array(:, 11)
 
     met_force_new%Rainf_C   = max(met_force_new%Rainf_C, 0.)
     met_force_new%Snowf     = max(met_force_new%Snowf, 0.)
@@ -5402,7 +5390,6 @@ contains
     met_force_new%Tair      = max(met_force_new%Tair, 0.)
     met_force_new%Wind      = max(met_force_new%Wind, 0.)
     met_force_new%RefH      = max(met_force_new%RefH, 0.)
-    met_force_new%SWnet     = max(met_force_new%SWnet, 0.)
 
   end subroutine get_BC_AODAS
   ! ****************************************************************
