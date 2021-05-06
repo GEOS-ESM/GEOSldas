@@ -36,5 +36,5 @@ GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
-  branch: develop
+  branch: feature/borescan_snowalb_era5
   develop: develop

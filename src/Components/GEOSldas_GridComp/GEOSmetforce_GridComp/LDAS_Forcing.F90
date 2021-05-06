@@ -2032,16 +2032,16 @@ contains
     ierr = NF90_INQ_VARID(ncid,'P2G',era5_varid)
     ierr = NF90_GET_VAR(ncid, era5_varid, p2g)
     
-    ! calculate x and y indices corresponding to each 1D array element (i.e. tile
-    ! space)
+    ! calculate x and y indices corresponding to each 1D array element (i.e. tile space)
     do kk=1,N_era5_compressed
        
-       land_i_era5(kk)=mod((p2g(kk)),era5_grid_N_lon)
-       if(land_i_era5(kk) .eq. 0) land_i_era5(kk)=era5_grid_N_lon
-       
-       land_j_era5(kk)=floor((p2g(kk))/float(era5_grid_N_lon))+1
-       if (mod(p2g(kk),era5_grid_N_lon) .eq. 0) land_j_era5(kk)=land_j_era5(kk)-1
-       
+       land_i_era5(kk)=  mod(p2g(kk),era5_grid_N_lon)
+       land_j_era5(kk)=floor(p2g(kk)/era5_grid_N_lon)+1
+       if (land_i_era5(kk) .eq. 0) then 
+           land_i_era5(kk)=era5_grid_N_lon
+           land_j_era5(kk)=land_j_era5(kk)-1
+       endif
+ 
     end do
     
     ! close NC file
