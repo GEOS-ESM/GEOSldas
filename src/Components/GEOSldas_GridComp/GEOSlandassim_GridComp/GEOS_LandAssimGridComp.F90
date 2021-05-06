@@ -30,8 +30,8 @@ module GEOS_LandAssimGridCompMod
   use LDAS_ensdrv_mpi,           only: root_proc
   use LDAS_ensdrv_mpi,           only: MPI_obs_param_type 
   
-  use LDAS_DateTimeMod,          only: date_time_type, date_time2string  
-  use LDAS_ensdrv_Globals,       only: logit, logunit, LDAS_is_nodata, nodata_generic
+  use LDAS_DateTimeMod,          only: date_time_type
+  use LDAS_ensdrv_Globals,       only: logunit, LDAS_is_nodata, nodata_generic
   
   use LDAS_ConvertMod,           only: esmf2ldas
   use LDAS_DriverTypes,          only: met_force_type
@@ -1276,13 +1276,14 @@ contains
     call MPI_BCAST(out_smapL4SMaup,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
    
-!set LandAssimAlarm with option of centered update 
+
+    ! create LandAssimAlarm with option of centered update 
+
     if (centered_update)then
        rrTime = CurrentTime+Landassim_DT/2-ModelTimeStep 
-   else
+    else
        rrTime = CurrentTime+Landassim_DT-ModelTimeStep 
-   endif
-
+    endif
 
     LandAssimAlarm = ESMF_AlarmCreate(                                          &
          clock,                                                                 &
@@ -1391,8 +1392,6 @@ contains
 
     logical  :: fresh_incr
     integer  :: N_obsf,N_obsl
-    integer  :: secs_in_day
-
     !! import ensemble forcing
     
     real, pointer :: TA_enavg(:)=>null()
@@ -1740,10 +1739,6 @@ contains
 
     ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-         if (logit) write (logunit,*) 'call enKF increments at ',          &
-              date_time2string(date_time_new),                             &
-              '  centered update = ', centered_update
-
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
@@ -1781,7 +1776,9 @@ contains
     ! but a maximum global_id this simulation covers. 
     ! Need to find the number 
     N_catg = maxval(rf2g)
- 
+
+    if (.true.) then  ! replace obsolete check for analysis time with "if true" to keep indents
+
        call output_incr_etc( out_ObsFcstAna,                             &
             date_time_new, trim(out_path), trim(exp_id),                 &
             N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
@@ -1792,16 +1789,16 @@ contains
             met_force, lai,                                              &
             cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
             Observations_l, rf2f=rf2f )
-
+       
        do ii = 1, N_catl
           cat_progn_incr_ensavg(ii) = 0.0
           do n_e=1, NUM_ENSEMBLE
              cat_progn_incr_ensavg(ii) = cat_progn_incr_ensavg(ii) &
-                 + cat_progn_incr(ii,n_e)
+                  + cat_progn_incr(ii,n_e)
           end do
           cat_progn_incr_ensavg(ii) = cat_progn_incr_ensavg(ii)/real(NUM_ENSEMBLE)
-       enddo 
-
+       enddo
+       
         ! Get information about children
        call MAPL_Get(MAPL, GEX=gex, rc=status)
        _VERIFY(STATUS) 
@@ -1864,7 +1861,8 @@ contains
             trim(exp_id), NUM_ENSEMBLE, N_catl, N_catf, N_obsl, tile_coord_rf,     &
             tcinternal%grid_g, N_catl_vec, low_ind,                                &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn   )
- 
+
+    end if ! end if (.true.)
     
     fresh_incr = .false.
     

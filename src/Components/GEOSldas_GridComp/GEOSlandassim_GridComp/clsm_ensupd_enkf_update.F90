@@ -255,8 +255,6 @@ contains
 
     ! local variables
 
-    integer :: secs_in_day
-
     integer :: N_obslH
 
     logical :: found_obs_f, assimflag
@@ -382,6 +380,8 @@ contains
     if (logit) write (logunit,*) 'get_enkf_increments(): enter at anal time ', &
          date_time2string(date_time)
 
+    if (.true.) then  ! replace obsolete check for analysis time with "if true" to keep indents
+       
        ! proceed with update
 
        ! -----------------------------------------------------------------
@@ -499,8 +499,8 @@ contains
           call date_and_time(date_string, time_string)  ! f90 intrinsic function
 
           if (logit) write (logunit,'(400A)') 'computing innovations starting at ' // &
-                date_string // ', ' // time_string
-
+               date_string // ', ' // time_string
+          
           ! compute model forecast of observations
           ! (ensemble mean "obs_pred" is also stored in Observations_l%fcst)
 
@@ -1180,13 +1180,12 @@ contains
             N_catl, N_catf, N_obsl, tile_coord_f, tile_grid_g, N_catl_vec, low_ind,  &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn       )
 
-
+    end if  ! end if (.true.)
+       
     call date_and_time(date_string, time_string)
 
     if (logit) write (logunit,*) 'get_enkf_increments(): exit at ', &
          date_string, ', ', time_string 
-    if (logit) write (logunit,*) 'get_enkf_increments(): exit at anal time ', &
-         date_time2string(date_time) 
 
   end subroutine get_enkf_increments
 
