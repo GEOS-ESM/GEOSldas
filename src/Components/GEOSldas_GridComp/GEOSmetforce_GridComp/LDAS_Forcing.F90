@@ -2035,8 +2035,8 @@ contains
     ! calculate x and y indices corresponding to each 1D array element (i.e. tile space)
     do kk=1,N_era5_compressed
        
-       land_i_era5(kk)=  mod(p2g(kk),era5_grid_N_lon)
-       land_j_era5(kk)=floor(p2g(kk)/era5_grid_N_lon)+1
+       land_i_era5(kk)=mod(p2g(kk),era5_grid_N_lon)
+       land_j_era5(kk)=(p2g(kk)/era5_grid_N_lon)+1
        if (land_i_era5(kk) .eq. 0) then 
            land_i_era5(kk)=era5_grid_N_lon
            land_j_era5(kk)=land_j_era5(kk)-1
