@@ -90,7 +90,6 @@ module GEOS_LandAssimGridCompMod
   type(obs_param_type), pointer     :: obs_param(:)=>null()
   
   integer :: update_type, dtstep_assim
-  logical :: centered_update
   real    :: xcompact, ycompact
   real    :: fcsterr_inflation_fac
   integer :: N_obs_param
@@ -1042,6 +1041,7 @@ contains
     
     ! ESMF variables
     type(ESMF_Time)              :: CurrentTime
+    type(ESMF_Time)              :: AssimTime
     type(ESMF_Alarm)             :: LandAssimAlarm
     type(ESMF_TimeInterval)      :: LandAssim_DT
     integer                      :: LandAssimDTstep
@@ -1076,7 +1076,7 @@ contains
     character(len=300)   :: fname_tpl
     character(len=14)    :: datestamp
     character(len=ESMF_MAXSTR) :: id_string 
-    integer              :: nymd, nhms
+    integer              :: nymd, nhms, assim_time(6), Landassim_reftime
 
     !! from LDASsa
     
@@ -1146,10 +1146,42 @@ contains
          rc=status                                                              &
          )
     _VERIFY(status)
-    
+
     call ESMF_TimeIntervalSet(LandAssim_DT, s=LandAssimDtStep, rc=status)
     _VERIFY(status)
+    dtstep_assim = LandAssimDtStep
 
+    _ASSERT(mod(dtstep_assim,model_dtstep) ==0, "inconsistent inputs for Heart_beat and LANDASSIM_DTSTEP")
+
+    call MAPL_DateStampGet( clock, datestamp, rc=status)
+    _VERIFY(STATUS)
+    read(datestamp(1:8),*)   nymd
+    read(datestamp(10:13),*) nhms
+    nhms = nhms*100
+
+    call MAPL_GetResource(                                                      &
+         MAPL,                                                                  &
+         landassim_reftime,                                                       &
+         'LANDASSIM_REFTIME:',                                                  &
+         default=nhms,                                                          &
+         rc=status                                                              &
+         )
+    _VERIFY(status)
+
+    assim_time(1) = nymd/10000
+    assim_time(2) = mod(nymd,10000)/100
+    assim_time(3) = mod(nymd,100)
+    assim_time(4) = landassim_reftime/10000
+    assim_time(5) = mod(landassim_reftime,10000)/100
+    assim_time(6) = mod(landassim_reftime,100) 
+
+    call ESMF_TimeSet( AssimTime, YY = assim_time(1), &
+                                  MM = assim_time(2), &
+                                  DD = assim_time(3), &
+                                  H  = assim_time(4), &
+                                  M  = assim_time(5), &
+                                  S  = assim_time(6), rc=status)
+    _VERIFY(STATUS)
 
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     _VERIFY(status)
@@ -1164,11 +1196,7 @@ contains
        _VERIFY(status)
        call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
-       call MAPL_DateStampGet( clock, datestamp, rc=status)
-       _VERIFY(STATUS)
-       read(datestamp(1:8),*)   nymd
-       read(datestamp(10:13),*) nhms
-       nhms = nhms*100
+       nhms = landassim_reftime 
        do ens = 0, NUM_ENSEMBLE-1
           call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
           seed_fname = ""
@@ -1240,8 +1268,6 @@ contains
             N_force_pert,       force_pert_param,    &
             mwRTM,                                   &  ! ensure mwRTM=.true. when microwave Tb obs are assimilated
             update_type,                             &
-            dtstep_assim,                            &
-            centered_update,                         &
             xcompact, ycompact,                      &
             fcsterr_inflation_fac,                   &
             N_obs_param,                             &
@@ -1265,8 +1291,6 @@ contains
     
     call MPI_BCAST(mwRTM,                 1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(update_type,           1, MPI_INTEGER,        0,MPICOMM,mpierr)
-    call MPI_BCAST(dtstep_assim,          1, MPI_INTEGER,        0,MPICOMM,mpierr)
-    call MPI_BCAST(centered_update,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(xcompact,              1, MPI_REAL,           0,MPICOMM,mpierr)
     call MPI_BCAST(ycompact,              1, MPI_REAL,           0,MPICOMM,mpierr)
     call MPI_BCAST(fcsterr_inflation_fac, 1, MPI_REAL,           0,MPICOMM,mpierr)
@@ -1279,11 +1303,7 @@ contains
 
     ! create LandAssimAlarm with option of centered update 
 
-    if (centered_update)then
-       rrTime = CurrentTime+Landassim_DT/2-ModelTimeStep 
-    else
-       rrTime = CurrentTime+Landassim_DT-ModelTimeStep 
-    endif
+    rrTime = AssimTime+Landassim_DT-ModelTimeStep 
 
     LandAssimAlarm = ESMF_AlarmCreate(                                          &
          clock,                                                                 &
@@ -1749,7 +1769,7 @@ contains
          N_catl_vec, low_ind, l2rf, rf2l,                                  &
          N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
          update_type,                                                      &
-         dtstep_assim, centered_update,                                    &
+         dtstep_assim,                                                     &
          xcompact, ycompact, fcsterr_inflation_fac,                        &
          N_obs_param, obs_param, N_obsbias_max,                            &
          out_obslog, out_smapL4SMaup,                                      &

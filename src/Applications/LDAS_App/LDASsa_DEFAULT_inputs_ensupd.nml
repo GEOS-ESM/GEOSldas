@@ -32,15 +32,6 @@
 
 update_type = 0
 
-dtstep_assim = 10800   !  time step of assimilation (EnKF) updates
-
-! if "centered_update==.true." conduct first assimilation (EnKF) update 
-! after dtstep_assim/2 seconds (eg., at 1:30z when restarted at 0z with 
-! dtstep_assim of 3 hours), otherwise first update occurs after 
-! dtstep_assim seconds
-
-centered_update = .false.
-
 out_obslog      = .true.
 out_ObsFcstAna  = .false.
 out_smapL4SMaup = .false.
