@@ -2025,7 +2025,7 @@ contains
     ierr = NF90_INQ_VARID(ncid,'P2G',era5_varid)
     ierr = NF90_GET_VAR(ncid, era5_varid, p2g)
     
-    ! calculate x and y indices corresponding to each 1D array element (i.e. tile space)
+    ! calculate i, j indices on era5_grid from 1-dim p2g index
 
     p2g = p2g-1
         
