@@ -121,9 +121,7 @@ contains
     ! reichle,      25 Sep   2009 - removed unneeded inputs 
     ! reichle,      23 Feb   2016 - new and more efficient work-around to make GEOS-5 
     !                                forcing work with LDASsa time convention for forcing data
-
     ! borescan,     01 Feb   2021 - added ERA5_LIS forcing 
-
     ! reichle,      12 Apr   2021 - removed obsolete optional input "alb_from_SWnet"
     !                             - replaced "GEOS_forcing" switch with "bkwd_looking_fluxes"
     !                             - added checks for supported options of MET_HINTERP and
@@ -166,7 +164,6 @@ contains
     ! local variables
     
     real    :: nodata_forcing, tol
-
 
     logical :: PAR_available                         ! indicate whether reader provides PARdrct, PARdffs
     
@@ -286,26 +283,24 @@ contains
        
     elseif (index(met_tag, 'conus_0.5d_netcdf')/=0) then ! sarith+reichle, 17 Jul 2007   
        
-       call get_conus_netcdf(  date_time_tmp, met_path, N_catd, tile_coord, &
+       call get_conus_netcdf(      date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
        
-
     elseif (index(met_tag, 'ERA5_LIS')/=0) then 
-              
-       call get_ERA5_LIS(date_time_tmp, met_path, N_catd, tile_coord, &
+       
+       call get_ERA5_LIS(          date_time_tmp, met_path, N_catd, tile_coord, &
             met_force_obs_tile_new, nodata_forcing)
-
+       
        ! Subroutine get_ERA5_LIS() provided backward-looking fluxes.
        ! The time convention stated above is restored through a later call to subroutine
        ! LDAS_move_new_force_to_old().
        
        bkwd_looking_fluxes            = .true.        
-
+       
        ! model-based dataset; call repair_forcing() below without certain limitations
        
        unlimited_Qair                 = .true.
        unlimited_LWdown               = .true.
-       
 
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
@@ -392,7 +387,6 @@ contains
          echo=.true., tile_coord=tile_coord,                                      &
          fieldname='all',                                                         &
          unlimited_Qair=unlimited_Qair, unlimited_LWdown=unlimited_LWdown )
-
     
     ! ------------------
     !
@@ -1925,7 +1919,6 @@ contains
     real,    parameter :: era5_grid_dlon    =    0.25
     real,    parameter :: era5_grid_dlat    =    0.25
     integer, parameter :: N_era5_compressed = 340819
-    integer, parameter :: dt_era5_in_hours  = 1                 ! ERA5 forcing time step in hours
     integer, parameter :: N_era5_vars       = 9
     real,    parameter :: nodata_era5       = 1.e20
     
@@ -1942,9 +1935,8 @@ contains
 
     ! local variables
 
-    real,    dimension(era5_grid_N_lon,era5_grid_N_lat) :: tmp_grid, era5_lat2D, era5_lon2D
+    real,    dimension(era5_grid_N_lon,era5_grid_N_lat) :: tmp_grid
     integer, dimension(N_era5_compressed)               :: land_i_era5, land_j_era5, p2g
-    real,    dimension(N_era5_compressed)               :: era5_lon, era5_lat
     integer, dimension(N_catd)                          :: i_ind, j_ind
     real,    dimension(N_era5_compressed)               :: tmp_vec
     real,    dimension(N_catd,N_era5_vars)              :: force_array
@@ -1976,8 +1968,7 @@ contains
 
     ! time dimension (first entry in ERA5_LIS file is at 00Z)
 
-    if ( (date_time%min/=0) .or. (date_time%sec/=0) .or.           &
-         (mod(date_time%hour,dt_era5_in_hours)/=0)        ) then
+    if ( (date_time%min/=0) .or. (date_time%sec/=0) ) then
 
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'timing ERROR!!')
 
@@ -1985,7 +1976,7 @@ contains
 
     hours_in_month = (date_time%day-1)*24 + date_time%hour
 
-    start(2)  = hours_in_month / dt_era5_in_hours + 1
+    start(2)  = hours_in_month + 1
     icount(2) = 1
 
     ! compute indices for the nearest neighbor interpolation from ERA5 grid 
@@ -2002,8 +1993,10 @@ contains
        ! add small offsets to avoid unpredictable assignment of
        ! regularly spaced tiles (such as from the EASEv2 tile space)
        ! to ERA5 grid cells along certain lat/lon values
-       ! (that is, make it easier to reproduce the mapping done here
-       !  in separate postprocessing analysis scripts)
+       ! (that is, make it possible for post-processing scripts in other
+       !  languages to exactly reproduce the mapping that is done here)
+       ! TO DO: add if statement so the offset is only applied when
+       !        the model is run in the EASE grid tile space
        
        this_lon = this_lon + 0.0001
        this_lat = this_lat + 0.0001
@@ -2020,7 +2013,7 @@ contains
 
     fname = trim(met_path) // '/mapping.nc'
 
-    if(root_logit) write (logunit,*) 'get netcdf params from ' // trim(fname)
+    if(root_logit) write (logunit,*) 'get compression index vector from ' // trim(fname)
 
     ierr = NF90_OPEN(fname,NF90_NOWRITE,ncid)
     if (ierr/=0) then
@@ -2033,16 +2026,11 @@ contains
     ierr = NF90_GET_VAR(ncid, era5_varid, p2g)
     
     ! calculate x and y indices corresponding to each 1D array element (i.e. tile space)
-    do kk=1,N_era5_compressed
-       
-       land_i_era5(kk)=mod(p2g(kk),era5_grid_N_lon)
-       land_j_era5(kk)=(p2g(kk)/era5_grid_N_lon)+1
-       if (land_i_era5(kk) .eq. 0) then 
-           land_i_era5(kk)=era5_grid_N_lon
-           land_j_era5(kk)=land_j_era5(kk)-1
-       endif
- 
-    end do
+
+    p2g = p2g-1
+        
+    land_i_era5 = mod( p2g,era5_grid_N_lon ) + 1
+    land_j_era5 =      p2g/era5_grid_N_lon   + 1
     
     ! close NC file
     ierr = NF90_CLOSE(ncid)
@@ -2071,23 +2059,23 @@ contains
        ! put data on global grid
        
        tmp_grid  = nodata_forcing    ! initialize 
-
+       
        do n=1,N_era5_compressed
           tmp_grid(land_i_era5(n),land_j_era5(n)) = tmp_vec(n)
        end do
-
+       
        ! interpolate to tile space
-      do k=1,N_catd
-            force_array(k,era5_var) = tmp_grid(i_ind(k),j_ind(k))
-      end do
-
+       do k=1,N_catd
+          force_array(k,era5_var) = tmp_grid(i_ind(k),j_ind(k))
+       end do
+       
     end do ! era5_var
 
     ! close NC file
     ierr = NF90_CLOSE(ncid)
 
-    ! All variables in ERA5 files, are already in correct units. 
-    ! No need for conversions. Just feed into the met_force_new structure. 
+    ! All variables in ERA5_LIS files have the units needed by met_force_type. 
+    !
     !  force_array(:, 1) = DIR_SWdown W/m2     ; flux  ;(ssrd)
     !  force_array(:, 2) = LWdown     W/m2     ; flux  ;(strd)
     !  force_array(:, 3) = Snowf      kg/m2/s  ; flux  ;(sf)
@@ -2107,13 +2095,13 @@ contains
     met_force_new%Wind     = force_array(:,7)
     met_force_new%Psurf    = force_array(:,8)
     met_force_new%RefH     = force_array(:,9)
-
+    
     ! do not touch %PARdrct, and %PARdffs, which are not avaibable from ERA5_LIS
     
   end subroutine get_ERA5_LIS
-
+  
   ! ****************************************************************  
-   
+  
   subroutine get_GLDAS_2x2_5_netcdf(date_time, met_path, N_catd, tile_coord, &
        met_force_new, nodata_forcing )
     
