@@ -158,7 +158,6 @@ contains
        work_path,                               &
        exp_id,                                  &
        date_time,                               &
-       model_dtstep,                            &
        N_catf,             tile_coord_f,        &
        N_progn_pert,       progn_pert_param,    &
        N_force_pert,       force_pert_param,    &
@@ -197,8 +196,6 @@ contains
 
     type(date_time_type), intent(in)    :: date_time
     
-    integer,              intent(in)    :: model_dtstep
-
     integer,              intent(in)    :: N_catf, N_progn_pert, N_force_pert
     
     type(tile_coord_type), dimension(N_catf),       intent(in) :: tile_coord_f

@@ -89,7 +89,7 @@ module GEOS_LandAssimGridCompMod
   
   type(obs_param_type), pointer     :: obs_param(:)=>null()
   
-  integer :: update_type, dtstep_assim
+  integer :: update_type
   real    :: xcompact, ycompact
   real    :: fcsterr_inflation_fac
   integer :: N_obs_param
@@ -1149,25 +1149,39 @@ contains
 
     call ESMF_TimeIntervalSet(LandAssim_DT, s=LandAssimDtStep, rc=status)
     _VERIFY(status)
-    dtstep_assim = LandAssimDtStep
-
-    _ASSERT(mod(dtstep_assim,model_dtstep) ==0, "inconsistent inputs for Heart_beat and LANDASSIM_DTSTEP")
+    
+    _ASSERT(mod(LandAssimDtStep,model_dtstep)==0, "inconsistent inputs for HEARTBEAT_DT and LANDASSIM_DTSTEP")
 
     call MAPL_DateStampGet( clock, datestamp, rc=status)
     _VERIFY(STATUS)
     read(datestamp(1:8),*)   nymd
     read(datestamp(10:13),*) nhms
     nhms = nhms*100
-
+    
+    ! read reference time for land analysis from resource file (default: 0z)
     call MAPL_GetResource(                                                      &
          MAPL,                                                                  &
-         landassim_reftime,                                                       &
+         landassim_reftime,                                                     &
          'LANDASSIM_REFTIME:',                                                  &
-         default=nhms,                                                          &
+         default=0,                                                             &
          rc=status                                                              &
          )
     _VERIFY(status)
 
+    ! determine date and time of first land analysis   [R20210506: not sure I understand the intent here correctly.] 
+    !
+    ! RR20210506: Not sure this is right. Users should be able to specify any "sensible" reftime.
+    !             That is, the reftime should not need to change when the initial (restart) time changes.
+    !             e.g., reftime=0z,    initial time=0z, landassim_dt=3h  --> first analysis is at 3z    (next at 6z, 9z, ...)
+    !             e.g., reftime=3z,    initial time=0z, landassim_dt=3h  --> first analysis is at 3z
+    !             e.g., reftime=0z,    initial time=3z, landassim_dt=3h  --> first analysis is at 6z
+    !             e.g., reftime=1:30z, initial time=0z, landassim_dt=3h  --> first analysis is at 1:30z (next at 4:30z, ...)
+    !             e.g., reftime=7:30z, initial time=0z, landassim_dt=3h  --> first analysis is at 1:30z (next at 4:30z, ...)
+    ! If AssimTime is indeed meant to be the time of the first land analysis, I'm pretty sure hour/min/sec of AssimTime
+    !   would need to depend on "current" time (ie, "datestamp") as well as "reftime"
+    ! Put differently, "landassim_reftime" and "landassim_dtstep" effectively define an infinite sequence of land analysis time, something like:
+    !   ..., [some date] 0z, 3z, 6z, 9z, ..., 21z, [next day], 0z, 3z, ... 21z, [another day later] 0z, 3z, ... 21z, [yet another day later] 0z, 3z, ...
+    ! What's needed here is to determine AssimTime such that it the earliest time in the infinite sequence that is after the restart time.
     assim_time(1) = nymd/10000
     assim_time(2) = mod(nymd,10000)/100
     assim_time(3) = mod(nymd,100)
@@ -1183,6 +1197,11 @@ contains
                                   S  = assim_time(6), rc=status)
     _VERIFY(STATUS)
 
+    ! make sure model time hits AssimTime (convert AssimTime hour/min/sec into seconds_in_day, divide by model_dtstep) 
+    
+    _ASSERT(mod(assim_time(4)*3600+assim_time(5)*60+assim_time(6),model_dtstep)==0, &
+         "inconsistent inputs for HEARTBEAT_DT and LANDASSIM_REFTIME")
+        
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     _VERIFY(status)
     tcinternal   =>tcwrap%ptr
@@ -1196,7 +1215,7 @@ contains
        _VERIFY(status)
        call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
-       nhms = landassim_reftime 
+       nhms = landassim_reftime  ! RR20210506: Why is this not hour/min/sec from AssimTime (ie, the time of the first land analysis)?
        do ens = 0, NUM_ENSEMBLE-1
           call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
           seed_fname = ""
@@ -1301,8 +1320,10 @@ contains
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
    
 
-    ! create LandAssimAlarm with option of centered update 
+    ! create LandAssimAlarm
 
+    ! RR20210506: If AssimTime is indeed the time of the first land analysis, this should be "rrTime=AssimTime-ModelTimeStep"
+    
     rrTime = AssimTime+Landassim_DT-ModelTimeStep 
 
     LandAssimAlarm = ESMF_AlarmCreate(                                          &
@@ -1769,7 +1790,7 @@ contains
          N_catl_vec, low_ind, l2rf, rf2l,                                  &
          N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
          update_type,                                                      &
-         dtstep_assim,                                                     &
+         LandAssimDTstep,                                                  &
          xcompact, ycompact, fcsterr_inflation_fac,                        &
          N_obs_param, obs_param, N_obsbias_max,                            &
          out_obslog, out_smapL4SMaup,                                      &

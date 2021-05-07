@@ -5,6 +5,9 @@
 ! reichle,      13 Jun 2011 - updated for SMOS angles and downscaling ("FOV")
 ! reichle,       8 Jun 2017 - added "%flistpath" and "%flistname"; updated comments
 ! qliu+reichle, 29 Apr 2020 - added forecast error covariance inflation 
+! qzhang,wjiang,reichle,
+!                7 May 2021 - removed dtstep_assim and centered_update
+!                             (replaced with land assim "dtstep" and "reftime" in LDAS.rc)
 !
 ! --------------------------------------------------------------------
 
