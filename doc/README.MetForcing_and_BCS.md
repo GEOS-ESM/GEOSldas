@@ -55,6 +55,10 @@ COMMONLY USED values for `MET_PATH`:
   MET_PATH : [XXX]/l_data/RedArk/RedArk_subbasin_forcing/red_ark_forc/
 ```
 
+#### ERA5 (LDAS-Monde via NASA LIS group)
+```
+  MET_PATH : /discover/nobackup/projects/lis/MET_FORCING/ERA5/
+```
 
 ### GEOS-based datasets
 
@@ -108,6 +112,10 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : RedArk_ASCII
 ```
 
+#### ERA5 (LDAS-Monde via NASA LIS group)
+```
+  MET_TAG  : ERA5_LIS
+```
 
 ### GEOS-based datasets
 
