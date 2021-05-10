@@ -1043,10 +1043,10 @@ contains
     type(ESMF_Time)              :: CurrentTime
     type(ESMF_Time)              :: AssimTime
     type(ESMF_Alarm)             :: LandAssimAlarm
-    type(ESMF_TimeInterval)      :: LandAssim_DT
+    type(ESMF_TimeInterval)      :: LandAssim_DT, ref_DT
     integer                      :: LandAssimDTstep
     type(ESMF_TimeInterval)      :: ModelTimeStep 
-    type(ESMF_Time)              :: rrTime
+    type(ESMF_Time)              :: rrTime, pertSeedTime
 
     ! locals
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -1076,7 +1076,7 @@ contains
     character(len=300)   :: fname_tpl
     character(len=14)    :: datestamp
     character(len=ESMF_MAXSTR) :: id_string 
-    integer              :: nymd, nhms, assim_time(6), Landassim_reftime
+    integer              :: nymd, nhms, yy, dd, mm, h, m, s, ref_seconds, Landassim_reftime, hhmmss
 
     !! from LDASsa
     
@@ -1152,22 +1152,29 @@ contains
     
     _ASSERT(mod(LandAssimDtStep,model_dtstep)==0, "inconsistent inputs for HEARTBEAT_DT and LANDASSIM_DTSTEP")
 
-    call MAPL_DateStampGet( clock, datestamp, rc=status)
-    _VERIFY(STATUS)
-    read(datestamp(1:8),*)   nymd
-    read(datestamp(10:13),*) nhms
-    nhms = nhms*100
-    
-    ! read reference time for land analysis from resource file (default: 0z)
+    call ESMF_TimeIntervalGet(LandAssim_DT, H = h, m = m, s = s, rc=status)
+    _VERIFY(status)
+
+    ! read reference time for land analysis from resource file (default: LandAssim_DT=3z)
+    ! ref_time is hhmmss format
+    hhmmss = h*10000 + m*100 + s
     call MAPL_GetResource(                                                      &
          MAPL,                                                                  &
          landassim_reftime,                                                     &
          'LANDASSIM_REFTIME:',                                                  &
-         default=0,                                                             &
+         default= hhmmss,                                                       &
          rc=status                                                              &
          )
     _VERIFY(status)
 
+    ref_seconds = landassim_reftime/10000*3600 +mod(landassim_reftime,10000)/100 *60 + mod(landassim_reftime,100)
+    ! make sure model time hits AssimTime (convert AssimTime hour/min/sec into seconds_in_day, divide by model_dtstep) 
+    _ASSERT(mod(ref_seconds, model_dtstep)==0, &
+         "inconsistent inputs for HEARTBEAT_DT and LANDASSIM_REFTIME")
+
+    call ESMF_TimeIntervalSet(ref_DT, s=ref_seconds, rc=status)
+    _VERIFY(status)
+    
     ! determine date and time of first land analysis   [R20210506: not sure I understand the intent here correctly.] 
     !
     ! RR20210506: Not sure this is right. Users should be able to specify any "sensible" reftime.
@@ -1182,26 +1189,9 @@ contains
     ! Put differently, "landassim_reftime" and "landassim_dtstep" effectively define an infinite sequence of land analysis time, something like:
     !   ..., [some date] 0z, 3z, 6z, 9z, ..., 21z, [next day], 0z, 3z, ... 21z, [another day later] 0z, 3z, ... 21z, [yet another day later] 0z, 3z, ...
     ! What's needed here is to determine AssimTime such that it the earliest time in the infinite sequence that is after the restart time.
-    assim_time(1) = nymd/10000
-    assim_time(2) = mod(nymd,10000)/100
-    assim_time(3) = mod(nymd,100)
-    assim_time(4) = landassim_reftime/10000
-    assim_time(5) = mod(landassim_reftime,10000)/100
-    assim_time(6) = mod(landassim_reftime,100) 
 
-    call ESMF_TimeSet( AssimTime, YY = assim_time(1), &
-                                  MM = assim_time(2), &
-                                  DD = assim_time(3), &
-                                  H  = assim_time(4), &
-                                  M  = assim_time(5), &
-                                  S  = assim_time(6), rc=status)
-    _VERIFY(STATUS)
+    AssimTime = CurrentTime + ref_DT
 
-    ! make sure model time hits AssimTime (convert AssimTime hour/min/sec into seconds_in_day, divide by model_dtstep) 
-    
-    _ASSERT(mod(assim_time(4)*3600+assim_time(5)*60+assim_time(6),model_dtstep)==0, &
-         "inconsistent inputs for HEARTBEAT_DT and LANDASSIM_REFTIME")
-        
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     _VERIFY(status)
     tcinternal   =>tcwrap%ptr
@@ -1215,7 +1205,22 @@ contains
        _VERIFY(status)
        call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
-       nhms = landassim_reftime  ! RR20210506: Why is this not hour/min/sec from AssimTime (ie, the time of the first land analysis)?
+
+       ! it is consistent with the default that psert seed time is one assim_dtstep behind assim time
+       pertSeedTime = AssimTime - LandAssim_DT 
+
+       call ESMF_TimeGet(pertSeedTime, YY=YY, &
+                                       MM=MM, &
+                                       DD=DD, &
+                                       H =h, &
+                                       M =m, &
+                                       S =s, &
+                                       rc=status)
+       _VERIFY(STATUS)
+
+       nymd = yy*10000 + mm*100 + dd
+       nhms = h *10000 + m*100  + s
+
        do ens = 0, NUM_ENSEMBLE-1
           call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
           seed_fname = ""
@@ -1281,7 +1286,6 @@ contains
             trim(out_path),                          &
             trim(exp_id),                            &
             start_time,                              &
-            model_dtstep,                            &
             N_catf,             tile_coord_rf,       &
             N_progn_pert,       progn_pert_param,    &
             N_force_pert,       force_pert_param,    &
@@ -1324,7 +1328,7 @@ contains
 
     ! RR20210506: If AssimTime is indeed the time of the first land analysis, this should be "rrTime=AssimTime-ModelTimeStep"
     
-    rrTime = AssimTime+Landassim_DT-ModelTimeStep 
+    rrTime = AssimTime - ModelTimeStep 
 
     LandAssimAlarm = ESMF_AlarmCreate(                                          &
          clock,                                                                 &
@@ -1468,7 +1472,7 @@ contains
     character(len=300)         :: fname_tpl
     character(len=ESMF_MAXSTR) :: id_string
     integer                    :: ens, nymd, nhms, ens_id_width
-
+    integer                    :: LandassimDTstep
 #ifdef DBG_LANDASSIM_INPUTS
     ! vars for debugging purposes
     type(ESMF_Grid)                 :: TILEGRID
@@ -1779,7 +1783,15 @@ contains
 #endif   ! DBG_LANDASSIM_INPUTS
 
     ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
+    call MAPL_GetResource(                                                      &
+         MAPL,                                                                  &
+         LandAssimDtStep,                                                       &
+         'LANDASSIM_DTSTEP:',                                                   &
+         default=10800,                                                         &
+         rc=status                                                              &
+         )
+    _VERIFY(status)   
+ 
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
