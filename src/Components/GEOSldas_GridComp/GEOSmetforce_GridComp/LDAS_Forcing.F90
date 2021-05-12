@@ -302,11 +302,11 @@ contains
        unlimited_Qair                 = .true.
        unlimited_LWdown               = .true.
 
-    elseif (index(met_tag(1:17), 'HindcastBC_netcdf')/=0) then ! jkolassa, 10 May 2021
-
-       call get_BC_GEOS_hindcast(  date_time_tmp, met_path, met_tag, N_catd, tile_coord, &
-             MET_HINTERP,met_force_obs_tile_new, nodata_forcing)
-
+    elseif (index(met_tag(1:19), 'GEOSs2sFcstBiasCorr')/=0) then
+       
+       call get_GEOSs2sFcst( date_time_tmp, met_path, met_tag, N_catd, tile_coord, &
+            MET_HINTERP, met_force_obs_tile_new, nodata_forcing)
+       
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
        if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
@@ -2603,17 +2603,17 @@ contains
 
   ! ************************************************************************
 
-  subroutine get_BC_GEOS_hindcast(date_time, met_path, met_tag, N_catd, tile_coord, &
+  subroutine get_GEOSs2sFcst(date_time, met_path, met_tag, N_catd, tile_coord, &
        met_hinterp, met_force_new, nodata_forcing)
 
-    ! read bias corrected GEOS5 hindcast 6-hourly files and extract forcing in tile space
-    ! (uses nearest neighbor interpolation)
-    ! following subroutine get_Princeton_netcdf and subroutine get_GEOS in LDASsa
+    ! read bias-corrected, 6-hourly forcing derived from GEOS S2S forecasts
+    ! and map to tile space (using nearest neighbor interpolation)
+    !
+    ! implementation follows LDASsa subroutines get_Princeton_netcdf() and get_GEOS(),
     ! fzeng, 24 Jun 2019
-    ! jkolassa, Jan 2021: modified to work within GEOSldas framework and adapt to
-    !                     changes in how netcdf files are read
-    ! jkolassa, 10 May 2021: extract ensemble number and initial month from met_tag
-    !                        rather than LDAS.rc file
+    !
+    ! jkolassa, 10 May 2021: modified for GEOSldas; met_tag encodes ID of ensemble
+    !                        member and and initial month/day 
 
     use netcdf
     implicit none
@@ -2621,16 +2621,16 @@ contains
 
     type(date_time_type), intent(in) :: date_time
                                                                                                                             
-    character(*), intent(in) :: met_path                                                                                    
-    character(*), intent(in) :: met_tag                                                                                     
+    character(*),         intent(in) :: met_path                                                                                    
+    character(*),         intent(in) :: met_tag                                                                                     
                                                                                                                             
-    integer, intent(in) :: N_catd, met_hinterp                                                                              
+    integer,              intent(in) :: N_catd, met_hinterp                                                                              
                                                                                                                             
-    type(tile_coord_type), dimension(:), pointer :: tile_coord ! input                                                      
+    type(tile_coord_type), dimension(:), pointer       :: tile_coord     ! input                                                      
                                                                                                                             
-    type(met_force_type), dimension(:), intent(inout) :: met_force_new                                                      
+    type(met_force_type),  dimension(:), intent(inout) :: met_force_new                                                      
                                                                                                                             
-    real, intent(out) :: nodata_forcing                                                                                     
+    real,                 intent(out) :: nodata_forcing                                                                                     
                                                                                                                             
                                                                                                                             
     ! Hindcast grid and netcdf parameters                                                                                   
@@ -2643,7 +2643,7 @@ contains
     real,    parameter :: GEOSgcm_grid_ll_lat =  -90. - GEOSgcm_grid_dlat/2.                                                
                                                                                                                             
     integer, parameter :: dt_GEOSgcm_in_hours = 6                                                                           
-    integer, parameter :: N_GEOSgcm_vars = 13                                                                               
+    integer, parameter :: N_GEOSgcm_vars = 12                                                                               
     real,    parameter :: nodata_GEOSgcm = -9999.                                                                           
                                                                                                                             
     character(40), dimension(N_GEOSgcm_vars), parameter :: GEOSgcm_name = &                                                 
@@ -2659,28 +2659,25 @@ contains
          'QLML       ', &  ! 9  - state, surface_specific_humidity, kg kg-1                                                 
          'TLML       ', &  ! 10 - state, surface_air_temperature, K                                                         
          'SPEED      ', &  ! 11 - state, surface_wind_speed, m s-1                                                          
-         'HLML       ', &  ! 12 - state, surface_layer_height, m                                                            
-         'SWLAND     '  &  ! 13 - flux, net_shortwave_land, W m-2                                                           
+         'HLML       '  &  ! 12 - state, surface_layer_height, m                                                            
          /)                                                                                                                 
                                                                                                                             
     ! local variables                                                                                                       
                                                                                                                             
-    integer, dimension(N_catd) :: i_ind, j_ind                                                                              
+    integer, dimension(N_catd)                  :: i_ind, j_ind                                                                              
                                                                                                                             
-    real, dimension(N_catd, N_GEOSgcm_vars)                 :: force_array                                                  
+    real,    dimension(N_catd, N_GEOSgcm_vars)  :: force_array                                                  
+
     integer, dimension(3)      :: iicount, iistart 
-    integer                    :: k, hours_in_month, GEOSgcm_var, nciv_data, &                                              
-                                  fid, rc, nv_id                                                                            
-    integer                    :: status                                                                                    
+    integer                    :: k, hours_in_month, GEOSgcm_var, nciv_data
+    integer                    :: fid, rc, nv_id, status                                                                                    
                                                                                                                             
     real                       :: tol, this_lon, this_lat                                                                   
-                                                                                                                            
-    character(  4)             :: YYYY                                                                                      
+
+    character(  5)             :: init_MMMDD
+    character(  4)             :: YYYY, ens_num                                                                                      
     character(  2)             :: MM, DD                                                                                    
     character(300)             :: fname                                                                                     
-    character, save            :: init_mon*5, ens_num*4                                                                     
-                                                                                                                            
-    logical, save              :: first_ct = .true.                                                                         
                                                                                                                             
     character(len=*), parameter :: Iam = 'get_BC_GEOS_hindcast'                                                             
     character(len=400)          :: err_msg                                                                                  
@@ -2689,12 +2686,13 @@ contains
     !                                                                                                                       
     ! preparations                                                                                                          
                                                                                                                             
-    ! get initial month and ensemble number                                                                                 
-    if(first_ct) then                                                                                                       
-       ens_num = trim(met_tag(19:22))                                                                                       
-       init_mon = trim(met_tag(24:28))                                                                                      
-       first_ct = .false.                                                                                                   
-    end if                                                                                                                  
+    ! get initial month and ensemble number
+    !
+    ! 1234567890123456789012345678901234567890
+    ! GEOSs2sFcstBiasCorr__ensX__MMMDD
+
+    ens_num   = trim(met_tag(22:25))                                                                                       
+    init_MMDD = trim(met_tag(28:32))                                                                                      
                                                                                                                             
     nodata_forcing = nodata_GEOSgcm                                                                                         
                                                                                                                             
@@ -2708,11 +2706,11 @@ contains
                                                                                                                             
     ! set lon index                                                                                                         
                                                                                                                             
-    iistart(1)  = 1                                                                                                         
+    iistart(1) = 1                                                                                                         
     iicount(1) = GEOSgcm_grid_N_lon                                                                                         
                                                                                                                             
     ! set lat index                                                                                                         
-    iistart(2)  = 1                                                                                                         
+    iistart(2) = 1                                                                                                         
     iicount(2) = GEOSgcm_grid_N_lat                                                                                         
                                                                                                                             
     ! get time index                                                                                                        
@@ -2726,12 +2724,13 @@ contains
                                                                                                                             
     hours_in_month = (date_time%day-1)*24 + date_time%hour                                                                  
                                                                                                                             
-    iistart(3)  = hours_in_month / dt_GEOSgcm_in_hours + 1                                                                  
+    iistart(3) = hours_in_month / dt_GEOSgcm_in_hours + 1                                                                  
     iicount(3) = 1                                                                                                          
                                                                                                                             
     ! ----------------------------------------------------------------                                                      
                                                                                                                             
-    do k=1,N_catd                                                                                                           
+    do k=1,N_catd
+       
        ! ll_lon and ll_lat refer to lower left corner of grid cell                                                          
        ! (as opposed to the grid point in the center of the grid cell)
                                                                                                                             
@@ -2740,68 +2739,67 @@ contains
                                                                                                                             
        i_ind(k) = ceiling((this_lon - GEOSgcm_grid_ll_lon)/GEOSgcm_grid_dlon)                                               
        j_ind(k) = ceiling((this_lat - GEOSgcm_grid_ll_lat)/GEOSgcm_grid_dlat)                                               
+       
        ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180                                                
        !  we now have i_ind=(grid%N_lon+1)                                                                                  
        ! This needs to be fixed as follows:                                                                                 
                                                                                                                             
        if (i_ind(k)>GEOSgcm_grid_N_lon)  i_ind(k)=1                                                                         
-                                                                                                                            
-    end do                                                                                                                  
-                                                                                                                            
+       
+    end do
+    
     ! ----------------------------------------------------------------                                                      
     !                                                                                                                       
     ! open input file                                                                                                       
                                                                                                                             
-    fname = trim(met_path) // '/' // YYYY // '/' // init_mon // '/' // ens_num // '/GEOS5.' // YYYY // MM // '.nc4'         
-                                                                                                                            
-                                                                                                                            
+    fname = trim(met_path) // '/' // YYYY // '/' // init_MMMDD // '/' // ens_num // '/GEOS5.' // YYYY // MM // '.nc4'         
+    
     call GEOS_openfile(FileOpenedHash,fname,fid,tile_coord,met_hinterp,rc)                                                  
     if (rc<0) then                                                                                                          
-           call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error opening file')                                                   
-    endif                                                                                                                   
-                                                                                                                            
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error opening file')                                                   
+    endif
+    
     ! loop over variables                                                                                                   
-                                                                                                                            
+    
     do GEOSgcm_var = 1,N_GEOSgcm_vars                                                                                       
-                                                                                                                            
+       
        if (GEOSgcm_var==1) then                                                                                             
           ! init share memory                                                                                               
           if( size(ptrShForce,1) /= GEOSgcm_grid_N_lon .or.    &     
-             size(ptrShForce,2) /= GEOSgcm_grid_N_lat ) then                                                                
+               size(ptrShForce,2) /= GEOSgcm_grid_N_lat ) then                                                                
              call MAPL_SyncSharedMemory(rc=status)                                                                          
              VERIFY_(status)                                                                                                
              if (associated(ptrShForce)) then                                                                               
                 call MAPL_DeallocNodeArray(ptrShForce,rc=status)                                                            
                 VERIFY_(status)                                                                                             
-             endif                                                                                                          
+             endif
              call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)     
              VERIFY_(status)                                                                                                
              call MAPL_SyncSharedMemory(rc=status)                                                                          
              VERIFY_(status)                                                                                                
-           end if                                                                                                           
+          end if
        endif ! (GEOSgcm_var==1)                                                                                             
        rc = 0                                                                                                               
        call MAPL_SyncSharedMemory(rc=status)                                                                                
-                                                                                                                            
+       
        ! read variable from netcdf file                                                                                     
        if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then                                                           
           rc= NF90_INQ_VARID( fid, trim(GEOSgcm_name(GEOSgcm_var)), nv_id)                                                  
           _ASSERT( rc == nf90_noerr, "nf90 error")                                                                          
           rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount)                                            
-       end if                                                                                                               
-                                                                                                                            
+       end if
+       
        call MAPL_SyncSharedMemory(rc=status)                                                                                
-                                                                                                                            
+       
        ! map variable array to force array                                                                                  
        do k = 1, N_catd                                                                                                     
           force_array(k, GEOSgcm_var) = ptrShForce(i_ind(k), j_ind(k))                                                      
-       end do                                                                                                               
-                                                                                                                            
+       end do
+       
     end do ! GEOSgcm_var            
-                                                                                                                            
-                                                                                                                            
+    
     ! ----------------------------------------------------------------                                                      
-                                                                                                                            
+    
     ! convert variables and units of force_array to match met_force_type,                                                   
     ! put into structure                                                                                                    
                                                                                                                             
@@ -2821,40 +2819,39 @@ contains
     ! force_array(:,10) = TLML           K       (surface_air_temperature)                                                  
     ! force_array(:,11) = SPEED          m/s     (surface_wind_speed)                                                       
     ! force_array(:,12) = HLML           m       (surface_layer_height)                                                     
-    ! force_array(:,13) = SWLAND         W/m2    (net_shortwave_land)                                                       
                                                                                                                             
     ! rainfall                                                                                                              
     ! Rainf = convective rainfall + large-scale rainfall                                                                    
     ! follow code in GEOS_SurfaceGridComp.F90 to compute convective and large-scale rain                                    
     ! from convective precip, total precip, and total snowfall                                                              
-                                                                                                                            
+    
     do k=1,N_catd                                                                                                           
-                                                                                                                            
-      if ( (abs(force_array(k,1)-nodata_GEOSgcm)<tol) .or.               &   
-           (abs(force_array(k,2)-nodata_GEOSgcm)<tol) .or.               &                                                  
-           (abs(force_array(k,3)-nodata_GEOSgcm)<tol)       )  then                                                         
-                                                                                                                            
-         met_force_new(k)%Rainf_C = nodata_forcing                                                                          
-         met_force_new(k)%Snowf   = nodata_forcing                                                                          
-         met_force_new(k)%Rainf   = nodata_forcing                                                                          
-                                                                                                                            
-      else                                                                                                                  
-                                                                                                                            
-         met_force_new(k)%Snowf   = force_array(k,2)                                                                        
-         met_force_new(k)%Rainf   = force_array(k,3) - force_array(k,2)                                                     
-         if (force_array(k,3) > 0.) then                                                                                    
-            met_force_new(k)%Rainf_C = force_array(k,1) * (1.0 - force_array(k,2)/force_array(k,3))                         
-         end if                                                                                                             
-                                                                                                                            
-         ! ensure that large-scale rainfall >=0                                                                             
-         if (met_force_new(k)%Rainf - met_force_new(k)%Rainf_C < 0.) then                                                   
-            met_force_new(k)%Rainf_C = met_force_new(k)%Rainf                                                               
-         end if                                                                                                             
-                                                                                                                            
-      end if                                                                                                                
-                                                                                                                            
-    end do                                                                                                                  
-                                                                                                                            
+       
+       if ( (abs(force_array(k,1)-nodata_GEOSgcm)<tol) .or.               &   
+            (abs(force_array(k,2)-nodata_GEOSgcm)<tol) .or.               &                                                  
+            (abs(force_array(k,3)-nodata_GEOSgcm)<tol)       )  then                                                         
+          
+          met_force_new(k)%Rainf_C = nodata_forcing                                                                          
+          met_force_new(k)%Snowf   = nodata_forcing                                                                          
+          met_force_new(k)%Rainf   = nodata_forcing                                                                          
+          
+       else                                                                                                                  
+          
+          met_force_new(k)%Snowf   = force_array(k,2)                                                                        
+          met_force_new(k)%Rainf   = force_array(k,3) - force_array(k,2)                                                     
+          if (force_array(k,3) > 0.) then                                                                                    
+             met_force_new(k)%Rainf_C = force_array(k,1) * (1.0 - force_array(k,2)/force_array(k,3))                         
+          end if
+          
+          ! ensure that large-scale rainfall >=0                                                                             
+          if (met_force_new(k)%Rainf - met_force_new(k)%Rainf_C < 0.) then                                                   
+             met_force_new(k)%Rainf_C = met_force_new(k)%Rainf                                                               
+          end if
+          
+       end if
+       
+    end do
+    
     met_force_new%LWdown    = force_array(:, 4)                                                                             
     met_force_new%SWdown    = force_array(:, 5)                                                                             
     met_force_new%PARdrct   = force_array(:, 6)                                                                             
@@ -2865,23 +2862,8 @@ contains
     met_force_new%Wind      = force_array(:, 11)                                                                            
     met_force_new%RefH      = force_array(:, 12)   
                                                                                                                             
-    ! Fanwei found some negative values in the Antarctica for Qair and a few grid cells have negative wind speed            
-    ! so make sure they are all positive                                                                                    
-                                                                                                                            
-    met_force_new%Rainf_C   = max(met_force_new%Rainf_C, 0.)                                                                
-    met_force_new%Snowf     = max(met_force_new%Snowf, 0.)                                                                  
-    met_force_new%Rainf     = max(met_force_new%Rainf, 0.)                                                                  
-    met_force_new%LWdown    = max(met_force_new%LWdown, 0.)                                                                 
-    met_force_new%SWdown    = max(met_force_new%SWdown, 0.)                                                                 
-    met_force_new%PARdrct   = max(met_force_new%PARdrct, 0.)                                                                
-    met_force_new%PARdffs   = max(met_force_new%PARdffs, 0.)                                                                
-    met_force_new%Psurf     = max(met_force_new%Psurf, 0.)                                                                  
-    met_force_new%Qair      = max(met_force_new%Qair, 0.)                                                                   
-    met_force_new%Tair      = max(met_force_new%Tair, 0.)                                                                   
-    met_force_new%Wind      = max(met_force_new%Wind, 0.)                                                                   
-    met_force_new%RefH      = max(met_force_new%RefH, 0.)                                                                   
-                                                                                                                            
-  end subroutine get_BC_GEOS_hindcast 
+  end subroutine get_GEOSs2sFcst
+
   ! *************************************************************************
   
   subroutine get_GEOS( date_time, force_dtstep, met_path, met_tag,             &
