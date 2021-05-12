@@ -99,7 +99,10 @@ SMAP L4_SM Version 5
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-
+#### HindcastBC_netcdf; forcing from bias-corrected hindcasts of the S2S system                           
+```                                                                                                                         
+  MET_PATH : /discover/nobackup/projects/gmao/geos_carb/fzeng/FORECASTS/GEOS5/CLIM/GEOS5v2/BCSD_Final/6-hourly/                 
+```  
 
 COMMONLY USED values for `MET_TAG`:
 ------------------------------------
@@ -245,6 +248,13 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GEOS.fp.asm__precCPCUFLKG5FPv3                  ! (precip corr with first-look CPCU)
 ```
 
+#### bias-corrected S2S hindcasts
+```
+  MET_TAG  : HindcastBC_netcdf_ensX_MMMDD
+```
+
+   'ensX' refers to the S2S hindcast ensemble member (current options are: 'ens1', 'ens2',
+   'ens3' and 'ens4') and 'MMMDD' refers to the initialization date (for example 'jan01').
 
 Boundary Conditions  
 ================================================================================
