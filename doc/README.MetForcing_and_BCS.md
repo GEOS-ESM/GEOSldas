@@ -99,7 +99,8 @@ SMAP L4_SM Version 5
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-#### HindcastBC_netcdf; forcing from bias-corrected hindcasts of the S2S system                           
+#### Forcing from post-processed GEOS S2S forecasts (or hindcasts), incl. bias correction
+
 ```                                                                                                                         
   MET_PATH : /discover/nobackup/projects/gmao/geos_carb/fzeng/FORECASTS/GEOS5/CLIM/GEOS5v2/BCSD_Final/6-hourly/                 
 ```  
@@ -248,13 +249,18 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GEOS.fp.asm__precCPCUFLKG5FPv3                  ! (precip corr with first-look CPCU)
 ```
 
-#### bias-corrected S2S hindcasts
+#### Forcing from post-processed GEOS S2S forecasts (or hindcasts), incl. bias correction
+
+ - Forcing derived through post-processing of daily average output from GEOS S2S forecasts.
+   6-hourly diurnal cycle imposed from MERRA-2 climatology. 
+   Includes monthly bias correction to MERRA-2 climatology.
+   Must specify S2S ensemble member ('ensX'; currently: 'ens1', 'ens2', 'ens3', or 'ens4') 
+   and month/day of forecast initialization ('MMMDD'; e.g., 'jan01') 
+   separated by double underscores in the met_tag as follows: 
 ```
-  MET_TAG  : HindcastBC_netcdf_ensX_MMMDD
+  MET_TAG  : GEOSs2sFcstBiasCorr__[ensX]__[MMMDD]
 ```
 
-   'ensX' refers to the S2S hindcast ensemble member (current options are: 'ens1', 'ens2',
-   'ens3' and 'ens4') and 'MMMDD' refers to the initialization date (for example 'jan01').
 
 Boundary Conditions  
 ================================================================================
