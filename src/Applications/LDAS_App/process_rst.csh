@@ -50,11 +50,11 @@ case [0] :
 
 ## No restarts : regrid from archived SMAP M09 restarts
 
-    mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData1/
-    mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData2/
-    ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData1/OutTileFile
-    ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData2/OutTileFile
-    ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData2/clsm
+    mkdir -p $EXPDIR/$EXPID/mk_restarts/InData/
+    mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData/
+    ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/InData/OutTileFile
+    ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData/OutTileFile
+    ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData/clsm
     ln -s $INSTDIR/bin $EXPDIR/$EXPID/mk_restarts/
 
     cd $EXPDIR/$EXPID/mk_restarts/
@@ -83,15 +83,15 @@ setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib
 
 limit stacksize unlimited
  
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
 sleep 3
 
-/bin/cp OutData1/${MODEL}_internal_rst OutData2/${MODEL}_internal_rst
+/bin/cp InData/${MODEL}_internal_rst OutData/${MODEL}_internal_rst
 
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
-${SCALE} OutData1/${MODEL}_internal_rst OutData2/${MODEL}_internal_rst ${MODEL}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT 
+${SCALE} InData/${MODEL}_internal_rst OutData/${MODEL}_internal_rst ${MODEL}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT 
 
 # Done creating catch*_internal_rst file
 
@@ -123,9 +123,9 @@ case [1]:
     ## restart is from old LDAS which produce big endian binary
     if($ENDI == MSB) then
         echo ' '
-        mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData2/
-        ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData2/OutTileFile
-        ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData2/clsm
+        mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData/
+        ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData/OutTileFile
+        ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData/clsm
         ln -s $INSTDIR/bin $EXPDIR/$EXPID/mk_restarts/
 
         cd $EXPDIR/$EXPID/mk_restarts/
@@ -146,11 +146,11 @@ case [1]:
         echo 'endif' >> this.file
         echo 'setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib' >> this.file
 
-        set mpi_mpmd = "${INSTDIR}/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k 0000 -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+        set mpi_mpmd = "${INSTDIR}/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k 0000 -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
         set j = 1
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           set mpi_mpmd = "${mpi_mpmd} : -np 1 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+           set mpi_mpmd = "${mpi_mpmd} : -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
            @ j++
         end
         echo $mpi_mpmd >> this.file
@@ -178,11 +178,11 @@ case [1]:
 case [2]:
 
     echo ' '
-    mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData1/
-    mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData2/
-    ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData1/OutTileFile
-    ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData2/OutTileFile
-    ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData2/clsm
+    mkdir -p $EXPDIR/$EXPID/mk_restarts/InData/
+    mkdir -p $EXPDIR/$EXPID/mk_restarts/OutData/
+    ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/InData/OutTileFile
+    ln -s $BCSDIR/$TILFILE $EXPDIR/$EXPID/mk_restarts/OutData/OutTileFile
+    ln -s $BCSDIR/clsm $EXPDIR/$EXPID/mk_restarts/OutData/clsm
     ln -s $INSTDIR/bin $EXPDIR/$EXPID/mk_restarts/
     
     cd $EXPDIR/$EXPID/mk_restarts/
@@ -209,11 +209,11 @@ endif
 setenv LAIFILE `find ${BCSDIR}/lai_clim*`
 limit stacksize unlimited
  
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts.x -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
 sleep 3
 
 
-${SCALE} OutData1/${MODEL}_internal_rst OutData2/${MODEL}_internal_rst ${MODEL}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT
+${SCALE} InData/${MODEL}_internal_rst OutData/${MODEL}_internal_rst ${MODEL}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT
 
 # Done creating catch*_internal_rst file
 
