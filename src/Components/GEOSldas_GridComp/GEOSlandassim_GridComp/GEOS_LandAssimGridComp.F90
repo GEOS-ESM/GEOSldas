@@ -1043,7 +1043,7 @@ contains
     type(ESMF_Time)              :: CurrentTime
     type(ESMF_Time)              :: AssimTime
     type(ESMF_Alarm)             :: LandAssimAlarm
-    type(ESMF_TimeInterval)      :: LandAssim_DT, LandAssim_OffDT
+    type(ESMF_TimeInterval)      :: LandAssim_DT, one_day
     integer                      :: LandAssimDTstep
     type(ESMF_TimeInterval)      :: ModelTimeStep 
     type(ESMF_Time)              :: rrTime, pertSeedTime
@@ -1076,7 +1076,7 @@ contains
     character(len=300)   :: fname_tpl
     character(len=14)    :: datestamp
     character(len=ESMF_MAXSTR) :: id_string 
-    integer              :: nymd, nhms, yy, dd, mm, h, m, s, Landassim_offset
+    integer              :: nymd, nhms, yy, dd, mm, h, m, s, Landassim_reftime, ref_time(6)
 
     !! from LDASsa
     
@@ -1155,17 +1155,31 @@ contains
     ! How many seconds later to start first land ananlysis, default is 3h = LandAssimDtStep
     call MAPL_GetResource(                                                      &
          MAPL,                                                                  &
-         landassim_offset,                                                     &
-         'LANDASSIM_OFFSET:',                                                  &
-         default= LandAssimDtStep,                                                       &
+         landassim_reftime,                                                     &
+         'LANDASSIM_REFTIME:',                                                  &
+         default= 000000,                                                      &
          rc=status                                                              &
          )
     _VERIFY(status)
 
-    _ASSERT(mod(landassim_offset, model_dtstep)==0,"inconsistent inputs for HEARTBEAT_DT and LANDASSIM_OFFSET")
+    s = MAPL_nsecf(landassim_reftime) 
+    _ASSERT(mod(s, model_dtstep)==0,"inconsistent inputs for HEARTBEAT_DT and LANDASSIM_REFTIME")
 
-    call ESMF_TimeIntervalSet(LandAssim_OffDT, s=landassim_offset, rc=status)
-    _VERIFY(status)
+    call ESMF_TimeGet(CurrentTime, YY = ref_time(1), &
+                                   MM = ref_time(2), &
+                                   DD = ref_time(3), &
+                                   rc=status) 
+    ref_time(4) = landassim_reftime/10000
+    ref_time(5) = mod(landassim_reftime,10000)/100
+    ref_time(6) = mod(landassim_reftime,100)
+
+    call ESMF_TimeSet( AssimTime, YY = REF_TIME(1), &
+                                  MM = REF_TIME(2), &
+                                  DD = REF_TIME(3), &
+                                  H  = REF_TIME(4), &
+                                  M  = REF_TIME(5), &
+                                  S  = REF_TIME(6), rc=rc )
+
 
     ! determine date and time of first land analysis   [R20210506: not sure I understand the intent here correctly.] 
     !
@@ -1182,7 +1196,15 @@ contains
     !   ..., [some date] 0z, 3z, 6z, 9z, ..., 21z, [next day], 0z, 3z, ... 21z, [another day later] 0z, 3z, ... 21z, [yet another day later] 0z, 3z, ...
     ! What's needed here is to determine AssimTime such that it the earliest time in the infinite sequence that is after the restart time.
 
-    AssimTime = CurrentTime + LandAssim_OffDT
+    if (AssimTime > CurrentTime) then ! going back one day
+       call ESMF_TimeIntervalSet(one_day, d=1, rc=status)
+       _VERIFY(status)
+       AssimTime = AssimTime - one_day
+    endif
+!
+    if (AssimTime <= CurrentTime ) then
+      AssimTime = AssimTime + (INT((CurrentTime - AssimTime)/LandAssim_DT)+1)*LandAssim_DT
+    endif
 
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     _VERIFY(status)
@@ -1228,7 +1250,6 @@ contains
        enddo
     endif
     call MPI_Bcast(pert_rseed, NRANDSEED*NUM_ENSEMBLE, MPI_INTEGER, 0, mpicomm, mpierr)
-    
     
     allocate(N_catl_vec(numprocs))
     allocate(low_ind(numprocs))
