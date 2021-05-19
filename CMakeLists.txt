@@ -25,9 +25,6 @@ set (DOING_GEOS5 YES)
 
 # Should find a better place for this - used in Chem component
 set (ACG_FLAGS -v)
-set (F2PYEXT .so)
-set (F2PY_SUFFIX .so)
-set (FV_PRECISION R4)
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/@cmake")
 include (esma)
@@ -43,3 +40,17 @@ include_directories(${MPI_Fortran_INCLUDE_PATH})
 # Recursively build source tree
 add_subdirectory (@env)
 add_subdirectory (src)
+
+# https://www.scivision.dev/cmake-auto-gitignore-build-dir/
+# --- auto-ignore build directory
+if(NOT EXISTS ${PROJECT_BINARY_DIR}/.gitignore)
+  file(WRITE ${PROJECT_BINARY_DIR}/.gitignore "*")
+endif()
+
+# Piggyback that file into install
+install(
+   FILES ${PROJECT_BINARY_DIR}/.gitignore
+   DESTINATION ${CMAKE_INSTALL_PREFIX}
+   )
+
+
