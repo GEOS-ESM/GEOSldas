@@ -99,6 +99,7 @@ class LDASsetup:
         self.exefyl = None
         self.islocal = False
         self.catch = ''
+        self.clmv  = ''
         self.has_mwrtm = False
         self.assim = False
         self.has_landassim_seed = False
@@ -312,13 +313,13 @@ class LDASsetup:
 
         if  int(self.rqdExeInp['LSM_CHOICE']) == 1 :
             self.catch = 'catch'
-            clmv       = ''
+            self.clmv       = ''
         if  int(self.rqdExeInp['LSM_CHOICE']) == 2 :
             self.catch = 'catchcn'
-            clmv       = '40'
+            self.clmv  = '40'
         if  int(self.rqdExeInp['LSM_CHOICE']) == 3 : 
             self.catch = 'catchcn'
-            clmv       = '45'
+            self.clmv  = '45'
         if 'POSTPROC_HIST' not in self.rqdExeInp:
             self.rqdExeInp['POSTPROC_HIST'] = 0
 
@@ -761,7 +762,7 @@ class LDASsetup:
                self.has_landassim_seed = True
  
         cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, exp_dir,
-                        bcdir, tilefile, self.catch+clmv, have_rst, YYYYMMDD,
+                        bcdir, tilefile, self.catch+self.clmv, have_rst, YYYYMMDD,
                         rstid, rstdomain, rstpath0, str(self.nens), str(self.rqdExeInp['RUN_IRRIG']),
                         dzsf, wemin_in, wemin_out])
         print "cmd:   " + cmd
