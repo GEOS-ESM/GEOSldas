@@ -148,7 +148,7 @@ contains
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
-       dtstep_assim, centered_update,                                    &
+       dtstep_assim,                                                     &
        xcompact, ycompact, fcsterr_inflation_fac,                        &
        N_obs_param, obs_param, N_obsbias_max,                            &
        out_obslog, out_smapL4SMaup,                                      &
@@ -207,8 +207,6 @@ contains
     type(pert_param_type), dimension(:), pointer :: progn_pert_param ! input
 
     integer, intent(in) :: update_type, dtstep_assim
-
-    logical, intent(in) :: centered_update
 
     real,    intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
 
