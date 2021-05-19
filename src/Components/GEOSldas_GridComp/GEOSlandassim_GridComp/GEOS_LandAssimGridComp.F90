@@ -1046,7 +1046,7 @@ contains
     type(ESMF_TimeInterval)      :: LandAssim_DT, one_day
     integer                      :: LandAssim_T0, LandAssimDTstep
     type(ESMF_TimeInterval)      :: ModelTimeStep 
-    type(ESMF_Time)              :: rrTime, pertSeedTime
+    type(ESMF_Time)              :: pertSeedTime
 
     ! locals
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -1209,7 +1209,20 @@ contains
     ! compute *earliest* AssimTime that is *greater* than CurrentTime:
     
     AssimTime = AssimTime + (INT((CurrentTime - AssimTime)/LandAssim_DT)+1)*LandAssim_DT
+    
+    ! create LandAssimAlarm
 
+    LandAssimAlarm = ESMF_AlarmCreate(                                          &
+         clock,                                                                 &
+         name='LandAssim',                                                      &
+         ringTime=AssimTime,                                                    &
+         ringInterval=LandAssim_DT,                                             &
+         ringTimeStepCount=1,                                                   &
+         sticky=.false.,                                                        &
+         rc=status                                                              &
+         )
+    _VERIFY(status)
+    
     ! ------------------------------------
     
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
@@ -1343,26 +1356,6 @@ contains
     call MPI_BCAST(out_smapL4SMaup,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
    
-
-    ! create LandAssimAlarm
-
-    ! RR20210506: If AssimTime is indeed the time of the first land analysis, this should be "rrTime=AssimTime-ModelTimeStep"
-
-    !  NOT SURE THE ABOVE COMMENT MADE SENSE AT THE TIME OR NOW. NEED TO DOUBLE-CHECK AND CLEAN UP.
-    
-    rrTime = AssimTime - ModelTimeStep        ! probably rrTime=AssimTime is correct????
-
-    LandAssimAlarm = ESMF_AlarmCreate(                                          &
-         clock,                                                                 &
-         name='LandAssim',                                                      &
-         ringTime=rrTime,                                                       &
-         ringInterval=LandAssim_DT,                                             &
-         ringTimeStepCount=1,                                                   &
-         sticky=.false.,                                                        &
-         rc=status                                                              &
-         )
-    _VERIFY(status)
-
     !----
  
     if (.not. root_proc)  allocate(obs_param(N_obs_param)) 
