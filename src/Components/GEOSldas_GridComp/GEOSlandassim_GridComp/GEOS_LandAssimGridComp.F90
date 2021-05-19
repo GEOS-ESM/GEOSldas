@@ -1215,7 +1215,7 @@ contains
     LandAssimAlarm = ESMF_AlarmCreate(                                          &
          clock,                                                                 &
          name='LandAssim',                                                      &
-         ringTime=AssimTime,                                                    &
+         ringTime=AssimTime-ModelTimeStep,                                      &
          ringInterval=LandAssim_DT,                                             &
          ringTimeStepCount=1,                                                   &
          sticky=.false.,                                                        &
