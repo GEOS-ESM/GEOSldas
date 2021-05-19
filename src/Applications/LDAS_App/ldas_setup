@@ -1521,7 +1521,8 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# - qos        = quality-of-service; do not specify by default; specify "debug" for faster but limited service.'
     print '# - oserver_nodes    = number of nodes for oserver ( default is 0 )'
     print '# - writers-per-node = tasks per oserver_node for writing ( default is 5 ),'
-    print '#                      total_writers = writers-per-node * oserver_nodes >=2 '
+    print '#      IMPORTANT REQUIREMENT: total #writers = writers-per-node * oserver_nodes >= 2'
+    print '#      Jobs will hang when oserver_nodes = writers-per-node = 1.'
     print '#'
     for key in optRmInpKeys:
         print '#'+key + ':'
