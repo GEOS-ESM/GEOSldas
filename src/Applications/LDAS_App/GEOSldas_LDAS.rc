@@ -177,6 +177,9 @@ LDAS_logit: YES
 #      User-defined path and filename of output (HISTORY) specification file.
 #      If empty, ldas_setup will generate a default HISTORY.rc file.
 #
+#      For the "catch_progn_incr" and "lndfcstana" output Collections, the "frequency" and "ref_time"
+#      settings must be consistent with "LANDASSIM_DT" and "LANDASSIM_T0" (see above).
+#
 # HISTRC_FILE: ''
 
 # ---- Concatenate sub-daily nc4 files into daily nc4 files and write monthly-mean output?

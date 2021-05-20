@@ -1166,8 +1166,9 @@ contains
          )
     _VERIFY(status)
 
-    _ASSERT(mod(MAPL_nsecf(LandAssim_T0), model_dtstep)==0,                     &
-         "inconsistent inputs for HEARTBEAT_DT and LANDASSIM_T0")
+    s = MAPL_nsecf(LandAssim_T0)
+    
+    _ASSERT(mod(s, model_dtstep)==0,               "inconsistent inputs for HEARTBEAT_DT and LANDASSIM_T0")
     
     ! determine date and time of first land analysis
     !
