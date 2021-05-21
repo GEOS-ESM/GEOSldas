@@ -1241,7 +1241,7 @@ class LDASsetup:
                     elif 'MY_NODES' in line :
                         line_ = line.replace('MY_NODES',str(self.optRmInp['nodes']))
                         fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
-                        if int(intself.rqdRmInp['ntasks-per-node']) > 28:
+                        if int(self.rqdRmInp['ntasks-per-node']) > 28:
                            fout.write("#SBATCH --constraint=sky\n")
                     elif 'MY_OSERVER_NODES' in line :
                         fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))

@@ -356,7 +356,7 @@ while ( $counter <= ${NUM_SGMT} )
    @ oserver_nodes = MY_OSERVER_NODES
    @ writers = MY_WRITERS_NPES
 
-   @ total_npes = MY_NODES * MY_NTASKS_PER_NODE
+   set total_npes = $SLURM_NTASKS
 
    if ($oserver_nodes == 0) then
       set oserver_options = ""
