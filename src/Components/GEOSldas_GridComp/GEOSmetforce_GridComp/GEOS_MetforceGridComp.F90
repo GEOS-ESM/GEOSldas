@@ -786,7 +786,7 @@ contains
     real, pointer :: LandTileLons(:)
     real, allocatable :: zth(:), slr(:), zth_tmp(:)
     type(met_force_type), allocatable :: mfDataNtp(:)
-    type(met_force_type), pointer :: DataTmp(:)=>null()
+    type(met_force_type), pointer, contiguous :: DataTmp(:)=>null()
     real, allocatable :: tmpreal(:)
     type(met_force_type) :: mf_nodata
 

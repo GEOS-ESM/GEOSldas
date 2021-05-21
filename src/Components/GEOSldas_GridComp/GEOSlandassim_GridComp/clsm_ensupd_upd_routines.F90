@@ -158,14 +158,11 @@ contains
        work_path,                               &
        exp_id,                                  &
        date_time,                               &
-       model_dtstep,                            &
        N_catf,             tile_coord_f,        &
        N_progn_pert,       progn_pert_param,    &
        N_force_pert,       force_pert_param,    &
        need_mwRTM_param,                        &
        update_type,                             &
-       dtstep_assim,                            &
-       centered_update,                         &
        xcompact, ycompact,                      &
        fcsterr_inflation_fac,                   &
        N_obs_param,                             &
@@ -199,8 +196,6 @@ contains
 
     type(date_time_type), intent(in)    :: date_time
     
-    integer,              intent(in)    :: model_dtstep
-
     integer,              intent(in)    :: N_catf, N_progn_pert, N_force_pert
     
     type(tile_coord_type), dimension(N_catf),       intent(in) :: tile_coord_f
@@ -210,9 +205,7 @@ contains
     
     logical,              intent(inout) :: need_mwRTM_param
 
-    integer,              intent(out)   :: update_type, dtstep_assim
-    
-    logical,              intent(out)   :: centered_update
+    integer,              intent(out)   :: update_type
     
     real,                 intent(out)   :: xcompact, ycompact
     real,                 intent(out)   :: fcsterr_inflation_fac
@@ -264,8 +257,6 @@ contains
     
     namelist /ens_upd_inputs/      &
          update_type,              &
-         dtstep_assim,             &
-         centered_update,          &
          out_obslog,               &
          out_ObsFcstAna,           &
          out_smapL4SMaup,          &
@@ -351,23 +342,6 @@ contains
        
     end do
 
-    ! consistency with model_dtstep
-    
-    ! dtstep_assim must be divisible by model_dtstep
-    
-    if ( (mod(dtstep_assim,model_dtstep)/=0) ) then
-       err_msg = 'inconsistent inputs for model_dtstep and dtstep_assim'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-    end if
-    
-    ! if centered_update, dtstep_assim/model_dtstep must be even
-    
-    if ( (centered_update) .and. (mod(dtstep_assim/model_dtstep,2)/=0) ) then
-       err_msg = 'inconsistent inputs for ' // &
-            'model_dtstep, dtstep_assim, and centered_update'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-    end if
-    
     ! -----------------------------------------------------------------
     !
     ! Extract only species of interest (i.e., %getinnov=.true.) from nml inputs:

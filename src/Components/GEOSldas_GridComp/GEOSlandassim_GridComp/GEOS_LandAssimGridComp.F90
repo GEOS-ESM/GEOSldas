@@ -30,7 +30,7 @@ module GEOS_LandAssimGridCompMod
   use LDAS_ensdrv_mpi,           only: root_proc
   use LDAS_ensdrv_mpi,           only: MPI_obs_param_type 
   
-  use LDAS_DateTimeMod,          only: date_time_type 
+  use LDAS_DateTimeMod,          only: date_time_type
   use LDAS_ensdrv_Globals,       only: logunit, LDAS_is_nodata, nodata_generic
   
   use LDAS_ConvertMod,           only: esmf2ldas
@@ -89,8 +89,7 @@ module GEOS_LandAssimGridCompMod
   
   type(obs_param_type), pointer     :: obs_param(:)=>null()
   
-  integer :: update_type, dtstep_assim
-  logical :: centered_update
+  integer :: update_type
   real    :: xcompact, ycompact
   real    :: fcsterr_inflation_fac
   integer :: N_obs_param
@@ -1036,16 +1035,18 @@ contains
     type(ESMF_Clock),    intent(inout) :: clock  ! The clock
     integer, optional,   intent(  out) :: rc     ! Error code
     
-    integer :: status
+    integer                      :: status
     character(len=ESMF_MAXSTR)   :: Iam
     character(len=ESMF_MAXSTR)   :: comp_name
     
     ! ESMF variables
     type(ESMF_Time)              :: CurrentTime
+    type(ESMF_Time)              :: AssimTime
     type(ESMF_Alarm)             :: LandAssimAlarm
-    type(ESMF_TimeInterval)      :: LandAssim_DT
-    integer                      :: LandAssimDTstep
-    type(ESMF_TimeInterval)      :: ModelTimeStep
+    type(ESMF_TimeInterval)      :: LandAssim_DT, one_day
+    integer                      :: LandAssim_T0, LandAssimDTstep
+    type(ESMF_TimeInterval)      :: ModelTimeStep 
+    type(ESMF_Time)              :: pertSeedTime
 
     ! locals
     type(MAPL_MetaComp), pointer :: MAPL=>null()
@@ -1075,7 +1076,7 @@ contains
     character(len=300)   :: fname_tpl
     character(len=14)    :: datestamp
     character(len=ESMF_MAXSTR) :: id_string 
-    integer              :: nymd, nhms
+    integer              :: nymd, nhms, yy, mm, dd, h, m, s
 
     !! from LDASsa
     
@@ -1137,29 +1138,94 @@ contains
     ! Create alarm for Land assimilation
     ! -create-nonsticky-alarm-
     ! -time-interval-
+
+    ! get time step for land analysis
     call MAPL_GetResource(                                                      &
          MAPL,                                                                  &
          LandAssimDtStep,                                                       &
-         'LANDASSIM_DTSTEP:',                                                   &
+         'LANDASSIM_DT:',                                                       &
          default=10800,                                                         &
          rc=status                                                              &
          )
     _VERIFY(status)
-    
+
+    _ASSERT(mod(LandAssimDtStep, model_dtstep)==0, "inconsistent inputs for HEARTBEAT_DT and LANDASSIM_DT")
+    _ASSERT(mod(86400, LandAssimDtStep)==0,        "LANDASSIM_DT must be <=86400s and evenly divide a day")
+    _ASSERT(LandAssimDtStep>0,                     "LANDASSIM_DT must be non-negative")
+
     call ESMF_TimeIntervalSet(LandAssim_DT, s=LandAssimDtStep, rc=status)
     _VERIFY(status)
     
+    ! get "reference" time (HHMMSS) for land analysis (default=0z)
+    call MAPL_GetResource(                                                      &
+         MAPL,                                                                  &
+         LandAssim_T0,                                                          &
+         'LANDASSIM_T0:',                                                       &
+         default=000000,                                                        &
+         rc=status                                                              &
+         )
+    _VERIFY(status)
+
+    s = MAPL_nsecf(LandAssim_T0)
+    
+    _ASSERT(mod(s, model_dtstep)==0,               "inconsistent inputs for HEARTBEAT_DT and LANDASSIM_T0")
+    
+    ! determine date and time of first land analysis
+    !
+    ! LANDASSIM_T0 ("T0") and LANDASSIM_DT ("DT") define an infinite sequence of land analysis times:
+    !
+    !   LANDASSIM_TIMES = {..., T0-3*DT, T0-2*DT, T0-DT, T0, T0+DT, T0+2*DT, T0+3*DT, ...}
+    !
+    ! (because LANDASSIM_DT must be <=86400s and evenly divide a day, T0 only needs to specify HHMMSS)
+    !
+    ! find the *earliest* date/time in LANDASSIM_TIMES that is *greater* than CurrentTime(=start_time)
+    ! (there is *no* land analysis at the restart time)
+
+    ! to begin search for desired AssimTime, inherit date from CurrentTime(=start_time)
+    call ESMF_TimeGet(CurrentTime, YY = yy,   &
+                                   MM = mm,   &
+                                   DD = dd,   &
+                                   rc=status)
+    _VERIFY(status)
+    
+    ! determine h, m, s from LANDASSIM_T0
+    h = LandAssim_T0/10000
+    m = mod(LandAssim_T0,10000)/100
+    s = mod(LandAssim_T0,100)
+    
+    call ESMF_TimeSet( AssimTime, YY = yy, &
+                                  MM = mm, &
+                                  DD = dd, &
+                                  H  = h,  &
+                                  M  = m,  &
+                                  S  = s, rc=status )
+    
+    if (AssimTime > CurrentTime) then                      ! go back one day
+       call ESMF_TimeIntervalSet(one_day, d=1, rc=status)
+       _VERIFY(status)
+       AssimTime = AssimTime - one_day
+    endif
+
+    ! now have (CurrentTime-one_day) < AssimTime <= CurrentTime;
+    ! compute *earliest* AssimTime that is *greater* than CurrentTime:
+    
+    AssimTime = AssimTime + (INT((CurrentTime - AssimTime)/LandAssim_DT)+1)*LandAssim_DT
+    
+    ! create LandAssimAlarm
+
     LandAssimAlarm = ESMF_AlarmCreate(                                          &
          clock,                                                                 &
          name='LandAssim',                                                      &
-         ringTime=CurrentTime+Landassim_DT-ModelTimeStep,                       &
-         ringInterval=Landassim_DT,                                             &
+         ringTime=AssimTime-ModelTimeStep,                                      &
+         ringInterval=LandAssim_DT,                                             &
          ringTimeStepCount=1,                                                   &
          sticky=.false.,                                                        &
          rc=status                                                              &
          )
     _VERIFY(status)
-
+    
+    ! ------------------------------------
+    
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     _VERIFY(status)
     tcinternal   =>tcwrap%ptr
@@ -1171,13 +1237,25 @@ contains
     if (root_proc) then
        call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
        _VERIFY(status)
-       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
+       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", &
+                             DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
-       call MAPL_DateStampGet( clock, datestamp, rc=status)
+
+       ! It is consistent with the default that psert seed time is one LandAssim_DT behind assim time
+       pertSeedTime = AssimTime - LandAssim_DT 
+
+       call ESMF_TimeGet(pertSeedTime, YY=YY, &
+                                       MM=MM, &
+                                       DD=DD, &
+                                       H =h, &
+                                       M =m, &
+                                       S =s, &
+                                       rc=status)
        _VERIFY(STATUS)
-       read(datestamp(1:8),*)   nymd
-       read(datestamp(10:13),*) nhms
-       nhms = nhms*100
+
+       nymd = yy*10000 + mm*100 + dd
+       nhms = h *10000 + m*100  + s
+
        do ens = 0, NUM_ENSEMBLE-1
           call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
           seed_fname = ""
@@ -1192,7 +1270,6 @@ contains
        enddo
     endif
     call MPI_Bcast(pert_rseed, NRANDSEED*NUM_ENSEMBLE, MPI_INTEGER, 0, mpicomm, mpierr)
-    
     
     allocate(N_catl_vec(numprocs))
     allocate(low_ind(numprocs))
@@ -1243,14 +1320,11 @@ contains
             trim(out_path),                          &
             trim(exp_id),                            &
             start_time,                              &
-            model_dtstep,                            &
             N_catf,             tile_coord_rf,       &
             N_progn_pert,       progn_pert_param,    &
             N_force_pert,       force_pert_param,    &
             mwRTM,                                   &  ! ensure mwRTM=.true. when microwave Tb obs are assimilated
             update_type,                             &
-            dtstep_assim,                            &
-            centered_update,                         &
             xcompact, ycompact,                      &
             fcsterr_inflation_fac,                   &
             N_obs_param,                             &
@@ -1274,8 +1348,6 @@ contains
     
     call MPI_BCAST(mwRTM,                 1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(update_type,           1, MPI_INTEGER,        0,MPICOMM,mpierr)
-    call MPI_BCAST(dtstep_assim,          1, MPI_INTEGER,        0,MPICOMM,mpierr)
-    call MPI_BCAST(centered_update,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(xcompact,              1, MPI_REAL,           0,MPICOMM,mpierr)
     call MPI_BCAST(ycompact,              1, MPI_REAL,           0,MPICOMM,mpierr)
     call MPI_BCAST(fcsterr_inflation_fac, 1, MPI_REAL,           0,MPICOMM,mpierr)
@@ -1284,7 +1356,9 @@ contains
     call MPI_BCAST(out_ObsFcstAna,        1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(out_smapL4SMaup,       1, MPI_LOGICAL,        0,MPICOMM,mpierr)
     call MPI_BCAST(N_obsbias_max,         1, MPI_INTEGER,        0,MPICOMM,mpierr)
-    
+   
+    !----
+ 
     if (.not. root_proc)  allocate(obs_param(N_obs_param)) 
     
     call MPI_BCAST(obs_param,   N_obs_param, MPI_OBS_PARAM_TYPE, 0,MPICOMM,mpierr)
@@ -1379,8 +1453,6 @@ contains
 
     logical  :: fresh_incr
     integer  :: N_obsf,N_obsl
-    integer  :: secs_in_day
-
     !! import ensemble forcing
     
     real, pointer :: TA_enavg(:)=>null()
@@ -1416,7 +1488,7 @@ contains
     character(len=300)         :: fname_tpl
     character(len=ESMF_MAXSTR) :: id_string
     integer                    :: ens, nymd, nhms, ens_id_width
-
+    integer                    :: LandassimDTstep
 #ifdef DBG_LANDASSIM_INPUTS
     ! vars for debugging purposes
     type(ESMF_Grid)                 :: TILEGRID
@@ -1474,10 +1546,6 @@ contains
     
     ! Pointers to internals
     !----------------------
-    !if (mwRTM) then
-    !   call get_mwrtm_param(INTERNAL, N_catl, rc=STATUS)
-    !   _VERIFY(STATUS)
-    !endif
 
     ! assert mwRTM parameters are not nodata for all tiles
     if (mwRTM_all_nodata) then
@@ -1486,9 +1554,6 @@ contains
     
     if (firsttime) then
        firsttime = .false.
-       !if (mwRTM) &
-       !     call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
-       !     N_catl, tile_coord_l, cat_param, mwRTM_param )
        if (root_proc) then 
           ! for out put
           call read_cat_bias_inputs(  trim(out_path), trim(exp_id), start_time, update_type, &
@@ -1727,7 +1792,15 @@ contains
 #endif   ! DBG_LANDASSIM_INPUTS
 
     ! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
+
+    call MAPL_GetResource(                                                      &
+         MAPL,                                                                  &
+         LandAssimDtStep,                                                       &
+         'LANDASSIM_DT:',                                                       &
+         default=10800,                                                         &
+         rc=status                                                              &
+         )
+    _VERIFY(status)   
     
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
@@ -1739,7 +1812,7 @@ contains
          N_catl_vec, low_ind, l2rf, rf2l,                                  &
          N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
          update_type,                                                      &
-         dtstep_assim, centered_update,                                    &
+         LandAssimDTstep,                                                  &
          xcompact, ycompact, fcsterr_inflation_fac,                        &
          N_obs_param, obs_param, N_obsbias_max,                            &
          out_obslog, out_smapL4SMaup,                                      &
@@ -1762,18 +1835,13 @@ contains
     ! time for assimilation, even if there were no observations
     ! - reichle, 29 Aug 2014           
     
-    secs_in_day = &
-         date_time_new%hour*3600 + date_time_new%min*60 + date_time_new%sec
-    
-    if (centered_update)  secs_in_day = secs_in_day + dtstep_assim/2
-    
     ! WY note : Here N_catg is not the global land tile number
     ! but a maximum global_id this simulation covers. 
     ! Need to find the number 
     N_catg = maxval(rf2g)
-    
-    if (mod(secs_in_day, dtstep_assim)==0) then
-       
+
+    if (.true.) then  ! replace obsolete check for analysis time with "if true" to keep indents
+
        call output_incr_etc( out_ObsFcstAna,                             &
             date_time_new, trim(out_path), trim(exp_id),                 &
             N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
@@ -1784,16 +1852,16 @@ contains
             met_force, lai,                                              &
             cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
             Observations_l, rf2f=rf2f )
-
+       
        do ii = 1, N_catl
           cat_progn_incr_ensavg(ii) = 0.0
           do n_e=1, NUM_ENSEMBLE
              cat_progn_incr_ensavg(ii) = cat_progn_incr_ensavg(ii) &
-                 + cat_progn_incr(ii,n_e)
+                  + cat_progn_incr(ii,n_e)
           end do
           cat_progn_incr_ensavg(ii) = cat_progn_incr_ensavg(ii)/real(NUM_ENSEMBLE)
-       enddo 
-
+       enddo
+       
         ! Get information about children
        call MAPL_Get(MAPL, GEX=gex, rc=status)
        _VERIFY(STATUS) 
@@ -1856,8 +1924,8 @@ contains
             trim(exp_id), NUM_ENSEMBLE, N_catl, N_catf, N_obsl, tile_coord_rf,     &
             tcinternal%grid_g, N_catl_vec, low_ind,                                &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn   )
-       
-    end if   ! (mod(secs_in_day, dtstep_assim)==0)    (time for assimilation)
+
+    end if ! end if (.true.)
     
     fresh_incr = .false.
     
