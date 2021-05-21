@@ -47,9 +47,9 @@ module LDAS_PertRoutinesMod
   ! use catch_types,                      ONLY:     &
   !      cat_param_type,                            &
   !      cat_progn_type
-
-  use LDAS_DriverTypes,                 ONLY:     &
-       met_force_type
+  !
+  !use LDAS_DriverTypes,                 ONLY:     &
+  !     met_force_type
 
   use force_and_cat_progn_pert_types,   ONLY:     &
        N_force_pert_max,                          &

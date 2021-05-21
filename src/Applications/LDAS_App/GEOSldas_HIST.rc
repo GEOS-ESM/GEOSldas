@@ -49,7 +49,6 @@ COLLECTIONS:
                           'Rainf'      , 'METFORCE'      ,                    
                           'Snowf'      , 'METFORCE'      ,                    
                           'RainfSnowf' , 'METFORCE'      ,                    
-                          'SWnet'      , 'METFORCE'      ,                    
                           'RefH'       , 'METFORCE'      ,  
                           'CATDEF'     , 'GridComp'      ,
                           'RZEXC'      , 'GridComp'      ,  
@@ -81,7 +80,6 @@ COLLECTIONS:
                           'Rainf'      , 'METFORCE'      ,                    
                           'Snowf'      , 'METFORCE'      ,                    
                           'RainfSnowf' , 'METFORCE'      ,                    
-                          'SWnet'      , 'METFORCE'      ,                    
                           'RefH'       , 'METFORCE'      ,  
                           'CATDEF'     , 'GridComp'      ,
                           'RZEXC'      , 'GridComp'      ,  
@@ -342,6 +340,9 @@ COLLECTIONS:
                                'TB_LAND_1410MHZ_40DEG_VPOL' , 'LANDASSIM'   , 'tb_v'                              ,
 			       ::
 
+# For catch_progn_incr, *.frequency and *.ref_time must be consistent with the LDAS.rc resource
+# parameters LANDASSIM_DT and LANDASSIM_T0.
+
   catch_progn_incr.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Prognostics Increments',
   catch_progn_incr.template:    '%y4%m2%d2_%h2%n2z.bin',
   catch_progn_incr.mode:        'instantaneous',
@@ -374,6 +375,9 @@ COLLECTIONS:
                                'SNDZN3_INCR'    , 'LANDASSIM'      ,
                          ::
 
+# For lndfcstana, *.frequency and *.ref_time must be consistent with the LDAS.rc resource
+# parameters LANDASSIM_DT and LANDASSIM_T0.
+
   inst3_1d_lndfcstana_Nt.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
   inst3_1d_lndfcstana_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
   inst3_1d_lndfcstana_Nt.mode:        'instantaneous',
@@ -390,6 +394,9 @@ COLLECTIONS:
                                      'TPSURF_ANA'  , 'LANDASSIM' , 'TSURF_ANA'       ,
                                      'TSOIL1_ANA'  , 'LANDASSIM' , 'TSOIL1_ANA'      ,
                         ::
+
+# For lndfcstana, *.frequency and *.ref_time must be consistent with the LDAS.rc resource
+# parameters LANDASSIM_DT and LANDASSIM_T0.
 
   inst3_2d_lndfcstana_Nx.descr:       '2d,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
   inst3_2d_lndfcstana_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
