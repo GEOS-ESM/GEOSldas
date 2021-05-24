@@ -71,6 +71,35 @@ MET_HINTERP: 1
 #
 LAND_ASSIM: NO
 
+# ---- Specify land assimilation times (when "LAND_ASSIM: YES")
+#
+#  LANDASSIM_DT : land analysis time step        (seconds) 
+#  LANDASSIM_T0 : land analysis "reference" time (hhmmss)
+# 
+#  LANDASSIM_T0 ("T0") and LANDASSIM_DT ("DT") define an infinite sequence of land analysis times:
+#
+#     ..., T0-3*DT, T0-2*DT, T0-DT, T0, T0+DT, T0+2*DT, T0+3*DT, ...
+#
+#  There is never a land analysis at the restart time.  Otherwise, the land analysis times are
+#  independent of the restart time.  There may be a land analysis at the final time.
+#
+#  LANDASSIM_DT must be <=86400s, be a multiple of HEARTBEAT_DT, and evenly divide a day.
+#  Consequently, only HHMMSS information is needed for LANDASSIM_T0.
+#
+#  Examples:
+#   T0=013000, DT=10800s --> land analysis whenever model time reaches 1:30z, 4:30z, ..., 22:30z.
+#   T0=163000, DT=10800s --> land analysis whenever model time reaches 1:30z, 4:30z, ..., 22:30z.
+#   T0=120000, DT=21600s --> land analysis whenever model time reaches 0z, 6z, 12z, and 18z.
+#
+#  LANDASSIM_DT and LANDASSIM_T0 work almost but not quite like "frequency" and "reftime" from MAPL
+#  HISTORY.  The difference is that MAPL HISTORY will not write output until "reftime" even when
+#  (reftime - restarttime)/frequency > 1.  E.g., if frequency=3h, reftime=9z, and restarttime=0z,
+#  then MAPL HISTORY will not write output until 9z, whereas with DT=3h, T0=9z, and restarttime=0z,
+#  the land analysis will be run at 3z, 6z, 9z, 12z, ...
+#
+# LANDASSIM_DT: 10800
+# LANDASSIM_T0: 000000   
+
 
 # ---- Perturbations: On/off 
 #
@@ -148,6 +177,9 @@ LDAS_logit: YES
 #      User-defined path and filename of output (HISTORY) specification file.
 #      If empty, ldas_setup will generate a default HISTORY.rc file.
 #
+#      For the "catch_progn_incr" and "lndfcstana" output Collections, the "frequency" and "ref_time"
+#      settings must be consistent with "LANDASSIM_DT" and "LANDASSIM_T0" (see above).
+#
 # HISTRC_FILE: ''
 
 # ---- Concatenate sub-daily nc4 files into daily nc4 files and write monthly-mean output?
@@ -180,4 +212,8 @@ DYCORE: none
 
 # ---- For MAPL_RestartOptional
 #
-MAPL_ENABLE_BOOTSTRAP: YES
+MAPL_ENABLE_BOOTSTRAP: NO
+
+#----- Write restart or checkpoint by oserver
+#
+WRITE_RESTART_BY_OSERVER: NO

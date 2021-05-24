@@ -188,49 +188,28 @@ contains
 
           tmpreal = zth(n)/zenav(n)
           mf_ntp(n)%SWdown = mf_prv(n)%SWdown*tmpreal
+          ! wjiang+reichle, 22 Apr 2021 - "PARdrct" and "PARdffs" now 
+          !   backfilled in get_forcing(), arrive here with only "good" values
+          mf_ntp(n)%PARdrct = mf_prv(n)%PARdrct*tmpreal
+          mf_ntp(n)%PARdffs = mf_prv(n)%PARdffs*tmpreal
 
-          ! mf_ntp%SWnet only used if mf_prv%SWnet is not no-d ata value;
-          ! protect multiplication for any no-data-value because it could
-          ! fail (floating point excess) if huge number is used as nodata value
-          if(abs(mf_prv(n)%SWnet  -nodata_generic)>nodata_tol_generic)  &
-               mf_ntp(n)%SWnet   = mf_prv(n)%SWnet*tmpreal
-          if(abs(mf_prv(n)%PARdrct-nodata_generic)>nodata_tol_generic) then
-             ! assume that PARdffs is available whenever PARdrct is
-             mf_ntp(n)%PARdrct = mf_prv(n)%PARdrct*tmpreal
-             mf_ntp(n)%PARdffs = mf_prv(n)%PARdffs*tmpreal
-          end if
-
-       elseif ((zth(n) <= 0.) .and. (zenav(n) <= 0.)) then
+       elseif ((zth(n) <= 0.) .and. (zenav(n) <= 0.)) then  ! not sure this makes sense, leave for now, - reichle, 23 Apr 2021
 
           mf_ntp(n)%SWdown  = max(0., mf_prv(n)%SWdown)
-          mf_ntp(n)%SWnet   = max(0., mf_prv(n)%SWnet)    ! no-data handling done below
-          mf_ntp(n)%PARdrct = max(0., mf_prv(n)%PARdrct)  ! no-data handling done below
-          mf_ntp(n)%PARdffs = max(0., mf_prv(n)%PARdffs)  ! no-data handling done below
+          mf_ntp(n)%PARdrct = max(0., mf_prv(n)%PARdrct)
+          mf_ntp(n)%PARdffs = max(0., mf_prv(n)%PARdffs)
 
        else
 
           mf_ntp(n)%SWdown  = 0.
-          mf_ntp(n)%SWnet   = 0.   ! no-data handling done below
-          mf_ntp(n)%PARdrct = 0.   ! no-data handling done below
-          mf_ntp(n)%PARdffs = 0.   ! no-data handling done below
+          mf_ntp(n)%PARdrct = 0.
+          mf_ntp(n)%PARdffs = 0.
 
        end if
 
        ! cap shortwave radiation at (cosine of) sun angle times solar constant
        ! reichle, 14 Aug 2002
-       mf_ntp(n)%SWdown = min( mf_ntp(n)%SWdown, 1360.*sunang_ntp )
-
-       ! cap SWnet at SWdown
-       mf_ntp(n)%SWnet  = min( mf_ntp(n)%SWnet, mf_ntp(n)%SWdown )
-
-       ! reinstate no-data-values
-       if(abs(mf_prv(n)%SWnet-nodata_generic)<nodata_tol_generic)  &
-            mf_ntp(n)%SWnet = nodata_generic
-       if ( (abs(mf_prv(n)%PARdrct-nodata_generic)<nodata_tol_generic) ) then
-          ! assume that PARdffs is no-data whenever PARdrct is
-          mf_ntp(n)%PARdrct = nodata_generic
-          mf_ntp(n)%PARdffs = nodata_generic
-       end if
+       mf_ntp(n)%SWdown = min( mf_ntp(n)%SWdown, 1360.*sunang_ntp ) ! this should probably applied proportionally to PAR, - reichle, 23 Apr 2021
 
     end do
 
