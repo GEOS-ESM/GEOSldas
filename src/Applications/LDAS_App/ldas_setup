@@ -1508,7 +1508,7 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '#                  [At NCCS: Use command "getsponsor" to see available account number(s).]'  
     print '# - walltime     = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
     print '# - ntasks_model = number of processors requested for the model (output server is not included)'
-    print '# - ntasks-per-node  = number of tasks per node(  >28 , sky will be allocated, <=28 sky or hasw'
+    print '# - ntasks-per-node  = number of tasks per node(if >28 , skylake nodes will be allocated, else skylake or haswell'
     print '#'
     for key in rqdRmInpKeys:
         print key + ':'
