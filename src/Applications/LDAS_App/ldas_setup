@@ -51,11 +51,11 @@ class LDASsetup:
         # ------
         # Required resource manager input fields
         # ------
-        rqdRmInpKeys = ['rm_name', 'account', 'walltime', 'ntasks']
+        rqdRmInpKeys = ['account', 'walltime', 'ntasks_model', 'ntasks-per-node']
         # ------
         # Optional resource manager input fields
         # ------
-        optSlurmInpKeys = ['job_name', 'constraint','qos']
+        optSlurmInpKeys = ['job_name', 'qos', 'oserver_nodes', 'writers-per-node']
 
         # ------
         # ./ldsetup.py sample ...
@@ -404,17 +404,15 @@ class LDASsetup:
             self.rqdRmInp[key] = inpDictFromFile.pop(key)
 
         # checks on rqd rm inputs
-        ## for now, we only support SLURM
-        assert self.rqdRmInp['rm_name'].upper() == 'SLURM'
         ## account and walltime should exist
         assert self.rqdRmInp['account']
         if cmdLineArgs['account'] != 'None':
            self.rqdRmInp['account'] = cmdLineArgs['account']
         assert self.rqdRmInp['walltime']
-        ## ntasks is a +ve integer
-        _ntasks = int(self.rqdRmInp['ntasks'])
+        ## ntasks_model is a +ve integer
+        _ntasks = int(self.rqdRmInp['ntasks_model'])
         assert _ntasks>0
-        self.rqdRmInp['ntasks'] = _ntasks
+        self.rqdRmInp['ntasks_model'] = _ntasks
         _ntasks = None
 
         # print rqd rm inputs
@@ -462,6 +460,27 @@ class LDASsetup:
         tmp_expid = None
         tmp_expdir = None
 
+        my_ntasks_per_node = int(self.rqdRmInp['ntasks-per-node'])
+
+        # default number of nodes
+        my_nodes = self.rqdRmInp['ntasks_model'] / my_ntasks_per_node
+        if self.rqdRmInp['ntasks_model'] % my_ntasks_per_node > 0 :
+           my_nodes = my_nodes + 1
+
+        # default is set to 0 ( no output server)
+        if 'oserver_nodes' not in self.optRmInp :
+           self.optRmInp['oserver_nodes'] = 0
+        
+        self.optRmInp['nodes'] = my_nodes + int(self.optRmInp['oserver_nodes'])
+
+        if (int(self.optRmInp['oserver_nodes']) >=1) :
+           self.rqdExeInp['WRITE_RESTART_BY_OSERVER'] = "YES"
+           # set default for now
+           if 'writers-per-node' not in self.optRmInp:
+              self.optRmInp['writers-per-node'] = 5
+        else:
+           self.optRmInp['writers-per-node'] = 0
+           
 
     def _parseInputFile(self, inpfile):
         """
@@ -934,14 +953,14 @@ class LDASsetup:
             os.remove('optimized_distribution')
     
         print  "Optimizing... decomposition of processes.... \n"
-        cmd = './preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks'])
+        cmd = './preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model'])
         print "cmd:   " + cmd
         sp.call(cmd,shell=True)
         optinxny=self._parseInputFile('optimized_distribution')
         if (int(optinxny['NX']) == 1):
-            if int(optinxny['NY']) != int(self.rqdRmInp['ntasks']):
-                self.rqdRmInp['ntasks']=optinxny['NY']
-                print 'adjust ntasks %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks'])
+            if int(optinxny['NY']) != int(self.rqdRmInp['ntasks_model']):
+                self.rqdRmInp['ntasks_model']=optinxny['NY']
+                print 'adjust ntasks_model %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks_model'])
         
         if os.path.isfile('IMS.rc') :
             shutil.move('IMS.rc', self.rundir+'/')
@@ -1117,57 +1136,12 @@ class LDASsetup:
         status=True
         return status
 
-    def _getRMdirectives(self, start):
-
-        _rm_name = self.rqdRmInp['rm_name']
-        expid = self.rqdExeInp['EXP_ID']
-        if _rm_name=='SLURM':
-            directives = ''
-            # REQUIRED directives account/time/ntasks
-            directives += '#SBATCH --account=%s\n' % self.rqdRmInp['account']
-            directives += '#SBATCH --time=%s\n' % self.rqdRmInp['walltime']
-            directives += '#SBATCH --ntasks=%s\n' % self.rqdRmInp['ntasks']
-            # OPTIONAL directives
-            for key, val in self.optRmInp.iteritems():
-                directives += '#SBATCH --%s=%s\n' % (key, val)
-            # out/err files in rc_out
-            myDateTime = '%04d%02d%02d_%02d%02dz' % \
-                (start.year, start.month, start.day,start.hour,start.minute)
-            outfile = os.path.relpath(
-                '/'.join([
-                        self.outdir,
-                        self.rqdExeInp['EXP_DOMAIN'],
-                        'rc_out',
-                        'Y%04d' % start.year,
-                        'M%02d' % start.month,
-                        '.'.join([expid, 'ldas_log', myDateTime, 'txt']),
-                        ]),
-                self.rundir)
-            errfile = os.path.relpath(
-                '/'.join([
-                        self.outdir,
-                        self.rqdExeInp['EXP_DOMAIN'],
-                        'rc_out',
-                        'Y%04d' % start.year,
-                        'M%02d' % start.month,
-                        '.'.join([expid, 'ldas_err', myDateTime, 'txt']),
-                        ]),
-                self.rundir)
-            directives += '#SBATCH --output=%s\n' % outfile
-            directives += '#SBATCH --error=%s\n' % errfile
-        else:
-            raise Exception
-        
-        return directives
-
-
     def createBatchRun(self):
         """
         """
 
         status = False
 
-        rm_name = self.rqdRmInp['rm_name'].lower()
         os.chdir(self.rundir)
         fout =open(self.rundir+'/ldas_batchrun.j','w')
         fout.write("#!/bin/bash -f\n")
@@ -1221,7 +1195,6 @@ class LDASsetup:
 
         status = False
 
-        rm_name = self.rqdRmInp['rm_name'].lower()
         os.chdir(self.rundir)
         lenkf=self.blddir+'/etc/lenkf.j.template'
         shutil.copy(lenkf,'lenkf.j')
@@ -1233,10 +1206,6 @@ class LDASsetup:
         my_job=self.rqdExeInp['EXP_ID']
         if 'job_name' in self.optRmInp :
             my_job = self.optRmInp['job_name']
-
-        my_constraint=''
-        if 'constraint' in self.optRmInp :
-            my_constraint = self.optRmInp['constraint']
 
         start = self.begDates[0]
         expid = self.rqdExeInp['EXP_ID']
@@ -1269,16 +1238,20 @@ class LDASsetup:
                         fout.write(line.replace('MY_ACCOUNT',self.rqdRmInp['account']))
                     elif 'MY_WALLTIME' in line :
                         fout.write(line.replace('MY_WALLTIME',self.rqdRmInp['walltime']))
-                    elif 'MY_NTASKS' in line :
-                        fout.write(line.replace('MY_NTASKS',str(self.rqdRmInp['ntasks'])))
+                    elif 'MY_NODES' in line :
+                        line_ = line.replace('MY_NODES',str(self.optRmInp['nodes']))
+                        fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
+                        if int(self.rqdRmInp['ntasks-per-node']) > 28:
+                           fout.write("#SBATCH --constraint=sky\n")
+                    elif 'MY_OSERVER_NODES' in line :
+                        fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
+                    elif 'MY_WRITERS_NPES' in line :
+                        fout.write(line.replace('MY_WRITERS_NPES', str(self.optRmInp['writers-per-node'])))
                     elif 'MY_QOS' in line :
                         if 'allnccs' not in my_qos:
                            fout.write(line.replace('MY_QOS',my_qos))
                     elif 'MY_JOB' in line :
                         fout.write(line.replace('MY_JOB',my_job))
-                    elif 'MY_CONS' in line :
-                        if my_constraint!='' :
-                            fout.write(line.replace('MY_CONS',my_constraint))
                     elif 'MY_EXPID' in line :
                         fout.write(line.replace('MY_EXPID',self.rqdExeInp['EXP_ID']))
                     elif 'MY_EXPDOMAIN' in line :
@@ -1531,26 +1504,28 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# REQUIRED inputs'
     print '#'
     print '# NOTE:'
-    print '# - rm_name    = resource manager name'
-    print '#                  [At NCCS: Use "SLURM"; PBS is no longer used.'
-    print '# - account    = computational project number'
+    print '# - account      = computational project number'
     print '#                  [At NCCS: Use command "getsponsor" to see available account number(s).]'  
-    print '# - walltime   = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
-    print '# - ntasks     = number of processors requested'
+    print '# - walltime     = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
+    print '# - ntasks_model = number of processors requested for the model (output server is not included)'
+    print '# - ntasks-per-node  = number of tasks per node(if >28 , skylake nodes will be allocated, else skylake or haswell'
     print '#'
     for key in rqdRmInpKeys:
-        print key.ljust(23), ':'
+        print key + ':'
     print
     print '#'
     print '# OPTIONAL inputs'
     print '#'
     print '# NOTE:'
     print '# - job_name   = name of experiment; default is "exp_id"'
-    print '# - constraint = type of processors requested; default is no constraint.'
     print '# - qos        = quality-of-service; do not specify by default; specify "debug" for faster but limited service.'
+    print '# - oserver_nodes    = number of nodes for oserver ( default is 0 )'
+    print '# - writers-per-node = tasks per oserver_node for writing ( default is 5 ),'
+    print '#      IMPORTANT REQUIREMENT: total #writers = writers-per-node * oserver_nodes >= 2'
+    print '#      Jobs will hang when oserver_nodes = writers-per-node = 1.'
     print '#'
     for key in optRmInpKeys:
-        print '#'+key.ljust(23), ':'
+        print '#'+key + ':'
     
 def parseCmdLine():
     """

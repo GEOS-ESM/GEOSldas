@@ -12,9 +12,8 @@
 #SBATCH --error=../scratch/GEOSldas_err_txt
 #SBATCH --account=MY_ACCOUNT
 #SBATCH --time=MY_WALLTIME
-#SBATCH --ntasks=MY_NTASKS
+#SBATCH --nodes=MY_NODES --ntasks-per-node=MY_NTASKS_PER_NODE
 #SBATCH --job-name=MY_JOB
-#SBATCH --constraint=MY_CONS
 #SBATCH --qos=MY_QOS
 
 #######################################################################
@@ -142,8 +141,9 @@ endif
 #######################################################################
 #                      Domain Decomposition
 #######################################################################
-
-set numprocs = `head -n 20 $HOMDIR/lenkf.j | grep ntasks | cut -d'=' -f2`
+set npes_nx = `grep NX: LDAS.rc | cut -d':' -f2 `
+set npes_ny = `grep NY: LDAS.rc | cut -d':' -f2 `
+@ numprocs = $npes_nx * $npes_ny
 if( -e IMS.rc ) then
    set oldtasks = `head -n 1 IMS.rc`
    if($numprocs != $oldtasks) then
@@ -353,7 +353,18 @@ while ( $counter <= ${NUM_SGMT} )
       exit
    endif
    
-   $RUN_CMD $numprocs $GEOSBIN/GEOSldas.x
+   @ oserver_nodes = MY_OSERVER_NODES
+   @ writers = MY_WRITERS_NPES
+
+   set total_npes = $SLURM_NTASKS
+
+   if ($oserver_nodes == 0) then
+      set oserver_options = ""
+   else
+      set oserver_options = "--oserver_type multigroup --nodes_output_server $oserver_nodes  --npes_backend_pernode $writers"
+   endif
+
+   $RUN_CMD $total_npes $GEOSBIN/GEOSldas.x --npes_model $numprocs $oserver_options 
    
    if( -e EGRESS.ldas ) then
       set rc = 0
