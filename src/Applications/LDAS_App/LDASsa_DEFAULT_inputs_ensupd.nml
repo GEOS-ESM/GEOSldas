@@ -5,6 +5,9 @@
 ! reichle,      13 Jun 2011 - updated for SMOS angles and downscaling ("FOV")
 ! reichle,       8 Jun 2017 - added "%flistpath" and "%flistname"; updated comments
 ! qliu+reichle, 29 Apr 2020 - added forecast error covariance inflation 
+! qzhang,wjiang,reichle,
+!                7 May 2021 - removed "dtstep_assim" and "centered_update"; replaced with MAPL
+!                             resource parameters "LANDASSIM_DT" and "LANDASSIM_T0" (in LDAS.rc)
 !
 ! --------------------------------------------------------------------
 
@@ -31,15 +34,6 @@
 ! update_type = 10: 3d soil moisture excl catdef/Tskin/ght(1);                             TB obs
 
 update_type = 0
-
-dtstep_assim = 10800   !  time step of assimilation (EnKF) updates
-
-! if "centered_update==.true." conduct first assimilation (EnKF) update 
-! after dtstep_assim/2 seconds (eg., at 1:30z when restarted at 0z with 
-! dtstep_assim of 3 hours), otherwise first update occurs after 
-! dtstep_assim seconds
-
-centered_update = .false.
 
 out_obslog      = .true.
 out_ObsFcstAna  = .false.

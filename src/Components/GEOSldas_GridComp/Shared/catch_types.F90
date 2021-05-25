@@ -1046,10 +1046,10 @@ contains
     
     implicit none
     
-    real, dimension(N_snow,N_cat) :: catprogn2wesn
-    
     integer,                                intent(in) :: N_cat
     type(cat_progn_type), dimension(N_cat), intent(in) :: cat_progn
+    
+    real, dimension(N_snow,N_cat) :: catprogn2wesn
     
     ! local variables
     
@@ -1071,10 +1071,10 @@ contains
     
     implicit none
     
-    real, dimension(N_snow,N_cat) :: catprogn2htsn
-    
     integer,                                intent(in) :: N_cat
     type(cat_progn_type), dimension(N_cat), intent(in) :: cat_progn
+    
+    real, dimension(N_snow,N_cat) :: catprogn2htsn
     
     ! local variables
     
@@ -1096,10 +1096,10 @@ contains
     
     implicit none
     
-    real, dimension(N_snow,N_cat) :: catprogn2sndz
-    
     integer,                                intent(in) :: N_cat
     type(cat_progn_type), dimension(N_cat), intent(in) :: cat_progn
+    
+    real, dimension(N_snow,N_cat) :: catprogn2sndz
     
     ! local variables
     
@@ -1121,10 +1121,10 @@ contains
     
     implicit none
     
-    real, dimension(N_gt,N_cat) :: catprogn2ghtcnt
-    
     integer,                                intent(in) :: N_cat
     type(cat_progn_type), dimension(N_cat), intent(in) :: cat_progn
+    
+    real, dimension(N_gt,N_cat) :: catprogn2ghtcnt
     
     ! local variables
     
