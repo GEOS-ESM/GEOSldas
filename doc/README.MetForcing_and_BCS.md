@@ -105,6 +105,11 @@ SMAP L4_SM Version 5
   MET_PATH : /discover/nobackup/projects/gmao/geos_carb/fzeng/FORECASTS/GEOS5/CLIM/GEOS5v2/BCSD_Final/6-hourly/                 
 ```  
 
+#### Forcing from post-processed AODAS outputs
+
+```                                                                                                                         
+  MET_PATH : /discover/nobackup/jpark50/S2S_Forcing/step4/                 
+```  
 COMMONLY USED values for `MET_TAG`:
 ------------------------------------
 
@@ -261,6 +266,16 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GEOSs2sFcstBiasCorr__[ensX]__[MMMDD]
 ```
 
+#### Forcing from post-processed AODAS outputs
+
+ - Forcing derived through post-processing of daily averaged output from AODAS.
+   AODAS outputs collected from 2d_Radiation_Diagnostics (geosgcm_rad) and 
+   2d_Surface_diagnostic (geosgcm_surf) collection.
+   hourly diurnal cycle imposed from MERRA-2 climatology. 
+   Available from June, 2012 
+```
+  MET_TAG  : GEOSs2s__AODAS
+```
 
 Boundary Conditions  
 ================================================================================
