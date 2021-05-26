@@ -99,17 +99,14 @@ SMAP L4_SM Version 5
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-#### Forcing from post-processed GEOS S2S forecasts (or hindcasts), incl. bias correction
+#### Forcing from post-processed output of the GEOS S2S system (FCST, AODAS)
 
 ```                                                                                                                         
-  MET_PATH : /discover/nobackup/projects/gmao/geos_carb/fzeng/FORECASTS/GEOS5/CLIM/GEOS5v2/BCSD_Final/6-hourly/                 
+  MET_PATH : [check with GMAO S2S group]
 ```  
 
-#### Forcing from post-processed AODAS outputs
 
-```                                                                                                                         
-  MET_PATH : /discover/nobackup/jpark50/S2S_Forcing/step4/                 
-```  
+
 COMMONLY USED values for `MET_TAG`:
 ------------------------------------
 
@@ -254,27 +251,26 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GEOS.fp.asm__precCPCUFLKG5FPv3                  ! (precip corr with first-look CPCU)
 ```
 
-#### Forcing from post-processed GEOS S2S forecasts (or hindcasts), incl. bias correction
+#### Forcing from post-processed output of the GEOS S2S system 
 
- - Forcing derived through post-processing of daily average output from GEOS S2S forecasts.
-   6-hourly diurnal cycle imposed from MERRA-2 climatology. 
-   Includes monthly bias correction to MERRA-2 climatology.
-   Must specify S2S ensemble member ('ensX'; currently: 'ens1', 'ens2', 'ens3', or 'ens4') 
-   and month/day of forecast initialization ('MMMDD'; e.g., 'jan01') 
-   separated by double underscores in the met_tag as follows: 
-```
-  MET_TAG  : GEOSs2sFcstBiasCorr__[ensX]__[MMMDD]
-```
+ - Forcing derived through post-processing of daily average output from the GEOS S2S system,
+   including S2S hindcasts/forecasts ("FCST") and the "AODAS" used for S2S initialization. 
 
-#### Forcing from post-processed AODAS outputs
+   S2S output is from the geosgcm_vis2d and geosgcm_surf Collections for FCST and from the 
+   geosgcm_rad and geosgcm_surf Collections for AODAS (see GMAO Office Note No. 16).
 
- - Forcing derived through post-processing of daily averaged output from AODAS.
-   AODAS outputs collected from 2d_Radiation_Diagnostics (geosgcm_rad) and 
-   2d_Surface_diagnostic (geosgcm_surf) collection.
-   hourly diurnal cycle imposed from MERRA-2 climatology. 
-   Available from June, 2012 
+   For FCST, post-processing includes a monthly bias correction to the MERRA-2 climatology.
+
+   Daily data are disaggregated to 6-hourly (FCST) or 1-hourly (AODAS) using the MERRA-2 
+   climatological diurnal cycle.
+
+   For FCST, MET_TAG must specify S2S ensemble member ('ensX'; currently: 'ens1', 'ens2', 
+   'ens3', or 'ens4') and month/day of forecast initialization ('MMMDD'; e.g., 'jan01'), 
+   separated by double underscores.
+
 ```
-  MET_TAG  : GEOSs2s__AODAS
+  MET_TAG  : GEOSs2sFCST__[ensX]__[MMMDD]
+  MET_TAG  : GEOSs2sAODAS
 ```
 
 Boundary Conditions  

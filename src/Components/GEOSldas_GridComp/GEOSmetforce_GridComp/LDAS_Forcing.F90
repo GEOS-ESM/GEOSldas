@@ -304,7 +304,7 @@ contains
 
     elseif (index(met_tag(1:7), 'GEOSs2s')/=0) then
 
-       call get_GEOSs2sFcst( date_time_tmp, met_path, met_tag, N_catd, tile_coord, &
+       call get_GEOSs2s( date_time_tmp, met_path, met_tag, N_catd, tile_coord, &
             MET_HINTERP, met_force_obs_tile_new, nodata_forcing)
 
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
@@ -314,7 +314,7 @@ contains
        call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,                 &
             N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                      &
             supported_option_MET_HINTERP,                                             &
-            supported_option_AEROSOL_DEPOSITION,                                      &            
+            supported_option_AEROSOL_DEPOSITION,                                      &
             met_force_obs_tile_new, nodata_forcing, PAR_available, MERRA_file_specs,  &
             init )
 
@@ -2603,18 +2603,22 @@ contains
 
   ! ************************************************************************
 
-
- subroutine get_GEOSs2sFcst(date_time, met_path, met_tag, N_catd, tile_coord, &
+  subroutine get_GEOSs2s(date_time, met_path, met_tag, N_catd, tile_coord, &
        met_hinterp, met_force_new, nodata_forcing)
 
-    ! read bias-corrected, 6-hourly forcing derived from GEOS S2S forecasts
-    ! and map to tile space (using nearest neighbor interpolation)
+    ! read forcing derived from GEOS S2S output and map to tile space
+    ! (using nearest neighbor or bilinear interpolation)
+    !
+    ! forcing derived through post-processing of daily average output from S2S
+    ! hindcasts/forecasts ("FCST") or the "AODAS" used for initialization
+    ! (see doc/README.MetForcing_and_BCS.md)
     !
     ! implementation follows LDASsa subroutines get_Princeton_netcdf() and get_GEOS(),
     ! fzeng, 24 Jun 2019
     !
-    ! jkolassa, 10 May 2021: modified for GEOSldas; met_tag encodes ID of ensemble
-    !                        member and and initial month/day
+    ! jkolassa,jmpark,reichle, 10 May 2021:
+    !   modified for GEOSldas; added AODAS; met_tag encodes ID of ensemble
+    !   member and initial month/day
 
     use netcdf
     implicit none
@@ -2623,345 +2627,363 @@ contains
     type(date_time_type), intent(in) :: date_time
 
     character(*),         intent(in) :: met_path
-    character(*),         intent(in) :: met_tag                                                             
-                                                                                                            
-    integer,              intent(in) :: N_catd, met_hinterp                                                 
-                                                                                                            
-    type(tile_coord_type), dimension(:), pointer       :: tile_coord     ! input                            
-                                                                                                            
-    type(met_force_type),  dimension(:), intent(inout) :: met_force_new                                     
-                                                                                                            
-    real,                 intent(out) :: nodata_forcing                                                     
-                                                                                                            
-                                                                                                            
-    ! Hindcast grid and netcdf parameters                                                                   
-                                                                                                            
-    integer, parameter :: GEOSgcm_grid_N_lon  = 576                                                         
-    integer, parameter :: GEOSgcm_grid_N_lat  = 361                                                         
-    real,    parameter :: GEOSgcm_grid_dlon   = 0.625 
-    real,    parameter :: GEOSgcm_grid_dlat   = 0.5                                                         
-    real,    parameter :: GEOSgcm_grid_ll_lon = -180. - GEOSgcm_grid_dlon/2.                                
-    real,    parameter :: GEOSgcm_grid_ll_lat =  -90. - GEOSgcm_grid_dlat/2.                                
-                                                                                                            
-    integer            :: dt_GEOSgcm_in_hours                                                               
-    integer            :: N_GEOSgcm_vars                                                                    
-    real,    parameter :: nodata_GEOSgcm = -9999.                                                           
-                                                                                                            
-    character(40), dimension(:), allocatable  :: GEOSgcm_name                                               
-                                                                                                            
-    ! local variables                                                                                       
-                                                                                                            
-    real    :: fnbr(2,2)                                                                                    
-                                                                                                            
-    integer, pointer :: i1(:), i2(:), j1(:), j2(:)                                                          
-    real,    pointer :: x1(:), x2(:), y1(:), y2(:)                                                          
-                                                                                                            
-    real,    dimension(:,:), allocatable  :: force_array                                                    
-                                                                                                            
-    integer, dimension(3)      :: iicount, iistart                                                          
-    integer                    :: k, hours_in_month, GEOSgcm_var, nciv_data                                 
-    integer                    :: fid, rc, nv_id, status                                                    
-                                                                                                            
-    real                       :: tol, this_lon, this_lat                                                   
-                                                                                                            
-    character(  5)             :: init_MMMDD                                                                
-    character(  4)             :: YYYY, ens_num                                                             
-    character(  2)             :: MM, DD                                                                    
-    character(300)             :: fname                                                                     
-                                                                                                            
-    character(10)              :: lat_str = 'latitude'                                                      
-    character(10)              :: lon_str = 'longitude'                                                     
-                                                                                                            
-    logical                    :: fcstBC = .false.                                                          
-    logical                    :: aodas = .false.
-                                                                                                            
-    character(len=*), parameter :: Iam = 'get_GEOSs2sFcst'                                                  
-    character(len=400)          :: err_msg                                                                  
-                                                                                                            
-    ! --------------------------------------------------------------------                                  
-    !                                                                                                       
-    ! preparations                                                                                          
-                                                                                                            
-    ! parse met_tag                                                                                         
-                                                                                                            
-    if (index(met_tag(10:21), 'FcstBiasCorr')/=0) then                                                      
-                                                                                                            
-       fcstBC = .true.                                                                                      
-                                                                                                            
-       ! set parameters                                                                                     
-       dt_GEOSgcm_in_hours = 6                                                                    
-       N_GEOSgcm_vars = 12                                                                        
-                                                                                                            
-       ! define variables                                                                                   
-       allocate(GEOSgcm_name(N_GEOSgcm_vars))                                                               
-       GEOSgcm_name = &                                                                           
-         (/ &                                                                                               
-         'PRECCON    ', &  !  1 - flux, convective_precipitation, kg m-2 s-1                                
-         'PRECSNO    ', &  !  2 - flux, snowfall, kg m-2 s-1                                                
-         'PRECTOTCORR', &  !  3 - flux, total_precipitation, kg m-2 s-1                                     
-         'LWGAB      ', &  !  4 - flux, surface_absorbed_longwave_radiation, W m-2                          
-         'SWGDN      ', &  !  5 - flux, surface_incoming_shortwave_flux, W m-2                              
-         'PARDR      ', &  !  6 - flux, surface_downwelling_par_beam_flux, W m-2                            
-         'PARDF      ', &  !  7 - flux, surface_downwelling_par_diffuse_flux, W m-2                         
-         'PS         ', &  !  8 - state, surface_pressure, Pa                                               
-         'QLML       ', &  ! 9  - state, surface_specific_humidity, kg kg-1                                 
-         'TLML       ', &  ! 10 - state, surface_air_temperature, K                                         
-         'SPEED      ', &  ! 11 - state, surface_wind_speed, m s-1                                          
-         'HLML       '  &  ! 12 - state, surface_layer_height, m                                            
-         /)                          
-                                                                                                            
-        ! parse ensemble and initialization month from met_tag                                              
-        ens_num   = trim(met_tag(24:27))                                                                    
-        init_MMMDD = trim(met_tag(30:34))                                                                   
-                                                                                                            
-    elseif  (index(met_tag(10:14), 'AODAS')/=0) then                                                        
-       aodas = .true.                                                                                       
-                                                                                                            
-       ! set parameters                                                                                     
-       dt_GEOSgcm_in_hours = 1                                                                    
-       N_GEOSgcm_vars = 10                                                                        
-                                                                                                            
-       ! define variables                                                                                   
-       allocate(GEOSgcm_name(N_GEOSgcm_vars))                                                               
-       GEOSgcm_name = (/ &                                                                       
-         'PRECCUCORR ', &  !  1 - flux, convective_precipitation, kg m-2 s-1                                
-         'PRECSNOCORR', &  !  2 - flux, snowfall, kg m-2 s-1                                                
-         'PRECLSCORR ', &  !  3 - flux, total_precipitation, kg m-2 s-1                                     
-         'LWGAB      ', &  !  4 - flux, surface_absorbed_longwave_radiation, W m-2                          
-         'SWGDN      ', &  !  5 - flux, surface_incoming_shortwave_flux, W m-2                              
-         'Psurf      ', &  !  6 - state, surface_pressure, Pa                                               
-         'QLML       ', &  !  7  - state, surface_specific_humidity, kg kg-1                                
-         'TLML       ', &  !  8 - state, surface_air_temperature, K                                         
-         'SPEEDML    ', &  !  9 - state, surface_wind_speed, ms-1                                           
-         'HLML       '/)  ! 10 - state, surface_layer_height, m                                             
-                                                                                                            
-    else                                                                                                    
-       err_msg = "unknown met_tag"                                                                          
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)                                                    
-    end if                                                                                                  
-                                                                                                            
-    nodata_forcing = nodata_GEOSgcm                                                                         
-                                                                                                            
-    tol = abs(nodata_forcing*nodata_tolfrac_generic)                                                        
-                                                                                                            
-    ! assemble year and month strings     
-                                                                                                            
-    write (YYYY, '(i4.4)') date_time%year                                                                   
-    write (MM,   '(i2.2)') date_time%month                                                                  
-    write (DD,   '(i2.2)') date_time%day                                                                    
-                                                                                                            
-    ! set lon index                                                                                         
-                                                                                                            
-    iistart(1) = 1                                                                                          
-    iicount(1) = GEOSgcm_grid_N_lon                                                                         
-                                                                                                            
-    ! set lat index                                                                                         
-    iistart(2) = 1                                                                                          
-    iicount(2) = GEOSgcm_grid_N_lat                                                                         
-                                                                                                            
-    ! get time index                                                                                        
-                                                                                                            
-    if ( (date_time%min/=0) .or. (date_time%sec/=0) .or.   &                                                
-         (mod(date_time%hour, dt_GEOSgcm_in_hours)/=0) ) then                                               
-                                                                                                            
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'timing ERROR!!')                                           
-                                                                                                            
-    endif                                                                                                   
-                                                                                                            
-    hours_in_month = (date_time%day-1)*24 + date_time%hour                                                  
-                                                                                                            
-    iistart(3) = hours_in_month / dt_GEOSgcm_in_hours + 1                                                   
-    iicount(3) = 1                                                                                          
-    ! ----------------------------------------------------------------                                      
-    !                                                                                                       
-    ! open input file                                                                                       
-                                                                                                            
-    if (fcstBC) then                                                                                        
-       fname = trim(met_path) // '/' // YYYY // '/' // init_MMMDD // '/' // ens_num // '/GEOS5.' // YYYY // MM // '.nc4'  
-    elseif (aodas) then                                                                                     
-       fname = trim(met_path) // '/S2S_hourly_' // YYYY// MM// '.nc4' 
-    endif 
-                                                                                                  
-    call GEOS_openfile(FileOpenedHash,fname,fid,tile_coord,met_hinterp,rc,lat_str,lon_str)            
-    if (rc<0) then                                                                                          
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error opening file')                                       
-    endif                                                                                                   
-                                                                                                            
-    ! assign indices from met forcing interpolation                                                         
-                                                                                                            
-    i1=>local_info%i1                                                                                       
-    i2=>local_info%i2                                                                                       
-    j1=>local_info%j1                                                                                       
-    j2=>local_info%j2                                                                                       
-    x1=>local_info%x1                                                                                       
-    x2=>local_info%x2                                                                                       
-    y1=>local_info%y1                                                                                       
-    y2=>local_info%y2                                                                                       
-                                                                                                            
-    ! allocate force_array                                                                                  
-                                                                                                            
-    allocate(force_array(N_catd,N_GEOSgcm_vars))                                                            
-                                                                                                            
-    ! loop over variables                                                                                   
-                                                                                                            
-    do GEOSgcm_var = 1,N_GEOSgcm_vars                                                                       
-                                                                                                            
-       if (GEOSgcm_var==1) then                                                                             
-          ! init share memory                                                                               
-          if( size(ptrShForce,1) /= GEOSgcm_grid_N_lon .or.    &                                            
-               size(ptrShForce,2) /= GEOSgcm_grid_N_lat ) then                                              
-             call MAPL_SyncSharedMemory(rc=status)                                                          
-             VERIFY_(status)                                                                                
-             if (associated(ptrShForce)) then                                                               
-                call MAPL_DeallocNodeArray(ptrShForce,rc=status)                                            
-                VERIFY_(status)                                                                             
-             endif            
-             call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)   
-             VERIFY_(status)                                                                                
-             call MAPL_SyncSharedMemory(rc=status)                                                          
-             VERIFY_(status)                                                                                
-          end if                                                                                            
-       endif ! (GEOSgcm_var==1)                                                                             
-       rc = 0                                                                                               
-       call MAPL_SyncSharedMemory(rc=status)                                                                
-                                                                                                            
-       ! read variable from netcdf file                                                                     
-       if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then                                           
-          rc= NF90_INQ_VARID( fid, trim(GEOSgcm_name(GEOSgcm_var)), nv_id)                                  
-          _ASSERT( rc == nf90_noerr, "nf90 error")                                                          
-          rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount)                            
-       end if                                                                                               
-                                                                                                            
-       call MAPL_SyncSharedMemory(rc=status)                                                                
-                                                                                                            
-       ! map variable array to force array using chosen met interpolation method                            
-                                                                                                            
-      select case (MET_HINTERP)                                                                             
-                                                                                                            
-      case(0)  ! nearest neighbor interpolation                                                             
-         do k = 1, N_catd                                                                                   
-            force_array(k, GEOSgcm_var) = ptrShForce(i1(k), j1(k))                                          
-         end do                                                                                             
-                                                                                                            
-      case (1)  ! bilinear interpolation                                                                    
-                                                                                                            
-          do k=1,N_catd                                                                                     
-             this_lon = tile_coord(k)%com_lon                                                               
-             this_lat = tile_coord(k)%com_lat                                                               
-                                                                                                            
-             fnbr(1,1) = ptrShForce(i1(k),j1(k))                                                            
-             fnbr(1,2) = ptrShForce(i1(k),j2(k))                                                            
-             fnbr(2,1) = ptrShForce(i2(k),j1(k))
-             fnbr(2,2) = ptrShForce(i2(k),j2(k))                                                            
-                                                                                                            
-             !DEC$ FORCEINLINE                                                                              
-             force_array(k,GEOSgcm_var) = BilinearInterpolation(this_lon, this_lat, &                       
-                  x1(k), x2(k), y1(k), y2(k), fnbr, nodata_forcing, tol)                                    
-          end do                                                                                            
-                                                                                                            
-       case default                                                                                         
-                                                                                                            
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported MET_HINTERP option')                        
-                                                                                                            
-       end select                                                                                           
-    end do ! GEOSgcm_var                                                                                    
-                                                                                                            
-    ! ----------------------------------------------------------------                                      
-                                                                                                            
-    ! convert variables and units of force_array to match met_force_type,                                   
-    ! put into structure                                                                                    
-                                                                                                            
-    ! from GEOSgcm files:                                                                                   
-    !                                                                                                       
-    !                     Hindcast                                                                          
-    !                                                                                                       
-    ! force_array(:, 1) = PRECCON        kg/m2/s (convective_precipitation, rainfall+snow)                  
-    ! force_array(:, 2) = PRECSNO        kg/m2/s (snowfall)                                                 
-    ! force_array(:, 3) = PRECTOTCORR    kg/m2/s (total_precipitation, rainfall+snow)                       
-    ! force_array(:, 4) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)                      
-    ! force_array(:, 5) = SWGDN          W/m2    (surface_incoming_shortwave_flux)                          
-    ! force_array(:, 6) = PARDR          W/m2    (surface_downwelling_par_beam_flux)                        
-    ! force_array(:, 7) = PARDF          W/m2    (surface_downwelling_par_diffuse_flux)                     
-    ! force_array(:, 8) = PS             Pa      (surface_pressure)                                         
-    ! force_array(:, 9) = QLML           kg/kg   (surface_specific_humidity)                                
-    ! force_array(:,10) = TLML           K       (surface_air_temperature)                                  
-    ! force_array(:,11) = SPEED          m/s     (surface_wind_speed)                                       
-    ! force_array(:,12) = HLML           m       (surface_layer_height) 
-                                                                                                            
-    !                     AODAS                                                                             
-    !                                                                                                       
-    ! force_array(:, 1) = PRECCON        kg/m2/s (convective_precipitation, rainfall+snow)                  
-    ! force_array(:, 2) = PRECSNO        kg/m2/s (snowfall)                                                 
-    ! force_array(:, 3) = PRECTOTCORR    kg/m2/s (total_precipitation, rainfall+snow)                       
-    ! force_array(:, 4) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)                      
-    ! force_array(:, 5) = SWGDN          W/m2    (surface_incoming_shortwave_flux)                          
-    ! force_array(:, 6) = Psurf             Pa      (surface_pressure)                                      
-    ! force_array(:, 7) = QLML           kg/kg   (surface_specific_humidity)                                
-    ! force_array(:,8)  = TLML           K       (surface_air_temperature)                                  
-    ! force_array(:,9)  = SPEED          m/s     (surface_wind_speed)                                       
-    ! force_array(:,10) = HLML           m       (surface_layer_height)                                     
-                                                                                                            
-    ! rainfall                                                                                              
-    ! Rainf = convective rainfall + large-scale rainfall                                                    
-    ! follow code in GEOS_SurfaceGridComp.F90 to compute convective and large-scale rain                    
-    ! from convective precip, total precip, and total snowfall                                              
-                                                                                                            
-    do k=1,N_catd                                                                                           
-                                                                                                            
-       if ( (abs(force_array(k,1)-nodata_GEOSgcm)<tol) .or.               &                                 
-            (abs(force_array(k,2)-nodata_GEOSgcm)<tol) .or.               &                                 
-            (abs(force_array(k,3)-nodata_GEOSgcm)<tol)       )  then                                        
-                                                                                                            
-          met_force_new(k)%Rainf_C = nodata_forcing                                                         
-          met_force_new(k)%Snowf   = nodata_forcing                                                         
-          met_force_new(k)%Rainf   = nodata_forcing                                                         
-                                                                                                            
-       else                                                                                                 
-                                                                                                            
-          met_force_new(k)%Snowf   = force_array(k,2)                                                       
-          met_force_new(k)%Rainf   = force_array(k,3) - force_array(k,2)                                    
-          if (force_array(k,3) > 0.) then                                                                   
-             met_force_new(k)%Rainf_C = force_array(k,1) * (1.0 - force_array(k,2)/force_array(k,3))        
-          end if 
-          ! ensure that large-scale rainfall >=0                                                            
-          if (met_force_new(k)%Rainf - met_force_new(k)%Rainf_C < 0.) then                                  
-             met_force_new(k)%Rainf_C = met_force_new(k)%Rainf                                              
-          end if                                                                                            
-                                                                                                            
-       end if                                                                                               
-                                                                                                            
-    end do                                                                                                  
-                                                                                                            
-    if (fcstBC) then                                                                                        
-      met_force_new%LWdown    = force_array(:, 4)                                                           
-      met_force_new%SWdown    = force_array(:, 5)                                                           
-      met_force_new%PARdrct   = force_array(:, 6)                                                           
-      met_force_new%PARdffs   = force_array(:, 7)                                                           
-      met_force_new%Psurf     = force_array(:, 8)                                                           
-      met_force_new%Qair      = force_array(:, 9)                                                           
-      met_force_new%Tair      = force_array(:, 10)                                                          
-      met_force_new%Wind      = force_array(:, 11)                                                          
-      met_force_new%RefH      = force_array(:, 12)                                                          
-    elseif (aodas) then                                                                                     
-      met_force_new%LWdown    = force_array(:, 4)                                                             
-      met_force_new%SWdown    = force_array(:, 5)                                                             
-      met_force_new%Psurf     = force_array(:, 6)                                                             
-      met_force_new%Qair      = force_array(:, 7)                                                             
-      met_force_new%Tair      = force_array(:, 8)                                                             
-      met_force_new%Wind      = force_array(:, 9)                                                             
-      met_force_new%RefH      = force_array(:, 10)                                                          
-    end if                                                                                                  
-      
-    deallocate(force_array)                                                                                 
-    deallocate(GEOSgcm_name)                                                                                
-                                                                                                            
-  end subroutine get_GEOSs2sFcst       
-! *************************************************************************
+    character(*),         intent(in) :: met_tag
+    
+    integer,              intent(in) :: N_catd, met_hinterp
+    
+    type(tile_coord_type), dimension(:), pointer       :: tile_coord     ! input
 
+    type(met_force_type),  dimension(:), intent(inout) :: met_force_new
+    
+    real,                 intent(out) :: nodata_forcing
+
+    ! Hindcast grid and netcdf parameters
+
+    integer, parameter :: GEOSgcm_grid_N_lon  = 576
+    integer, parameter :: GEOSgcm_grid_N_lat  = 361
+    real,    parameter :: GEOSgcm_grid_dlon   = 0.625
+    real,    parameter :: GEOSgcm_grid_dlat   = 0.5
+    real,    parameter :: GEOSgcm_grid_ll_lon = -180. - GEOSgcm_grid_dlon/2.
+    real,    parameter :: GEOSgcm_grid_ll_lat =  -90. - GEOSgcm_grid_dlat/2.
+
+    real,    parameter :: nodata_GEOSgcm = -9999.
+
+    integer, parameter :: dt_GEOSgcm_in_hours_FCST  =  6
+    integer, parameter :: dt_GEOSgcm_in_hours_AODAS =  1
+
+    integer, parameter :: N_GEOSgcm_vars_FCST       = 12
+    integer, parameter :: N_GEOSgcm_vars_AODAS      = 10
+
+    character(40), dimension(N_GEOSgcm_vars_FCST) :: GEOSgcm_name_FCST = &
+         (/             &
+         'PRECCON    ', &  !  1 - flux,  convective_precipitation,             kg m-2 s-1
+         'PRECSNO    ', &  !  2 - flux,  snowfall,                             kg m-2 s-1
+         'PRECTOTCORR', &  !  3 - flux,  total_precipitation,                  kg m-2 s-1
+         'LWGAB      ', &  !  4 - flux,  surface_absorbed_longwave_radiation,  W m-2
+         'SWGDN      ', &  !  5 - flux,  surface_incoming_shortwave_flux,      W m-2
+         'PARDR      ', &  !  6 - flux,  surface_downwelling_par_beam_flux,    W m-2
+         'PARDF      ', &  !  7 - flux,  surface_downwelling_par_diffuse_flux, W m-2
+         'PS         ', &  !  8 - state, surface_pressure,                     Pa
+         'QLML       ', &  !  9 - state, surface_specific_humidity,            kg kg-1
+         'TLML       ', &  ! 10 - state, surface_air_temperature,              K
+         'SPEED      ', &  ! 11 - state, surface_wind_speed,                   m s-1
+         'HLML       '  &  ! 12 - state, surface_layer_height,                 m
+         /)
+
+    character(40), dimension(N_GEOSgcm_vars_AODAS) :: GEOSgcm_name_AODAS = &
+         (/             &
+         'PRECCUCORR ', &  !  1 - flux,  convective_precipitation,             kg m-2 s-1
+         'PRECSNOCORR', &  !  2 - flux,  snowfall,                             kg m-2 s-1
+         'PRECLSCORR ', &  !  3 - flux,  total_precipitation,                  kg m-2 s-1
+         'LWGAB      ', &  !  4 - flux,  surface_absorbed_longwave_radiation,  W m-2
+         'SWGDN      ', &  !  5 - flux,  surface_incoming_shortwave_flux,      W m-2
+         'Psurf      ', &  !  6 - state, surface_pressure,                     Pa
+         'QLML       ', &  !  7 - state, surface_specific_humidity,            kg kg-1
+         'TLML       ', &  !  8 - state, surface_air_temperature,              K
+         'SPEEDML    ', &  !  9 - state, surface_wind_speed,                   m s-1
+         'HLML       '/)   ! 10 - state, surface_layer_height,                 m
+
+    ! local variables
+
+    character(40), dimension(:), allocatable  :: GEOSgcm_name
+
+    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours
+
+    real    :: fnbr(2,2)
+
+    integer, pointer :: i1(:), i2(:), j1(:), j2(:)
+    real,    pointer :: x1(:), x2(:), y1(:), y2(:)
+
+    real,    dimension(:,:), allocatable  :: force_array
+
+    integer, dimension(3)      :: iicount, iistart
+    integer                    :: k, hours_in_month, GEOSgcm_var, nciv_data
+    integer                    :: fid, rc, nv_id, status
+
+    real                       :: tol, this_lon, this_lat
+
+    character(  5)             :: init_MMMDD
+    character(  4)             :: YYYY, ens_num
+    character(  2)             :: MM, DD
+    character(300)             :: fname
+
+    character(10)              :: lat_str = 'latitude'
+    character(10)              :: lon_str = 'longitude'
+
+    logical                    :: FCST  = .false.
+    logical                    :: AODAS = .false.
+
+    character(len=*), parameter :: Iam = 'get_GEOSs2s'
+    character(len=400)          :: err_msg
+
+    ! --------------------------------------------------------------------
+    !
+    ! preparations
+
+    ! parse met_tag
+
+    ! 123456789012345678901234
+    ! GEOSs2sFCST__ensX__MMMDD
+    ! GEOSs2sAODAS
+
+    if     (index(met_tag(8:11), 'FCST')/=0) then
+
+       FCST = .true.
+
+       dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_FCST
+       N_GEOSgcm_vars      = N_GEOSgcm_vars_FCST
+
+       allocate(GEOSgcm_name(N_GEOSgcm_vars))
+
+       GEOSgcm_name = GEOSgcm_name_FCST
+
+       ! parse ensemble and initialization month from met_tag
+
+       ens_num    = trim(met_tag(14:17))
+       init_MMMDD = trim(met_tag(20:24))
+
+    elseif (index(met_tag(8:12), 'AODAS')/=0) then
+
+       AODAS = .true.
+
+       dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_AODAS
+       N_GEOSgcm_vars      = N_GEOSgcm_vars_AODAS
+
+       allocate(GEOSgcm_name(N_GEOSgcm_vars))
+
+       GEOSgcm_name = GEOSgcm_name_AODAS
+
+    else
+
+       err_msg = "unknown met_tag"
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+
+    end if
+
+    nodata_forcing = nodata_GEOSgcm
+
+    tol = abs(nodata_forcing*nodata_tolfrac_generic)
+
+    ! assemble year and month strings
+
+    write (YYYY, '(i4.4)') date_time%year
+    write (MM,   '(i2.2)') date_time%month
+    write (DD,   '(i2.2)') date_time%day
+
+    ! set lon index
+
+    iistart(1) = 1
+    iicount(1) = GEOSgcm_grid_N_lon
+
+    ! set lat index
+    iistart(2) = 1
+    iicount(2) = GEOSgcm_grid_N_lat
+
+    ! get time index
+
+    if ( (date_time%min/=0) .or. (date_time%sec/=0) .or.              &
+         (mod(date_time%hour, dt_GEOSgcm_in_hours)/=0) ) then
+
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'timing ERROR!!')
+
+    endif
+
+    hours_in_month = (date_time%day-1)*24 + date_time%hour
+
+    iistart(3) = hours_in_month / dt_GEOSgcm_in_hours + 1
+    iicount(3) = 1
+
+    ! ----------------------------------------------------------------
+    !
+    ! open input file
+
+    if     (FCST)  then
+       fname = trim(met_path) // '/' // YYYY // '/' // init_MMMDD // '/' // ens_num // '/GEOS5.' // YYYY // MM // '.nc4'
+    elseif (AODAS) then
+       fname = trim(met_path) // '/S2S_hourly_' // YYYY// MM// '.nc4'
+    endif
+
+    call GEOS_openfile(FileOpenedHash,fname,fid,tile_coord,met_hinterp,rc,lat_str,lon_str)
+    if (rc<0) then
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error opening file')
+    endif
+
+    ! assign indices from met forcing interpolation
+
+    i1=>local_info%i1
+    i2=>local_info%i2
+    j1=>local_info%j1
+    j2=>local_info%j2
+    x1=>local_info%x1
+    x2=>local_info%x2
+    y1=>local_info%y1
+    y2=>local_info%y2
+
+    ! allocate force_array
+
+    allocate(force_array(N_catd,N_GEOSgcm_vars))
+
+    ! loop over variables
+
+    do GEOSgcm_var = 1,N_GEOSgcm_vars
+
+       if (GEOSgcm_var==1) then
+          ! init share memory
+          if( size(ptrShForce,1) /= GEOSgcm_grid_N_lon .or.    &
+               size(ptrShForce,2) /= GEOSgcm_grid_N_lat ) then
+             call MAPL_SyncSharedMemory(rc=status)
+             VERIFY_(status)
+             if (associated(ptrShForce)) then
+                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
+                VERIFY_(status)
+             endif
+             call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
+             VERIFY_(status)
+             call MAPL_SyncSharedMemory(rc=status)
+             VERIFY_(status)
+          end if
+       endif ! (GEOSgcm_var==1)
+       rc = 0
+       call MAPL_SyncSharedMemory(rc=status)
+
+       ! read variable from netcdf file
+       if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
+          rc= NF90_INQ_VARID( fid, trim(GEOSgcm_name(GEOSgcm_var)), nv_id)
+          _ASSERT( rc == nf90_noerr, "nf90 error")
+          rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount)
+       end if
+
+       call MAPL_SyncSharedMemory(rc=status)
+
+       ! map variable array to force array using chosen met interpolation method
+
+       select case (MET_HINTERP)
+
+       case(0)  ! nearest neighbor interpolation
+          do k = 1, N_catd
+             force_array(k, GEOSgcm_var) = ptrShForce(i1(k), j1(k))
+          end do
+
+       case (1)  ! bilinear interpolation
+
+          do k=1,N_catd
+             this_lon = tile_coord(k)%com_lon
+             this_lat = tile_coord(k)%com_lat
+
+             fnbr(1,1) = ptrShForce(i1(k),j1(k))
+             fnbr(1,2) = ptrShForce(i1(k),j2(k))
+             fnbr(2,1) = ptrShForce(i2(k),j1(k))
+             fnbr(2,2) = ptrShForce(i2(k),j2(k))
+
+             !DEC$ FORCEINLINE
+             force_array(k,GEOSgcm_var) = BilinearInterpolation(this_lon, this_lat, &
+                  x1(k), x2(k), y1(k), y2(k), fnbr, nodata_forcing, tol)
+          end do
+
+       case default
+
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported MET_HINTERP option')
+
+       end select
+    end do ! GEOSgcm_var
+
+    ! ----------------------------------------------------------------
+
+    ! convert variables and units of force_array to match met_force_type,
+    ! put into structure
+
+    ! from GEOSgcm files:
+    !
+    !                     Hindcast
+    !
+    ! force_array(:, 1) = PRECCON        kg/m2/s (convective_precipitation, rainfall+snow)
+    ! force_array(:, 2) = PRECSNO        kg/m2/s (snowfall)
+    ! force_array(:, 3) = PRECTOTCORR    kg/m2/s (total_precipitation, rainfall+snow)
+    ! force_array(:, 4) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
+    ! force_array(:, 5) = SWGDN          W/m2    (surface_incoming_shortwave_flux)
+    ! force_array(:, 6) = PARDR          W/m2    (surface_downwelling_par_beam_flux)
+    ! force_array(:, 7) = PARDF          W/m2    (surface_downwelling_par_diffuse_flux)
+    ! force_array(:, 8) = PS             Pa      (surface_pressure)
+    ! force_array(:, 9) = QLML           kg/kg   (surface_specific_humidity)
+    ! force_array(:,10) = TLML           K       (surface_air_temperature)
+    ! force_array(:,11) = SPEED          m/s     (surface_wind_speed)
+    ! force_array(:,12) = HLML           m       (surface_layer_height)
+
+    !                     AODAS
+    !
+    ! force_array(:, 1) = PRECCUCORR     kg/m2/s (convective_precipitation, rainfall+snow)
+    ! force_array(:, 2) = PRECSNOCORR    kg/m2/s (snowfall)
+    ! force_array(:, 3) = PRECLSCORR     kg/m2/s (total_precipitation, rainfall+snow)
+    ! force_array(:, 4) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
+    ! force_array(:, 5) = SWGDN          W/m2    (surface_incoming_shortwave_flux)
+    ! force_array(:, 6) = Psurf          Pa      (surface_pressure)
+    ! force_array(:, 7) = QLML           kg/kg   (surface_specific_humidity)
+    ! force_array(:,8)  = TLML           K       (surface_air_temperature)
+    ! force_array(:,9)  = SPEED          m/s     (surface_wind_speed)
+    ! force_array(:,10) = HLML           m       (surface_layer_height)
+
+    ! rainfall
+    ! Rainf = convective rainfall + large-scale rainfall
+    ! follow code in GEOS_SurfaceGridComp.F90 to compute convective and large-scale rain
+    ! from convective precip, total precip, and total snowfall
+
+    do k=1,N_catd
+
+       if ( (abs(force_array(k,1)-nodata_GEOSgcm)<tol) .or.               &
+            (abs(force_array(k,2)-nodata_GEOSgcm)<tol) .or.               &
+            (abs(force_array(k,3)-nodata_GEOSgcm)<tol)       )  then
+
+          met_force_new(k)%Rainf_C = nodata_forcing
+          met_force_new(k)%Snowf   = nodata_forcing
+          met_force_new(k)%Rainf   = nodata_forcing
+
+       else
+
+          met_force_new(k)%Snowf   = force_array(k,2)
+          met_force_new(k)%Rainf   = force_array(k,3) - force_array(k,2)
+          if (force_array(k,3) > 0.) then
+             met_force_new(k)%Rainf_C = force_array(k,1) * (1.0 - force_array(k,2)/force_array(k,3))
+          end if
+          ! ensure that large-scale rainfall >=0
+          if (met_force_new(k)%Rainf - met_force_new(k)%Rainf_C < 0.) then
+             met_force_new(k)%Rainf_C = met_force_new(k)%Rainf
+          end if
+
+       end if
+
+    end do
+
+    if     (fcst) then
+       met_force_new%LWdown    = force_array(:, 4)
+       met_force_new%SWdown    = force_array(:, 5)
+       met_force_new%PARdrct   = force_array(:, 6)
+       met_force_new%PARdffs   = force_array(:, 7)
+       met_force_new%Psurf     = force_array(:, 8)
+       met_force_new%Qair      = force_array(:, 9)
+       met_force_new%Tair      = force_array(:,10)
+       met_force_new%Wind      = force_array(:,11)
+       met_force_new%RefH      = force_array(:,12)
+    elseif (AODAS) then
+       met_force_new%LWdown    = force_array(:, 4)
+       met_force_new%SWdown    = force_array(:, 5)
+       met_force_new%Psurf     = force_array(:, 6)
+       met_force_new%Qair      = force_array(:, 7)
+       met_force_new%Tair      = force_array(:, 8)
+       met_force_new%Wind      = force_array(:, 9)
+       met_force_new%RefH      = force_array(:,10)
+    end if
+
+    deallocate(force_array)
+    deallocate(GEOSgcm_name)
+
+  end subroutine get_GEOSs2s
+
+  ! *************************************************************************
+  
   subroutine get_GEOS( date_time, force_dtstep, met_path, met_tag,             &
        N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                    &
        supported_option_MET_HINTERP,                                           &
-       supported_option_AEROSOL_DEPOSITION,                                    &            
+       supported_option_AEROSOL_DEPOSITION,                                    &
        met_force_new, nodata_forcing, PAR_available, MERRA_file_specs,         &
        init )
     
