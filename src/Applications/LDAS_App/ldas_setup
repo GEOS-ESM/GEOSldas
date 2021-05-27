@@ -1504,11 +1504,12 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# REQUIRED inputs'
     print '#'
     print '# NOTE:'
-    print '# - account      = computational project number'
-    print '#                  [At NCCS: Use command "getsponsor" to see available account number(s).]'  
-    print '# - walltime     = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
-    print '# - ntasks_model = number of processors requested for the model (output server is not included)'
-    print '# - ntasks-per-node  = number of tasks per node(if >28 , skylake nodes will be allocated, else skylake or haswell'
+    print '# - account          = computational project number'
+    print '#                      [At NCCS: Use command "getsponsor" to see available account number(s).]'  
+    print '# - walltime         = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
+    print '# - ntasks_model     = number of processors requested for the model (typically 112; output server is not included)'
+    print '# - ntasks-per-node  = number of tasks per node (typically 40 for skylake and 28 for haswell nodes)'
+    print '#                      [If >28, skylake nodes will be allocated, else skylake or haswell.]'
     print '#'
     for key in rqdRmInpKeys:
         print key + ':'
@@ -1536,8 +1537,8 @@ def parseCmdLine():
         description= \
             "Script to setup a GEOSldas experiment. The script requires "\
             "two (2) input files, one for the Fortran executable and the " \
-            "other for the resource manager (SLURM/PBS etc.). For sample " \
-            "input files try './ldas_setup sample -h'.",
+            "other for the resource manager (SLURM). For sample input " \
+            "files use './ldas_setup sample -h'.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
     p_sub = p.add_subparsers(help='sub-command help')
@@ -1547,7 +1548,7 @@ def parseCmdLine():
         'sample', 
         help='write sample input files',
         description='Print sample input files - either for the '\
-            'Fortran executable or the resource manager (SLURM, PBS etc.)',
+            'Fortran executable or the resource manager (SLURM)',
         )
     group = p_sample.add_mutually_exclusive_group(required=True)
     group.add_argument(
