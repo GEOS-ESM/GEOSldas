@@ -2229,13 +2229,13 @@ contains
              
              ! find index of smallest lon >  min_lon and of largest lon <= max_lon
              
-             x_min=floor( (minval(lon_range)--180.)/dlon ) + 2
-             x_max=floor( (maxval(lon_range)--180.)/dlon ) + 1
+             x_min=floor( (minval(lon_range)-(-180.))/dlon ) + 2
+             x_max=floor( (maxval(lon_range)-(-180.))/dlon ) + 1
              
              ! find index of smallest lat >= min_lat and of largest lat <= max_lat
              
-             y_min=floor( (lat_range(1)--90.)/dlat ) + 1             
-             y_max=floor( (lat_range(2)--90.)/dlat ) + 1
+             y_min=floor( (lat_range(1)-(-90.))/dlat ) + 1
+             y_max=floor( (lat_range(2)-(-90.))/dlat ) + 1
              
              first = .false. 
              

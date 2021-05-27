@@ -19,7 +19,9 @@ module LDAS_TileCoordType
 
   use LDAS_ensdrv_Globals,              ONLY:     &
        nodata_generic
-  
+
+  use iso_fortran_env
+
   implicit none
   
   private
@@ -146,8 +148,8 @@ module LDAS_TileCoordType
      !                         !  "EASEv2_Mxx": *average* dlat over grid extent
 
      !CLSM_ENSDRV_MPI is NOT updated. will not be saved and bcasted
-     real(kind=8), dimension(:,:,:), pointer :: LonEdge =>null()
-     real(kind=8), dimension(:,:,:), pointer :: LatEdge =>null()
+     real(kind=REAL64), dimension(:,:,:), pointer :: LonEdge =>null()
+     real(kind=REAL64), dimension(:,:,:), pointer :: LatEdge =>null()
           
   end type grid_def_type
 
