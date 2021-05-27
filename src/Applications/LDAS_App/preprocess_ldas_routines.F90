@@ -2237,9 +2237,7 @@ contains
     else
        
        allocate(IMS(N_Proc))
-       allocate(local_land(N_Proc))
        IMS=0
-       local_land = 0
        
        ! NOTE:
        !  There is a bug in at least some EASE *.til files through at least Icarus-NLv4.
@@ -2334,47 +2332,9 @@ contains
        close(10)
        
        if(sum(landPosition) /= total_land) print*, "wrong counting of land"
-       
-       do n=1,60
-          rates(n) = (n-1)*0.15
-       enddo
-       
-       maxf=rms(rates)
-       n=minloc(maxf,DIM=1)
-       rate = rates(n)
-       
-       ! 2) each process should have average land tiles
-       
-       avg_land = ceiling(1.0*total_land/N_proc)
-       print*,"avg_land",avg_land
-       
-       ! rate is used to readjust the avg_land
-       ! in case that the last processors don't have any land tiles,
-       ! we can increase ther rates
-       
-       avg_land = avg_land - nint(rate*avg_land/N_proc)
-       print*,"re adjust the avg_land",avg_land
-       tmpint = 0
-       local = 1
-       n0 = s-1
-       do n=s,e
-          tmpint=tmpint+landPosition(n)
-          if(local == N_proc .and. n < e) cycle ! all lefteover goes to the last process
-          if((tmpint .ge. avg_land) .or. (n==e)) then
-             local_land(local)=tmpint
-             IMS(local)=n-n0
-             tmpint=0
-             n0=n
-             local = local + 1
-          endif
-       enddo
-       print*,"rms rate: ", rms(rate)
-       
-       print*,"land_distribute: ",local_land
-       
-       if( sum(local_land) /= total_land) stop ("wrong distribution")
-       if( sum(IMS) /= N_lon) stop ("wrong domain distribution")
-       
+
+       call equal_partition(landPosition, IMS)      
+ 
        open(10,file="optimized_distribution",action='write')
        write(10,'(A)') "GEOSldas.GRID_TYPE:  LatLon"
        write(10,'(A)') "GEOSldas.GRIDNAME:  "//trim(gridname)
@@ -2401,41 +2361,74 @@ contains
     
   contains 
     
-    ! ***************************************************************************
-    
-    elemental function rms(rates) result (f)
-      real :: f
-      real,intent(in) :: rates
-      integer :: tmpint,local
-      integer :: n0,proc,n
-      integer :: avg_land
-      integer,allocatable :: local_land(:)
-      
-      allocate (local_land(N_proc))
-      local_land = 0
-      avg_land = ceiling(1.0*total_land/N_proc)
-      avg_land = avg_land -nint(rates*avg_land/N_proc)
-      
-      tmpint = 0
-      local = 1
-      n0 = s-1
-      do n=s,e
-         tmpint=tmpint+landPosition(n)
-         if(local == N_proc .and. n < e) cycle ! all lefteover goes to the last process
-         if((tmpint .ge. avg_land) .or. (n==e)) then
-            local_land(local)=tmpint
-            tmpint=0
-            n0=n
-            local = local + 1
-         endif
+     subroutine equal_partition(array, distribute)
+      integer, intent(in) :: array(:)
+      integer, intent(inout) :: distribute(:)
+      integer, allocatable :: ArraySum(:)
+      integer, allocatable :: table(:,:), partition(:,:)
+      integer :: n, k, tmp_max
+      integer :: i, j, p, best, pos
+
+      n = size(array)
+      k = size(distribute)
+      allocate(arraySum(n))
+      allocate(table(k,n), partition(k,n))
+      arraySum(1) = array(1)
+      do j = 2, n
+         arraySum(j) = arraySum(j-1) + array(j)
       enddo
-      f = 0.0
-      do proc = 1, N_proc
-         f =max(f,1.0*abs(local_land(proc)-avg_land))
+
+      table = 0
+      partition = 0
+      do j = 1, n
+         table(1, j)     = arraySum(j)
+         partition(1,j) = j
       enddo
-      deallocate(local_land)
-    end function rms
-    
+      do i =1, k
+         table(i,1)  = array(1)
+      enddo
+      do i = 2, k ! partitions
+         do j = 2, n ! array element
+
+            best = arraySum(n) + 1 ! or the max int
+            ! the ith partion in front of p
+            do p = 1, j
+               tmp_max = max(table(i-1,p), arraySum(j)-arraySum(p))
+               if (tmp_max < best) then
+                  best = tmp_max
+                  pos = p
+               endif
+            enddo
+            table(i,j) = best
+            partition(i,j) = pos
+          enddo
+      enddo
+
+      ! trace back the partition
+      j = n
+      do i = k, 2, -1
+         distribute(i) = j - partition(i,j)
+         j = partition(i,j)
+      enddo
+      distribute(1) = j
+block
+      ! verifing, sanity check
+      integer :: s1, s2
+      if (sum(distribute) /= n) stop "wrong distribution"
+      s1 = 1
+      do i =1, k
+         s2 = s1+distribute(i) -1
+         best = sum(array(s1:s2))
+         if (best > table(k,n)) print*, "hmmm, wrong"
+         s1 = s2+1
+      enddo
+end block
+
+      print*, "avarage : ", arraySum(n)/(k*1.0)
+      print*, "Worst : ", table(k,n)
+      deallocate(table, arraySum, partition)
+   end subroutine equal_partition
+ 
     ! ***************************************************************************
     
     elemental function rms_cs(rates) result (f)
