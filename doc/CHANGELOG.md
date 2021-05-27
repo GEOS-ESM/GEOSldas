@@ -32,7 +32,34 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 
 Overview of Git Releases:
 ============================
+[v17.9.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.3) - 2021-05-27
+------------------------------
 
+- Science changes:
+  - Added ERA5_LIS surface met forcing reader.
+
+- Infrastructure:
+  - Revised interface to SLURM (see sample "batinp" configuration file from "ldas_setup").
+  - Added optional "output server" (oserver) nodes (default is none).
+  - Land analysis times now controlled with MAPL resource parameters ("LANDASSIM_DT", "LANDASSIM_T0").
+  - Updated MAPL (v2.7.0), ESMA_env (v3.2.1) --> Baselibs (6.1.0), ESMA_cmake (v3.4.2).
+  - Updated GMAO_Shared (v1.4.2).
+  - Updated GEOSgcm_GridComp (v1.12.2):
+    - Relocation of mk_restarts and Raster utilities.
+    - Bug fix for running Catchment-CN with constant CO2.
+
+- Cleanup and documentation:
+  - Major cleanup of met forcing (removed SWnet). 
+  - Cleanup of land land pert subroutines.
+  - Added legal documents ("CONTRIBUTING", "CODE_OF_CONDUCT") per NASA requirements.
+
+- Bug fixes and other minor changes:
+  - Updated read_obslog.m utility.  
+  - Improved GEOSldas exit message.
+  - Fixes for non-Intel compilers (GNU, NAG).
+  - Updated .gitignore (for mepo). 
+
+------------------------------
 [v17.9.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.2) - 2021-02-10
 ------------------------------
 
