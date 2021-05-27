@@ -2029,7 +2029,7 @@ contains
     integer :: n,typ,tmpint
     real ::  tmpreal
     integer :: avg_land,n0,local
-    integer :: i,s,e,j,k,n1,n2
+    integer :: i,s,e,j,k,n1,n2, s1,s2
     logical :: file_exist
     character(len=100):: tmpLine
     character(len=100):: gridname
@@ -2140,43 +2140,13 @@ contains
        ! 2) each process should have average land tiles
        
        ALLOCATE(JMS(N_proc))
-       allocate(local_land(N_Proc))
-       JMS = 0
-       local_land = 0
-       
-       local  = 0
-       n0     = 0
-       j = 0
-       do k=1,6
+       do k = 1, 6
           n1 = (k-1)*IMGLOB+1
           n2 = k*IMGLOB
-          
-          do i=1,60
-             rates(i) = (i-1)*0.1
-          enddo
-          
-          maxf=rms_cs(rates)
-          i=minloc(maxf,DIM=1)
-          rate = rates(i)
-          avg_land = ceiling(1.0*face_land(k)/face(k))
-          avg_land = avg_land - nint(rate*avg_land/face(k))
-          
-          tmpint = 0
-          j = j+face(k) 
-          
-          do n = n1,n2
-             tmpint=tmpint+landPosition(n)
-             if((local+1) == j .and. n < n2) cycle
-             if((tmpint .ge. avg_land) .or. (n==n2)) then
-                local = local + 1
-                local_land(local)=tmpint
-                JMS(local)=n-n0
-                tmpint=0
-                n0=n
-             endif
-          enddo
-          local = j
-       enddo
+          s1 = sum(face(1:k-1)) + 1
+          s2 = sum(face(1:k))
+          call equal_partition(landPosition(n1:n2), JMS(s1:s2))
+       enddo       
        
        ! adjust JMS.rc make make sure no process has 0 or 1
        j = 1
@@ -2198,7 +2168,6 @@ contains
           j=j+face(k)
        enddo
        
-       print*,"land_distribute: ",local_land
        print*, "JMS.rc", JMS
        if( sum(JMS) /= JMGLOB) then
           print*, sum(JMS), JMGLOB
@@ -2428,51 +2397,6 @@ end block
       print*, "Worst : ", table(k,n)
       deallocate(table, arraySum, partition)
    end subroutine equal_partition
- 
-    ! ***************************************************************************
-    
-    elemental function rms_cs(rates) result (f)
-      real :: f
-      real,intent(in) :: rates
-      integer :: tmpint,local
-      integer :: proc,n
-      integer :: avg_land
-      integer,allocatable :: local_land(:)
-      integer :: n1,n2
-      
-      allocate (local_land(face(k)))
-      local_land = 0
-      avg_land = ceiling(1.0*face_land(k)/face(k))
-      avg_land = avg_land -nint(rates*avg_land/face(k))
-      if (avg_land <=0) then
-         f = face_land(k)
-         return
-      endif
-      
-      tmpint = 0
-      local = 1
-      
-      n1 = (k-1)*IMGLOB+1
-      n2 = k*IMGLOB
-      tmpint = 0
-      do n = n1,n2
-         tmpint=tmpint+landPosition(n)
-         if(local == face(k) .and. n < n2) cycle ! all lefteover goes to the last process
-         if((tmpint .ge. avg_land) .or. (n==n2)) then
-            local_land(local)= tmpint
-            tmpint=0
-            local = local + 1
-         endif
-      enddo
-      
-      f = 0.0
-      do proc = 1, face(k)
-         ! punish for no land tiles
-         f =max(f,1.0*abs(local_land(proc)-avg_land))
-      enddo
-      deallocate(local_land)
-    end function rms_cs
-    
   end subroutine optimize_latlon
   
   ! ********************************************************************
