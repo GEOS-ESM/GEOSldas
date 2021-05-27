@@ -1,0 +1,63 @@
+version: 2.1
+
+executors:
+  gcc-build-env:
+    docker:
+      - image: gmao/ubuntu20-geos-env-mkl:v6.1.0-openmpi_4.0.5-gcc_10.2.0
+        auth:
+          username: $DOCKERHUB_USER
+          password: $DOCKERHUB_AUTH_TOKEN
+    environment:
+      OMPI_ALLOW_RUN_AS_ROOT: 1
+      OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
+      OMPI_MCA_btl_vader_single_copy_mechanism: none
+    resource_class: large
+    #MEDIUM# resource_class: medium
+
+workflows:
+  version: 2.1
+  build-test:
+    jobs:
+      - build-GEOSldas:
+          context:
+            - docker-hub-creds
+
+jobs:
+  build-GEOSldas:
+    executor: gcc-build-env
+    working_directory: /root/project
+    steps:
+      - checkout:
+          path: GEOSldas
+      - run:
+          name: "Versions etc"
+          command: mpirun --version && gfortran --version && echo $BASEDIR && pwd && ls
+      - run:
+          name: "Mepo clone external repos"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas
+            mepo clone
+            mepo status
+      - run:
+          name: "Mepo checkout-if-exists"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas
+            echo "${CIRCLE_BRANCH}"
+            if [ "${CIRCLE_BRANCH}" != "develop" ] && [ "${CIRCLE_BRANCH}" != "master" ] && [ "${CIRCLE_BRANCH}" != "main" ]
+            then
+               mepo checkout-if-exists ${CIRCLE_BRANCH}
+            fi
+            mepo status
+      - run:
+          name: "CMake"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas
+            mkdir build
+            cd build
+            cmake .. -DBASEDIR=$BASEDIR/Linux -DCMAKE_Fortran_COMPILER=gfortran -DCMAKE_BUILD_TYPE=Debug -DUSE_F2PY=OFF
+      - run:
+          name: "Build"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas/build
+            make -j"$(nproc)" install
+            #MEDIUM# make -j4 install
