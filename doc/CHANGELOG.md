@@ -35,6 +35,8 @@ Overview of Git Releases:
 [v17.9.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.3) - 2021-05-27
 ------------------------------
 
+- Zero-diff vs. v17.9.2
+
 - Science changes:
   - Added ERA5_LIS surface met forcing reader.
 
