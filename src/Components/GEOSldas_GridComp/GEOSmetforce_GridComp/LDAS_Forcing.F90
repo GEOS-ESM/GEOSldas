@@ -2822,6 +2822,7 @@ contains
     ! allocate force_array
 
     allocate(force_array(N_catd,N_GEOSgcm_vars))
+    force_array = nodata_forcing
 
     ! loop over variables
 
