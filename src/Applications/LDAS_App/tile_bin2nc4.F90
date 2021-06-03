@@ -3,7 +3,7 @@ PROGRAM tile_bin2nc4
   implicit none
   INCLUDE 'netcdf.inc'
 
-  integer       :: i,k,  n, iargc, NTILES
+  integer       :: i,k,  n, NTILES
   integer       :: NCFOutID, Vid, STATUS, CellID, TimID, nVars
   character*256 :: Usage="tile_bin2nc4.x BINFILE DESCRIPTOR TILECOORD"
   character*256 :: BINFILE, TILECOORD, DESCRIPTOR, arg(3)
@@ -17,7 +17,7 @@ PROGRAM tile_bin2nc4
   real :: undef
   ! processing command line agruments
 
-  I = iargc()
+  I = command_argument_count()
   
   if( I /=3 ) then
      print *, "Wrong Number of arguments: ", i
@@ -26,10 +26,10 @@ PROGRAM tile_bin2nc4
   end if
 
   do n=1,I
-     call getarg(n,arg(n))
+     call get_command_argument(n,arg(n))
   enddo
 
-  call getenv ("MYNAME"        ,MYNAME        )
+  call get_environment_variable ("MYNAME"        ,MYNAME        )
   read(arg(1),'(a)') BINFILE
   read(arg(2),'(a)') DESCRIPTOR
   read(arg(3),'(a)') TILECOORD

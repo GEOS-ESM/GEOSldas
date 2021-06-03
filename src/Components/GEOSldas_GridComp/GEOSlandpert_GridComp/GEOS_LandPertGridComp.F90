@@ -8,7 +8,7 @@ module GEOS_LandPertGridCompMod
   use ESMF
   use ESMF_CFIOMod, only: ESMF_CFIOStrTemplate
   use MAPL_Mod
-  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
+  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer, c_ptr
   use LDAS_PertTypes, only: pert_param_type
   use LDAS_PertTypes, only: allocate_pert_param
   use LDAS_PertTypes, only: T_LANDPERT_STATE

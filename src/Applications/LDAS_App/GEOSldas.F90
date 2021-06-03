@@ -13,15 +13,17 @@ program LDAS_Main
 
    character(len=*), parameter :: Iam = "LDAS_Main"
    type (MAPL_Cap) :: cap
-   type (MAPL_FlapCapOptions) :: cap_options
+   type (MAPL_FlapCLI) :: cli
+   type (MAPL_CapOptions) :: cap_options
    integer :: status
 
 !EOP
 !----------------------------------------------------------------------
 !BOC
-   
-   cap_options = MAPL_FlapCapOptions(description = 'GEOS LDAS', &
-                                     authors     = 'GMAO')
+  
+   cli = MAPL_FlapCLI(description = 'GEOS LDAS', &
+                      authors     = 'GMAO')
+   cap_options = MAPL_CapOptions(cli)
    cap_options%egress_file = 'EGRESS.ldas'
 
    cap = MAPL_Cap('LDAS', ROOT_SetServices, cap_options = cap_options)

@@ -148,7 +148,7 @@ contains
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
-       dtstep_assim, centered_update,                                    &
+       dtstep_assim,                                                     &
        xcompact, ycompact, fcsterr_inflation_fac,                        &
        N_obs_param, obs_param, N_obsbias_max,                            &
        out_obslog, out_smapL4SMaup,                                      &
@@ -208,8 +208,6 @@ contains
 
     integer, intent(in) :: update_type, dtstep_assim
 
-    logical, intent(in) :: centered_update
-
     real,    intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
 
     integer, intent(in) :: N_obs_param
@@ -254,8 +252,6 @@ contains
     ! ----------------------------------------------
 
     ! local variables
-
-    integer :: secs_in_day
 
     integer :: N_obslH
 
@@ -379,21 +375,11 @@ contains
 
     if (logit) write (logunit,*) 'get_enkf_increments(): enter at ', &
          date_string, ', ', time_string
+    if (logit) write (logunit,*) 'get_enkf_increments(): enter at anal time ', &
+         date_time2string(date_time)
 
-    ! ----------------------------------------------------------------------
-    !
-    ! check whether it is time for assimilation
-
-    secs_in_day = date_time%hour*3600 + date_time%min*60 + date_time%sec
-
-    if (centered_update)  secs_in_day = secs_in_day + dtstep_assim/2
-
-    if (mod(secs_in_day, dtstep_assim)/=0) then
-
-       if (logit) write (logunit,*) 'NO EnKF increments for ', date_time2string(date_time)
-
-    else
-
+    if (.true.) then  ! replace obsolete check for analysis time with "if true" to keep indents
+       
        ! proceed with update
 
        ! -----------------------------------------------------------------
@@ -512,7 +498,7 @@ contains
 
           if (logit) write (logunit,'(400A)') 'computing innovations starting at ' // &
                date_string // ', ' // time_string
-
+          
           ! compute model forecast of observations
           ! (ensemble mean "obs_pred" is also stored in Observations_l%fcst)
 
@@ -1192,16 +1178,12 @@ contains
             N_catl, N_catf, N_obsl, tile_coord_f, tile_grid_g, N_catl_vec, low_ind,  &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn       )
 
-    end if
-
-    ! ---------------------------------------------------------------------------
-
-    ! end timer
-
+    end if  ! end if (.true.)
+       
     call date_and_time(date_string, time_string)
 
     if (logit) write (logunit,*) 'get_enkf_increments(): exit at ', &
-         date_string, ', ', time_string
+         date_string, ', ', time_string 
 
   end subroutine get_enkf_increments
 
