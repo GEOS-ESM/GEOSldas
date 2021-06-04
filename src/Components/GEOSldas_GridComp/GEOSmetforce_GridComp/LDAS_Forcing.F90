@@ -64,7 +64,7 @@ module LDAS_ForceMod
 
   real, parameter :: DEFAULT_REFH   = 10.   ! m
   
-  character(10), private :: tmpstring10
+  character(100), private :: tmpstring100
 
   real, contiguous, pointer :: ptrShForce(:,:)=>null()
 
@@ -5954,8 +5954,8 @@ contains
 
                 ! cannot find forcing data for tile i, abort with message
                 
-                write (tmpstring10,*) tile_coord(i)%tile_id
-                err_msg = 'forcing has nodata-value in tile ID = ' // trim(tmpstring10) //     &
+                write (tmpstring100,*) tile_coord(i)%tile_id
+                err_msg = 'forcing has nodata-value in tile ID = ' // trim(tmpstring100) //     &
                      '. No good forcing nearby. ' //                                            &
                      'Use compile-time switch "create_ExcludeList" to create ' //               &
                      'a complete list for use in "ldas_setup".'  
