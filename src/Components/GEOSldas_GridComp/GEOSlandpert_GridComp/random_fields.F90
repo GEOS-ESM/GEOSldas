@@ -61,6 +61,7 @@ module random_fields_class
      real, allocatable :: field1_fft(:,:), field2_fft(:,:)
      integer :: fft_lens(2) ! length of each dim for 2D transform
      integer :: comm
+     integer :: node_comm
 #ifdef MKL_AVAILABLE
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle_dim1
@@ -120,8 +121,11 @@ contains
     if (present(comm)) then
        this%comm = comm
 
-       call MPI_COMM_rank(comm, rank, ierror)
-       call MPI_COMM_size(comm, npes, ierror)
+       call MPI_Comm_split_type(this%comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, this%Node_Comm,ierror)
+       call MPI_Comm_size(this%Node_Comm, npes,ierror)
+       call MPI_Comm_rank(this%Node_Comm, rank, ierror)
+
+
        allocate(this%dim1_counts(npes),this%dim2_counts(npes))
        allocate(this%send_types(npes), this%recv_types(npes))
        gcount(1) = this%fft_lens(1)
@@ -230,7 +234,7 @@ contains
        mklstat = DftiFreeDescriptor(this%Desc_Handle_dim2)
        if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor dim2 failed!')
 
-       call MPi_Comm_Size(this%comm, npes, ierror)
+       call MPi_Comm_Size(this%node_comm, npes, ierror)
 
        do i = 1, npes
           call Mpi_type_free(this%send_types(i), ierror)
@@ -515,8 +519,8 @@ contains
 
        deallocate(z_inout)
     else
-       call MPI_comm_size(this%comm, npes, ierror)
-       call MPI_comm_rank(this%comm, rank, ierror)
+       call MPI_comm_size(this%node_comm, npes, ierror)
+       call MPI_comm_rank(this%node_comm, rank, ierror)
        allocate( tmp_field(N_x_fft, N_y_fft))
        tmp_field = cmplx(this%field1_fft,this%field2_fft)
 
@@ -539,7 +543,7 @@ contains
 
        call MPI_ALLTOALLW(tmp_field, send_count, sdisp, this%send_types, &
                           tmp_field, recv_count, rdisp, this%recv_types, &
-                          this%comm, ierror)
+                          this%node_comm, ierror)
 
        n1 = sum(this%dim2_counts(1:rank)) + 1
        n2 = sum(this%dim2_counts(1:rank+1)) 
@@ -558,7 +562,7 @@ contains
        enddo
 
        call MPI_AllGatherV(tmp_field_dim2, N_x_fft*ldim2, MPI_COMPLEX, &
-                           tmp_field, recv_count, rdisp, MPI_COMPLEX, this%comm, ierror)
+                           tmp_field, recv_count, rdisp, MPI_COMPLEX, this%node_comm, ierror)
        
        this%field1_fft = real(tmp_field)
        this%field2_fft = aimag(tmp_field)
