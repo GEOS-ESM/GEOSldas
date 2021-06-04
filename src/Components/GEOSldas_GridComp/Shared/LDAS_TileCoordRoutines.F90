@@ -389,6 +389,15 @@ contains
           tile_grid%ur_lat =   85.04456
           
           ease_cell_area   =   81.145058669038477
+
+       elseif (index(gridname, 'EASEv2_M03')/=0 .or. index(gridname, 'EASEv2-M03')/=0) then  ! version *2*
+          
+          tile_grid%gridtype = 'EASEv2_M03'  
+          
+          tile_grid%ll_lat =  -85.04456
+          tile_grid%ur_lat =   85.04456
+          
+          ease_cell_area   =   9.016117629893365404
           
        elseif (index(gridname, 'EASE_M36')/=0 .or. index(gridname, 'EASE-M36')/=0) then
           
