@@ -1454,6 +1454,8 @@ contains
           tmp_low_ind(n+1) = tmp_low_ind(n) + N_obsl_vec(n)
 
        end do
+    else
+       allocate(Observations_f(1)) ! for debugging mode
 
     end if
 
@@ -1591,9 +1593,8 @@ contains
 
        close(10,status='keep')
 
-       deallocate(Observations_f)
-
     end if
+    deallocate(Observations_f)
 
   end subroutine output_ObsFcstAna
 
@@ -2149,7 +2150,8 @@ contains
              tmp_low_ind(n+1) = tmp_low_ind(n) + N_obsl_vec(n)
 
           end do
-
+       else
+          allocate(Observations_f(1)) ! just for debugging mode
        end if
 
 #ifdef LDAS_MPI
@@ -2776,7 +2778,6 @@ contains
 
           ! clean up
 
-          deallocate(Observations_f)
 
           deallocate(col_beg_9km)
           deallocate(col_end_9km)
@@ -2798,6 +2799,7 @@ contains
           deallocate(data_v_9km_tile)
 
        end if  ! root_proc
+       deallocate(Observations_f)
 
     end if     ! (option=='orig_obs' .or. option=='obs_fcst')
 

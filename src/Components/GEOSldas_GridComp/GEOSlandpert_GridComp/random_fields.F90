@@ -33,7 +33,7 @@
 module random_fields_class
 
 #ifdef MKL_AVAILABLE
-  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer, c_ptr
+  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer, c_ptr, c_sizeof, C_NULL_PTR
   use mpi
   use MKL_DFTI
 #else
@@ -60,14 +60,15 @@ module random_fields_class
      integer :: N_x_fft, N_y_fft ! computed by calc_fft_grid
      real, allocatable :: field1_fft(:,:), field2_fft(:,:)
      integer :: fft_lens(2) ! length of each dim for 2D transform
+#ifdef MKL_AVAILABLE
      integer :: comm
      integer :: node_comm
-#ifdef MKL_AVAILABLE
+     integer :: win
+     type (c_ptr) :: base_address 
+
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle_dim1
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle_dim2
-     integer, allocatable :: send_types(:)
-     integer, allocatable :: recv_types(:)
      integer, allocatable :: dim1_counts(:)
      integer, allocatable :: dim2_counts(:)
 #endif
@@ -78,6 +79,10 @@ module random_fields_class
      procedure, public  :: generate_white_field
      procedure, private :: sqrt_gauss_spectrum_2d
      procedure, private :: calc_fft_grid
+#ifdef MKL_AVAILABLE
+     procedure, private :: win_allocate
+     procedure, private :: win_deallocate
+#endif
   end type random_fields
   
 contains
@@ -126,15 +131,13 @@ contains
        call MPI_Comm_rank(this%Node_Comm, rank, ierror)
 
 
-       allocate(this%dim1_counts(npes),this%dim2_counts(npes))
-       allocate(this%send_types(npes), this%recv_types(npes))
-       gcount(1) = this%fft_lens(1)
-       gcount(2) = this%fft_lens(2)
-       N1 = gcount(1)
-       N2 = gcount(2)
+       N1 = this%fft_lens(1)
+       N2 = this%fft_lens(2)
+
+       call this%win_allocate(N1, N2)
 
        ! distribution of the grid for fft
-
+       allocate(this%dim1_counts(npes),this%dim2_counts(npes))
        local_dim1 = N1/npes
        this%dim1_counts = local_dim1
        remainer = mod(N1, npes)
@@ -147,32 +150,6 @@ contains
        this%dim2_counts(1:remainer) = local_dim2 + 1
        local_dim2 = this%dim2_counts(rank+1)
 
-       ! create type for AllToAll comunication
-
-       do j = 1, npes
-         if (j /= rank +1) cycle
-         ! re-use lstart as offset
-         lstart = 0
-         lstart(2) = sum(this%dim2_counts(1:j-1))
-
-         !define types for blocks of rows for each column
-         do i = 1, npes
-           lstart(1) = sum(this%dim1_counts(1:i-1))
-           call MPI_type_create_subarray(2, gcount, [this%dim1_counts(i), this%dim2_counts(j)], lstart , &
-                MPI_ORDER_FORTRAN, MPI_COMPLEX, this%recv_types(i), ierror)
-           call MPI_type_commit(this%recv_types(i),ierror)
-         enddo
-
-         ! re-use lstart as offset
-         lstart = 0
-         lstart(1) = sum(this%dim1_counts(1:j-1))
-         do i = 1, npes
-            lstart(2) = sum(this%dim2_counts(1:i-1))
-            call MPI_type_create_subarray(2,gcount, [this%dim1_counts(j), this%dim2_counts(i)], lstart , &
-                 MPI_ORDER_FORTRAN, MPI_COMPLEX, this%send_types(i), ierror)
-            call MPI_type_commit(this%send_types(i),ierror)
-         enddo
-       enddo
 
        mklstat = DftiCreateDescriptor(this%Desc_Handle_Dim1, DFTI_SINGLE,&
                                 DFTI_COMPLEX, 1, N1 )
@@ -234,13 +211,9 @@ contains
        mklstat = DftiFreeDescriptor(this%Desc_Handle_dim2)
        if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor dim2 failed!')
 
-       call MPi_Comm_Size(this%node_comm, npes, ierror)
+       call this%win_deallocate()
 
-       do i = 1, npes
-          call Mpi_type_free(this%send_types(i), ierror)
-          call Mpi_type_free(this%recv_types(i), ierror)
-       enddo
-       deallocate(this%send_types, this%recv_types, this%dim1_counts, this%dim2_counts)
+       deallocate(this%dim1_counts, this%dim2_counts)
     endif
 #endif
 
@@ -436,12 +409,11 @@ contains
 #ifdef MKL_AVAILABLE
     integer :: mklstat
     complex, allocatable :: z_inout(:)
-    complex, allocatable :: tmp_field(:,:)
+    complex, pointer :: tmp_field(:,:)
     complex, pointer :: tmp_field_dim1(:,:)
     complex, pointer :: tmp_field_dim2(:,:)
     integer :: n1, n2, npes, rank, ldim1, ldim2, ierror
     complex, pointer  :: X(:)
-    integer, allocatable :: sdisp(:), send_count(:), rdisp(:), recv_count(:)
     type (c_ptr) :: cptr
 #else
     real, allocatable :: tmpdata(:)
@@ -521,53 +493,37 @@ contains
     else
        call MPI_comm_size(this%node_comm, npes, ierror)
        call MPI_comm_rank(this%node_comm, rank, ierror)
-       allocate( tmp_field(N_x_fft, N_y_fft))
-       tmp_field = cmplx(this%field1_fft,this%field2_fft)
+       call c_f_pointer(this%base_address, tmp_field, shape=[N_x_fft, N_y_fft])
 
        n1 = sum(this%dim1_counts(1:rank)) + 1
        n2 = sum(this%dim1_counts(1:rank+1)) 
        ldim1  = this%dim1_counts(rank+1)
-         
        allocate(tmp_field_dim1(ldim1, N_y_fft))
-       tmp_field_dim1 = tmp_field(n1:n2,:)
+       tmp_field_dim1 = cmplx(this%field1_fft(n1:n2,:),this%field2_fft(n1:n2,:))
        cptr = c_loc(tmp_field_dim1(1,1))
        call c_f_pointer (cptr, X, [ldim1*N_y_fft])
        mklstat = DftiComputeBackward( this%Desc_Handle_Dim2, X )
+       call MPI_Barrier(this%node_comm, ierror)
        tmp_field(n1:n2,:) = tmp_field_dim1
 
-       allocate(sdisp(npes), rdisp(npes), send_count(npes), recv_count(npes))
-       send_count = 1
-       recv_count = 1
-       sdisp  = 0
-       rdisp  = 0
-
-       call MPI_ALLTOALLW(tmp_field, send_count, sdisp, this%send_types, &
-                          tmp_field, recv_count, rdisp, this%recv_types, &
-                          this%node_comm, ierror)
+       call MPI_Win_fence(0, this%win, ierror)
 
        n1 = sum(this%dim2_counts(1:rank)) + 1
        n2 = sum(this%dim2_counts(1:rank+1)) 
        ldim2  = this%dim2_counts(rank+1)
-
        allocate(tmp_field_dim2(N_x_fft, ldim2))
        tmp_field_dim2 = tmp_field(:,n1:n2)
        cptr = c_loc(tmp_field_dim2(1,1))
        call c_f_pointer (cptr, X, [N_x_fft*ldim2])
        mklstat = DftiComputeBackward( this%Desc_Handle_Dim1, X )
        tmp_field(:,n1:n2) = tmp_field_dim2
-
-       do i = 1, npes
-          recv_count(i) = N_x_fft*this%dim2_counts(i)
-          rdisp(i)      = sum(recv_count(1:i-1))
-       enddo
-
-       call MPI_AllGatherV(tmp_field_dim2, N_x_fft*ldim2, MPI_COMPLEX, &
-                           tmp_field, recv_count, rdisp, MPI_COMPLEX, this%node_comm, ierror)
        
+       call MPI_Win_fence(0, this%win, ierror)
+
        this%field1_fft = real(tmp_field)
        this%field2_fft = aimag(tmp_field)
 
-       deallocate(sdisp, rdisp, send_count, recv_count, tmp_field_dim1, tmp_field_dim2, tmp_field)
+       deallocate(tmp_field_dim1, tmp_field_dim2)
     endif
 #else  
     ! use nr_fft
@@ -673,6 +629,37 @@ contains
     
   end subroutine quit
 
+  subroutine win_allocate(this, nx, ny)
+     class(random_fields), intent(inout) :: this
+     integer, intent(in) :: nx, ny
+     complex :: dummy
+     integer(kind=MPI_ADDRESS_KIND) :: windowsize
+     integer :: disp_unit,status, Rank
+     integer(kind=MPI_ADDRESS_KIND) :: n_bytes 
+     integer :: int_size
+
+
+     call MPI_Comm_rank( this%node_comm, rank, status)
+     n_bytes = nx*ny*c_sizeof(dummy)
+     windowsize = 0_MPI_ADDRESS_KIND
+     if (Rank == 0) windowsize = n_bytes
+     disp_unit  = 4
+     call MPI_Win_allocate_shared(windowsize, disp_unit, MPI_INFO_NULL, this%node_comm, &
+              this%base_address, this%win, status)
+
+     if (rank /=0)  CALL MPI_Win_shared_query(this%win, 0, windowsize, disp_unit, this%base_address, status)
+     call MPI_Win_fence(0, this%win, status)
+     call MPI_Barrier(this%node_comm, status)
+  end subroutine win_allocate
+
+  subroutine win_deallocate(this)
+     class(random_fields), intent(inout) :: this
+     integer :: status
+     call MPI_Win_fence(0, this%win, status)
+     call MPI_Win_free(this%win,status)
+     call MPI_comm_free(this%node_comm, status)
+
+  end subroutine win_deallocate
   
 end module random_fields_class
 

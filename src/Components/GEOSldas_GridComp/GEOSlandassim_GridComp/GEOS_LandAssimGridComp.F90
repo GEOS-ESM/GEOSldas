@@ -1665,6 +1665,10 @@ contains
     !allocate(obs_pert_adapt_param(N_obs_param))
     !allocate(Pert_adapt_R(N_adapt_R,NUM_ENSEMBLE))
     !allocate(Obs_pert(N_obsl_max,NUM_ENSEMBLE))
+    ! allocate 0 size for debugging mode
+    allocate(obs_pert_adapt_param(0))
+    allocate(Pert_adapt_R(N_adapt_R,NUM_ENSEMBLE))
+    allocate(Obs_pert(0,NUM_ENSEMBLE))
     
     allocate(obs_bias(N_catl,N_obs_param,N_obsbias_max))
     if (N_obsbias_max>0) then
