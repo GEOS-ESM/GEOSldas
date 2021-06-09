@@ -1662,10 +1662,10 @@ contains
     
     !   Weiyuan note: dummy adapt for now
     N_adapt_R = 0
-    !allocate(obs_pert_adapt_param(N_obs_param))
-    !allocate(Pert_adapt_R(N_adapt_R,NUM_ENSEMBLE))
-    !allocate(Obs_pert(N_obsl_max,NUM_ENSEMBLE))
-    ! allocate 0 size for debugging mode
+   ! allocate(obs_pert_adapt_param(N_obs_param))
+   ! allocate(Pert_adapt_R(N_adapt_R,NUM_ENSEMBLE))
+   ! allocate(Obs_pert(N_obsl_max,NUM_ENSEMBLE))
+   ! allocate zero size of array to pass in subroutine for debugging mode
     allocate(obs_pert_adapt_param(0))
     allocate(Pert_adapt_R(N_adapt_R,NUM_ENSEMBLE))
     allocate(Obs_pert(0,NUM_ENSEMBLE))
@@ -1805,7 +1805,7 @@ contains
          rc=status                                                              &
          )
     _VERIFY(status)   
-    
+   
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &

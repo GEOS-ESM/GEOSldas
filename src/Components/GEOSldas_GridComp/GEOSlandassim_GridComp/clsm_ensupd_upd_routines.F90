@@ -1441,11 +1441,9 @@ contains
     ! determine N_catlH and tile_coord_lH  
 
     N_fields = 0  ! set to zero temporarily, not yet needed
-
     ! move up the allocation. The input should be allocated in debug mode although it is not used
     ! allocate and assemble tile_data_l
     allocate(tile_data_l(0,0,0))
-    
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
          N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
          N_catlH, tile_coord_lH=tile_coord_lH )
@@ -1465,7 +1463,9 @@ contains
     call get_obs_pred_comm_helper( N_catl, N_ens, N_TbuniqFreqAngRTMid,          &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_Tb_lH, N_fields)
     
-    if(allocated(tile_data_l)) deallocate(tile_data_l) 
+    ! allocate and assemble tile_data_l
+    
+    if (allocated(tile_data_l))  deallocate(tile_data_l)
     allocate(tile_data_l(N_catl,N_fields,N_ens))
     call get_obs_pred_comm_helper( N_catl, N_ens, N_TbuniqFreqAngRTMid,          &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_Tb_lH, N_fields, &
