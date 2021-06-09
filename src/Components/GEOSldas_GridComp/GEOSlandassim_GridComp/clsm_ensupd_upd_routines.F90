@@ -1478,8 +1478,6 @@ contains
          N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
          N_catlH, tile_data_lH=tile_data_lH )    
     
-    if (allocated(tile_data_l))  deallocate(tile_data_l)
-    
     ! read out sfmc, rzmc, etc. from tile_data_lH    
     
     call get_obs_pred_comm_helper( N_catlH, N_ens, N_TbuniqFreqAngRTMid,         &
@@ -1503,7 +1501,7 @@ contains
     if (get_Tb_lH)     Tb_v_lH  = Tb_v_l
     
 #endif
-    
+    if (allocated(tile_data_l))  deallocate(tile_data_l)
     ! ----------------------------------------------------------------
     !
     ! Get additional grid/tile information that is needed to map from tile
