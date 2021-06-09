@@ -15,6 +15,7 @@ module my_matrix_functions
   !public :: adjust_mean
   !public :: matrix_std
   public :: unique_rows_3col
+  public :: unique_rows_2col
   
 contains
 
@@ -1019,7 +1020,8 @@ end program test_five_number_summary
 #if 0
 
 program test_unique_rows
-  
+
+  use my_matrix_functions, ONLY: unique_rows_2col  
   implicit none
   
   integer, parameter :: N_rows = 55    ! 6
@@ -1109,7 +1111,7 @@ program test_unique_rows
      write (*,*) A(i,:)
   end do
   
-  call unique_rows_2col( N_rows, N_cols, A, N_unique_rows, ind_A2U)
+  call unique_rows_2col( N_rows, A, N_unique_rows, ind_A2U)
   
   write (*,*) N_unique_rows
   do i=1,N_unique_rows
