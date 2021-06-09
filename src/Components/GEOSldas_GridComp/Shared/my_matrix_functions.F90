@@ -746,8 +746,8 @@ contains
 
     ind_A2U       = ind_A2U_step2
 
-    A(:,1:2)      = A_step1(nint(A_step2(1:N_step2,1)),:)
-    A(:,  3)      = A_step2(             1:N_step2    ,2)
+    A(1:N_step2,1:2)      = A_step1(nint(A_step2(1:N_step2,1)),:)
+    A(1:N_step2,  3)      = A_step2(             1:N_step2    ,2)
     
   end subroutine unique_rows_3col
 
