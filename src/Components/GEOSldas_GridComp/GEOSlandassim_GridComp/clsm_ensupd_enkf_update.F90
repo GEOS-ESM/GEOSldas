@@ -1477,7 +1477,7 @@ contains
 
        end do
     else
-      allocate(Observations_f(1))
+      allocate(Observations_f(0))
     end if
 
 #ifdef LDAS_MPI
@@ -2173,7 +2173,7 @@ contains
 
           end do
        else
-         allocate(Observations_f(1))
+         allocate(Observations_f(0))
        end if
 
 #ifdef LDAS_MPI
