@@ -403,7 +403,7 @@ contains
                tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
                tile_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
        else
-          allocate(N_tile_in_cell_ij_f(1,1)) !for debugging
+          allocate(N_tile_in_cell_ij_f(0,0)) !for debugging
        end if
 
        ! *********************************************************************
@@ -705,7 +705,7 @@ contains
           if (root_proc) then
             allocate(indTiles_f(nTiles_f), source=-99)
           else
-            allocate(indTiles_f(1)) ! for debugging mode
+            allocate(indTiles_f(0)) ! for debugging mode
           endif
   
           if (root_proc) then
@@ -848,7 +848,7 @@ contains
           if (root_proc) then
              allocate(cat_param_f(N_catf))
           else
-             allocate(cat_param_f(1)) !for debugging mode
+             allocate(cat_param_f(0)) !for debugging mode
           endif
           call MPI_Gatherv(                                             &
                cat_param,   N_catl,                MPI_cat_param_type,  &
@@ -878,7 +878,7 @@ contains
           if (root_proc) then
              allocate(cat_progn_f(N_catf))
           else
-             allocate(cat_progn_f(1)) ! for debugging mode
+             allocate(cat_progn_f(0)) ! for debugging mode
           endif
 
           allocate(cat_progn_ana(nTiles_ana,N_ens))
@@ -930,7 +930,7 @@ contains
           if (root_proc) then
              allocate(Obs_pred_f_assim(N_obsf_assim))
           else
-             allocate(Obs_pred_f_assim(1)) ! for debugging mode
+             allocate(Obs_pred_f_assim(0)) ! for debugging mode
           endif
           allocate(Obs_pred_ana(nObs_ana,N_ens), source=0.)
           if (root_proc) then
@@ -1094,7 +1094,7 @@ contains
              allocate(cat_progn_incr_f(N_catf))
              allocate(recvBuf(maxval(nTilesAna_vec))) ! temp storage of incoming data
           else
-             allocate(cat_progn_incr_f(1)) ! for debugging
+             allocate(cat_progn_incr_f(0)) ! for debugging
           end if
           do iEns=1,N_ens
              ! cat_progn_incr_ana -> cat_progn_incr_f
