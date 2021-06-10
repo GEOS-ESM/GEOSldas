@@ -15,7 +15,7 @@ module my_matrix_functions
   !public :: adjust_mean
   !public :: matrix_std
   public :: unique_rows_3col
-  public :: unique_rows_2col
+  !public :: unique_rows_2col
   
 contains
 
