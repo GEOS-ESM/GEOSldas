@@ -2619,6 +2619,11 @@ contains
     ! jkolassa,jmpark,reichle, 10 May 2021:
     !   modified for GEOSldas; added AODAS; met_tag encodes ID of ensemble
     !   member and initial month/day
+    !
+    ! jkolassa,jmpark,reichle, 11 June 2021:
+    !   modified to compute precipitation components from total precipitation
+    !   and air temperature (pre-processing of precipiation component forcing
+    !   data was faulty)
 
     use netcdf
     implicit none
@@ -2651,37 +2656,33 @@ contains
     integer, parameter :: dt_GEOSgcm_in_hours_FCST  =  6
     integer, parameter :: dt_GEOSgcm_in_hours_AODAS =  1
 
-    integer, parameter :: N_GEOSgcm_vars_FCST       = 12
-    integer, parameter :: N_GEOSgcm_vars_AODAS      = 10
+    integer, parameter :: N_GEOSgcm_vars_FCST       = 10
+    integer, parameter :: N_GEOSgcm_vars_AODAS      = 8
 
     character(40), dimension(N_GEOSgcm_vars_FCST) :: GEOSgcm_name_FCST = &
          (/             &
-         'PRECCON    ', &  !  1 - flux,  convective_precipitation,             kg m-2 s-1
-         'PRECSNO    ', &  !  2 - flux,  snowfall,                             kg m-2 s-1
-         'PRECTOTCORR', &  !  3 - flux,  total_precipitation,                  kg m-2 s-1
-         'LWGAB      ', &  !  4 - flux,  surface_absorbed_longwave_radiation,  W m-2
-         'SWGDN      ', &  !  5 - flux,  surface_incoming_shortwave_flux,      W m-2
-         'PARDR      ', &  !  6 - flux,  surface_downwelling_par_beam_flux,    W m-2
-         'PARDF      ', &  !  7 - flux,  surface_downwelling_par_diffuse_flux, W m-2
-         'PS         ', &  !  8 - state, surface_pressure,                     Pa
-         'QLML       ', &  !  9 - state, surface_specific_humidity,            kg kg-1
-         'TLML       ', &  ! 10 - state, surface_air_temperature,              K
-         'SPEED      ', &  ! 11 - state, surface_wind_speed,                   m s-1
-         'HLML       '  &  ! 12 - state, surface_layer_height,                 m
+         'PRECTOTCORR', &  !  1 - flux,  total_precipitation,                  kg m-2 s-1
+         'LWGAB      ', &  !  2 - flux,  surface_absorbed_longwave_radiation,  W m-2
+         'SWGDN      ', &  !  3 - flux,  surface_incoming_shortwave_flux,      W m-2
+         'PARDR      ', &  !  4 - flux,  surface_downwelling_par_beam_flux,    W m-2
+         'PARDF      ', &  !  5 - flux,  surface_downwelling_par_diffuse_flux, W m-2
+         'PS         ', &  !  6 - state, surface_pressure,                     Pa
+         'QLML       ', &  !  7 - state, surface_specific_humidity,            kg kg-1
+         'TLML       ', &  !  8 - state, surface_air_temperature,              K
+         'SPEED      ', &  !  9 - state, surface_wind_speed,                   m s-1
+         'HLML       '  &  ! 10 - state, surface_layer_height,                 m
          /)
 
     character(40), dimension(N_GEOSgcm_vars_AODAS) :: GEOSgcm_name_AODAS = &
          (/             &
-         'PRECCUCORR ', &  !  1 - flux,  convective_precipitation,             kg m-2 s-1
-         'PRECSNOCORR', &  !  2 - flux,  snowfall,                             kg m-2 s-1
-         'PRECLSCORR ', &  !  3 - flux,  total_precipitation,                  kg m-2 s-1
-         'LWGAB      ', &  !  4 - flux,  surface_absorbed_longwave_radiation,  W m-2
-         'SWGDN      ', &  !  5 - flux,  surface_incoming_shortwave_flux,      W m-2
-         'Psurf      ', &  !  6 - state, surface_pressure,                     Pa
-         'QLML       ', &  !  7 - state, surface_specific_humidity,            kg kg-1
-         'TLML       ', &  !  8 - state, surface_air_temperature,              K
-         'SPEEDML    ', &  !  9 - state, surface_wind_speed,                   m s-1
-         'HLML       '/)   ! 10 - state, surface_layer_height,                 m
+         'PRECLSCORR ', &  !  1 - flux,  total_precipitation,                  kg m-2 s-1
+         'LWGAB      ', &  !  2 - flux,  surface_absorbed_longwave_radiation,  W m-2
+         'SWGDN      ', &  !  3 - flux,  surface_incoming_shortwave_flux,      W m-2
+         'Psurf      ', &  !  4 - state, surface_pressure,                     Pa
+         'QLML       ', &  !  5 - state, surface_specific_humidity,            kg kg-1
+         'TLML       ', &  !  6 - state, surface_air_temperature,              K
+         'SPEEDML    ', &  !  7 - state, surface_wind_speed,                   m s-1
+         'HLML       '/)   !  8 - state, surface_layer_height,                 m
 
     ! local variables
 
@@ -2700,7 +2701,7 @@ contains
     integer                    :: k, hours_in_month, GEOSgcm_var, nciv_data
     integer                    :: fid, rc, nv_id, status
 
-    real                       :: tol, this_lon, this_lat
+    real                       :: tol, this_lon, this_lat, Tair_local
 
     character(  5)             :: init_MMMDD
     character(  4)             :: YYYY, ens_num
@@ -2897,31 +2898,27 @@ contains
     !
     !                     Hindcast
     !
-    ! force_array(:, 1) = PRECCON        kg/m2/s (convective_precipitation, rainfall+snow)
-    ! force_array(:, 2) = PRECSNO        kg/m2/s (snowfall)
-    ! force_array(:, 3) = PRECTOTCORR    kg/m2/s (total_precipitation, rainfall+snow)
-    ! force_array(:, 4) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
-    ! force_array(:, 5) = SWGDN          W/m2    (surface_incoming_shortwave_flux)
-    ! force_array(:, 6) = PARDR          W/m2    (surface_downwelling_par_beam_flux)
-    ! force_array(:, 7) = PARDF          W/m2    (surface_downwelling_par_diffuse_flux)
-    ! force_array(:, 8) = PS             Pa      (surface_pressure)
-    ! force_array(:, 9) = QLML           kg/kg   (surface_specific_humidity)
-    ! force_array(:,10) = TLML           K       (surface_air_temperature)
-    ! force_array(:,11) = SPEED          m/s     (surface_wind_speed)
-    ! force_array(:,12) = HLML           m       (surface_layer_height)
+    ! force_array(:, 1) = PRECTOTCORR    kg/m2/s (total_precipitation, rainfall+snow)
+    ! force_array(:, 2) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
+    ! force_array(:, 3) = SWGDN          W/m2    (surface_incoming_shortwave_flux)
+    ! force_array(:, 4) = PARDR          W/m2    (surface_downwelling_par_beam_flux)
+    ! force_array(:, 5) = PARDF          W/m2    (surface_downwelling_par_diffuse_flux)
+    ! force_array(:, 6) = PS             Pa      (surface_pressure)
+    ! force_array(:, 7) = QLML           kg/kg   (surface_specific_humidity)
+    ! force_array(:, 8) = TLML           K       (surface_air_temperature)
+    ! force_array(:, 9) = SPEED          m/s     (surface_wind_speed)
+    ! force_array(:,10) = HLML           m       (surface_layer_height)
 
     !                     AODAS
     !
-    ! force_array(:, 1) = PRECCUCORR     kg/m2/s (convective_precipitation, rainfall+snow)
-    ! force_array(:, 2) = PRECSNOCORR    kg/m2/s (snowfall)
-    ! force_array(:, 3) = PRECLSCORR     kg/m2/s (total_precipitation, rainfall+snow)
-    ! force_array(:, 4) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
-    ! force_array(:, 5) = SWGDN          W/m2    (surface_incoming_shortwave_flux)
-    ! force_array(:, 6) = Psurf          Pa      (surface_pressure)
-    ! force_array(:, 7) = QLML           kg/kg   (surface_specific_humidity)
-    ! force_array(:,8)  = TLML           K       (surface_air_temperature)
-    ! force_array(:,9)  = SPEED          m/s     (surface_wind_speed)
-    ! force_array(:,10) = HLML           m       (surface_layer_height)
+    ! force_array(:, 1) = PRECLSCORR     kg/m2/s (total_precipitation, rainfall+snow)
+    ! force_array(:, 2) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
+    ! force_array(:, 3) = SWGDN          W/m2    (surface_incoming_shortwave_flux)
+    ! force_array(:, 4) = Psurf          Pa      (surface_pressure)
+    ! force_array(:, 5) = QLML           kg/kg   (surface_specific_humidity)
+    ! force_array(:, 6)  = TLML           K       (surface_air_temperature)
+    ! force_array(:, 7)  = SPEED          m/s     (surface_wind_speed)
+    ! force_array(:, 8) = HLML           m       (surface_layer_height)
 
     ! rainfall
     ! Rainf = convective rainfall + large-scale rainfall
@@ -2930,48 +2927,63 @@ contains
 
     do k=1,N_catd
 
-       if ( (abs(force_array(k,1)-nodata_GEOSgcm)<tol) .or.               &
-            (abs(force_array(k,2)-nodata_GEOSgcm)<tol) .or.               &
-            (abs(force_array(k,3)-nodata_GEOSgcm)<tol)       )  then
+       if (FCST) then
+          Tair_local = force_array(k,8)
+       elseif (AODAS) then
+          Tair_local = force_array(k,6)
+       endif
 
+       if ((abs(Tair_local-nodata_GEOSgcm)<tol)) then
+       ! jk, 06/2021: if Tair is undefined, no decision about precipitation 
+       ! partitioning can be made and precip forcing is set to nodata_forcing
+          
           met_force_new(k)%Rainf_C = nodata_forcing
           met_force_new(k)%Snowf   = nodata_forcing
           met_force_new(k)%Rainf   = nodata_forcing
 
-       else
+       else                                                   
+       ! jk 06/2021: if Tair is defined, use it to split total precipitation 
+       ! into liquid precipitation and snowfall; all liquid precipitation is
+       ! assigned to large scale, since large scale and convective are added 
+       ! up before they are used to force the land; this may have to be revised
+       ! in future versions of the model
+        
+          if (Tair_local <= Tzero) then ! Tair <= 0C
+      
+              met_force_new(k)%Snowf = force_array(k,1);
+              met_force_new(k)%Rainf = 0.
+              met_force_new(k)%Rainf_C = 0.
 
-          met_force_new(k)%Snowf   = force_array(k,2)
-          met_force_new(k)%Rainf   = force_array(k,3) - force_array(k,2)
-          if (force_array(k,3) > 0.) then
-             met_force_new(k)%Rainf_C = force_array(k,1) * (1.0 - force_array(k,2)/force_array(k,3))
-          end if
-          ! ensure that large-scale rainfall >=0
-          if (met_force_new(k)%Rainf - met_force_new(k)%Rainf_C < 0.) then
-             met_force_new(k)%Rainf_C = met_force_new(k)%Rainf
+          elseif (Tair_local > Tzero) then ! Tair > 0C
+        
+              met_force_new(k)%Snowf = 0.
+              met_force_new(k)%Rainf = force_array(k,1);
+              met_force_new(k)%Rainf_C = 0.
+
           end if
 
        end if
 
     end do
 
-    if     (fcst) then
-       met_force_new%LWdown    = force_array(:, 4)
-       met_force_new%SWdown    = force_array(:, 5)
-       met_force_new%PARdrct   = force_array(:, 6)
-       met_force_new%PARdffs   = force_array(:, 7)
-       met_force_new%Psurf     = force_array(:, 8)
-       met_force_new%Qair      = force_array(:, 9)
-       met_force_new%Tair      = force_array(:,10)
-       met_force_new%Wind      = force_array(:,11)
-       met_force_new%RefH      = force_array(:,12)
-    elseif (AODAS) then
-       met_force_new%LWdown    = force_array(:, 4)
-       met_force_new%SWdown    = force_array(:, 5)
+    if     (FCST) then
+       met_force_new%LWdown    = force_array(:, 2)
+       met_force_new%SWdown    = force_array(:, 3)
+       met_force_new%PARdrct   = force_array(:, 4)
+       met_force_new%PARdffs   = force_array(:, 5)
        met_force_new%Psurf     = force_array(:, 6)
        met_force_new%Qair      = force_array(:, 7)
        met_force_new%Tair      = force_array(:, 8)
        met_force_new%Wind      = force_array(:, 9)
        met_force_new%RefH      = force_array(:,10)
+    elseif (AODAS) then
+       met_force_new%LWdown    = force_array(:, 2)
+       met_force_new%SWdown    = force_array(:, 3)
+       met_force_new%Psurf     = force_array(:, 4)
+       met_force_new%Qair      = force_array(:, 5)
+       met_force_new%Tair      = force_array(:, 6)
+       met_force_new%Wind      = force_array(:, 7)
+       met_force_new%RefH      = force_array(:, 8)
     end if
 
     deallocate(force_array)
