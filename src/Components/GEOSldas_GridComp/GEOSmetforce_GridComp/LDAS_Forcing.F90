@@ -2675,13 +2675,13 @@ contains
 
     character(40), dimension(N_GEOSgcm_vars_AODAS) :: GEOSgcm_name_AODAS = &
          (/             &
-         'PRECLSCORR ', &  !  1 - flux,  total_precipitation,                  kg m-2 s-1
+         'TPREC      ', &  !  1 - flux,  total_precipitation,                  kg m-2 s-1
          'LWGAB      ', &  !  2 - flux,  surface_absorbed_longwave_radiation,  W m-2
-         'SWGDN      ', &  !  3 - flux,  surface_incoming_shortwave_flux,      W m-2
-         'Psurf      ', &  !  4 - state, surface_pressure,                     Pa
-         'QLML       ', &  !  5 - state, surface_specific_humidity,            kg kg-1
-         'TLML       ', &  !  6 - state, surface_air_temperature,              K
-         'SPEEDML    ', &  !  7 - state, surface_wind_speed,                   m s-1
+         'SWGDWN     ', &  !  3 - flux,  surface_incoming_shortwave_flux,      W m-2
+         'PS         ', &  !  4 - state, surface_pressure,                     Pa
+         'QA         ', &  !  5 - state, surface_specific_humidity,            kg kg-1
+         'TA         ', &  !  6 - state, surface_air_temperature,              K
+         'SPEED      ', &  !  7 - state, surface_wind_speed,                   m s-1
          'HLML       '/)   !  8 - state, surface_layer_height,                 m
 
     ! local variables
@@ -2911,13 +2911,13 @@ contains
 
     !                     AODAS
     !
-    ! force_array(:, 1) = PRECLSCORR     kg/m2/s (total_precipitation, rainfall+snow)
+    ! force_array(:, 1) = TPREC          kg/m2/s (total_precipitation, rainfall+snow)
     ! force_array(:, 2) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
-    ! force_array(:, 3) = SWGDN          W/m2    (surface_incoming_shortwave_flux)
-    ! force_array(:, 4) = Psurf          Pa      (surface_pressure)
-    ! force_array(:, 5) = QLML           kg/kg   (surface_specific_humidity)
-    ! force_array(:, 6)  = TLML           K       (surface_air_temperature)
-    ! force_array(:, 7)  = SPEED          m/s     (surface_wind_speed)
+    ! force_array(:, 3) = SWGDWN         W/m2    (surface_incoming_shortwave_flux)
+    ! force_array(:, 4) = PS             Pa      (surface_pressure)
+    ! force_array(:, 5) = QA             kg/kg   (surface_specific_humidity)
+    ! force_array(:, 6) = TA             K       (surface_air_temperature)
+    ! force_array(:, 7) = SPEED          m/s     (surface_wind_speed)
     ! force_array(:, 8) = HLML           m       (surface_layer_height)
 
     ! rainfall
