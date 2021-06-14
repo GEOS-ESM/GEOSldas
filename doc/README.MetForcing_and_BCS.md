@@ -267,6 +267,14 @@ COMMONLY USED values for `MET_TAG`:
    For FCST, MET_TAG must specify S2S ensemble member ('ensX'; currently: 'ens1', 'ens2', 
    'ens3', or 'ens4') and month/day of forecast initialization ('MMMDD'; e.g., 'jan01'), 
    separated by double underscores.
+   
+   As of 14 Jun 2021:
+   - Preparation of S2S forcing data ignores the 3-hour offset between S2S daily averages 
+   (21z-21z) and the MERRA-2 daily averages (0z-0z) used for the temporal disaggregration.
+   - The processing of the S2S output incorrectly partitioned total precipitation into snowfall 
+   and convective precipitation.  Therefore, rainfall and snowfall are determined in the 
+   S2S forcing reader from total precipitation and air temperature.  Convective rainfall is 
+   set to 0.  (As of now, only total rainfall is used by Catchment.)
 
 ```
   MET_TAG  : GEOSs2sFCST__[ensX]__[MMMDD]

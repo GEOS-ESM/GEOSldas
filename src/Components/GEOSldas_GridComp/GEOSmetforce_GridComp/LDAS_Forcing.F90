@@ -64,7 +64,8 @@ module LDAS_ForceMod
 
   real, parameter :: DEFAULT_REFH   = 10.   ! m
   
-  character(100), private :: tmpstring100
+  ! Jun 2021: Revised length of unformatted string from 10 to 100 (must be >= 12 for integer).
+  character(100), private :: tmpstring100   
 
   real, contiguous, pointer :: ptrShForce(:,:)=>null()
 
@@ -2616,14 +2617,11 @@ contains
     ! implementation follows LDASsa subroutines get_Princeton_netcdf() and get_GEOS(),
     ! fzeng, 24 Jun 2019
     !
-    ! jkolassa,jmpark,reichle, 10 May 2021:
+    ! jkolassa,jmpark,reichle, 10 May - 14 June 2021:
     !   modified for GEOSldas; added AODAS; met_tag encodes ID of ensemble
     !   member and initial month/day
-    !
-    ! jkolassa,jmpark,reichle, 11 June 2021:
     !   modified to compute precipitation components from total precipitation
-    !   and air temperature (pre-processing of precipiation component forcing
-    !   data was faulty)
+    !   and air temperature (pre-processing of precipitation components was faulty)
 
     use netcdf
     implicit none
@@ -2659,9 +2657,11 @@ contains
     integer, parameter :: N_GEOSgcm_vars_FCST       = 10
     integer, parameter :: N_GEOSgcm_vars_AODAS      = 8
 
+    ! variable names in "FCST" forcing files match those in MERRA-2 file specs
+    
     character(40), dimension(N_GEOSgcm_vars_FCST) :: GEOSgcm_name_FCST = &
          (/             &
-         'PRECTOTCORR', &  !  1 - flux,  total_precipitation,                  kg m-2 s-1
+         'PRECTOTCORR', &  !  1 - flux,  [gauge-corr]_total_precipitation,     kg m-2 s-1
          'LWGAB      ', &  !  2 - flux,  surface_absorbed_longwave_radiation,  W m-2
          'SWGDN      ', &  !  3 - flux,  surface_incoming_shortwave_flux,      W m-2
          'PARDR      ', &  !  4 - flux,  surface_downwelling_par_beam_flux,    W m-2
@@ -2673,10 +2673,12 @@ contains
          'HLML       '  &  ! 10 - state, surface_layer_height,                 m
          /)
 
+    ! variable names in "AODAS" forcing files match those in S2S file specs
+    
     character(40), dimension(N_GEOSgcm_vars_AODAS) :: GEOSgcm_name_AODAS = &
          (/             &
          'TPREC      ', &  !  1 - flux,  total_precipitation,                  kg m-2 s-1
-         'LWGAB      ', &  !  2 - flux,  surface_absorbed_longwave_radiation,  W m-2
+         'LWS        ', &  !  2 - flux,  surface_absorbed_longwave_radiation,  W m-2
          'SWGDWN     ', &  !  3 - flux,  surface_incoming_shortwave_flux,      W m-2
          'PS         ', &  !  4 - state, surface_pressure,                     Pa
          'QA         ', &  !  5 - state, surface_specific_humidity,            kg kg-1
@@ -2701,7 +2703,7 @@ contains
     integer                    :: k, hours_in_month, GEOSgcm_var, nciv_data
     integer                    :: fid, rc, nv_id, status
 
-    real                       :: tol, this_lon, this_lat, Tair_local
+    real                       :: tol, this_lon, this_lat, Tair_tmp, Totprec_tmp
 
     character(  5)             :: init_MMMDD
     character(  4)             :: YYYY, ens_num
@@ -2896,9 +2898,9 @@ contains
 
     ! from GEOSgcm files:
     !
-    !                     Hindcast
+    !                     FCST/Hindcast
     !
-    ! force_array(:, 1) = PRECTOTCORR    kg/m2/s (total_precipitation, rainfall+snow)
+    ! force_array(:, 1) = PRECTOTCORR    kg/m2/s ([gauge-corr]_total_precipitation, rainfall+snowfall)
     ! force_array(:, 2) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
     ! force_array(:, 3) = SWGDN          W/m2    (surface_incoming_shortwave_flux)
     ! force_array(:, 4) = PARDR          W/m2    (surface_downwelling_par_beam_flux)
@@ -2911,7 +2913,7 @@ contains
 
     !                     AODAS
     !
-    ! force_array(:, 1) = TPREC          kg/m2/s (total_precipitation, rainfall+snow)
+    ! force_array(:, 1) = TPREC          kg/m2/s (total_precipitation, rainfall+snowfall)
     ! force_array(:, 2) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
     ! force_array(:, 3) = SWGDWN         W/m2    (surface_incoming_shortwave_flux)
     ! force_array(:, 4) = PS             Pa      (surface_pressure)
@@ -2919,53 +2921,7 @@ contains
     ! force_array(:, 6) = TA             K       (surface_air_temperature)
     ! force_array(:, 7) = SPEED          m/s     (surface_wind_speed)
     ! force_array(:, 8) = HLML           m       (surface_layer_height)
-
-    ! rainfall
-    ! Rainf = convective rainfall + large-scale rainfall
-    ! follow code in GEOS_SurfaceGridComp.F90 to compute convective and large-scale rain
-    ! from convective precip, total precip, and total snowfall
-
-    do k=1,N_catd
-
-       if (FCST) then
-          Tair_local = force_array(k,8)
-       elseif (AODAS) then
-          Tair_local = force_array(k,6)
-       endif
-
-       if ((abs(Tair_local-nodata_GEOSgcm)<tol)) then
-       ! jk, 06/2021: if Tair is undefined, no decision about precipitation 
-       ! partitioning can be made and precip forcing is set to nodata_forcing
-          
-          met_force_new(k)%Rainf_C = nodata_forcing
-          met_force_new(k)%Snowf   = nodata_forcing
-          met_force_new(k)%Rainf   = nodata_forcing
-
-       else                                                   
-       ! jk 06/2021: if Tair is defined, use it to split total precipitation 
-       ! into liquid precipitation and snowfall; all liquid precipitation is
-       ! assigned to large scale, since large scale and convective are added 
-       ! up before they are used to force the land; this may have to be revised
-       ! in future versions of the model
-        
-          if (Tair_local <= Tzero) then ! Tair <= 0C
-      
-              met_force_new(k)%Snowf = force_array(k,1);
-              met_force_new(k)%Rainf = 0.
-              met_force_new(k)%Rainf_C = 0.
-
-          elseif (Tair_local > Tzero) then ! Tair > 0C
-        
-              met_force_new(k)%Snowf = 0.
-              met_force_new(k)%Rainf = force_array(k,1);
-              met_force_new(k)%Rainf_C = 0.
-
-          end if
-
-       end if
-
-    end do
-
+    
     if     (FCST) then
        met_force_new%LWdown    = force_array(:, 2)
        met_force_new%SWdown    = force_array(:, 3)
@@ -2985,6 +2941,59 @@ contains
        met_force_new%Wind      = force_array(:, 7)
        met_force_new%RefH      = force_array(:, 8)
     end if
+    
+    ! rainfall
+    ! Rainf = convective rainfall + large-scale rainfall (total liquid precip)
+    ! Snowf = convective snowfall + large-scale snowfall (total solid precip)
+    
+    ! revised to compute precipitation components from total precipitation
+    ! and air temperature because pre-processing of precipitation components
+    ! was faulty - 14 Jun 2021
+    
+    do k=1,N_catd
+
+       ! "where" statements would probably be better than a do loop, but left for later
+       ! - reichle, 14 Jun 2021
+       
+       Tair_tmp    = met_force_new(k)%Tair  
+       
+       Totprec_tmp = force_array(k,1)       ! total precip is element 1 in FCST and AODAS
+       
+       if ( (abs(Tair_tmp   -nodata_GEOSgcm)<tol) .or.     &
+            (abs(Totprec_tmp-nodata_GEOSgcm)<tol)          &
+            ) then
+          
+          ! If Tair or total precip is undefined, no decision about precipitation 
+          ! partitioning can be made and precip forcing is set to nodata_forcing.
+          
+          met_force_new(k)%Rainf_C = nodata_forcing
+          met_force_new(k)%Snowf   = nodata_forcing
+          met_force_new(k)%Rainf   = nodata_forcing
+          
+       else
+          
+          ! Use Tair to split total precipitation into rainfall and snowfall.
+          
+          if     (Tair_tmp <= Tzero) then ! Tair <= 0C
+      
+             met_force_new(k)%Snowf   = Totprec_tmp
+             met_force_new(k)%Rainf   = 0.
+             
+          else                            ! Tair > 0C
+             
+             met_force_new(k)%Snowf   = 0.
+             met_force_new(k)%Rainf   = Totprec_tmp
+             
+          end if
+
+          ! Assign 0 to convective rainfall because only the total rainfall is used by the
+          ! Catchment model (for now).  This may have to be revised for future model versions.
+          
+          met_force_new(k)%Rainf_C = 0.
+          
+       end if
+       
+    end do
 
     deallocate(force_array)
     deallocate(GEOSgcm_name)
