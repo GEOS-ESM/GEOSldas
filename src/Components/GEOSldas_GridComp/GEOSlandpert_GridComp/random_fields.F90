@@ -297,7 +297,7 @@ contains
     ! local variables
     real :: dkx, dky, fac, lamx2dkx2, lamy2dky2
     real :: lx2kx2(this%N_x_fft), ly2ky2(this%N_y_fft)
-    integer :: i, j
+    integer :: i, j, i1, i2, rank, ierror
 
     ! start
     dkx = (TWO_PI)/(float(this%N_x_fft)*this%dx)
@@ -327,10 +327,16 @@ contains
     end do
 
     ! assemble spectrum in "wrap-around" order
+    i1 = 1
+    i2 = this%N_x_fft
+    if (this%comm /= MPI_COMM_NULL) then
+       call MPI_COMM_Rank(this%node_comm, rank, ierror)
+       i1 = sum(this%dim1_counts(1:rank)) + 1
+       i2 = sum(this%dim1_counts(1:rank+1))
+    endif
+ 
     do j=1,this%N_y_fft
-       do i=1,this%N_x_fft
-          this%field1_fft(i,j) = fac*exp(-.25*(lx2kx2(i)+ly2ky2(j)))  
-       end do
+       this%field1_fft(i1:i2,j) = fac*exp(-.25*(lx2kx2(i1:i2)+ly2ky2(j)))  
     end do
 
     return
@@ -444,8 +450,17 @@ contains
 
     call nr_ran2_2d(N_x_fft, N_y_fft, rseed, ran_num)
     theta = (TWO_PI)*ran_num ! random phase angle
-    this%field2_fft = sin(theta)*this%field1_fft
-    this%field1_fft = cos(theta)*this%field1_fft
+    n1 = 1
+    n2 = N_x_fft
+#ifdef MKL_AVAILABLE
+    if (this%comm /= MPI_COMM_NULL) then
+       call MPI_comm_rank(this%node_comm, rank, ierror)
+       n1 = sum(this%dim1_counts(1:rank)) + 1
+       n2 = sum(this%dim1_counts(1:rank+1)) 
+    endif
+#endif
+    this%field2_fft(n1:n2,:) = sin(theta)*this%field1_fft(n1:n2,:)
+    this%field1_fft(n1:n2,:) = cos(theta)*this%field1_fft(n1:n2,:)
 
     deallocate(  theta)
     deallocate(ran_num)
@@ -492,12 +507,9 @@ contains
        deallocate(z_inout)
     else
        call MPI_comm_size(this%node_comm, npes, ierror)
-       call MPI_comm_rank(this%node_comm, rank, ierror)
        call c_f_pointer(this%base_address, tmp_field, shape=[N_x_fft, N_y_fft])
-
-       n1 = sum(this%dim1_counts(1:rank)) + 1
-       n2 = sum(this%dim1_counts(1:rank+1)) 
        ldim1  = this%dim1_counts(rank+1)
+
        allocate(tmp_field_dim1(ldim1, N_y_fft))
        tmp_field_dim1 = cmplx(this%field1_fft(n1:n2,:),this%field2_fft(n1:n2,:))
        cptr = c_loc(tmp_field_dim1(1,1))
