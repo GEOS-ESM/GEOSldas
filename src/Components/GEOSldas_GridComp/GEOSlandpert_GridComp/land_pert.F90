@@ -544,9 +544,12 @@ contains
 
        ! initialize instance rf of class random_fields
        ! this needs to be done for each pert field
-
-       !call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat )
+#ifdef MKL_AVAILABLE      
+       ! W.J Note: hardcoded comm = mpicomm to activate parallel fft
        call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat, comm=mpicomm )
+#else
+       call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat )
+#endif
 
        do n=1,N_ens
 
