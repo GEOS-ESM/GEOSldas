@@ -2914,7 +2914,7 @@ contains
     !                     AODAS
     !
     ! force_array(:, 1) = TPREC          kg/m2/s (total_precipitation, rainfall+snowfall)
-    ! force_array(:, 2) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
+    ! force_array(:, 2) = LWS            W/m2    (surface_absorbed_longwave_radiation)
     ! force_array(:, 3) = SWGDWN         W/m2    (surface_incoming_shortwave_flux)
     ! force_array(:, 4) = PS             Pa      (surface_pressure)
     ! force_array(:, 5) = QA             kg/kg   (surface_specific_humidity)
