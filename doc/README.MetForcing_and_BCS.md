@@ -99,6 +99,12 @@ SMAP L4_SM Version 5
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
+#### Forcing from post-processed output of the GEOS S2S system (FCST, AODAS)
+
+```                                                                                                                         
+  MET_PATH : [check with GMAO S2S group]
+```  
+
 
 
 COMMONLY USED values for `MET_TAG`:
@@ -245,6 +251,35 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GEOS.fp.asm__precCPCUFLKG5FPv3                  ! (precip corr with first-look CPCU)
 ```
 
+#### Forcing from post-processed output of the GEOS S2S system 
+
+ - Forcing derived through post-processing of daily average output from the GEOS S2S system,
+   including S2S hindcasts/forecasts ("FCST") and the "AODAS" used for S2S initialization. 
+
+   S2S output is from the geosgcm_vis2d and geosgcm_surf Collections for FCST and from the 
+   geosgcm_rad and geosgcm_surf Collections for AODAS (see GMAO Office Note No. 16).
+
+   For FCST, post-processing includes a monthly bias correction to the MERRA-2 climatology.
+
+   Daily data are disaggregated to 6-hourly (FCST) or 1-hourly (AODAS) using the MERRA-2 
+   climatological diurnal cycle.
+
+   For FCST, MET_TAG must specify S2S ensemble member ('ensX'; currently: 'ens1', 'ens2', 
+   'ens3', or 'ens4') and month/day of forecast initialization ('MMMDD'; e.g., 'jan01'), 
+   separated by double underscores.
+   
+   As of 14 Jun 2021:
+   - Preparation of S2S forcing data ignores the 3-hour offset between S2S daily averages 
+   (21z-21z) and the MERRA-2 daily averages (0z-0z) used for the temporal disaggregration.
+   - The processing of the S2S output incorrectly partitioned total precipitation into snowfall 
+   and convective precipitation.  Therefore, rainfall and snowfall are determined in the 
+   S2S forcing reader from total precipitation and air temperature.  Convective rainfall is 
+   set to 0.  (As of now, only total rainfall is used by Catchment.)
+
+```
+  MET_TAG  : GEOSs2sFCST__[ensX]__[MMMDD]
+  MET_TAG  : GEOSs2sAODAS
+```
 
 Boundary Conditions  
 ================================================================================
