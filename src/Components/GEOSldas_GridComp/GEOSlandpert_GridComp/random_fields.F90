@@ -459,8 +459,8 @@ contains
        n2 = sum(this%dim1_counts(1:rank+1)) 
     endif
 #endif
-    this%field2_fft(n1:n2,:) = sin(theta)*this%field1_fft(n1:n2,:)
-    this%field1_fft(n1:n2,:) = cos(theta)*this%field1_fft(n1:n2,:)
+    this%field2_fft(n1:n2,:) = sin(theta(n1:n2,:))*this%field1_fft(n1:n2,:)
+    this%field1_fft(n1:n2,:) = cos(theta(n1:n2,:))*this%field1_fft(n1:n2,:)
 
     deallocate(  theta)
     deallocate(ran_num)
