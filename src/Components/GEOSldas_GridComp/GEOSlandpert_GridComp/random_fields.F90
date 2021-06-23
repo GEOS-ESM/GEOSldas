@@ -516,7 +516,7 @@ contains
        call c_f_pointer (cptr, X, [ldim1*N_y_fft])
        mklstat = DftiComputeBackward( this%Desc_Handle_Dim2, X )
        call MPI_Barrier(this%node_comm, ierror)
-       tmp_field(n1:n2,:) = tmp_field_dim1
+       tmp_field(n1:n2,:) = tmp_field_dim1/N_y_fft
 
        call MPI_Win_fence(0, this%win, ierror)
 
@@ -528,7 +528,7 @@ contains
        cptr = c_loc(tmp_field_dim2(1,1))
        call c_f_pointer (cptr, X, [N_x_fft*ldim2])
        mklstat = DftiComputeBackward( this%Desc_Handle_Dim1, X )
-       tmp_field(:,n1:n2) = tmp_field_dim2
+       tmp_field(:,n1:n2) = tmp_field_dim2/N_x_fft
        
        call MPI_Win_fence(0, this%win, ierror)
 
