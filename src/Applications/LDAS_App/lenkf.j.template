@@ -31,7 +31,8 @@ setenv GEOSBIN    $ESMADIR/bin/
 source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
-setenv MKL_CBWR "COMPATIBLE"
+#setenv MKL_CBWR "COMPATIBLE"
+setenv MKL_CBWR "AVX2"
 #setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
 # reversed sequence for LADAS_COUPLING (Sep 2020)  (needed when coupling with ADAS using different BASEDIR)
 setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${LD_LIBRARY_PATH} 
