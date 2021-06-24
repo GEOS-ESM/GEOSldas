@@ -1443,7 +1443,7 @@ contains
     N_fields = 0  ! set to zero temporarily, not yet needed
     ! move up the allocation. The input should be allocated in debug mode although it is not used
     ! allocate and assemble tile_data_l
-    allocate(tile_data_l(0,0,0))
+    allocate(tile_data_l(0,0,0))  ! for debugging to pass  
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
          N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
          N_catlH, tile_coord_lH=tile_coord_lH )
