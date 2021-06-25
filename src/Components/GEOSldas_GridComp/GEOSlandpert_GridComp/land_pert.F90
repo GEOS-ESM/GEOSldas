@@ -106,7 +106,7 @@ contains
     ! fields.
 
     integer, intent(in) :: N_pert     ! # different perturbations
-    integer, intent(in) :: fft_npert   ! # different perturbations for fft. It is the same as n_pert if a processor has tiles.
+    integer, intent(in) :: fft_npert  ! # different perturbations for fft; equals n_pert if proc has tiles.
 
     integer, intent(in) :: N_ens  ! # ensemble members
 
@@ -235,7 +235,7 @@ contains
 
     if (.not. diagn_only)                            &
          call propagate_pert(                        &
-         fft_npert, N_ens, pert_grid_l, pert_grid_f,    &
+         fft_npert, N_ens, pert_grid_l, pert_grid_f, &
          dtstep,                                     &
          Pert_rseed,                                 &
          pert_param,                                 &

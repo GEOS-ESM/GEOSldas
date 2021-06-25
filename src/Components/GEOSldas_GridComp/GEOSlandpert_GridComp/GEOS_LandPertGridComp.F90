@@ -1143,7 +1143,7 @@ contains
        call init_randseed(pert_rseed)
        ! -ForcePert-
        call propagate_pert(                                                     &
-            internal%ForcePert%fft_npert,                                           &
+            internal%ForcePert%fft_npert,                                       &
             1,                                                                  &
             internal%pgrid_l, internal%pgrid_f,                                 &
             ! arbitrary dtstep
@@ -1158,7 +1158,7 @@ contains
 
        ! -prognostics-
        call propagate_pert(                                                     &
-            internal%PrognPert%fft_npert,                                           &
+            internal%PrognPert%fft_npert,                                       &
             1,                                                                  &
             internal%pgrid_l, internal%pgrid_f,                                 &
             ! arbitrary dtstep
@@ -1421,7 +1421,7 @@ contains
 
     call get_pert(                                                              &
          internal%ForcePert%npert,                                              &
-         internal%ForcePert%fft_npert,                                              &
+         internal%ForcePert%fft_npert,                                          &
          1,                                                                     &
          internal%pgrid_l, internal%pgrid_f,                                    &
          real(internal%ForcePert%dtstep),                                       &
@@ -1453,7 +1453,7 @@ contains
     
     call get_pert(                                                              &
          internal%PrognPert%npert,                                              &
-         internal%PrognPert%fft_npert,                                              &
+         internal%PrognPert%fft_npert,                                          &
          1,                                                                     &
          internal%pgrid_l, internal%pgrid_f,                                    &
          real(internal%PrognPert%dtstep),                                       &
@@ -1690,7 +1690,7 @@ contains
 
     ! -ForcePert-
        call propagate_pert(                                                   &
-          internal%ForcePert%fft_npert,                                           &
+          internal%ForcePert%fft_npert,                                       &
           1,                                                                  &
           internal%pgrid_l, internal%pgrid_f,                                 &
           real(internal%ForcePert%dtstep),                                    &
@@ -1718,7 +1718,7 @@ contains
 
     ! -prognostics-
         call propagate_pert(                                                  &
-           internal%PrognPert%fft_npert,                                          &
+           internal%PrognPert%fft_npert,                                      &
            1,                                                                 &
            internal%pgrid_l, internal%pgrid_f,                                &
            real(internal%PrognPert%dtstep),                                   &

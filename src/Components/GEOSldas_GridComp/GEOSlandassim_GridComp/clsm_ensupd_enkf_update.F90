@@ -2820,7 +2820,6 @@ contains
           deallocate(data_v_9km_tile)
 
        end if  ! root_proc
-       if(allocated(Observations_f)) deallocate(Observations_f)
 
        if(allocated(Observations_f)) deallocate(Observations_f)
 
