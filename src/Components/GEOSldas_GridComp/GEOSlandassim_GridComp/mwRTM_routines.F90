@@ -369,13 +369,16 @@ contains
        ! to check one field of mwp because mwRTM_param_nodata_check()
        ! is called in mwRTM_get_param()]
        
-       if ( (SWE(n)<SWE_threshold)                            .and.         &
-            (soiltemp(n)>tsoil_threshold)                     .and.         &
-            (mwp(n)%sand-nodata_generic>nodata_tol_generic)   .and.   &
-            (mwp(n)%rgh_hmin>-nodata_tol_generic) .and.   &
-            (mwp(n)%rgh_hmax>-nodata_tol_generic) .and.   &
-            (mwp(n)%omega>-nodata_tol_generic)    .and.   &
-            (mwp(n)%dcatau>-nodata_tol_generic) )        then
+       if ( (SWE(n)<SWE_threshold)                           .and.         &
+            (soiltemp(n)>tsoil_threshold)                    .and.         &
+            (mwp(n)%sand-nodata_generic>nodata_tol_generic)  .and.         &
+! WRONG nodata checks?  Why check more than one variable, contradicts instruction above, - reichle, 27Jun2021
+            (mwp(n)%rgh_hmin>-nodata_tol_generic)            .and.         &  
+            (mwp(n)%rgh_hmax>-nodata_tol_generic)            .and.         &
+            (mwp(n)%omega>-nodata_tol_generic)               .and.         &
+            (mwp(n)%dcatau>-nodata_tol_generic)                            &
+! end "WRONG nodata checks?"
+            )                                                      then
        
           ! soil dielectric constant
           
@@ -468,6 +471,7 @@ contains
 
           ! Q. Liu test with L2 DCA TAU, the same for hpol and vpol
 
+! 0-diff/backward compatible if using "old" mwRTM params?? - reichle, 27Jun2021
           exptauh = EXP( -mwp(n)%dcatau)
           exptauv = EXP( -mwp(n)%dcatau)
           
