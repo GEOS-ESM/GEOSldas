@@ -46,7 +46,8 @@ module land_pert_routines
   use LDAS_ExceptionsMod,               ONLY:     & 
        ldas_abort,                                &
        LDAS_GENERIC_ERROR
-  use LDAS_ensdrv_Globals, only: root_logit,logunit
+
+  use LDAS_ensdrv_Globals, only: root_logit, logunit
     
   implicit none
   
@@ -327,6 +328,7 @@ contains
 
   end subroutine get_pert
 
+  ! *******************************************************************************
   
   subroutine get_init_Pert_rseed( ens_id, init_Pert_rseed )
     
