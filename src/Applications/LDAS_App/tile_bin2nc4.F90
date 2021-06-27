@@ -3,7 +3,7 @@ PROGRAM tile_bin2nc4
   implicit none
   INCLUDE 'netcdf.inc'
 
-  integer       :: i,k,  n, iargc, NTILES
+  integer       :: i,k,  n, NTILES
   integer       :: NCFOutID, Vid, STATUS, CellID, TimID, nVars
   character*256 :: Usage="tile_bin2nc4.x BINFILE DESCRIPTOR TILECOORD"
   character*256 :: BINFILE, TILECOORD, DESCRIPTOR, arg(3)
@@ -17,7 +17,7 @@ PROGRAM tile_bin2nc4
   real :: undef
   ! processing command line agruments
 
-  I = iargc()
+  I = command_argument_count()
   
   if( I /=3 ) then
      print *, "Wrong Number of arguments: ", i
@@ -26,10 +26,10 @@ PROGRAM tile_bin2nc4
   end if
 
   do n=1,I
-     call getarg(n,arg(n))
+     call get_command_argument(n,arg(n))
   enddo
 
-  call getenv ("MYNAME"        ,MYNAME        )
+  call get_environment_variable ("MYNAME"        ,MYNAME        )
   read(arg(1),'(a)') BINFILE
   read(arg(2),'(a)') DESCRIPTOR
   read(arg(3),'(a)') TILECOORD
@@ -286,12 +286,12 @@ PROGRAM tile_bin2nc4
     case ('TPSURF');     LONG_NAME = 'ave_catchment_temp_incl_snw';                                      UNITS = 'K' 
     case ('GRN');        LONG_NAME = 'greeness_fraction';                                                UNITS = '1' 
     case ('LAI');        LONG_NAME = 'leaf_area_index';                                                  UNITS = '1' 
-    case ('TP1');        LONG_NAME = 'soil_temperatures_layer_1';                                        UNITS = 'C' 
-    case ('TP2');        LONG_NAME = 'soil_temperatures_layer_2';                                        UNITS = 'C' 
-    case ('TP3');        LONG_NAME = 'soil_temperatures_layer_3';                                        UNITS = 'C' 
-    case ('TP4');        LONG_NAME = 'soil_temperatures_layer_4';                                        UNITS = 'C' 
-    case ('TP5');        LONG_NAME = 'soil_temperatures_layer_5';                                        UNITS = 'C' 
-    case ('TP6');        LONG_NAME = 'soil_temperatures_layer_6';                                        UNITS = 'C' 
+    case ('TP1');        LONG_NAME = 'soil_temperatures_layer_1';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP2');        LONG_NAME = 'soil_temperatures_layer_2';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP3');        LONG_NAME = 'soil_temperatures_layer_3';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP4');        LONG_NAME = 'soil_temperatures_layer_4';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP5');        LONG_NAME = 'soil_temperatures_layer_5';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP6');        LONG_NAME = 'soil_temperatures_layer_6';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
     case ('PRECTOTLAND');LONG_NAME = 'Total_precipitation_land';                                         UNITS = 'kg m-2 s-1'
     case ('PRECSNOLAND');LONG_NAME = 'snowfall_land';                                                    UNITS = 'kg m-2 s-1'
     case ('SNOWMASS')   ;LONG_NAME = 'snow_mass';                                                        UNITS = 'kg m-2'

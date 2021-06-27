@@ -44,17 +44,18 @@ class LDASsetup:
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
-            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME']
+            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME',
+            'ADAS_EXPDIR' ]
 
 
         # ------
         # Required resource manager input fields
         # ------
-        rqdRmInpKeys = ['rm_name', 'account', 'walltime', 'ntasks']
+        rqdRmInpKeys = ['account', 'walltime', 'ntasks_model', 'ntasks-per-node']
         # ------
         # Optional resource manager input fields
         # ------
-        optSlurmInpKeys = ['job_name', 'constraint','qos']
+        optSlurmInpKeys = ['job_name', 'qos', 'oserver_nodes', 'writers-per-node']
 
         # ------
         # ./ldsetup.py sample ...
@@ -145,6 +146,9 @@ class LDASsetup:
         assert not os.path.isdir(_mydir), 'Dir [%s] already exists!' % _mydir
         _mydir = None 
         self.ladas_coupling = int(self.rqdExeInp.get('LADAS_COUPLING',0))
+        if self.ladas_coupling > 0:
+           assert 'ADAS_EXPDIR'  in self.rqdExeInp, " need ADAS_EXPDIR  in the input file %s" %(self.exeinpfile)
+
         self.first_ens_id = int(self.rqdExeInp.get('FIRST_ENS_ID',0))
         self.perturb = int(self.rqdExeInp.get('PERTURBATIONS',0))
         if self.nens > 1:
@@ -400,17 +404,15 @@ class LDASsetup:
             self.rqdRmInp[key] = inpDictFromFile.pop(key)
 
         # checks on rqd rm inputs
-        ## for now, we only support SLURM
-        assert self.rqdRmInp['rm_name'].upper() == 'SLURM'
         ## account and walltime should exist
         assert self.rqdRmInp['account']
         if cmdLineArgs['account'] != 'None':
            self.rqdRmInp['account'] = cmdLineArgs['account']
         assert self.rqdRmInp['walltime']
-        ## ntasks is a +ve integer
-        _ntasks = int(self.rqdRmInp['ntasks'])
+        ## ntasks_model is a +ve integer
+        _ntasks = int(self.rqdRmInp['ntasks_model'])
         assert _ntasks>0
-        self.rqdRmInp['ntasks'] = _ntasks
+        self.rqdRmInp['ntasks_model'] = _ntasks
         _ntasks = None
 
         # print rqd rm inputs
@@ -458,6 +460,27 @@ class LDASsetup:
         tmp_expid = None
         tmp_expdir = None
 
+        my_ntasks_per_node = int(self.rqdRmInp['ntasks-per-node'])
+
+        # default number of nodes
+        my_nodes = self.rqdRmInp['ntasks_model'] / my_ntasks_per_node
+        if self.rqdRmInp['ntasks_model'] % my_ntasks_per_node > 0 :
+           my_nodes = my_nodes + 1
+
+        # default is set to 0 ( no output server)
+        if 'oserver_nodes' not in self.optRmInp :
+           self.optRmInp['oserver_nodes'] = 0
+        
+        self.optRmInp['nodes'] = my_nodes + int(self.optRmInp['oserver_nodes'])
+
+        if (int(self.optRmInp['oserver_nodes']) >=1) :
+           self.rqdExeInp['WRITE_RESTART_BY_OSERVER'] = "YES"
+           # set default for now
+           if 'writers-per-node' not in self.optRmInp:
+              self.optRmInp['writers-per-node'] = 5
+        else:
+           self.optRmInp['writers-per-node'] = 0
+           
 
     def _parseInputFile(self, inpfile):
         """
@@ -930,14 +953,14 @@ class LDASsetup:
             os.remove('optimized_distribution')
     
         print  "Optimizing... decomposition of processes.... \n"
-        cmd = './preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks'])
+        cmd = './preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model'])
         print "cmd:   " + cmd
         sp.call(cmd,shell=True)
         optinxny=self._parseInputFile('optimized_distribution')
         if (int(optinxny['NX']) == 1):
-            if int(optinxny['NY']) != int(self.rqdRmInp['ntasks']):
-                self.rqdRmInp['ntasks']=optinxny['NY']
-                print 'adjust ntasks %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks'])
+            if int(optinxny['NY']) != int(self.rqdRmInp['ntasks_model']):
+                self.rqdRmInp['ntasks_model']=optinxny['NY']
+                print 'adjust ntasks_model %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks_model'])
         
         if os.path.isfile('IMS.rc') :
             shutil.move('IMS.rc', self.rundir+'/')
@@ -1079,17 +1102,18 @@ class LDASsetup:
                 valn = self.catch+tmpl_+'_internal_checkpoint'
                 ldasrcInp[keyn]= valn
 
-                # for lat/lon and EASE tile space, specify LANDPERT checkpoint file here (via MAPL);
-                # for cube-sphere tile space, Landpert GC will set up LANDPERT checkpoint file 
-                if('-CF' not in self.rqdExeInp['GRIDNAME'] and self.perturb == 1):
-                    keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
-                    valn = 'landpert'+tmpl_+'_internal_checkpoint'
-                    ldasrcInp[keyn]= valn
+                # specify LANDPERT restart file
+                if (self.perturb == 1):
                     keyn = 'LANDPERT_INTERNAL_RESTART_FILE'
                     valn = '../input/restart/landpert'+tmpl_+'_internal_rst'
                     ldasrcInp[keyn]= valn
-                    
-    
+                    # for lat/lon and EASE tile space, specify LANDPERT checkpoint file here (via MAPL);
+                    # for cube-sphere tile space, Landpert GC will set up LANDPERT checkpoint file 
+                    if ('-CF' not in self.rqdExeInp['GRIDNAME']):
+                        keyn = 'LANDPERT_INTERNAL_CHECKPOINT_FILE'
+                        valn = 'landpert'+tmpl_+'_internal_checkpoint'
+                        ldasrcInp[keyn]= valn
+ 
                 # write LDAS.rc
                 fout =open(self.rundir+'/'+shortfile,'w')
                 # ldasrcInp['NUM_LDAS_ENSEMBLE']=ldasrcInp.pop('NUM_ENSEMBLE')
@@ -1112,57 +1136,12 @@ class LDASsetup:
         status=True
         return status
 
-    def _getRMdirectives(self, start):
-
-        _rm_name = self.rqdRmInp['rm_name']
-        expid = self.rqdExeInp['EXP_ID']
-        if _rm_name=='SLURM':
-            directives = ''
-            # REQUIRED directives account/time/ntasks
-            directives += '#SBATCH --account=%s\n' % self.rqdRmInp['account']
-            directives += '#SBATCH --time=%s\n' % self.rqdRmInp['walltime']
-            directives += '#SBATCH --ntasks=%s\n' % self.rqdRmInp['ntasks']
-            # OPTIONAL directives
-            for key, val in self.optRmInp.iteritems():
-                directives += '#SBATCH --%s=%s\n' % (key, val)
-            # out/err files in rc_out
-            myDateTime = '%04d%02d%02d_%02d%02dz' % \
-                (start.year, start.month, start.day,start.hour,start.minute)
-            outfile = os.path.relpath(
-                '/'.join([
-                        self.outdir,
-                        self.rqdExeInp['EXP_DOMAIN'],
-                        'rc_out',
-                        'Y%04d' % start.year,
-                        'M%02d' % start.month,
-                        '.'.join([expid, 'ldas_log', myDateTime, 'txt']),
-                        ]),
-                self.rundir)
-            errfile = os.path.relpath(
-                '/'.join([
-                        self.outdir,
-                        self.rqdExeInp['EXP_DOMAIN'],
-                        'rc_out',
-                        'Y%04d' % start.year,
-                        'M%02d' % start.month,
-                        '.'.join([expid, 'ldas_err', myDateTime, 'txt']),
-                        ]),
-                self.rundir)
-            directives += '#SBATCH --output=%s\n' % outfile
-            directives += '#SBATCH --error=%s\n' % errfile
-        else:
-            raise Exception
-        
-        return directives
-
-
     def createBatchRun(self):
         """
         """
 
         status = False
 
-        rm_name = self.rqdRmInp['rm_name'].lower()
         os.chdir(self.rundir)
         fout =open(self.rundir+'/ldas_batchrun.j','w')
         fout.write("#!/bin/bash -f\n")
@@ -1216,7 +1195,6 @@ class LDASsetup:
 
         status = False
 
-        rm_name = self.rqdRmInp['rm_name'].lower()
         os.chdir(self.rundir)
         lenkf=self.blddir+'/etc/lenkf.j.template'
         shutil.copy(lenkf,'lenkf.j')
@@ -1228,10 +1206,6 @@ class LDASsetup:
         my_job=self.rqdExeInp['EXP_ID']
         if 'job_name' in self.optRmInp :
             my_job = self.optRmInp['job_name']
-
-        my_constraint=''
-        if 'constraint' in self.optRmInp :
-            my_constraint = self.optRmInp['constraint']
 
         start = self.begDates[0]
         expid = self.rqdExeInp['EXP_ID']
@@ -1264,16 +1238,20 @@ class LDASsetup:
                         fout.write(line.replace('MY_ACCOUNT',self.rqdRmInp['account']))
                     elif 'MY_WALLTIME' in line :
                         fout.write(line.replace('MY_WALLTIME',self.rqdRmInp['walltime']))
-                    elif 'MY_NTASKS' in line :
-                        fout.write(line.replace('MY_NTASKS',str(self.rqdRmInp['ntasks'])))
+                    elif 'MY_NODES' in line :
+                        line_ = line.replace('MY_NODES',str(self.optRmInp['nodes']))
+                        fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
+                        if int(self.rqdRmInp['ntasks-per-node']) > 28:
+                           fout.write("#SBATCH --constraint=sky\n")
+                    elif 'MY_OSERVER_NODES' in line :
+                        fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
+                    elif 'MY_WRITERS_NPES' in line :
+                        fout.write(line.replace('MY_WRITERS_NPES', str(self.optRmInp['writers-per-node'])))
                     elif 'MY_QOS' in line :
                         if 'allnccs' not in my_qos:
                            fout.write(line.replace('MY_QOS',my_qos))
                     elif 'MY_JOB' in line :
                         fout.write(line.replace('MY_JOB',my_job))
-                    elif 'MY_CONS' in line :
-                        if my_constraint!='' :
-                            fout.write(line.replace('MY_CONS',my_constraint))
                     elif 'MY_EXPID' in line :
                         fout.write(line.replace('MY_EXPID',self.rqdExeInp['EXP_ID']))
                     elif 'MY_EXPDOMAIN' in line :
@@ -1290,6 +1268,10 @@ class LDASsetup:
                         fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
                     elif 'MY_LADAS_COUPLING' in line :
                         fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
+                    elif 'MY_ADAS_EXPDIR' in line :
+                        if self.ladas_coupling > 0:
+                           fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
+                    
                         
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
@@ -1315,13 +1297,13 @@ def _printExeInputKeys(rqdExeInpKeys):
     Private method: print sample exe input
     """
 
-    print '#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#'
-    print '#                                                          #'
-    print '#                 REQUIRED INPUTS                          #'
-    print '#                                                          #'
-    print '# These inputs are needed to set up output dir structure.  #'
-    print '#                                                          #'
-    print '#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#'
+    print '####################################################################################'
+    print '#                                                                                  #'
+    print '#                             REQUIRED INPUTS                                      #'
+    print '#                                                                                  #'
+    print '#             These inputs are needed to set up output dir structure.              #'
+    print '#                                                                                  #'
+    print '####################################################################################'
     print 
     print '############################################################'
     print '#                                                          #'
@@ -1438,34 +1420,48 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '# Coupling of LDAS to ADAS ("LADAS"):                      #'
     print '#                                                          #'
     print '#   0 -- LDAS not coupled with ADAS (default)              #'
-    print '#   1 -- LDAS coupled with ADAS ${ADAS_exp}                #'
+    print '#   1 -- LDAS coupled with central member of ADAS          #'
+    print '#   2 -- LDAS coupled with ens component of ADAS           #' 
+    print '#                                                          #' 
+    print '#  Requirements for LADAS_COUPLING > 0:                    #'
+    print '#                                                          #'     
+    print '#  (0) Specify ADAS_EXPDIR = [full_path]/[ADAS_EXPID]      #'
     print '#                                                          #'
-    print '#  Requirements for LADAS_COUPLING = 1:                    #'
-    print '#                                                          #'
-    print '#  (1) BEG_DATE must be consistent with ${ADAS_exp}        #'
-    print '#                first cycle date(21z, 3z, 9z or 15z)      #'
+    print '#  (1) BEG_DATE must be consistent with first cycle date   #'
+    print '#        and time of ADAS experiment (time is typically    #'
+    print '#        3z, 9z, 15z, or 21z)                              #'
     print '#                                                          #'        
-    print '#  (2) EXP_DOMAIN must be global CS grid as in ${ADAS_exp} #'
+    print '#  (2) EXP_DOMAIN must be global CS grid as in ADAS exp    #'
     print '#                                                          #'
-    print '#  (3) MET_TAG  must be set to  ${ADAS_exp}__Nx+-          #'
-    print '#      MET_PATH must be set to  ${ADAS_exp}/lana/forc      #' 
-    print '#    After ldas exp setup, verify the following link:      #'        
-    print '#    ../input/met_forcing/forc -> ${ADAS_exp}/lana/forc    #'
+    print '#  (3) MET_TAG  must be set to [ADAS_EXPID]__Nx+-          #'
+    print '#      MET_PATH must be set as follows for                 #'
+    print '#        LADAS_COUPLING = 1:                               #'        
+    print '#          [ADAS_EXPDIR]/lana/forc                         #'        
+    print '#        LADAS_COUPLING = 2:                               #'        
+    print '#          [ADAS_EXPDIR]/atmens/ensdiag/forc               #'
+    print '#      After ldas exp setup, verify the following link:    #'        
+    print '#        ../input/met_forcing/forc -> [MET_PATH]           #' 
     print '#                                                          #'
     print '#  (4) BCS_PATH must be consistent with that of            #'
-    print '#      ${ADAS_exp}/run/lnbcs                               #'
+    print '#        [ADAS_EXPDIR][/run/lnbcs                          #'
     print '#                                                          #'
-    print '#  (5) JOB_SGMT must be set to 6h (ADAS analysis window)   #'
+    print '#  (5) JOB_SGMT must match ADAS analysis window            #'
+    print '#        (typically 6h)                                    #'
     print '#                                                          #'
     print '#  (6) NUM_SGMT must be set to 1                           #'
     print '#                                                          #'
-    print '#  (7) instantaneous "catch_progn_incr" must be in HIST    #'
-    print '#      collection; time step must match that of LDAS       #'
-    print '#      analysis                                            #'
+    print '#  (7) HISTORY:                                            #'
+    print '#      - instantaneous "catch_progn_incr" must be in       #'
+    print '#          HISTORY collection                              #'
+    print '#      - time step must match that of LDAS analysis        #'
+    print '#      - for LADAS_COUPLING=2, HISTORY must include        #'              
+    print '#          "catch_progn_incr[ENS_INDEX]"                   #'
     print '#                                                          #'
     print '############################################################'
     print
     print 'LADAS_COUPLING: 0'
+    print
+    print
 
     _fn = '../etc/GEOSldas_LDAS.rc'   # run ldas_setup from /bin directory
 
@@ -1508,22 +1504,29 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# REQUIRED inputs'
     print '#'
     print '# NOTE:'
-    print '# (1) rm_name (resource manager name) is SLURM (PBS is no longer used)'
-    print '# (2) walltime is in the format hh:mm:ss'
+    print '# - account          = computational project number'
+    print '#                      [At NCCS: Use command "getsponsor" to see available account number(s).]'  
+    print '# - walltime         = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
+    print '# - ntasks_model     = number of processors requested for the model (typically 112; output server is not included)'
+    print '# - ntasks-per-node  = number of tasks per node (typically 40 for skylake and 28 for haswell nodes)'
+    print '#                      [If >28, skylake nodes will be allocated, else skylake or haswell.]'
     print '#'
     for key in rqdRmInpKeys:
-        print key.ljust(23), ':'
+        print key + ':'
     print
     print '#'
     print '# OPTIONAL inputs'
     print '#'
     print '# NOTE:'
-    print '# (1) Default job_name is "exp_id"'
-    print '# (2) Default is no constraint'
-    print '# (3) Do not specify qos (quality-of-service) by default.  Specify "debug" for faster but limited service.'
+    print '# - job_name   = name of experiment; default is "exp_id"'
+    print '# - qos        = quality-of-service; do not specify by default; specify "debug" for faster but limited service.'
+    print '# - oserver_nodes    = number of nodes for oserver ( default is 0 )'
+    print '# - writers-per-node = tasks per oserver_node for writing ( default is 5 ),'
+    print '#      IMPORTANT REQUIREMENT: total #writers = writers-per-node * oserver_nodes >= 2'
+    print '#      Jobs will hang when oserver_nodes = writers-per-node = 1.'
     print '#'
     for key in optRmInpKeys:
-        print '#'+key.ljust(23), ':'
+        print '#'+key + ':'
     
 def parseCmdLine():
     """
@@ -1534,8 +1537,8 @@ def parseCmdLine():
         description= \
             "Script to setup a GEOSldas experiment. The script requires "\
             "two (2) input files, one for the Fortran executable and the " \
-            "other for the resource manager (SLURM/PBS etc.). For sample " \
-            "input files try './ldas_setup sample -h'.",
+            "other for the resource manager (SLURM). For sample input " \
+            "files use './ldas_setup sample -h'.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
     p_sub = p.add_subparsers(help='sub-command help')
@@ -1545,7 +1548,7 @@ def parseCmdLine():
         'sample', 
         help='write sample input files',
         description='Print sample input files - either for the '\
-            'Fortran executable or the resource manager (SLURM, PBS etc.)',
+            'Fortran executable or the resource manager (SLURM)',
         )
     group = p_sample.add_mutually_exclusive_group(required=True)
     group.add_argument(

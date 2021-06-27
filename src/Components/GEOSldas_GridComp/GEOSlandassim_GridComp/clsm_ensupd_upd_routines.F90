@@ -158,14 +158,11 @@ contains
        work_path,                               &
        exp_id,                                  &
        date_time,                               &
-       model_dtstep,                            &
        N_catf,             tile_coord_f,        &
        N_progn_pert,       progn_pert_param,    &
        N_force_pert,       force_pert_param,    &
        need_mwRTM_param,                        &
        update_type,                             &
-       dtstep_assim,                            &
-       centered_update,                         &
        xcompact, ycompact,                      &
        fcsterr_inflation_fac,                   &
        N_obs_param,                             &
@@ -199,8 +196,6 @@ contains
 
     type(date_time_type), intent(in)    :: date_time
     
-    integer,              intent(in)    :: model_dtstep
-
     integer,              intent(in)    :: N_catf, N_progn_pert, N_force_pert
     
     type(tile_coord_type), dimension(N_catf),       intent(in) :: tile_coord_f
@@ -210,9 +205,7 @@ contains
     
     logical,              intent(inout) :: need_mwRTM_param
 
-    integer,              intent(out)   :: update_type, dtstep_assim
-    
-    logical,              intent(out)   :: centered_update
+    integer,              intent(out)   :: update_type
     
     real,                 intent(out)   :: xcompact, ycompact
     real,                 intent(out)   :: fcsterr_inflation_fac
@@ -264,8 +257,6 @@ contains
     
     namelist /ens_upd_inputs/      &
          update_type,              &
-         dtstep_assim,             &
-         centered_update,          &
          out_obslog,               &
          out_ObsFcstAna,           &
          out_smapL4SMaup,          &
@@ -351,23 +342,6 @@ contains
        
     end do
 
-    ! consistency with model_dtstep
-    
-    ! dtstep_assim must be divisible by model_dtstep
-    
-    if ( (mod(dtstep_assim,model_dtstep)/=0) ) then
-       err_msg = 'inconsistent inputs for model_dtstep and dtstep_assim'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-    end if
-    
-    ! if centered_update, dtstep_assim/model_dtstep must be even
-    
-    if ( (centered_update) .and. (mod(dtstep_assim/model_dtstep,2)/=0) ) then
-       err_msg = 'inconsistent inputs for ' // &
-            'model_dtstep, dtstep_assim, and centered_update'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-    end if
-    
     ! -----------------------------------------------------------------
     !
     ! Extract only species of interest (i.e., %getinnov=.true.) from nml inputs:
@@ -1467,7 +1441,7 @@ contains
     ! determine N_catlH and tile_coord_lH  
 
     N_fields = 0  ! set to zero temporarily, not yet needed
-    
+    allocate(tile_data_l(0,0,0))  ! for debugging to pass  
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
          N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
          N_catlH, tile_coord_lH=tile_coord_lH )
@@ -1489,6 +1463,7 @@ contains
     
     ! allocate and assemble tile_data_l
     
+    if (allocated(tile_data_l))  deallocate(tile_data_l)
     allocate(tile_data_l(N_catl,N_fields,N_ens))
     
     call get_obs_pred_comm_helper( N_catl, N_ens, N_TbuniqFreqAngRTMid,          &
@@ -1502,8 +1477,6 @@ contains
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
          N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
          N_catlH, tile_data_lH=tile_data_lH )    
-    
-    if (allocated(tile_data_l))  deallocate(tile_data_l)
     
     ! read out sfmc, rzmc, etc. from tile_data_lH    
     
@@ -1528,7 +1501,7 @@ contains
     if (get_Tb_lH)     Tb_v_lH  = Tb_v_l
     
 #endif
-    
+    if (allocated(tile_data_l))  deallocate(tile_data_l)
     ! ----------------------------------------------------------------
     !
     ! Get additional grid/tile information that is needed to map from tile
@@ -3339,8 +3312,8 @@ contains
     !
     ! get gridded perturbations
     
-    allocate(Obs_pert_ntrmdt(N_obs_param,pert_grid_lH%N_lon,pert_grid_lH%N_lat,N_ens))
-    allocate(Obs_pert_grid(  N_obs_param,pert_grid_lH%N_lon,pert_grid_lH%N_lat,N_ens))
+    allocate(Obs_pert_ntrmdt(pert_grid_lH%N_lon, pert_grid_lH%N_lat, N_assim_species, N_ens))
+    allocate(Obs_pert_grid(  pert_grid_lH%N_lon, pert_grid_lH%N_lat, N_assim_species, N_ens))
 
     call get_pert(                                                        &
          N_assim_species, N_ens,                                          &
@@ -3348,8 +3321,8 @@ contains
          dtstep,                                                          &
          obs_pert_param,                                                  &
          Pert_rseed,                                                      &
-         Obs_pert_ntrmdt(1:N_assim_species,:,:,:),                        &
-         Obs_pert_grid(  1:N_assim_species,:,:,:)              )
+         Obs_pert_ntrmdt,                                                 &
+         Obs_pert_grid )
 
     ! clean up
 
@@ -3373,7 +3346,7 @@ contains
        
        j = ind_species2obsparam(Observations(k)%species)
        
-       Obs_pert(k,1:N_ens) = Obs_pert_grid( j, lon_ind, lat_ind, 1:N_ens )
+       Obs_pert(k,1:N_ens) = Obs_pert_grid( lon_ind, lat_ind, j, 1:N_ens )
        
        Obs_pert(k,1:N_ens) = Obs_pert(k,1:N_ens) * sqrt(Observations(k)%obsvar)
        

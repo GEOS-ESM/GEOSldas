@@ -148,7 +148,7 @@ contains
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
-       dtstep_assim, centered_update,                                    &
+       dtstep_assim,                                                     &
        xcompact, ycompact, fcsterr_inflation_fac,                        &
        N_obs_param, obs_param, N_obsbias_max,                            &
        out_obslog, out_smapL4SMaup,                                      &
@@ -208,8 +208,6 @@ contains
 
     integer, intent(in) :: update_type, dtstep_assim
 
-    logical, intent(in) :: centered_update
-
     real,    intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
 
     integer, intent(in) :: N_obs_param
@@ -254,8 +252,6 @@ contains
     ! ----------------------------------------------
 
     ! local variables
-
-    integer :: secs_in_day
 
     integer :: N_obslH
 
@@ -379,21 +375,11 @@ contains
 
     if (logit) write (logunit,*) 'get_enkf_increments(): enter at ', &
          date_string, ', ', time_string
+    if (logit) write (logunit,*) 'get_enkf_increments(): enter at anal time ', &
+         date_time2string(date_time)
 
-    ! ----------------------------------------------------------------------
-    !
-    ! check whether it is time for assimilation
-
-    secs_in_day = date_time%hour*3600 + date_time%min*60 + date_time%sec
-
-    if (centered_update)  secs_in_day = secs_in_day + dtstep_assim/2
-
-    if (mod(secs_in_day, dtstep_assim)/=0) then
-
-       if (logit) write (logunit,*) 'NO EnKF increments for ', date_time2string(date_time)
-
-    else
-
+    if (.true.) then  ! replace obsolete check for analysis time with "if true" to keep indents
+       
        ! proceed with update
 
        ! -----------------------------------------------------------------
@@ -416,6 +402,8 @@ contains
           call get_tile_num_in_cell_ij( N_catf,                                  &
                tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
                tile_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
+       else
+          allocate(N_tile_in_cell_ij_f(0,0)) !for debugging
        end if
 
        ! *********************************************************************
@@ -512,7 +500,7 @@ contains
 
           if (logit) write (logunit,'(400A)') 'computing innovations starting at ' // &
                date_string // ', ' // time_string
-
+          
           ! compute model forecast of observations
           ! (ensemble mean "obs_pred" is also stored in Observations_l%fcst)
 
@@ -714,7 +702,12 @@ contains
           end if
              
           ! Step 2b: indTiles_l -> indTiles_f (on root)
-          if (root_proc) allocate(indTiles_f(nTiles_f), source=-99)
+          if (root_proc) then
+            allocate(indTiles_f(nTiles_f), source=-99)
+          else
+            allocate(indTiles_f(0)) ! for debugging mode
+          endif
+  
           if (root_proc) then
              tmp_low_ind(1) = 1
              do iproc=1,numprocs-1
@@ -852,7 +845,11 @@ contains
           tile_coord_ana = tile_coord_f(indTiles_ana)
 
           ! Step 4c: cat_param(N_catl) -> cat_param_f (on root) -> cat_param_ana
-          if (root_proc) allocate(cat_param_f(N_catf))
+          if (root_proc) then
+             allocate(cat_param_f(N_catf))
+          else
+             allocate(cat_param_f(0)) !for debugging mode
+          endif
           call MPI_Gatherv(                                             &
                cat_param,   N_catl,                MPI_cat_param_type,  &
                cat_param_f, N_catl_vec, low_ind-1, MPI_cat_param_type,  &
@@ -878,7 +875,12 @@ contains
 
           ! Step 4d: cat_progn -> cat_progn_f (on root) -> cat_progn_ana
           ! one ensemble at a time
-          if (root_proc) allocate(cat_progn_f(N_catf))
+          if (root_proc) then
+             allocate(cat_progn_f(N_catf))
+          else
+             allocate(cat_progn_f(0)) ! for debugging mode
+          endif
+
           allocate(cat_progn_ana(nTiles_ana,N_ens))
           allocate(tmp_cat_progn_ana(nTiles_ana)) ! CSD-BUGFIX
 
@@ -925,7 +927,11 @@ contains
 
           ! Step 4e: Obs_pred_l (obs%assim=.true.) -> Obs_pred_f_assim (on root) -> Obs_pred_ana
           ! one ensemble at a time
-          if (root_proc) allocate(Obs_pred_f_assim(N_obsf_assim))
+          if (root_proc) then
+             allocate(Obs_pred_f_assim(N_obsf_assim))
+          else
+             allocate(Obs_pred_f_assim(0)) ! for debugging mode
+          endif
           allocate(Obs_pred_ana(nObs_ana,N_ens), source=0.)
           if (root_proc) then
              tmp_low_ind(1) = 1
@@ -1087,6 +1093,8 @@ contains
           if (root_proc) then
              allocate(cat_progn_incr_f(N_catf))
              allocate(recvBuf(maxval(nTilesAna_vec))) ! temp storage of incoming data
+          else
+             allocate(cat_progn_incr_f(0)) ! for debugging
           end if
           do iEns=1,N_ens
              ! cat_progn_incr_ana -> cat_progn_incr_f
@@ -1192,16 +1200,12 @@ contains
             N_catl, N_catf, N_obsl, tile_coord_f, tile_grid_g, N_catl_vec, low_ind,  &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn       )
 
-    end if
-
-    ! ---------------------------------------------------------------------------
-
-    ! end timer
-
+    end if  ! end if (.true.)
+       
     call date_and_time(date_string, time_string)
 
     if (logit) write (logunit,*) 'get_enkf_increments(): exit at ', &
-         date_string, ', ', time_string
+         date_string, ', ', time_string 
 
   end subroutine get_enkf_increments
 
@@ -1472,7 +1476,8 @@ contains
           tmp_low_ind(n+1) = tmp_low_ind(n) + N_obsl_vec(n)
 
        end do
-
+    else
+      allocate(Observations_f(0))
     end if
 
 #ifdef LDAS_MPI
@@ -1609,9 +1614,9 @@ contains
 
        close(10,status='keep')
 
-       deallocate(Observations_f)
 
     end if
+    if (allocated(Observations_f)) deallocate(Observations_f)
 
   end subroutine output_ObsFcstAna
 
@@ -2167,7 +2172,8 @@ contains
              tmp_low_ind(n+1) = tmp_low_ind(n) + N_obsl_vec(n)
 
           end do
-
+       else
+         allocate(Observations_f(0))
        end if
 
 #ifdef LDAS_MPI
@@ -2794,7 +2800,6 @@ contains
 
           ! clean up
 
-          deallocate(Observations_f)
 
           deallocate(col_beg_9km)
           deallocate(col_end_9km)
@@ -2816,6 +2821,7 @@ contains
           deallocate(data_v_9km_tile)
 
        end if  ! root_proc
+       if(allocated(Observations_f)) deallocate(Observations_f)
 
     end if     ! (option=='orig_obs' .or. option=='obs_fcst')
 
