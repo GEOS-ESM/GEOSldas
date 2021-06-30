@@ -280,7 +280,6 @@ class LDASsetup:
             tmp_ = glob.glob(self.rqdExeInp['BCS_PATH']+'lnfm_clim_*.data')
             if (len(tmp_) == 1) :
                self.rqdExeInp['LNFM_FILE'] = tmp_[0]
-             
             self.rqdExeInp['NDVI_FILE']=    os.path.realpath(glob.glob(inpdir+'ndvi*data')[0])
             self.rqdExeInp['NIRDF_FILE']=  os.path.realpath(glob.glob(inpdir+'nirdf*data')[0])
             self.rqdExeInp['VISDF_FILE']=  os.path.realpath(glob.glob(inpdir+'visdf*data')[0])
