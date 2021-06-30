@@ -47,7 +47,7 @@ by `MET_HINTERP` (see optional parameters in `exeinp` input file to ldas_setup).
 COMMONLY USED values for `MET_PATH`:
 ------------------------------------
 
-Legacy datasets
+#### Legacy datasets
 ```
   MET_PATH : [XXX]/l_data/ECMWF/GRID/CORRECTED/netcdf/
   MET_PATH : [XXX]/l_data/GLDAS/netcdf/
@@ -55,42 +55,57 @@ Legacy datasets
   MET_PATH : [XXX]/l_data/RedArk/RedArk_subbasin_forcing/red_ark_forc/
 ```
 
-MERRA  forcing (including precip-corrected MERRA forcing)
+#### ERA5 (LDAS-Monde via NASA LIS group)
+```
+  MET_PATH : /discover/nobackup/projects/lis/MET_FORCING/ERA5/
+```
+
+### GEOS-based datasets
+
+#### MERRA  forcing (including precip-corrected MERRA forcing)
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA_land_forcing/ 
 ```
 
-MERRA2 forcing (including precip-corrected MERRA forcing)
+#### MERRA2 forcing (including precip-corrected MERRA forcing)
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/ 
 ```
 
-SMAP_Nature_v03
+#### SMAP_Nature_v03
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-SMAP_Nature_v04, SMAP_Nature_v04.1
+#### SMAP_Nature_v04, SMAP_Nature_v04.1
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-SMAP_Nature_v05, v7.2, v8.1, v8.3;  SMAP L4_SM Version 4
+#### SMAP_Nature_v05, v7.2, v8.1, v8.3;  SMAP L4_SM Version 4
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/  ! before 1/1/2015
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/   ! after  1/1/2015
 ```
 
-GEOS FP forcing with "seamless" file names, for use with MET_TAG=GEOS.fp.asm[__prec*] (__PREFERRED__);  
+#### GEOS FP forcing with "seamless" file names, for use with MET_TAG=GEOS.fp.asm[__prec*] (__PREFERRED__);  
 SMAP L4_SM Version 5  
 ```
   MET_PATH : /discover/nobackup/projects/gmao/smap/SMAP_L4/GEOS/FP/
 ```
 
-GEOS forcing with experiment-specific file names, incl. FP (__DEPRECATED__), FP-IT/RP-IT, and precip-corrected GEOS forcing
+#### GEOS forcing with experiment-specific file names, incl. FP (__DEPRECATED__), FP-IT/RP-IT, and precip-corrected GEOS forcing
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
+
+#### Forcing from post-processed output of the GEOS S2S system (FCST, AODAS)
+
+```                                                                                                                         
+  MET_PATH : [check with GMAO S2S group]
+```  
+
+
 
 COMMONLY USED values for `MET_TAG`:
 ------------------------------------
@@ -102,6 +117,13 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GSWP2_1x1_netcdf
   MET_TAG  : RedArk_ASCII
 ```
+
+#### ERA5 (LDAS-Monde via NASA LIS group)
+```
+  MET_TAG  : ERA5_LIS
+```
+
+### GEOS-based datasets
 
 #### MERRA
 ```
@@ -227,6 +249,36 @@ COMMONLY USED values for `MET_TAG`:
 ```
   MET_TAG  : GEOS.fp.asm__precCPCULLKG5FPv3                  ! (precip corr with late-look CPCU)
   MET_TAG  : GEOS.fp.asm__precCPCUFLKG5FPv3                  ! (precip corr with first-look CPCU)
+```
+
+#### Forcing from post-processed output of the GEOS S2S system 
+
+ - Forcing derived through post-processing of daily average output from the GEOS S2S system,
+   including S2S hindcasts/forecasts ("FCST") and the "AODAS" used for S2S initialization. 
+
+   S2S output is from the geosgcm_vis2d and geosgcm_surf Collections for FCST and from the 
+   geosgcm_rad and geosgcm_surf Collections for AODAS (see GMAO Office Note No. 16).
+
+   For FCST, post-processing includes a monthly bias correction to the MERRA-2 climatology.
+
+   Daily data are disaggregated to 6-hourly (FCST) or 1-hourly (AODAS) using the MERRA-2 
+   climatological diurnal cycle.
+
+   For FCST, MET_TAG must specify S2S ensemble member ('ensX'; currently: 'ens1', 'ens2', 
+   'ens3', or 'ens4') and month/day of forecast initialization ('MMMDD'; e.g., 'jan01'), 
+   separated by double underscores.
+   
+   As of 14 Jun 2021:
+   - Preparation of S2S forcing data ignores the 3-hour offset between S2S daily averages 
+   (21z-21z) and the MERRA-2 daily averages (0z-0z) used for the temporal disaggregration.
+   - The processing of the S2S output incorrectly partitioned total precipitation into snowfall 
+   and convective precipitation.  Therefore, rainfall and snowfall are determined in the 
+   S2S forcing reader from total precipitation and air temperature.  Convective rainfall is 
+   set to 0.  (As of now, only total rainfall is used by Catchment.)
+
+```
+  MET_TAG  : GEOSs2sFCST__[ensX]__[MMMDD]
+  MET_TAG  : GEOSs2sAODAS
 ```
 
 Boundary Conditions  

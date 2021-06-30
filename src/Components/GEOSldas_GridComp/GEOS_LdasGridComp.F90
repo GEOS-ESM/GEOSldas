@@ -199,8 +199,8 @@ contains
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
             SHORT_NAME = ['Tair   ', 'Qair   ', 'Psurf  ', 'Rainf_C', 'Rainf  ',   &
-                          'Snowf  ', 'LWdown ', 'SWdown ', 'SWnet  ', 'PARdrct',   &
-                          'PARdffs', 'Wind   ', 'RefH   '],                        &
+                          'Snowf  ', 'LWdown ', 'SWdown ', 'PARdrct', 'PARdffs',   &
+                          'Wind   ', 'RefH   '],                                   &
             SRC_ID = METFORCE,                                                     &
             DST_ID = LANDPERT(i),                                                  &
             rc = status                                                            &
