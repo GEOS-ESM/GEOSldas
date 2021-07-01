@@ -291,6 +291,8 @@ contains
     elseif (index(met_tag, 'ERA5_LIS')/=0) then 
        
        call get_ERA5_LIS(          date_time_tmp, met_path, N_catd, tile_coord, &
+                         supported_option_MET_HINTERP,                          &
+                         supported_option_AEROSOL_DEPOSITION, MET_HINTERP,      &
             met_force_obs_tile_new, nodata_forcing)
        
        ! Subroutine get_ERA5_LIS() provided backward-looking fluxes.
@@ -1880,7 +1882,9 @@ contains
   ! ****************************************************************  
   
   subroutine get_ERA5_LIS(date_time, met_path, N_catd, tile_coord, &
-       met_force_new, nodata_forcing )
+                          supported_option_MET_HINTERP,            &
+                          supported_option_AEROSOL_DEPOSITION,     &
+       MET_HINTERP, met_force_new, nodata_forcing )
 
     ! Read ERA5 NetCDF files maintained and shared by the NASA LIS group
     ! and based on forcing data put together originally for LDAS-Monde.
@@ -1910,7 +1914,7 @@ contains
 
     type(date_time_type), intent(in) :: date_time
     character(*),         intent(in) :: met_path
-    integer,              intent(in) :: N_catd
+    integer,              intent(in) :: N_catd, MET_HINTERP
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
 
@@ -1950,13 +1954,20 @@ contains
     integer, dimension(2)                               :: start, icount
 
     integer :: k, n, hours_in_month, era5_var, ierr, ncid, era5_varid, kk
-    real    :: tol,  this_lon, this_lat  
+    real    :: tol,  this_lon, this_lat, xcur, ycur  
 
     character(4)                :: YYYY
     character(2)                :: MM
     character(300)              :: fname
     character(len=*), parameter :: Iam = 'get_ERA5_LIS'
     character(len=400)          :: err_msg
+
+    ! bilineal interpolation variables
+    real, dimension(N_catd) :: i1,j1,i2,j2,x1,y1,x2,y2
+    real                    :: tmp_lon,tmp_lat,xnew,ynew,fnbr(2,2)
+    integer                 :: inew,jnew
+    logical, intent(inout)  :: supported_option_MET_HINTERP
+    logical, intent(inout)  :: supported_option_AEROSOL_DEPOSITION
 
     ! ----------------------------------------------------------------------------------------
     
@@ -2011,6 +2022,55 @@ contains
        i_ind(k) = ceiling( (this_lon - era5_grid_ll_lon)/era5_grid_dlon )
        j_ind(k) = ceiling( (this_lat - era5_grid_ll_lat)/era5_grid_dlat )
 
+      if (MET_HINTERP .eq. 1) then
+        ! pchakrab: For bilinear interpolation, for each tile, we need:
+        !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
+        !  i1, i2, j1, j2 (defining the indices of four neighbors)
+
+        ! the nearest neighbor forcing grid cell ("1") is already known.
+        ! It is the: (i_ind(k),j_ind(k))
+
+        ! wrap-around
+        if (i_ind(k)>era5_grid_N_lon) i_ind(k) = 1
+        if (j_ind(k)>era5_grid_N_lat) then
+           err_msg = "encountered tile near the poles"
+           call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+        end if
+
+        xcur =  real(i_ind(k)-1)*era5_grid_dlon - 180.0 + era5_grid_dlon*0.5
+        ycur =  real(j_ind(k)-1)*era5_grid_dlat -  90.0 + era5_grid_dlat*0.5
+
+        i1(k) = i_ind(k)
+        j1(k) = j_ind(k)
+        x1(k) = xcur    ! lon of grid cell center
+        y1(k) = ycur    ! lat of grid cell center
+
+        ! find forcing grid cell ("2") diagonally across from i_ind(k),j_ind(k)
+
+        tmp_lon = this_lon + 0.5*era5_grid_dlon
+        tmp_lat = this_lat + 0.5*era5_grid_dlat
+        inew =  ceiling((tmp_lon - era5_grid_ll_lon)/era5_grid_dlon)
+        jnew =  ceiling((tmp_lat - era5_grid_ll_lat)/era5_grid_dlat)
+        if (inew==i_ind(k)) inew = inew - 1
+        if (jnew==j_ind(k)) jnew = jnew - 1
+
+        xnew = real(inew-1)*era5_grid_dlon - 180.0+era5_grid_dlon*0.5
+        ynew = real(jnew-1)*era5_grid_dlat -  90.0+era5_grid_dlat*0.5
+        ! wrap-around
+        if (inew==0)              inew = era5_grid_N_lon
+        if (inew>era5_grid_N_lon) inew = 1
+        if ((jnew==0) .or. (jnew>era5_grid_N_lat)) then
+           err_msg = "encountered tile near the poles"
+           call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+        end if
+
+        i2(k) = inew
+        j2(k) = jnew
+        x2(k) = xnew    ! lon of grid cell center
+        y2(k) = ynew    ! lat of grid cell center
+
+
+      endif ! if bilinear interpolation
     end do
     
     ! read parameters (same for all data variables and time steps)
@@ -2070,12 +2130,41 @@ contains
        do n=1,N_era5_compressed
           tmp_grid(land_i_era5(n),land_j_era5(n)) = tmp_vec(n)
        end do
-       
+
+       select case (MET_HINTERP)  ! bilinear vs. nearest neighbour interp
+
+       case (0) ! if nearest neighbor interpolation  
+
        ! interpolate to tile space
        do k=1,N_catd
           force_array(k,era5_var) = tmp_grid(i_ind(k),j_ind(k))
        end do
-       
+
+       case (1) ! if if bilinear interpolation 
+
+         ! not clear at the moment why this has to be done explicitly for each met_forcing
+         ! the run fails at the end of get_forcing subroutine if
+         ! supported_options are .false.
+         supported_option_MET_HINTERP        = .true.
+         supported_option_AEROSOL_DEPOSITION = .true.       
+
+         do k=1,N_catd
+              this_lon = tile_coord(k)%com_lon
+              this_lat = tile_coord(k)%com_lat
+              fnbr(1,1) =tmp_grid(i1(k),j1(k))   !  ptrShForce(i1(k),j1(k))
+              fnbr(1,2) =tmp_grid(i1(k),j2(k))   !  ptrShForce(i1(k),j2(k))
+              fnbr(2,1) =tmp_grid(i2(k),j1(k))   !  ptrShForce(i2(k),j1(k))
+              fnbr(2,2) =tmp_grid(i2(k),j2(k))   !  ptrShForce(i2(k),j2(k))
+
+              force_array(k,era5_var) = BilinearInterpolation(this_lon, this_lat, x1(k), x2(k),  &
+                   y1(k), y2(k), fnbr, nodata_forcing, tol)
+         end do
+
+       case default
+
+         call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported MET_HINTERP option')
+
+       end select ! which interpolation 
     end do ! era5_var
 
     ! close NC file
