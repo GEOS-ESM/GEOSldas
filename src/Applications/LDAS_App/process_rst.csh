@@ -99,9 +99,6 @@ ${SCALE} InData/${models}_internal_rst OutData/${models}_internal_rst ${models}_
 
 sleep 2
 
-if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then 
-   ncks -4  -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A ${MODEL}_internal_rst
-endif
 ln -s  ${models}_internal_rst ${models}_internal_rst.$YYYYMMDD
 echo DONE > done_rst_file
 
@@ -160,7 +157,6 @@ case [1]:
         set j = 0
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           echo  "ncks -4  -O -h -x -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF ${MODEL}${ENS}_internal_rst.${YYYYMMDD} ${MODEL}${ENS}_internal_rst.${YYYYMMDD} &"  >> this.file
            @ j++
         end
         echo 'wait' >> this.file
@@ -221,9 +217,6 @@ ${SCALE} InData/${models}_internal_rst OutData/${models}_internal_rst ${models}_
 
 sleep 2
 
-if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then
-   ncks -4  -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A ${MODEL}_internal_rst
-endif
 ln -s  ${models}_internal_rst ${models}_internal_rst.$YYYYMMDD
 echo DONE > done_rst_file
 
@@ -378,9 +371,6 @@ endif
 
 ${SCALE} OutData.1/M2Restart OutData.2/M2Restart ${models}_internal_rst $SURFLAY 26 $WEMIN_OUT
 
-if (-f irrigation_internal_rst && $RUN_IRRIG == 1) then 
-    ncks -4  -v IRRIGFRAC,PADDYFRAC,LAIMIN,LAIMAX,CLMPT,CLMST,CLMPF,CLMSF irrigation_internal_rst -A ${MODEL}_internal_rst
-endif
 /bin/ln -s  ${models}_internal_rst ${models}_internal_rst.$YYYYMMDD
 
 echo DONE > done_rst_file  
