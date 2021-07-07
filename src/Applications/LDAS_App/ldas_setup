@@ -99,7 +99,6 @@ class LDASsetup:
         self.exefyl = None
         self.islocal = False
         self.catch = ''
-        self.clmv  = ''
         self.has_mwrtm = False
         self.assim = False
         self.has_landassim_seed = False
@@ -312,13 +311,10 @@ class LDASsetup:
 
         if  int(self.rqdExeInp['LSM_CHOICE']) == 1 :
             self.catch = 'catch'
-            self.clmv       = ''
         if  int(self.rqdExeInp['LSM_CHOICE']) == 2 :
-            self.catch = 'catchcn'
-            self.clmv  = '40'
+            self.catch = 'catchcnclm40'
         if  int(self.rqdExeInp['LSM_CHOICE']) == 3 : 
-            self.catch = 'catchcn'
-            self.clmv  = '45'
+            self.catch = 'catchcnclm45'
         if 'POSTPROC_HIST' not in self.rqdExeInp:
             self.rqdExeInp['POSTPROC_HIST'] = 0
 
@@ -780,7 +776,7 @@ class LDASsetup:
                self.has_landassim_seed = True
  
         cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, exp_dir,
-                        bcdir, tilefile, self.catch+self.clmv, have_rst, YYYYMMDD,
+                        bcdir, tilefile, self.catch, have_rst, YYYYMMDD,
                         rstid, rstdomain, rstpath0, str(self.nens), str(self.rqdExeInp['RUN_IRRIG']),
                         dzsf, wemin_in, wemin_out])
         print "cmd:   " + cmd
@@ -1078,10 +1074,7 @@ class LDASsetup:
 
                 # create restart item in RC
                 catch_ = self.catch.upper()
-                if  int(self.rqdExeInp['LSM_CHOICE']) == 2 :
-                    catch_ = catch_ + 'CLM40'
-                if  int(self.rqdExeInp['LSM_CHOICE']) == 3 :
-                    catch_ = catch_ + 'CLM45'
+
                 if catch_+'_INTERNAL_RESTART_TYPE' in ldasrcInp :
                     # avoid duplicate
                     del ldasrcInp[ catch_ +'_INTERNAL_RESTART_TYPE']
@@ -1380,7 +1373,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#   Re-tile from FP (Forward Processing) restart file.     #'       
     print '#                                                          #'
     print '# RESTART: G                                               #'
-    print '#   Re-tile from any AGCM catch[cn]_internal_rst file.     #'
+    print '#   Re-tile from any AGCM catch[cnclmxx]_internal_rst file.#'
     print '#                                                          #'
     print '# -------------------------------------------------------- #'
     print '# IMPORTANT:                                               #'
