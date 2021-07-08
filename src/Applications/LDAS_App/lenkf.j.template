@@ -32,9 +32,11 @@ source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
 
-# Ensure 0-diff across proc layouts and types by limiting MKL's freedom to pick algorithms.
-# As of June 2021, MKL_CBWR=AVX2 is fastest setting that works for both haswell and skylake at NCCS
+# By default, ensure 0-diff across processor architecture by limiting MKL's freedom to pick algorithms.
+# As of June 2021, MKL_CBWR=AVX2 is fastest setting that works for both haswell and skylake at NCCS.
+# Change to MKL_CBWR=AUTO for fastest execution at the expense of results becoming processor-dependent.
 #setenv MKL_CBWR "COMPATIBLE"
+#setenv MKL_CBWR "AUTO"
 setenv MKL_CBWR "AVX2"
 
 #setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
