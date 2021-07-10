@@ -1441,6 +1441,8 @@ contains
     ! determine N_catlH and tile_coord_lH  
 
     N_fields = 0  ! set to zero temporarily, not yet needed
+    ! move up the allocation. The input should be allocated in debug mode although it is not used
+    ! allocate and assemble tile_data_l
     allocate(tile_data_l(0,0,0))  ! for debugging to pass  
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
          N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
@@ -1465,7 +1467,6 @@ contains
     
     if (allocated(tile_data_l))  deallocate(tile_data_l)
     allocate(tile_data_l(N_catl,N_fields,N_ens))
-    
     call get_obs_pred_comm_helper( N_catl, N_ens, N_TbuniqFreqAngRTMid,          &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_Tb_lH, N_fields, &
          option=1, tile_data=tile_data_l,                                        &
@@ -3316,7 +3317,7 @@ contains
     allocate(Obs_pert_grid(  pert_grid_lH%N_lon, pert_grid_lH%N_lat, N_assim_species, N_ens))
 
     call get_pert(                                                        &
-         N_assim_species, N_ens,                                          &
+         N_assim_species, N_assim_species, N_ens,                         &
          pert_grid_lH, pert_grid_f,                                       &  ! switched order (reichle, 17 Jul 2020)
          dtstep,                                                          &
          obs_pert_param,                                                  &

@@ -90,7 +90,9 @@ module LDAS_PertTypes
 
   type T_PERT
     ! private
-     integer :: npert ! number of perturbations
+     integer :: npert ! number of perturbation
+     !In situation that a processor has no tiles, this processor can still participate parallel fft
+     integer :: fft_npert
      integer :: dtstep
      type(ESMF_Time) :: TimePrv, TimeNxt
      type(pert_param_type), pointer :: param(:)=>null()

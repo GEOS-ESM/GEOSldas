@@ -567,6 +567,13 @@ contains
        
     endif   
 
+    if (N_tile == 0) then
+      tile_grid=tile_grid_g
+      tile_grid%n_lon = 0
+      tile_grid%n_lat = 0
+      return
+    endif
+
     do n=1,N_tile
        
        this_minlon  = tc_minlon(n)
