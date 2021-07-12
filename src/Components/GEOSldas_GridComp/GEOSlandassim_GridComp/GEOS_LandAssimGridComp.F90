@@ -212,7 +212,7 @@ contains
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
-         OUTPUT_SMAPL4SMLMC,                                                          &
+         OUTPUT_SMAPL4SMLMC,                                                    &
          rc=status                                                              &
          )
     _VERIFY(status)
@@ -1237,7 +1237,7 @@ contains
     if (root_proc) then
        call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
        _VERIFY(status)
-       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", &
+       call MAPL_GetResource( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:",    &
                              DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
 
@@ -2149,6 +2149,7 @@ contains
     real, dimension(:), pointer :: BH
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
+    real, dimension(:), pointer :: DCATAU 
     
     ! export
     real, dimension(:), pointer :: TB_H_enavg
@@ -2188,8 +2189,8 @@ contains
     !----------------------
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
     _VERIFY(status)
-    
-    call get_mwrtm_param(INTERNAL, N_catl, rc=status)
+   
+    call get_mwrtm_param(MAPL, clock, N_catl, INTERNAL, rc=status)
     _VERIFY(STATUS)
     ! make sure that at least some mwRTM parameters are not nodata 
     if (mwRTM_all_nodata) then
@@ -2281,6 +2282,8 @@ contains
     RETURN_(_SUCCESS)
   end subroutine CALC_LAND_TB
 
+  ! ******************************************************************************
+  
   subroutine OUTPUT_SMAPL4SMLMC(gc, import, export, clock, rc)
      type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
      type(ESMF_State),    intent(inout) :: import ! Import state
@@ -2338,7 +2341,7 @@ contains
      call esmf2ldas(ModelTimeCur, start_time, rc=status)
      _VERIFY(status)
 
-     call get_mwrtm_param(INTERNAL, N_catl, rc=status)
+     call get_mwrtm_param(MAPL, clock, N_catl, INTERNAL, rc=status)
      _VERIFY(status)
 
      call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
@@ -2349,6 +2352,8 @@ contains
 
   end subroutine OUTPUT_SMAPL4SMLMC 
 
+  ! ******************************************************************************
+  
   subroutine EXPORT_INCR( cat_progn_incr, export,rc)
     type(cat_progn_type), dimension(:),intent(in) :: cat_progn_incr
     type(ESMF_State), intent(inout) :: export
@@ -2569,11 +2574,16 @@ contains
   
   ! ******************************************************************************
   
-  subroutine get_mwrtm_param(internal,N_catl, rc)
-    type(ESMF_State),  intent(inout) :: INTERNAL
-    integer,           intent(in)    :: N_catl
-    integer, optional, intent(out)   :: rc
-    
+  subroutine get_mwrtm_param(MAPL, clock, N_catl, INTERNAL, rc)
+
+    type(MAPL_MetaComp), pointer,  intent(in)    :: MAPL
+    type(ESMF_Clock),              intent(in)    :: clock     ! the clock
+    integer,                       intent(in)    :: N_catl
+    type(ESMF_State),              intent(inout) :: INTERNAL
+    integer,             optional, intent(out)   :: rc
+
+    ! local variables
+
     real, dimension(:), pointer :: VEGCLS
     real, dimension(:), pointer :: SOILCLS
     real, dimension(:), pointer :: SAND
@@ -2592,13 +2602,28 @@ contains
     real, dimension(:), pointer :: BH
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
+    real, dimension(:), pointer :: DCATAU   ! needed?? declared as global var in module!?  reichle, 27Jun2021
     
     integer :: N_catl_tmp, n, mpierr, status
     logical :: mwp_nodata, all_nodata_l
-    
+
+    character(len=ESMF_MAXSTR)  :: TAUFile
+    type(ESMF_Time)             :: CURRENT_TIME
+ 
     if(allocated(mwRTM_param)) then
        _RETURN(_SUCCESS)
     endif
+
+    allocate(DCATAU(N_catl))
+    call MAPL_GetResource(MAPL, TAUFile, label = 'TAU_FILE:', &
+        default = 'tau.dat', RC=STATUS )
+    _VERIFY(STATUS)
+
+    call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
+    _VERIFY(STATUS)
+
+    call MAPL_ReadForcing(MAPL,'DCATAU',TAUFile,CURRENT_TIME,DCATAU,ON_TILES=.true.,RC=STATUS)
+    _VERIFY(STATUS)
     
     call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
     _VERIFY(STATUS)
@@ -2659,7 +2684,9 @@ contains
     mwRTM_param(:)%bh        = BH(:)
     mwRTM_param(:)%bv        = bv(:)
     mwRTM_param(:)%lewt      = LEWT(:)
-    
+    mwRTM_param(:)%dcatau    = DCATAU(:)
+    deallocate(DCATAU)                    ! unlike other mwRTM params, DCATAU varies with time, therefore treated differently - reichle, 27Jun2021
+ 
     all_nodata_l = .true.
     do n=1,N_catl
        call mwRTM_param_nodata_check(mwRTM_param(n), mwp_nodata )
@@ -2670,7 +2697,10 @@ contains
     call MPI_AllReduce(all_nodata_l, mwRTM_all_nodata, 1, MPI_LOGICAL, &
          MPI_LAND, mpicomm, mpierr)
     _RETURN(_SUCCESS)
+
   end subroutine get_mwrtm_param
+
+  ! ******************************************************************************
 
   subroutine get_id_string(id_string, id, ens_id_width)
      character(*), intent(inout) :: id_string
@@ -2683,6 +2713,7 @@ contains
      write (id_string, fmt_str) id
 
   end subroutine  
+
   ! ******************************************************************************
 
   !BOP
