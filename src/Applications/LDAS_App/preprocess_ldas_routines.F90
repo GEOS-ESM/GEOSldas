@@ -2007,19 +2007,39 @@ contains
   end subroutine correctEase
   
   ! ********************************************************************
-  
-  ! This program optimized the domain setup by producing 
   !
-  ! NX: N_proc
-  ! NY: 1
-  ! IMS: i0 i1 12 .....
-  ! run this program with:
-  ! ./a.out tile_file N_proc
+  ! subroutine to optimize the domain setup (domain decomposition and processor layout)
+  !
+  ! The domain is cut into N_proc stripes, where
+  !   - N_proc is the number of processors used for the model simulation (i.e., excl. OSERVER tasks)
+  !   - a stripe cuts across the entire north-south extent of the domain (lat-lon, EASE) or
+  !      across an entire face (cube-sphere) -- see below
+  !   - each stripe must be at least two grid cells thick
+  !   - each stripe should contain roughly the same number of land *tiles*
+  !
+  ! For lat-lon and EASE grid tile spaces:
+  !   - cut into N_proc stripes of size N_lat-by-IMS(k),  k=1:N_proc, IMS(k)>=2,
+  !     where IMS(k)=no. of grid cells in longitude direction ("thickness" of stripe k) is
+  !     written into file IMS.rc
+  ! For cube-sphere grid tile spaces:
+  !   - cut into N_proc stripes of size N_face-by-JMS(k), k=1:N_proc, JMS(k)>=2,
+  !     where JMS(k)=no. of grid cells ("thickness" of stripe k) is written
+  !     into file JMS.rc
+  !
+  !         cube-sphere           lat-lon/EASE
+  ! ---------------------------------------------------
+  ! NX:     1                     N_proc
+  ! NY:     N_proc                1
+  !         JMS.rc                IMS.rc
   
-  subroutine optimize_latlon(fname,arg)
+  subroutine optimize_latlon(fname_tilefile, N_proc_string)
     
     implicit none
-    character(*) :: fname,arg
+    
+    character(*), intent(in) :: fname_tilefile  ! file name (with path) of tile file (*.til)
+    character(*), intent(in) :: N_proc_string   ! *string* w/ no. of processors (or tasks), excl. OSERVER tasks
+        
+    ! local variables
     integer :: N_proc
     integer :: N_tile,N_lon,N_lat,N_grid
     integer,allocatable :: landPosition(:)
@@ -2036,13 +2056,18 @@ contains
     real :: rate,rates(60),maxf(60)
     integer :: IMGLOB, JMGLOB
     integer :: face(6),face_land(6)
+    logical :: forward
+
+    ! -----------------------------
     
-    inquire(file=trim(fname),exist=file_exist)
-    if( .not. file_exist) stop ( "tile file not exist")
-    read (arg,*) N_proc
+    read (N_proc_string,*) N_proc   ! input is string for historical reasons...
     
+    ! get tile info
+
+    inquire(file=trim(fname_tilefile),exist=file_exist)
+    if( .not. file_exist) stop ( "tile file does not exist")
     
-    open (10, file=trim(fname), form='formatted', action='read')
+    open (10, file=trim(fname_tilefile), form='formatted', action='read')
     read (10,*) N_tile
     read (10,*) N_grid         ! some number (?)
     read (10,*) gridname       ! some string describing tile definition grid (?)
@@ -2051,8 +2076,8 @@ contains
     
     if (index(gridname,"CF") /=0) then    ! cube-sphere tile space
        
-       IMGLOB = N_lon
-       JMGLOB = N_lat
+       IMGLOB = N_lon                     ! e.g.,  180 for c180
+       JMGLOB = N_lat                     ! e.g., 1080 for c180  (6*180=1080)
        if(JMGLOB/6 /= IMGLOB) stop " wrong im, jm"
        
        allocate(landPosition(JMGLOB))
@@ -2072,13 +2097,13 @@ contains
                tmpreal,       &   !  3
                tmpreal,       &   !  4
                i ,            &   !  5
-               j ! ,        &   !  6
+               j                  !  6
           !tmpreal,       &   !  7
           !tmpint,        &   !  8
           !tmpreal,       &   !  9  *
           !tmpint,        &   ! 10
           !tmpreal,       &   ! 11
-          !tmpint       ! 12  * (previously "tile_id")
+          !tmpint             ! 12  * (previously "tile_id")
           if(typ==MAPL_Land) then
              total_land=total_land+1
              landPosition(j) = landPosition(j)+1
@@ -2152,33 +2177,56 @@ contains
           n2 = k*IMGLOB
           
           do i=1,60
-             rates(i) = (i-1)*0.1
+             rates(i) = -0.3 + i*0.01
           enddo
           
           maxf=rms_cs(rates)
           i=minloc(maxf,DIM=1)
           rate = rates(i)
           avg_land = ceiling(1.0*face_land(k)/face(k))
-          avg_land = avg_land - nint(rate*avg_land/face(k))
+          avg_land = avg_land - nint(rate*avg_land)
           
           tmpint = 0
           j = j+face(k) 
-          
+          forward = .true.
           do n = n1,n2
              tmpint=tmpint+landPosition(n)
              if((local+1) == j .and. n < n2) cycle
-             if((tmpint .ge. avg_land) .or. (n==n2)) then
+             if(n==n2) then
                 local = local + 1
                 local_land(local)=tmpint
                 JMS(local)=n-n0
                 tmpint=0
                 n0=n
+                cycle
              endif
+             if(tmpint .ge. avg_land) then
+                local = local + 1
+                if (n-n0 == 1) forward =.true.
+                if (forward) then
+                   local_land(local)=tmpint
+                   JMS(local)=n-n0
+                   tmpint=0
+                   n0=n
+                   forward = .false.
+                else
+                   local_land(local)=tmpint - landPosition(n)
+                   JMS(local)=n-1-n0
+                   tmpint=landPosition(n)
+                   n0=n-1
+                   forward = .true.
+                endif
+            endif
           enddo
           local = j
        enddo
-       
-       ! adjust JMS.rc make make sure no process has 0 or 1
+      if( sum(JMS) /= JMGLOB) then
+          print*, sum(JMS), JMGLOB
+          stop ("wrong cs-domain distribution in the first place")
+       endif 
+       ! adjust JMS.rc make make sure no processor ("stripe") has 0 or 1 grid cells in j dimension
+       ! (i.e., each proc's subdomain must include at least 2 grid cells in the j dimension;
+       !  stripes of grid cells may or may not contain land tiles)
        j = 1
        do k = 1,6
           n1 = j
@@ -2217,14 +2265,14 @@ contains
        if( k /=6 ) stop ("one or more processes may accross the face")
        
        open(10,file="optimized_distribution",action='write')
-       write(10,'(A)') "GEOSldas.GRIDNAME:  " // trim(gridname)
-       write(10,'(A)') "GEOSldas.GRID_TYPE:  Cubed-Sphere"
-       write(10,'(A)') "GEOSldas.NF:  6"
+       write(10,'(A)')    "GEOSldas.GRIDNAME:  " // trim(gridname)
+       write(10,'(A)')    "GEOSldas.GRID_TYPE:  Cubed-Sphere"
+       write(10,'(A)')    "GEOSldas.NF:  6"
        write(10,'(A,I6)') "GEOSldas.IM_WORLD: ", IMGLOB
-       write(10,'(A)') "GEOSldas.LM:   1"
+       write(10,'(A)')    "GEOSldas.LM:   1"
        write(10,'(A,I5)') "NY: ",N_proc
-       write(10,'(A)') "NX:   1"
-       write(10,'(A)') "GEOSldas.JMS_FILE:    JMS.rc"
+       write(10,'(A)')    "NX:   1"
+       write(10,'(A)')    "GEOSldas.JMS_FILE:    JMS.rc"
        close(10)
        
        open(10,file="JMS.rc",action='write')
@@ -2283,31 +2331,31 @@ contains
        
        ! 1) read through tile file, put the land tile into the N_lon of bucket
        
-       read (tmpLine,*)  &
+       read (tmpLine,*)    &
             typ,           &   !  1
             tmpreal,       &   !  2  *
             tmpreal,       &   !  3
             tmpreal,       &   !  4
-            i !,             &   !  5
+            i                  !  5
        if(typ==MAPL_Land) then
           total_land=total_land+1
           landPosition(i) = landPosition(i)+1
        endif
        
        do n = 2,N_tile
-          read (10,*)  &
+          read (10,*)         &
                typ,           &   !  1
                tmpreal,       &   !  2  *
                tmpreal,       &   !  3
                tmpreal,       &   !  4
-               i !,             &   !  5
+               i                  !  5
           !tmpint,        &   !  6
           !tmpreal,       &   !  7
           !tmpint,        &   !  8
           !tmpreal,       &   !  9  *
           !tmpint,        &   ! 10
           !tmpreal,       &   ! 11
-          !tmpint       ! 12  * (previously "tile_id")
+          !tmpint             ! 12  * (previously "tile_id")
           if(typ==MAPL_Land) then
              total_land=total_land+1
              landPosition(i) = landPosition(i)+1
@@ -2336,7 +2384,7 @@ contains
        if(sum(landPosition) /= total_land) print*, "wrong counting of land"
        
        do n=1,60
-          rates(n) = (n-1)*0.15
+          rates(n) = -0.3 + (n-1)*0.01
        enddo
        
        maxf=rms(rates)
@@ -2352,19 +2400,35 @@ contains
        ! in case that the last processors don't have any land tiles,
        ! we can increase ther rates
        
-       avg_land = avg_land - nint(rate*avg_land/N_proc)
+       avg_land = avg_land - nint(rate*avg_land)
        print*,"re adjust the avg_land",avg_land
        tmpint = 0
        local = 1
        n0 = s-1
+       forward = .true.
        do n=s,e
           tmpint=tmpint+landPosition(n)
           if(local == N_proc .and. n < e) cycle ! all lefteover goes to the last process
-          if((tmpint .ge. avg_land) .or. (n==e)) then
+          if( n==e ) then
              local_land(local)=tmpint
              IMS(local)=n-n0
-             tmpint=0
-             n0=n
+             exit
+          endif
+
+          if( tmpint .ge. avg_land ) then
+             if (forward .or. n-n0 == 1 ) then
+                local_land(local)=tmpint
+                IMS(local)=n-n0
+                tmpint=0
+                n0=n
+                forward = .false.
+             else
+                local_land(local) = tmpint - landPosition(n)
+                IMS(local)=(n-1)-n0
+                tmpint= landPosition(n)
+                n0 = n-1
+                forward = .true.
+             endif
              local = local + 1
           endif
        enddo
@@ -2376,18 +2440,18 @@ contains
        if( sum(IMS) /= N_lon) stop ("wrong domain distribution")
        
        open(10,file="optimized_distribution",action='write')
-       write(10,'(A)') "GEOSldas.GRID_TYPE:  LatLon"
-       write(10,'(A)') "GEOSldas.GRIDNAME:  "//trim(gridname)
-       write(10,'(A)') "GEOSldas.LM:  1"
-       write(10,'(A)') "GEOSldas.POLE:  PE"
-       write(10,'(A)') "GEOSldas.DATELINE:  DE"
+       write(10,'(A)')    "GEOSldas.GRID_TYPE:  LatLon"
+       write(10,'(A)')    "GEOSldas.GRIDNAME:  "//trim(gridname)
+       write(10,'(A)')    "GEOSldas.LM:  1"
+       write(10,'(A)')    "GEOSldas.POLE:  PE"
+       write(10,'(A)')    "GEOSldas.DATELINE:  DE"
        write(10,'(A,I6)') "GEOSldas.IM_WORLD: ",N_lon
        write(10,'(A,I6)') "GEOSldas.JM_WORLD: ",N_lat
        
        write(10,'(A,I5)') "NX: ",N_proc
-       write(10,'(A)') "NY:   1"
+       write(10,'(A)')    "NY:   1"
        
-       write(10,'(A)') "GEOSldas.IMS_FILE:    IMS.rc"
+       write(10,'(A)')    "GEOSldas.IMS_FILE:    IMS.rc"
        close(10)
        
        open(10,file="IMS.rc",action='write')
@@ -2410,24 +2474,39 @@ contains
       integer :: n0,proc,n
       integer :: avg_land
       integer,allocatable :: local_land(:)
-      
+      logical :: forward
+ 
       allocate (local_land(N_proc))
       local_land = 0
       avg_land = ceiling(1.0*total_land/N_proc)
-      avg_land = avg_land -nint(rates*avg_land/N_proc)
-      
+      avg_land = avg_land -nint(rates*avg_land)
+
+      forward = .true.      
       tmpint = 0
       local = 1
       n0 = s-1
       do n=s,e
          tmpint=tmpint+landPosition(n)
          if(local == N_proc .and. n < e) cycle ! all lefteover goes to the last process
-         if((tmpint .ge. avg_land) .or. (n==e)) then
-            local_land(local)=tmpint
-            tmpint=0
-            n0=n
-            local = local + 1
-         endif
+         if( n==e ) then
+             local_land(local)=tmpint
+             exit
+          endif
+
+          if( tmpint .ge. avg_land ) then
+             if (forward .or. n-n0 == 1 ) then
+                local_land(local)=tmpint
+                tmpint=0
+                n0=n
+                forward = .false.
+             else
+                local_land(local) = tmpint - landPosition(n)
+                tmpint= landPosition(n)
+                n0 = n-1
+                forward = .true.
+             endif
+             local = local + 1
+          endif
       enddo
       f = 0.0
       do proc = 1, N_proc
@@ -2445,12 +2524,13 @@ contains
       integer :: proc,n
       integer :: avg_land
       integer,allocatable :: local_land(:)
-      integer :: n1,n2
-      
+      integer :: n1,n2,n0
+      logical :: forward
+
       allocate (local_land(face(k)))
       local_land = 0
       avg_land = ceiling(1.0*face_land(k)/face(k))
-      avg_land = avg_land -nint(rates*avg_land/face(k))
+      avg_land = avg_land -nint(rates*avg_land)
       if (avg_land <=0) then
          f = face_land(k)
          return
@@ -2462,12 +2542,29 @@ contains
       n1 = (k-1)*IMGLOB+1
       n2 = k*IMGLOB
       tmpint = 0
+      forward = .true.
+      n0 = n1-1
       do n = n1,n2
          tmpint=tmpint+landPosition(n)
          if(local == face(k) .and. n < n2) cycle ! all lefteover goes to the last process
-         if((tmpint .ge. avg_land) .or. (n==n2)) then
-            local_land(local)= tmpint
-            tmpint=0
+         if(n==n2) then
+            local_land(local)=tmpint
+            local = local + 1
+            cycle
+         endif
+         if(tmpint .ge. avg_land) then
+            if (n -n0 == 1) forward = .true. ! if only one step, should not got backward
+            if (forward) then
+               local_land(local)=tmpint
+               tmpint=0
+               n0 = n
+               forward = .false.
+            else
+               local_land(local) = tmpint - landPosition(n)
+               tmpint = landPosition(n)
+               n0 = n-1
+               forward = .true.
+            endif
             local = local + 1
          endif
       enddo

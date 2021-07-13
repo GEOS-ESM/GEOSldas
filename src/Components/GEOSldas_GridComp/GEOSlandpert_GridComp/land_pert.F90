@@ -26,7 +26,9 @@
 ! ------------------------------------------------------------
 
 module land_pert_routines
-  
+
+  use ESMF
+
   use LDAS_PertTypes,                   ONLY:     & 
        pert_param_type,                           &
        allocate_pert_param
@@ -68,7 +70,7 @@ contains
   ! **********************************************************************
   
   subroutine get_pert(                                &
-       N_pert, N_ens,                                 &
+       N_pert, fft_npert,  N_ens,                     &
        pert_grid_l, pert_grid_f,                      &
        dtstep,                                        &
        pert_param,                                    &
@@ -104,7 +106,8 @@ contains
     ! (incl large-scale & convective precip and snow) and to radiation 
     ! fields.
 
-    integer, intent(in) :: N_pert   ! # different perturbations
+    integer, intent(in) :: N_pert     ! # different perturbations
+    integer, intent(in) :: fft_npert  ! # different perturbations for fft; equals n_pert if proc has tiles.
 
     integer, intent(in) :: N_ens  ! # ensemble members
 
@@ -233,7 +236,7 @@ contains
 
     if (.not. diagn_only)                            &
          call propagate_pert(                        &
-         N_pert, N_ens, pert_grid_l, pert_grid_f,    &
+         fft_npert, N_ens, pert_grid_l, pert_grid_f, &
          dtstep,                                     &
          Pert_rseed,                                 &
          pert_param,                                 &
@@ -462,8 +465,11 @@ contains
     integer :: tmpInt, xstart, xend, ystart, yend
 
     type(random_fields) :: rf
+    type(ESMF_VM) :: vm
+    integer :: mpicomm, status  
 
-    ! ---------------------------
+    call ESMF_VmGetCurrent(vm, rc=status)
+    call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
 
     do m=1,N_pert
 
@@ -540,8 +546,12 @@ contains
 
        ! initialize instance rf of class random_fields
        ! this needs to be done for each pert field
-
+#ifdef MKL_AVAILABLE      
+       ! W.J Note: hardcoded comm = mpicomm to activate parallel fft
+       call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat, comm=mpicomm )
+#else
        call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat )
+#endif
 
        do n=1,N_ens
 
@@ -604,23 +614,23 @@ contains
           end do
 
           ! restrict rfield to local pert grid
+          if (pert_grid_l%n_lon /=0) then
+             tmpInt = pert_grid_l%i_offg - pert_grid_f%i_offg
+             xstart = tmpInt + 1
+             xend   = tmpInt + pert_grid_l%N_lon
 
-          tmpInt = pert_grid_l%i_offg - pert_grid_f%i_offg
-          xstart = tmpInt + 1
-          xend   = tmpInt + pert_grid_l%N_lon
+             tmpInt = pert_grid_l%j_offg - pert_grid_f%j_offg
+             ystart = tmpInt + 1
+             yend   = tmpInt + pert_grid_l%N_lat
 
-          tmpInt = pert_grid_l%j_offg - pert_grid_f%j_offg
-          ystart = tmpInt + 1
-          yend   = tmpInt + pert_grid_l%N_lat
+             ! propagate AR(1) 
 
-          ! propagate AR(1) 
-
-          if (white_in_time) then
-             Pert_ntrmdt(:,:,m,n) = rfield(xstart:xend, ystart:yend)
-          else
-             Pert_ntrmdt(:,:,m,n) = cc*Pert_ntrmdt(:,:,m,n) + dd*rfield(xstart:xend, ystart:yend)
-          end if
-
+             if (white_in_time) then
+                Pert_ntrmdt(:,:,m,n) = rfield(xstart:xend, ystart:yend)
+             else
+                Pert_ntrmdt(:,:,m,n) = cc*Pert_ntrmdt(:,:,m,n) + dd*rfield(xstart:xend, ystart:yend)
+             end if
+           endif
        end do ! n=1,N_ens
 
        ! finalize rf
