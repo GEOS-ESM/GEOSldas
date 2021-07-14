@@ -338,6 +338,8 @@ contains
     
     !real    ::  er_r   ! for realdobson
 
+    logical :: veg_params_nodata
+    
     character(len=*), parameter :: Iam = 'mwRTM_get_Tb'
     character(len=400) :: err_msg
     
@@ -365,21 +367,19 @@ contains
     do n=1,N_tile
        
        ! compute Tb only under snow-free and non-frozen conditions
-       ! and only where mwRTM parameters are available [only need 
-       ! to check one field of mwp because mwRTM_param_nodata_check()
-       ! is called in mwRTM_get_param()]
+       ! and only where mwRTM parameters are available
+       !
+       ! abbreviated check for "good" mwRTM parameter values here relies on prep work done
+       ! in subroutine mwRTM_param_nodata_check(), which was called in mwRTM_get_param()
        
-       if ( (SWE(n)<SWE_threshold)                           .and.         &
-            (soiltemp(n)>tsoil_threshold)                    .and.         &
-            (mwp(n)%sand-nodata_generic>nodata_tol_generic)  .and.         &
-! WRONG nodata checks?  Why check more than one variable, contradicts instruction above, - reichle, 27Jun2021
-            (mwp(n)%rgh_hmin>-nodata_tol_generic)            .and.         &  
-            (mwp(n)%rgh_hmax>-nodata_tol_generic)            .and.         &
-            (mwp(n)%omega>-nodata_tol_generic)               .and.         &
-            (mwp(n)%dcatau>-nodata_tol_generic)                            &
-! end "WRONG nodata checks?"
+       veg_params_nodata = ( LDAS_is_nodata(mwp(n)%bh) .and. LDAS_is_nodata(mwp(n)%vegopacity) )
+       
+       if ( (SWE(n)<SWE_threshold)                                .and.         &
+            (soiltemp(n)>tsoil_threshold)                         .and.         &
+            (.not. LDAS_is_nodata(mwp(n)%sand))                   .and.         &
+            (.not. veg_params_nodata)                                           &
             )                                                      then
-       
+          
           ! soil dielectric constant
           
           soiltemp_in_C = soiltemp(n) - MAPL_TICE
@@ -448,33 +448,44 @@ contains
           !
           ! Tb at top of vegetation (excl atmos contribution)  (tau-omega model)
 
-          ! == vwc: Vegetation water content in kg/m2 (=mm)
-          ! needs to be the total columnar vegetation water content,
-          ! depends on greenness/NDVI/LAI...
-          ! VWC=LEWT*LAI, lewt is actually a time-varying parameter!
-          ! For now LEWT is guessed based on literature, and kept cst. 
+          ! vegetation attenuation parameters can come from either of two sources:
+          ! - static look-up table or calibrated parameters (bh, bv, lewt), to be combined
+          !   with time-varying LAI
+          ! - vegetation opacity (from file); varies with time
+
+          ! the if statement above, in conjunction with mwRTM_param_nodata_check() called earlier,
+          ! ensures that we have "good" values for either (vegopacity) or (bh,bv,lewt)
           
-          !vwc = mwp(n)%lewt * lai(n)
+          if ( LDAS_is_nodata( mwp(n)%vegopacity ) ) then
+             
+             ! == vwc: Vegetation water content in kg/m2 (=mm)
+             ! needs to be the total columnar vegetation water content,
+             ! depends on greenness/NDVI/LAI...
+             ! VWC=LEWT*LAI, lewt is actually a time-varying parameter!
+             ! For now LEWT is guessed based on literature, and kept cst. 
+             
+             vwc = mwp(n)%lewt * lai(n)
 
-          ! removed contribution of interception water ("capac")
-          !
-          !! ! add bit of intercepted water as well    
-          !!          
-          !! vwc = vwc + capac(n)
-                    
-          ! Vegetation optical thickness tau=b*VWC  (eq. (2) in Crow et al. 2005)
+             ! removed contribution of interception water ("capac")
+             !
+             !! ! add bit of intercepted water as well    
+             !!          
+             !! vwc = vwc + capac(n)
+             
+             ! Vegetation optical thickness tau=b*VWC  (eq. (2) in Crow et al. 2005)
+             
+             tmpreal = vwc/cos_inc
+             
+             exptauh = EXP( -mwp(n)%bh * tmpreal )
+             exptauv = EXP( -mwp(n)%bv * tmpreal )
 
-          !tmpreal = vwc/cos_inc
+          else
+             
+             exptauh = EXP( -mwp(n)%vegopacity)
+             exptauv = EXP( -mwp(n)%vegopacity)
 
-          !exptauh = EXP( -mwp(n)%bh * tmpreal )
-          !exptauv = EXP( -mwp(n)%bv * tmpreal )
-
-          ! Q. Liu test with L2 DCA TAU, the same for hpol and vpol
-
-! 0-diff/backward compatible if using "old" mwRTM params?? - reichle, 27Jun2021
-          exptauh = EXP( -mwp(n)%dcatau)
-          exptauv = EXP( -mwp(n)%dcatau)
-          
+          end if
+             
           Tc = soiltemp(n)        ! canopy temp = soil temp
           
           tmpreal = Tc * (1. - mwp(n)%omega)

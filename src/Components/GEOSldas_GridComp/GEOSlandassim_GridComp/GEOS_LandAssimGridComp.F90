@@ -814,6 +814,17 @@ contains
        RC=STATUS  ) 
   VERIFY_(STATUS) 
   
+  ! Exports for microwave radiative transfer model (mwRTM)
+
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'L-band Microwave RTM: Vegetation opacity (normalized with cosine of incidence angle)'   ,&
+       UNITS              = '1'                                                   ,&
+       SHORT_NAME         = 'MWRTM_VEGOPACITY'                                    ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  _VERIFY(STATUS)
+
   !
   ! INTERNAL STATE
   !
@@ -1480,6 +1491,10 @@ contains
     real, dimension(:),pointer :: PRMC_ana=>null()     ! profile soil moisture
     real, dimension(:),pointer :: TPSURF_ana=>null()   ! tpsurf
     real, dimension(:),pointer :: TSOIL1_ana=>null()   ! tsoil1
+
+    !! export for microwave radiative transfer model (mwRTM)
+
+    real, dimension(:),pointer :: MWRTM_VEGOPACITY=>null()  ! vegetation opacity (time-varying)
     
     logical, save              :: firsttime=.true.
     type(cat_bias_param_type)  :: cat_bias_param
@@ -1631,20 +1646,25 @@ contains
     call MAPL_GetPointer(import, LAI,           'LAI',     rc=status)
     _VERIFY(status)
     
-
     ! exports for analysis model diagnostics
     
     call MAPL_GetPointer(export, TPSURF_ana,  'TPSURF_ANA' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, TSOIL1_ana,  'TSOIL1_ANA' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, SFMC_ana,    'WCSF_ANA' ,rc=status)
+    call MAPL_GetPointer(export, SFMC_ana,    'WCSF_ANA'  ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, RZMC_ana,    'WCRZ_ANA' ,rc=status)
+    call MAPL_GetPointer(export, RZMC_ana,    'WCRZ_ANA'  ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, PRMC_ana,    'WCPR_ANA' ,rc=status)
+    call MAPL_GetPointer(export, PRMC_ana,    'WCPR_ANA'  ,rc=status)
     VERIFY_(status)
 
+    ! exports for microwave radiative transfer model (mwRTM)
+    
+    call MAPL_GetPointer(export, MWRTM_VEGOPACITY,  'MWRTM_VEGOPACITY' ,rc=status)
+    VERIFY_(status)
+
+    
     allocate(met_force(N_catl))
     met_force(:)%Tair    = TA_enavg(:)
     met_force(:)%Qair    = QA_enavg(:)    
@@ -1913,10 +1933,15 @@ contains
        if(associated(TPSURF_ana)) TPSURF_ana(:) = cat_diagS_ensavg(:)%tsurf
        if(associated(TSOIL1_ana)) TSOIL1_ana(:) = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
 
+       if(associated(MWRTM_VEGOPACITY)) then
+          MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
+          ! make sure no-data-value matches that of other exports
+          where (LDAS_is_nodata(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY = nodata_generic
+       end if
+       
        deallocate(cat_progn_tmp)
        deallocate(cat_diagS)
        deallocate(cat_diagS_ensavg) 
-
        
        ! write analysis fields into SMAP L4_SM aup file 
        ! whenever it was time for assimilation (regardless 
@@ -2149,7 +2174,10 @@ contains
     real, dimension(:), pointer :: BH
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
-    real, dimension(:), pointer :: DCATAU 
+
+    ! "vegopacity" is NOT an internal state; do we need this pointer? if so, what does it do?
+    ! - reichle, 13 July 2021
+    real, dimension(:), pointer :: VEGOPACITY
     
     ! export
     real, dimension(:), pointer :: TB_H_enavg
@@ -2602,28 +2630,48 @@ contains
     real, dimension(:), pointer :: BH
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
-    real, dimension(:), pointer :: DCATAU   ! needed?? declared as global var in module!?  reichle, 27Jun2021
+    
+    real, dimension(:), pointer :: VEGOPACITY
     
     integer :: N_catl_tmp, n, mpierr, status
     logical :: mwp_nodata, all_nodata_l
 
-    character(len=ESMF_MAXSTR)  :: TAUFile
+    character(len=ESMF_MAXSTR)  :: VEGOPACITYFile
     type(ESMF_Time)             :: CURRENT_TIME
- 
+
+    ! it looks like this if statement prevents us from reading the vegetation opacity from the file after
+    ! the first call to this subroutine
+    ! we don't want to re-do everything in this subroutine at every 3-hour analysis step, so we'll need
+    ! to find a way to keep reading the VEGOPACITY file and replacing the mwrtm_param%vegopacity field with
+    ! time-varying data in some other way.
+    ! - reichle 13 July 2021
     if(allocated(mwRTM_param)) then
        _RETURN(_SUCCESS)
     endif
 
-    allocate(DCATAU(N_catl))
-    call MAPL_GetResource(MAPL, TAUFile, label = 'TAU_FILE:', &
-        default = 'tau.dat', RC=STATUS )
+    allocate(VEGOPACITY(N_catl))
+    call MAPL_GetResource(MAPL, VEGOPACITYFile, label = 'VEGOPACITY_FILE:', &
+        default = '', RC=STATUS )
     _VERIFY(STATUS)
 
     call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
     _VERIFY(STATUS)
 
-    call MAPL_ReadForcing(MAPL,'DCATAU',TAUFile,CURRENT_TIME,DCATAU,ON_TILES=.true.,RC=STATUS)
-    _VERIFY(STATUS)
+    ! if a non-empty file name is provided in LDAS.rc, read vegetation opacity from this file
+    if (length(trim(VEGOPACITYFile))>0) then
+
+       ! for a given tile, vegetation opacity in the data file may contain a mix of "good" and no-data values;
+       ! the file must use MAPL_UNDEF (=1.e15) as the no-data value because MAPL_ReadForcing() only
+       ! recognized MAPL_UNDEF
+       
+       call MAPL_ReadForcing(MAPL,'VEGOPACITY',VEGOPACITYFile,CURRENT_TIME,VEGOPACITY,ON_TILES=.true.,RC=STATUS)
+       _VERIFY(STATUS)
+
+       ! fix result of "bad" (-9999.) no-data-values in first edition of VEGOPACITY file
+       
+       where (VEGOPACITY<0.) VEGOPACITY=MAPL_UNDEF
+       
+    end if
     
     call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
     _VERIFY(STATUS)
@@ -2684,8 +2732,11 @@ contains
     mwRTM_param(:)%bh        = BH(:)
     mwRTM_param(:)%bv        = bv(:)
     mwRTM_param(:)%lewt      = LEWT(:)
-    mwRTM_param(:)%dcatau    = DCATAU(:)
-    deallocate(DCATAU)                    ! unlike other mwRTM params, DCATAU varies with time, therefore treated differently - reichle, 27Jun2021
+
+    ! unlike the other fields of mwRTM param, VEGOPACITY varies with time, and therefore needs to be treated differently
+    ! - reichle, 13 July 2021
+    mwRTM_param(:)%vegopacity= VEGOPACITY(:)
+    deallocate(VEGOPACITY)              
  
     all_nodata_l = .true.
     do n=1,N_catl
