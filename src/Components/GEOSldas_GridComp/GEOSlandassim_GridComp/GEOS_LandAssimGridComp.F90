@@ -2627,48 +2627,14 @@ contains
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
     
-    real, dimension(:), pointer :: VEGOPACITY
-    
     integer :: N_catl_tmp, n, mpierr, status
     logical :: mwp_nodata, all_nodata_l
 
-    character(len=ESMF_MAXSTR)  :: VEGOPACITYFile
-    type(ESMF_Time)             :: CURRENT_TIME
 
-    ! it looks like this if statement prevents us from reading the vegetation opacity from the file after
-    ! the first call to this subroutine
-    ! we don't want to re-do everything in this subroutine at every 3-hour analysis step, so we'll need
-    ! to find a way to keep reading the VEGOPACITY file and replacing the mwrtm_param%vegopacity field with
-    ! time-varying data in some other way.
-    ! - reichle 13 July 2021
     if(allocated(mwRTM_param)) then
        _RETURN(_SUCCESS)
     endif
 
-    allocate(VEGOPACITY(N_catl), source=MAPL_UNDEF)
-    call MAPL_GetResource(MAPL, VEGOPACITYFile, label = 'VEGOPACITY_FILE:', &
-        default = '', RC=STATUS )
-    _VERIFY(STATUS)
-
-    call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
-    _VERIFY(STATUS)
-
-    ! if a non-empty file name is provided in LDAS.rc, read vegetation opacity from this file
-    if (len(trim(VEGOPACITYFile))>0) then
-
-       ! for a given tile, vegetation opacity in the data file may contain a mix of "good" and no-data values;
-       ! the file must use MAPL_UNDEF (=1.e15) as the no-data value because MAPL_ReadForcing() only
-       ! recognized MAPL_UNDEF
-       
-       call MAPL_ReadForcing(MAPL,'VEGOPACITY',VEGOPACITYFile,CURRENT_TIME,VEGOPACITY,ON_TILES=.true.,RC=STATUS)
-       _VERIFY(STATUS)
-
-       ! fix result of "bad" (-9999.) no-data-values in first edition of VEGOPACITY file
-       
-       where (VEGOPACITY<0.) VEGOPACITY=MAPL_UNDEF
-       
-    end if
-    
     call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
     _VERIFY(STATUS)
     call MAPL_GetPointer(INTERNAL, SOILCLS  , 'MWRTM_SOILCLS'  ,    RC=STATUS)
@@ -2729,11 +2695,9 @@ contains
     mwRTM_param(:)%bv        = bv(:)
     mwRTM_param(:)%lewt      = LEWT(:)
 
-    ! unlike the other fields of mwRTM param, VEGOPACITY varies with time, and therefore needs to be treated differently
-    ! - reichle, 13 July 2021
-    mwRTM_param(:)%vegopacity= VEGOPACITY(:)
-    deallocate(VEGOPACITY)              
- 
+    call get_vegopacity(MAPL, clock, N_catl, rc=status)
+    _VERIFY(STATUS)
+
     all_nodata_l = .true.
     do n=1,N_catl
        call mwRTM_param_nodata_check(mwRTM_param(n), mwp_nodata )
@@ -2746,6 +2710,54 @@ contains
     _RETURN(_SUCCESS)
 
   end subroutine get_mwrtm_param
+
+  subroutine get_vegopacity(MAPL, clock, N_catl, rc)
+
+    type(MAPL_MetaComp), pointer,  intent(in)    :: MAPL
+    type(ESMF_Clock),              intent(in)    :: clock     ! the clock
+    integer,                       intent(in)    :: N_catl
+    integer,             optional, intent(out)   :: rc
+
+    ! local variables
+    real, dimension(:), pointer :: VEGOPACITY
+    
+    integer ::  status
+
+    character(len=ESMF_MAXSTR)  :: VEGOPACITYFile
+    type(ESMF_Time)             :: CURRENT_TIME
+
+
+
+    call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
+    _VERIFY(STATUS)
+
+    call MAPL_GetResource(MAPL, VEGOPACITYFile, label = 'VEGOPACITY_FILE:', &
+        default = '', RC=STATUS )
+    _VERIFY(STATUS)
+
+    allocate(VEGOPACITY(N_catl), source=MAPL_UNDEF)
+    ! if a non-empty file name is provided in LDAS.rc, read vegetation opacity from this file
+    if (len(trim(VEGOPACITYFile))>0) then
+       ! for a given tile, vegetation opacity in the data file may contain a mix of "good" and no-data values;
+       ! the file must use MAPL_UNDEF (=1.e15) as the no-data value because MAPL_ReadForcing() only
+       ! recognized MAPL_UNDEF
+
+       call MAPL_ReadForcing(MAPL,'VEGOPACITY',VEGOPACITYFile,CURRENT_TIME,VEGOPACITY,ON_TILES=.true.,RC=STATUS)
+       _VERIFY(STATUS)
+
+       ! fix result of "bad" (-9999.) no-data-values in first edition of VEGOPACITY file
+       
+       where (VEGOPACITY<0.) VEGOPACITY=MAPL_UNDEF
+       
+    end if
+    
+    ! unlike the other fields of mwRTM param, VEGOPACITY varies with time, and therefore needs to be treated differently
+    ! - reichle, 13 July 2021
+    mwRTM_param(:)%vegopacity= VEGOPACITY(:)
+    deallocate(VEGOPACITY)              
+    _RETURN(_SUCCESS)
+ 
+  end subroutine get_vegopacity
 
   ! ******************************************************************************
 
