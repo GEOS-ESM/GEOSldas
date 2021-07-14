@@ -2175,10 +2175,6 @@ contains
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
 
-    ! "vegopacity" is NOT an internal state; do we need this pointer? if so, what does it do?
-    ! - reichle, 13 July 2021
-    real, dimension(:), pointer :: VEGOPACITY
-    
     ! export
     real, dimension(:), pointer :: TB_H_enavg
     real, dimension(:), pointer :: TB_V_enavg
@@ -2649,7 +2645,7 @@ contains
        _RETURN(_SUCCESS)
     endif
 
-    allocate(VEGOPACITY(N_catl))
+    allocate(VEGOPACITY(N_catl), source=MAPL_UNDEF)
     call MAPL_GetResource(MAPL, VEGOPACITYFile, label = 'VEGOPACITY_FILE:', &
         default = '', RC=STATUS )
     _VERIFY(STATUS)
@@ -2658,7 +2654,7 @@ contains
     _VERIFY(STATUS)
 
     ! if a non-empty file name is provided in LDAS.rc, read vegetation opacity from this file
-    if (length(trim(VEGOPACITYFile))>0) then
+    if (len(trim(VEGOPACITYFile))>0) then
 
        ! for a given tile, vegetation opacity in the data file may contain a mix of "good" and no-data values;
        ! the file must use MAPL_UNDEF (=1.e15) as the no-data value because MAPL_ReadForcing() only

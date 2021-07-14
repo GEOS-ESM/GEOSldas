@@ -31,7 +31,8 @@ module mwRTM_routines
        logit,                                     &
        logunit,                                   &
        nodata_generic,                            &
-       nodata_tol_generic
+       nodata_tol_generic,                        &
+       LDAS_is_nodata
 
   use LDAS_exceptionsMod,               ONLY:     &
        ldas_abort,                                &

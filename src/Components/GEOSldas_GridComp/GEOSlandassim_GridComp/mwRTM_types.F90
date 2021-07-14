@@ -314,8 +314,9 @@ contains
     logical            :: veg_LUT_params_nodata, veg_params_nodata, other_params_nodata
 
     real               :: realvegcls, realsoilcls
-    
-    character(len=400) :: err_msg
+
+    character(len=*),   parameter :: Iam     = 'mwRTM_param_nodata_check'    
+    character(len=400)            :: err_msg
 
     ! -----------------------------------------------------------------------------
 
@@ -392,21 +393,21 @@ contains
        
        ! make sure all related fields in this group are no-data if at least one is nodata
        
-       mwp%realvegcls     = nodata_generic
-       mwp%realsoilcls    = nodata_generic
-       mwp%mwp%sand       = nodata_generic
-       mwp%mwp%clay       = nodata_generic
-       mwp%mwp%poros      = nodata_generic
-       mwp%mwp%wang_wt    = nodata_generic
-       mwp%mwp%wang_wp    = nodata_generic
-       mwp%mwp%rgh_hmin   = nodata_generic
-       mwp%mwp%rgh_hmax   = nodata_generic
-       mwp%mwp%rgh_wmin   = nodata_generic
-       mwp%mwp%rgh_wmax   = nodata_generic
-       mwp%mwp%rgh_Nrh    = nodata_generic
-       mwp%mwp%rgh_Nrv    = nodata_generic
-       mwp%mwp%rgh_polmix = nodata_generic
-       mwp%mwp%omega      = nodata_generic
+       mwp%vegcls     = nint(nodata_generic)
+       mwp%soilcls    = nint(nodata_generic)
+       mwp%sand       = nodata_generic
+       mwp%clay       = nodata_generic
+       mwp%poros      = nodata_generic
+       mwp%wang_wt    = nodata_generic
+       mwp%wang_wp    = nodata_generic
+       mwp%rgh_hmin   = nodata_generic
+       mwp%rgh_hmax   = nodata_generic
+       mwp%rgh_wmin   = nodata_generic
+       mwp%rgh_wmax   = nodata_generic
+       mwp%rgh_Nrh    = nodata_generic
+       mwp%rgh_Nrv    = nodata_generic
+       mwp%rgh_polmix = nodata_generic
+       mwp%omega      = nodata_generic
        
     end if
     
