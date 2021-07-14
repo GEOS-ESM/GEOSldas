@@ -403,6 +403,7 @@ PROGRAM tile_bin2nc4
     case ('PRMC_ANA');     LONG_NAME = 'soil_moisture_profile_analysis';                                 UNITS = 'm3 m-3'
     case ('TSURF_ANA');    LONG_NAME = 'ave_catchment_temp_incl_snw_analysis';                           UNITS = 'K'
     case ('TSOIL1_ANA');   LONG_NAME = 'soil_temperatures_layer_1_analysis';                             UNITS = 'K'
+    case ('MWRTM_VEGOPACITY'); LONG_NAME = 'L-band Microwave RTM: Vegetation opacity (normalized with cosine of incidence angle)'; UNITS = '1'
 
     ! default LONG_NAME and UNITS for nc4 files created by tile_bin2nc4.F90 (used for any SHORT_NAME not listed above):
 
