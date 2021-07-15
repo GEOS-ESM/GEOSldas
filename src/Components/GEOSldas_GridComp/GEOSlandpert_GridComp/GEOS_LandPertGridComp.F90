@@ -1057,8 +1057,34 @@ contains
 
     call get_force_pert_param(internal%pgrid_l, internal%ForcePert%npert, internal%ForcePert%param)
     _ASSERT(internal%ForcePert%npert==size(internal%ForcePert%param), "ForcePert: param size does not match npert")
+
+    internal%ForcePert%fft_npert = internal%ForcePert%npert
+    call MAPL_CommsBcast(vm, data=internal%ForcePert%fft_npert, N=1, ROOT=0,rc=status)
+    if (size(internal%ForcePert%param) == 0 .and. internal%ForcePert%fft_npert >0 ) then
+       allocate(internal%ForcePert%param(internal%ForcePert%fft_npert))
+    endif
+    do n = 1, internal%ForcePert%fft_npert
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%xcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%ycorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%tcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%coarsen,  N=1, ROOT=0,rc=status)
+    enddo
+
     call get_progn_pert_param(internal%pgrid_l, internal%PrognPert%npert, internal%PrognPert%param)
     _ASSERT(internal%PrognPert%npert==size(internal%PrognPert%param), "PrognPert: param size does not match npert")
+
+    internal%PrognPert%fft_npert = internal%PrognPert%npert
+    call MAPL_CommsBcast(vm, data=internal%PrognPert%fft_npert, N=1, ROOT=0,rc=status)
+    if (size(internal%PrognPert%param) == 0 .and. internal%PrognPert%fft_npert > 0) then
+       allocate(internal%PrognPert%param(internal%PrognPert%fft_npert))
+    endif
+
+    do n = 1, internal%PrognPert%fft_npert
+       call MAPL_CommsBcast(vm, data=internal%PrognPert%param(n)%xcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%PrognPert%param(n)%ycorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%PrognPert%param(n)%tcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%PrognPert%param(n)%coarsen,  N=1, ROOT=0,rc=status)
+    enddo
 
     N_force_pert = internal%ForcePert%npert
     N_progn_pert = internal%PrognPert%npert
@@ -1117,7 +1143,7 @@ contains
        call init_randseed(pert_rseed)
        ! -ForcePert-
        call propagate_pert(                                                     &
-            internal%ForcePert%npert,                                           &
+            internal%ForcePert%fft_npert,                                       &
             1,                                                                  &
             internal%pgrid_l, internal%pgrid_f,                                 &
             ! arbitrary dtstep
@@ -1132,7 +1158,7 @@ contains
 
        ! -prognostics-
        call propagate_pert(                                                     &
-            internal%PrognPert%npert,                                           &
+            internal%PrognPert%fft_npert,                                       &
             1,                                                                  &
             internal%pgrid_l, internal%pgrid_f,                                 &
             ! arbitrary dtstep
@@ -1395,6 +1421,7 @@ contains
 
     call get_pert(                                                              &
          internal%ForcePert%npert,                                              &
+         internal%ForcePert%fft_npert,                                          &
          1,                                                                     &
          internal%pgrid_l, internal%pgrid_f,                                    &
          real(internal%ForcePert%dtstep),                                       &
@@ -1426,6 +1453,7 @@ contains
     
     call get_pert(                                                              &
          internal%PrognPert%npert,                                              &
+         internal%PrognPert%fft_npert,                                          &
          1,                                                                     &
          internal%pgrid_l, internal%pgrid_f,                                    &
          real(internal%PrognPert%dtstep),                                       &
@@ -1662,7 +1690,7 @@ contains
 
     ! -ForcePert-
        call propagate_pert(                                                   &
-          internal%ForcePert%npert,                                           &
+          internal%ForcePert%fft_npert,                                       &
           1,                                                                  &
           internal%pgrid_l, internal%pgrid_f,                                 &
           real(internal%ForcePert%dtstep),                                    &
@@ -1690,7 +1718,7 @@ contains
 
     ! -prognostics-
         call propagate_pert(                                                  &
-           internal%PrognPert%npert,                                          &
+           internal%PrognPert%fft_npert,                                      &
            1,                                                                 &
            internal%pgrid_l, internal%pgrid_f,                                &
            real(internal%PrognPert%dtstep),                                   &
@@ -1929,6 +1957,7 @@ contains
 
           call get_pert(                                                           &
                internal%ForcePert%npert,                                           &
+               internal%ForcePert%fft_npert,                                       &
                1,                                                                  &
                internal%pgrid_l, internal%pgrid_f,                                 &
                real(internal%ForcePert%dtstep),                                    &
@@ -2406,6 +2435,7 @@ contains
 
        call get_pert(                                                           &
             internal%PrognPert%npert,                                           &
+            internal%PrognPert%fft_npert,                                       &
             1,                                                                  &
             internal%pgrid_l, internal%pgrid_f,                                 &
             real(internal%PrognPert%dtstep),                                    &
