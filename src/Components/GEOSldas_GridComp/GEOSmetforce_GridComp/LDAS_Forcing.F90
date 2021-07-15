@@ -64,7 +64,8 @@ module LDAS_ForceMod
 
   real, parameter :: DEFAULT_REFH   = 10.   ! m
   
-  character(10), private :: tmpstring10
+  ! Jun 2021: Revised length of unformatted string from 10 to 100 (must be >= 12 for integer).
+  character(100), private :: tmpstring100   
 
   real, contiguous, pointer :: ptrShForce(:,:)=>null()
 
@@ -77,6 +78,7 @@ module LDAS_ForceMod
   end type local_grid
 
   type(local_grid), target :: local_info
+
   ! for cubed sphere forcing checking, initialized by GEOS_MetforceGridComp
   integer, public :: im_world_cs = 0
 
@@ -302,6 +304,11 @@ contains
        unlimited_Qair                 = .true.
        unlimited_LWdown               = .true.
 
+    elseif (index(met_tag(1:7), 'GEOSs2s')/=0) then
+
+       call get_GEOSs2s( date_time_tmp, met_path, met_tag, N_catd, tile_coord, &
+            MET_HINTERP, met_force_obs_tile_new, nodata_forcing)
+
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
        if(root_logit) write (logunit,*) 'get_forcing(): assuming GEOS-5 forcing data set'
@@ -309,7 +316,7 @@ contains
        call get_GEOS( date_time_tmp, force_dtstep, met_path, met_tag,                 &
             N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                      &
             supported_option_MET_HINTERP,                                             &
-            supported_option_AEROSOL_DEPOSITION,                                      &            
+            supported_option_AEROSOL_DEPOSITION,                                      &
             met_force_obs_tile_new, nodata_forcing, PAR_available, MERRA_file_specs,  &
             init )
 
@@ -2596,13 +2603,412 @@ contains
     
   end subroutine get_Viviana_OK_precip
 
+  ! ************************************************************************
+  
+  subroutine get_GEOSs2s(date_time, met_path, met_tag, N_catd, tile_coord, &
+       met_hinterp, met_force_new, nodata_forcing)
+    
+    ! read forcing derived from GEOS S2S output and map to tile space
+    ! (using nearest neighbor or bilinear interpolation)
+    !
+    ! forcing derived through post-processing of daily average output from S2S
+    ! hindcasts/forecasts ("FCST") or the "AODAS" used for initialization
+    ! (see doc/README.MetForcing_and_BCS.md)
+    !
+    ! implementation follows LDASsa subroutines get_Princeton_netcdf() and get_GEOS(),
+    ! fzeng, 24 Jun 2019
+    !
+    ! jkolassa,jmpark,reichle, 10 May - 14 June 2021:
+    !   modified for GEOSldas; added AODAS; met_tag encodes ID of ensemble
+    !   member and initial month/day
+    !   modified to compute precipitation components from total precipitation
+    !   and air temperature (pre-processing of precipitation components was faulty)
+    
+    use netcdf
+    implicit none
+    include 'mpif.h'
+    
+    type(date_time_type), intent(in) :: date_time
+    
+    character(*),         intent(in) :: met_path
+    character(*),         intent(in) :: met_tag
+    
+    integer,              intent(in) :: N_catd, met_hinterp
+    
+    type(tile_coord_type), dimension(:), pointer       :: tile_coord     ! input
+    
+    type(met_force_type),  dimension(:), intent(inout) :: met_force_new
+    
+    real,                 intent(out) :: nodata_forcing
+    
+    ! Hindcast grid and netcdf parameters
+    
+    integer, parameter :: GEOSgcm_grid_N_lon  = 576
+    integer, parameter :: GEOSgcm_grid_N_lat  = 361
+    real,    parameter :: GEOSgcm_grid_dlon   = 0.625
+    real,    parameter :: GEOSgcm_grid_dlat   = 0.5
+    real,    parameter :: GEOSgcm_grid_ll_lon = -180. - GEOSgcm_grid_dlon/2.
+    real,    parameter :: GEOSgcm_grid_ll_lat =  -90. - GEOSgcm_grid_dlat/2.
+    
+    real,    parameter :: nodata_GEOSgcm = -9999.
+    
+    integer, parameter :: dt_GEOSgcm_in_hours_FCST  =  6
+    integer, parameter :: dt_GEOSgcm_in_hours_AODAS =  1
+    
+    integer, parameter :: N_GEOSgcm_vars_FCST       = 10
+    integer, parameter :: N_GEOSgcm_vars_AODAS      =  8
+    
+    ! variable names in "FCST" forcing files match those in MERRA-2 file specs
+    
+    character(40), dimension(N_GEOSgcm_vars_FCST) :: GEOSgcm_name_FCST = &
+         (/             &
+         'PRECTOTCORR', &  !  1 - flux,  [gauge-corr]_total_precipitation,     kg m-2 s-1
+         'LWGAB      ', &  !  2 - flux,  surface_absorbed_longwave_radiation,  W m-2
+         'SWGDN      ', &  !  3 - flux,  surface_incoming_shortwave_flux,      W m-2
+         'PARDR      ', &  !  4 - flux,  surface_downwelling_par_beam_flux,    W m-2
+         'PARDF      ', &  !  5 - flux,  surface_downwelling_par_diffuse_flux, W m-2
+         'PS         ', &  !  6 - state, surface_pressure,                     Pa
+         'QLML       ', &  !  7 - state, surface_specific_humidity,            kg kg-1
+         'TLML       ', &  !  8 - state, surface_air_temperature,              K
+         'SPEED      ', &  !  9 - state, surface_wind_speed,                   m s-1
+         'HLML       '  &  ! 10 - state, surface_layer_height,                 m
+         /)
+
+    ! variable names in "AODAS" forcing files match those in S2S file specs
+    
+    character(40), dimension(N_GEOSgcm_vars_AODAS) :: GEOSgcm_name_AODAS = &
+         (/             &
+         'TPREC      ', &  !  1 - flux,  total_precipitation,                  kg m-2 s-1
+         'LWS        ', &  !  2 - flux,  surface_absorbed_longwave_radiation,  W m-2
+         'SWGDWN     ', &  !  3 - flux,  surface_incoming_shortwave_flux,      W m-2
+         'PS         ', &  !  4 - state, surface_pressure,                     Pa
+         'QA         ', &  !  5 - state, surface_specific_humidity,            kg kg-1
+         'TA         ', &  !  6 - state, surface_air_temperature,              K
+         'SPEED      ', &  !  7 - state, surface_wind_speed,                   m s-1
+         'HLML       '  &  !  8 - state, surface_layer_height,                 m
+         /)
+         
+    ! local variables
+    
+    character(40), dimension(:), allocatable  :: GEOSgcm_name
+    
+    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours
+    
+    real    :: fnbr(2,2)
+    
+    integer, pointer :: i1(:), i2(:), j1(:), j2(:)
+    real,    pointer :: x1(:), x2(:), y1(:), y2(:)
+    
+    real,    dimension(:,:), allocatable  :: force_array
+    
+    integer, dimension(3)      :: iicount, iistart
+    integer                    :: k, hours_in_month, GEOSgcm_var, nciv_data
+    integer                    :: fid, rc, nv_id, status
+    
+    real                       :: tol, this_lon, this_lat, Tair_tmp, Totprec_tmp
+    
+    character(  5)             :: init_MMMDD
+    character(  4)             :: YYYY, ens_num
+    character(  2)             :: MM, DD
+    character(300)             :: fname
+    
+    character( 10)             :: lat_str = 'latitude'
+    character( 10)             :: lon_str = 'longitude'
+    
+    logical                    :: FCST  = .false.
+    logical                    :: AODAS = .false.
+    
+    character(len=*), parameter :: Iam = 'get_GEOSs2s'
+    character(len=400)          :: err_msg
+
+    ! --------------------------------------------------------------------
+    !
+    ! preparations
+
+    ! parse met_tag
+
+    ! 123456789012345678901234
+    ! GEOSs2sFCST__ensX__MMMDD
+    ! GEOSs2sAODAS
+
+    if     (index(met_tag(8:11), 'FCST')/=0) then
+
+       FCST = .true.
+
+       dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_FCST
+       N_GEOSgcm_vars      = N_GEOSgcm_vars_FCST
+
+       allocate(GEOSgcm_name(N_GEOSgcm_vars))
+
+       GEOSgcm_name = GEOSgcm_name_FCST
+
+       ! parse ensemble and initialization month from met_tag
+
+       ens_num    = trim(met_tag(14:17))
+       init_MMMDD = trim(met_tag(20:24))
+
+    elseif (index(met_tag(8:12), 'AODAS')/=0) then
+
+       AODAS = .true.
+
+       dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_AODAS
+       N_GEOSgcm_vars      = N_GEOSgcm_vars_AODAS
+
+       allocate(GEOSgcm_name(N_GEOSgcm_vars))
+
+       GEOSgcm_name = GEOSgcm_name_AODAS
+
+    else
+
+       err_msg = "unknown met_tag"
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+
+    end if
+
+    nodata_forcing = nodata_GEOSgcm
+
+    tol = abs(nodata_forcing*nodata_tolfrac_generic)
+
+    ! assemble year and month strings
+
+    write (YYYY, '(i4.4)') date_time%year
+    write (MM,   '(i2.2)') date_time%month
+    write (DD,   '(i2.2)') date_time%day
+
+    ! set lon index
+
+    iistart(1) = 1
+    iicount(1) = GEOSgcm_grid_N_lon
+
+    ! set lat index
+    iistart(2) = 1
+    iicount(2) = GEOSgcm_grid_N_lat
+
+    ! get time index
+
+    if ( (date_time%min/=0) .or. (date_time%sec/=0) .or.              &
+         (mod(date_time%hour, dt_GEOSgcm_in_hours)/=0) ) then
+       
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'timing ERROR!!')
+       
+    endif
+    
+    hours_in_month = (date_time%day-1)*24 + date_time%hour
+    
+    iistart(3) = hours_in_month / dt_GEOSgcm_in_hours + 1
+    iicount(3) = 1
+    
+    ! ----------------------------------------------------------------
+    !
+    ! open input file
+
+    if     (FCST)  then
+       fname = trim(met_path) // '/' // YYYY // '/' // init_MMMDD // '/' // ens_num // '/GEOS5.' // YYYY // MM // '.nc4'
+    elseif (AODAS) then
+       fname = trim(met_path) // '/S2S_hourly_' // YYYY// MM// '.nc4'
+    endif
+
+    call GEOS_openfile(FileOpenedHash,fname,fid,tile_coord,met_hinterp,rc,lat_str,lon_str)
+    if (rc<0) then
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error opening file')
+    endif
+
+    ! assign indices from met forcing interpolation
+
+    i1=>local_info%i1
+    i2=>local_info%i2
+    j1=>local_info%j1
+    j2=>local_info%j2
+    x1=>local_info%x1
+    x2=>local_info%x2
+    y1=>local_info%y1
+    y2=>local_info%y2
+
+    ! allocate force_array
+
+    allocate(force_array(N_catd,N_GEOSgcm_vars))
+    force_array = nodata_forcing
+
+    ! loop over variables
+    
+    do GEOSgcm_var = 1,N_GEOSgcm_vars
+       
+       if (GEOSgcm_var==1) then
+          ! init share memory
+          if(  (size(ptrShForce,1) /= GEOSgcm_grid_N_lon) .or.          &
+               (size(ptrShForce,2) /= GEOSgcm_grid_N_lat)       ) then
+             call MAPL_SyncSharedMemory(rc=status)
+             VERIFY_(status)
+             if (associated(ptrShForce)) then
+                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
+                VERIFY_(status)
+             endif
+             call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
+             VERIFY_(status)
+             call MAPL_SyncSharedMemory(rc=status)
+             VERIFY_(status)
+          end if
+       endif ! (GEOSgcm_var==1)
+       rc = 0
+       call MAPL_SyncSharedMemory(rc=status)
+       
+       ! read variable from netcdf file
+       if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
+          rc= NF90_INQ_VARID( fid, trim(GEOSgcm_name(GEOSgcm_var)), nv_id)
+          _ASSERT( rc == nf90_noerr, "nf90 error")
+          rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount)
+       end if
+       
+       call MAPL_SyncSharedMemory(rc=status)
+       
+       ! map variable array to force array using chosen met interpolation method
+       
+       select case (MET_HINTERP)
+          
+       case(0)  ! nearest neighbor interpolation
+          
+          do k = 1, N_catd
+             force_array(k, GEOSgcm_var) = ptrShForce(i1(k), j1(k))
+          end do
+          
+       case (1)  ! bilinear interpolation
+          
+          do k=1,N_catd
+             this_lon = tile_coord(k)%com_lon
+             this_lat = tile_coord(k)%com_lat
+             
+             fnbr(1,1) = ptrShForce(i1(k),j1(k))
+             fnbr(1,2) = ptrShForce(i1(k),j2(k))
+             fnbr(2,1) = ptrShForce(i2(k),j1(k))
+             fnbr(2,2) = ptrShForce(i2(k),j2(k))
+             
+             !DEC$ FORCEINLINE
+             force_array(k,GEOSgcm_var) = BilinearInterpolation(this_lon, this_lat, &
+                  x1(k), x2(k), y1(k), y2(k), fnbr, nodata_forcing, tol)
+          end do
+          
+       case default
+          
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported MET_HINTERP option')
+          
+       end select
+    end do ! GEOSgcm_var
+    
+    ! ----------------------------------------------------------------
+
+    ! convert variables and units of force_array to match met_force_type,
+    ! put into structure
+
+    ! from GEOSgcm files:
+    !
+    !                     FCST/Hindcast
+    !
+    ! force_array(:, 1) = PRECTOTCORR    kg/m2/s ([gauge-corr]_total_precipitation, rainfall+snowfall)
+    ! force_array(:, 2) = LWGAB          W/m2    (surface_absorbed_longwave_radiation)
+    ! force_array(:, 3) = SWGDN          W/m2    (surface_incoming_shortwave_flux)
+    ! force_array(:, 4) = PARDR          W/m2    (surface_downwelling_par_beam_flux)
+    ! force_array(:, 5) = PARDF          W/m2    (surface_downwelling_par_diffuse_flux)
+    ! force_array(:, 6) = PS             Pa      (surface_pressure)
+    ! force_array(:, 7) = QLML           kg/kg   (surface_specific_humidity)
+    ! force_array(:, 8) = TLML           K       (surface_air_temperature)
+    ! force_array(:, 9) = SPEED          m/s     (surface_wind_speed)
+    ! force_array(:,10) = HLML           m       (surface_layer_height)
+
+    !                     AODAS
+    !
+    ! force_array(:, 1) = TPREC          kg/m2/s (total_precipitation, rainfall+snowfall)
+    ! force_array(:, 2) = LWS            W/m2    (surface_absorbed_longwave_radiation)
+    ! force_array(:, 3) = SWGDWN         W/m2    (surface_incoming_shortwave_flux)
+    ! force_array(:, 4) = PS             Pa      (surface_pressure)
+    ! force_array(:, 5) = QA             kg/kg   (surface_specific_humidity)
+    ! force_array(:, 6) = TA             K       (surface_air_temperature)
+    ! force_array(:, 7) = SPEED          m/s     (surface_wind_speed)
+    ! force_array(:, 8) = HLML           m       (surface_layer_height)
+    
+    if     (FCST) then
+       met_force_new%LWdown    = force_array(:, 2)
+       met_force_new%SWdown    = force_array(:, 3)
+       met_force_new%PARdrct   = force_array(:, 4)
+       met_force_new%PARdffs   = force_array(:, 5)
+       met_force_new%Psurf     = force_array(:, 6)
+       met_force_new%Qair      = force_array(:, 7)
+       met_force_new%Tair      = force_array(:, 8)
+       met_force_new%Wind      = force_array(:, 9)
+       met_force_new%RefH      = force_array(:,10)
+    elseif (AODAS) then
+       met_force_new%LWdown    = force_array(:, 2)
+       met_force_new%SWdown    = force_array(:, 3)
+       met_force_new%Psurf     = force_array(:, 4)
+       met_force_new%Qair      = force_array(:, 5)
+       met_force_new%Tair      = force_array(:, 6)
+       met_force_new%Wind      = force_array(:, 7)
+       met_force_new%RefH      = force_array(:, 8)
+    end if
+    
+    ! rainfall
+    ! Rainf = convective rainfall + large-scale rainfall (total liquid precip)
+    ! Snowf = convective snowfall + large-scale snowfall (total solid precip)
+    
+    ! revised to compute precipitation components from total precipitation
+    ! and air temperature because pre-processing of precipitation components
+    ! was faulty - 14 Jun 2021
+    
+    do k=1,N_catd
+       
+       ! "where" statements would probably be better than a do loop, but left for later
+       ! - reichle, 14 Jun 2021
+       
+       Tair_tmp    = met_force_new(k)%Tair  
+       
+       Totprec_tmp = force_array(k,1)       ! total precip is element 1 in FCST and AODAS
+       
+       if ( (abs(Tair_tmp   -nodata_GEOSgcm)<tol) .or.     &
+            (abs(Totprec_tmp-nodata_GEOSgcm)<tol)          &
+            ) then
+          
+          ! If Tair or total precip is undefined, no decision about precipitation 
+          ! partitioning can be made and precip forcing is set to nodata_forcing.
+          
+          met_force_new(k)%Rainf_C = nodata_forcing
+          met_force_new(k)%Snowf   = nodata_forcing
+          met_force_new(k)%Rainf   = nodata_forcing
+          
+       else
+          
+          ! Use Tair to split total precipitation into rainfall and snowfall.
+          
+          if     (Tair_tmp <= Tzero) then ! Tair <= 0C
+             
+             met_force_new(k)%Snowf   = Totprec_tmp
+             met_force_new(k)%Rainf   = 0.
+             
+          else                            ! Tair > 0C
+             
+             met_force_new(k)%Snowf   = 0.
+             met_force_new(k)%Rainf   = Totprec_tmp
+             
+          end if
+
+          ! Assign 0 to convective rainfall because only the total rainfall is used by the
+          ! Catchment model (for now).  This may have to be revised for future model versions.
+          
+          met_force_new(k)%Rainf_C = 0.
+          
+       end if
+       
+    end do
+    
+    deallocate(force_array)
+    deallocate(GEOSgcm_name)
+    
+  end subroutine get_GEOSs2s
   
   ! *************************************************************************
   
   subroutine get_GEOS( date_time, force_dtstep, met_path, met_tag,             &
        N_catd, tile_coord, MET_HINTERP, AEROSOL_DEPOSITION,                    &
        supported_option_MET_HINTERP,                                           &
-       supported_option_AEROSOL_DEPOSITION,                                    &            
+       supported_option_AEROSOL_DEPOSITION,                                    &
        met_force_new, nodata_forcing, PAR_available, MERRA_file_specs,         &
        init )
     
@@ -2742,10 +3148,8 @@ contains
     real    :: this_lon, this_lat, tmp_lon, tmp_lat
 
     real    :: tol 
-
-    integer :: icur, jcur, inew, jnew
     
-    real    :: xcur, ycur, xnew, ynew, fnbr(2,2)
+    real    :: fnbr(2,2)
     
     integer, pointer :: i1(:), i2(:), j1(:), j2(:)
     real,    pointer :: x1(:), x2(:), y1(:), y2(:)
@@ -4787,205 +5191,263 @@ contains
 
   !**********************************************************
 
-  subroutine GEOS_openfile(FileOpenedHash, fname_full, fid, tile_coord, m_hinterp, rc)
+  subroutine GEOS_openfile(FileOpenedHash, fname_full, fid, tile_coord, m_hinterp, rc, lat_str, lon_str)
 
-    ! open file, extract coord info, prep horizontal interpolation info (if not done already)
+    ! open GEOS forcing file, extract coord info, prep horizontal interpolation info (if not done already)
+    !
+    ! ASSUMPTIONS (as of 23 Jun 2021):
+    ! - forcing grid is global
+    ! - if lat/lon forcing grid, pole is on center of grid cell and dateline is on center of grid cell
+    ! - if cube-sphere forcing grid, tile space (tile_coord) is associated with same cube-sphere grid
+    
+    use netcdf
+    implicit none
+    include 'mpif.h'
+    type(Hash_Table),                    intent(inout) :: FileOpenedHash
+    character(*),                        intent(in)    :: fname_full
+    integer,                             intent(out)   :: fid
+    type(tile_coord_type), dimension(:), intent(in)    :: tile_coord
+    integer,                             intent(in)    :: m_hinterp
+    integer,               optional,     intent(out)   :: rc
+    character(*),          optional,     intent(in)    :: lat_str, lon_str
+    
+    integer                 :: N_lat, N_lon, N_cat, N_f
+    integer, allocatable    :: i1(:), i2(:), j1(:), j2(:)
+    real,    allocatable    :: x1(:), x2(:), y1(:), y2(:)
+    integer                 :: ierr, k
+    integer                 :: latid, lonid, nfid, xdimid
+    real                    :: dlon, dlat, ll_lon, ll_lat, this_lon, this_lat, tmp_lon, tmp_lat
+    integer                 :: icur, jcur, inew, jnew
+    real                    :: xcur, ycur, xnew, ynew
+    character(len=100)      :: err_msg
+    character(*), parameter :: Iam="GEOS_openfile"
+    logical                 :: isCubed
+    ! add mpi
+    type(ESMF_VM)           :: vm
+    integer                 :: comm, total_prcs, myrank
+    integer                 :: status
 
-      use netcdf
-      implicit none
-      include 'mpif.h'
-      type(Hash_Table),intent(inout) :: FileOpenedHash
-      character(*),intent(in)        :: fname_full
-      integer,intent(out) :: fid
-      type(tile_coord_type), dimension(:), intent(in) :: tile_coord
-      integer,intent(in) :: m_hinterp
-      integer, optional, intent(out) :: rc
- 
-      integer :: N_lat,N_lon,N_cat, N_f
-      integer,allocatable :: i1(:),i2(:),j1(:),j2(:)
-      real,allocatable :: x1(:),x2(:),y1(:),y2(:)
-      integer :: ierr,k
-      integer :: latid, lonid, nfid, xdimid
-      real :: dlon,dlat,ll_lon,ll_lat,this_lon,this_lat,tmp_lon,tmp_lat
-      integer :: icur,jcur,inew,jnew
-      real :: xcur,ycur,xnew,ynew
-      character(len=100) :: err_msg
-      character(*),parameter :: Iam="GEOS_openfile"
-      logical :: isCubed
-      ! add mpi
-      type(ESMF_VM) :: vm
-      integer :: comm,total_prcs,myrank
-      integer :: status
+    ! initialize hash table, if not already initialized
+    
+    call FileOpenedHash%init()
+    
+    call ESMF_VmGetCurrent(vm, rc=status)
+    VERIFY_(status)
+    call ESMF_VmGet(vm, mpicommunicator=comm, rc=status)
+    VERIFY_(status)
 
-      call FileOpenedHash%init()
+    ! get file ID from hash table
+    
+    call FileOpenedHash%get(fname_full,fid)
+    
+    if( fid == -9999 ) then ! not open yet
+       ierr=nf90_open(fname_full,NF90_NOWRITE, fid) ! open file  
+       if(root_logit) then
+          write(logunit,'(400A)') "opening file: "//trim(fname_full)
+       endif
+       _ASSERT( ierr == nf90_noerr, "nf90 error")
+       call FileOpenedHash%put(fname_full,fid)      ! record file ID in hash table
+    endif
 
-      call ESMF_VmGetCurrent(vm, rc=status)
-      VERIFY_(status)
-      call ESMF_VmGet(vm, mpicommunicator=comm, rc=status)
-      VERIFY_(status)
+    ! --------------------------------------------------
+    !
+    ! determine grid dimension, spacing, and offset/extent
+    !
+    ! ONLY the grid dimensions are read from the file;
+    ! the grid spacing and offset/extent are determined based on hard-wired assumptions!
+    
+    ! check if forcing file is on cs grid
+    ierr =  nf90_inq_dimid(fid,"nf",nfid)   ! check if number-of-faces (nf) dimension exists 
+    
+    if (ierr == nf90_noerr) then ! it is cubed-sphere grid if face dimension is found
+       
+       ! cube-sphere grid: need N_f (number-of-faces), N_lon, N_lat
+       
+       ierr  =  nf90_inq_dimid(fid,"Xdim",xdimid)
+       _ASSERT( ierr == nf90_noerr, "nf90 error")
+       ierr  =  nf90_Inquire_Dimension(fid,nfid,  len=N_f)
+       _ASSERT( ierr == nf90_noerr, "nf90 error")
+       _ASSERT( N_f == 6, "number of (cubed-sphere) faces not equal to 6")
+       ierr  =  nf90_Inquire_Dimension(fid,xdimid,len=N_lon)
+       _ASSERT( ierr == nf90_noerr, "nf90 error")
+       _ASSERT( N_lon == im_world_cs, "forcing on cube-sphere grid: forcing grid dimension must match native grid dimension (grid associated with tile space)")
+       N_lat = N_f*N_lon
+       _ASSERT( m_hinterp == 0, "forcing on cubed-sphere grid requires nearest-neighbor interpolation (m_hinterp = 0)")
+       isCubed = .true.       
 
-      call FileOpenedHash%get(fname_full,fid)
+    else
 
-      if( fid == -9999 ) then ! not open yet
-         ierr=nf90_open(fname_full,NF90_NOWRITE, fid)
+       ! lat/lon grid: need N_lon, N_lat, dlon, dlat, ll_lon, ll_lat
+       
+       if (present(lat_str) .and. present(lon_str)) then
+          ierr =  nf90_inq_dimid(fid,trim(lat_str),latid)
+          ierr =  nf90_inq_dimid(fid,trim(lon_str),lonid)
+       else
+          ierr =  nf90_inq_dimid(fid,"lat",latid)
+          ierr =  nf90_inq_dimid(fid,"lon",lonid)
+       endif
+       ierr =  nf90_Inquire_Dimension(fid,latid,len=N_lat)
+       ierr =  nf90_Inquire_Dimension(fid,lonid,len=N_lon)
+       isCubed = .false.       
+       
+       ! assume global grid w/ dateline on center and pole on center  
+       
+       dlon   =  360./real(N_lon)
+       dlat   =  180./real(N_lat-1)
+       ll_lon = -180. - dlon/2.
+       ll_lat =  -90. - dlat/2.
 
-         if(root_logit) then
-           write(logunit,'(400A)') "opening file: "//trim(fname_full)
-         endif
-         _ASSERT( ierr == nf90_noerr, "nf90 error")
-         call FileOpenedHash%put(fname_full,fid)
-      endif
-      ! check if it is cs grid
-      ierr =  nf90_inq_dimid(fid,"nf",nfid)
+    endif
 
-      if (ierr == nf90_noerr) then ! it is cubed-sphere grid if face dimension is found
+    ! -----------------------------------------------------------------
 
-         ierr  =  nf90_inq_dimid(fid,"Xdim",xdimid)
-         _ASSERT( ierr == nf90_noerr, "nf90 error")
-         ierr  =  nf90_Inquire_Dimension(fid,nfid,  len=N_f)
-         _ASSERT( ierr == nf90_noerr, "nf90 error")
-         _ASSERT( N_f == 6, "number of (cubed-sphere) faces not equal to 6")
-         ierr  =  nf90_Inquire_Dimension(fid,xdimid,len=N_lon)
-         _ASSERT( ierr == nf90_noerr, "nf90 error")
-         _ASSERT( N_lon == im_world_cs, "forcing on cube-sphere grid: forcing dimension should match native grid dimension (grid associated with tile space)")
-         N_lat = N_f*N_lon
-         _ASSERT( m_hinterp == 0, "forcing on cubed-sphere grid requires m_hinterp = 0")
-         isCubed = .true.       
-      else
-         ierr =  nf90_inq_dimid(fid,"lat",latid)
-         ierr =  nf90_inq_dimid(fid,"lon",lonid)
-         ierr =  nf90_Inquire_Dimension(fid,latid,len=N_lat)
-         ierr =  nf90_Inquire_Dimension(fid,lonid,len=N_lon)
-         isCubed = .false.       
-         dlon = 360./real(N_lon)
-         dlat = 180./real(N_lat-1)
-         ll_lon = -180. - dlon/2.
-         ll_lat =  -90. - dlat/2.
-      endif
+    ! prep interpolation from forcing grid to model tiles
+    
+    N_cat = size(tile_coord,1)
+    
+    ! if dimensions are the same, no need to recalculate the local_info
+    if( local_info%N_lat == N_lat .and. local_info%N_lon == N_lon ) then
+       RETURN_(ESMF_SUCCESS)
+    endif
+    
+    allocate(i1(N_cat),j1(N_cat))
+    allocate(i2(N_cat),j2(N_cat),x1(N_cat),x2(N_cat),y1(N_cat),y2(N_cat))
+    
+    select case (m_hinterp)
+       
+    case (0)  ! nearest-neighbor
+       
+       ! compute indices for nearest neighbor interpolation from GEOSgcm grid to tile space
+       
+       if( isCubed ) then ! cs grid
+          
+          ! cube-sphere grid of forcing data must match cube-sphere grid associated with tile space
+          do k=1,N_cat
+             i1(k) = tile_coord(k)%i_indg
+             j1(k) = tile_coord(k)%j_indg
+          enddo
 
-      N_cat = size(tile_coord,1)
+       else
 
-      ! if dimensions are the same, no need to recalculate the local_info
-      if( local_info%N_lat == N_lat .and. local_info%N_lon == N_lon ) then
-         RETURN_(ESMF_SUCCESS)
-      endif
+          do k=1,N_cat
+             
+             ! ll_lon and ll_lat refer to lower left corner of grid cell
+             ! (as opposed to the grid point in the center of the grid cell)
+             
+             this_lon = tile_coord(k)%com_lon
+             this_lat = tile_coord(k)%com_lat
+             
+             i1(k) = ceiling((this_lon - ll_lon)/dlon)
+             j1(k) = ceiling((this_lat - ll_lat)/dlat)
+             
+             ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
+             !  we now have i1=(grid%N_lon+1)
+             ! This needs to be fixed as follows:
+             
+             if (i1(k)> N_lon)  i1(k)=1
+             
+          end do
+          
+       endif ! cs grid
 
-      allocate(i1(N_cat),j1(N_cat))
-      allocate(i2(N_cat),j2(N_cat),x1(N_cat),x2(N_cat),y1(N_cat),y2(N_cat))
-
-      select case (m_hinterp)
-   
-      case (0)  ! nearest-neighbor
-
-       ! compute indices for nearest neighbor interpolation from GEOSgcm grid
-       ! to tile space
-          if( isCubed ) then ! cs grid
-             ! cube-sphere grid of forcing data must match cube-sphere grid associated with tile space
-             do k=1,N_cat
-                i1(k) = tile_coord(k)%i_indg
-                j1(k) = tile_coord(k)%j_indg
-             enddo
-          else
-             do k=1,N_cat
-
-          ! ll_lon and ll_lat refer to lower left corner of grid cell
-          ! (as opposed to the grid point in the center of the grid cell)
-
-                this_lon = tile_coord(k)%com_lon
-                this_lat = tile_coord(k)%com_lat
-
-                i1(k) = ceiling((this_lon - ll_lon)/dlon)
-                j1(k) = ceiling((this_lat - ll_lat)/dlat)
-
-          ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
-          !  we now have i1=(grid%N_lon+1)
-          ! This needs to be fixed as follows:
-
-                if (i1(k)> N_lon)  i1(k)=1
-
-             end do
-          endif ! cs grid
-      case (1)  ! bilinear interpolation
-
+    case (1)  ! bilinear interpolation
+       
        ! compute indices of nearest neighbors needed for bilinear
        ! interpolation from GEOSgcm grid to tile space
-
-
-         do k=1,N_cat
-
+       
+       do k=1,N_cat
+          
           ! ll_lon and ll_lat refer to lower left corner of grid cell
           ! (as opposed to the grid point in the center of the grid cell)
-
+          
           ! pchakrab: For bilinear interpolation, for each tile, we need:
           !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
           !  i1, i2, j1, j2 (defining the indices of four neighbors)
-
+          
           ! find nearest neighbor forcing grid cell ("1")
 
           ! com of kth tile
-             this_lon = tile_coord(k)%com_lon
-             this_lat = tile_coord(k)%com_lat
-             icur =  ceiling((this_lon - ll_lon)/dlon)
-             jcur =  ceiling((this_lat - ll_lat)/dlat)
-
+          this_lon = tile_coord(k)%com_lon
+          this_lat = tile_coord(k)%com_lat
+          icur =  ceiling((this_lon - ll_lon)/dlon)
+          jcur =  ceiling((this_lat - ll_lat)/dlat)
+          
           ! wrap-around
-             if (icur>N_lon) icur = 1
-             if (jcur>N_lat) then
-                err_msg = "encountered tile near the poles"
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-             end if
-             xcur = real(icur-1)*dlon - 180.0
-             ycur = real(jcur-1)*dlat -  90.0
-             i1(k) = icur
-             j1(k) = jcur
-             x1(k) = xcur    ! lon of grid cell center
-             y1(k) = ycur    ! lat of grid cell center
+          if (icur>N_lon) icur = 1
+          if (jcur>N_lat) then
+             err_msg = "encountered tile near the poles"
+             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+          end if
 
+          ! determine lon and lat of forcing grid cell center
+          xcur = real(icur-1)*dlon - 180.0    ! ASSUMES dateline on center!
+          ycur = real(jcur-1)*dlat -  90.0    ! ASSUMES pole on center!
+
+          ! finalize "1"
+          i1(k) = icur
+          j1(k) = jcur
+          x1(k) = xcur    ! lon of grid cell center
+          y1(k) = ycur    ! lat of grid cell center
+          
           ! find forcing grid cell ("2") diagonally across from icur, jcur
 
-             tmp_lon = this_lon + 0.5*dlon
-             tmp_lat = this_lat + 0.5*dlat
-             inew =  ceiling((tmp_lon  - ll_lon)/dlon)
-             jnew =  ceiling((tmp_lat  - ll_lat)/dlat)
-             if (inew==icur) inew = inew - 1
-             if (jnew==jcur) jnew = jnew - 1
-             xnew = real(inew-1)*dlon - 180.0
-             ynew = real(jnew-1)*dlat -  90.0
-             ! wrap-around
-             if (inew==0) inew = N_lon
-             if (inew>N_lon) inew = 1
-             if ((jnew==0) .or. (jnew>N_lat)) then
-                err_msg = "encountered tile near the poles"
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-             end if
+          ! to this end, determine quadrant of forcing grid cell that contains com of tile (this_lon, this_lat)
+          
+          ! quadrant is found by determining nearest-neighbor indices (inew, jnew) when tile is shifted 
+          ! by 1/2 of the grid-spacing to the northeast (upper right)
+          tmp_lon = this_lon + 0.5*dlon               
+          tmp_lat = this_lat + 0.5*dlat
+          inew =  ceiling((tmp_lon  - ll_lon)/dlon)   ! nearest-neighbor i index of shifted location
+          jnew =  ceiling((tmp_lat  - ll_lat)/dlat)   ! nearest-neighbor j index of shifted location
+          if (inew==icur) inew = inew - 1             ! if shift results in same lon index, go west (left)
+          if (jnew==jcur) jnew = jnew - 1             ! if shift results in same lat index, go south (down)
+          
+          ! determine center lon and lat of forcing grid cell ("2");
+          ! must do this BEFORE wrap-around (such that xnew=x2 will be outside of [-180:180] near dateline),
+          ! otherwise distance calculation would not work near dateline
+          xnew = real(inew-1)*dlon - 180.0            ! ASSUMES dateline on center!
+          ynew = real(jnew-1)*dlat -  90.0            ! ASSUMES pole on center!
+          
+          ! wrap-around
+          if (inew==0) inew = N_lon
+          if (inew>N_lon) inew = 1
+          if ((jnew==0) .or. (jnew>N_lat)) then
+             err_msg = "encountered tile near the poles"
+             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+          end if
+          
+          i2(k) = inew
+          j2(k) = jnew
+          x2(k) = xnew    ! lon of grid cell center (note that this intentionally 
+          y2(k) = ynew    ! lat of grid cell center
+          
+       end do
+       
+    case default
+       
+       err_msg = "unknown horizontal interpolation method"
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       
+    end select
 
-             i2(k) = inew
-             j2(k) = jnew
-             x2(k) = xnew    ! lon of grid cell center
-             y2(k) = ynew    ! lat of grid cell center
-          end do
+    local_info%N_lat = N_lat
+    local_info%N_lon = N_lon
+    local_info%N_cat = N_cat
+    call move_alloc(i1,local_info%i1)
+    call move_alloc(i2,local_info%i2)
+    call move_alloc(j1,local_info%j1)
+    call move_alloc(j2,local_info%j2)
+    call move_alloc(x1,local_info%x1)
+    call move_alloc(x2,local_info%x2)
+    call move_alloc(y1,local_info%y1)
+    call move_alloc(y2,local_info%y2)
+    
+    RETURN_(ESMF_SUCCESS)
+    
+  end subroutine GEOS_openfile
 
-      case default
-
-         err_msg = "unknown horizontal interpolation method"
-         call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-      end select
-      local_info%N_lat = N_lat
-      local_info%N_lon = N_lon
-      local_info%N_cat = N_cat
-      call move_alloc(i1,local_info%i1)
-      call move_alloc(i2,local_info%i2)
-      call move_alloc(j1,local_info%j1)
-      call move_alloc(j2,local_info%j2)
-      call move_alloc(x1,local_info%x1)
-      call move_alloc(x2,local_info%x2)
-      call move_alloc(y1,local_info%y1)
-      call move_alloc(y2,local_info%y2)
-      
-      RETURN_(ESMF_SUCCESS)
-  end subroutine GEOS_openfile 
-
+  ! ****************************************************************
+  
   subroutine GEOS_closefile(fid)
      use netcdf
      implicit none
@@ -5566,8 +6028,8 @@ contains
 
                 ! cannot find forcing data for tile i, abort with message
                 
-                write (tmpstring10,*) tile_coord(i)%tile_id
-                err_msg = 'forcing has nodata-value in tile ID = ' // trim(tmpstring10) //     &
+                write (tmpstring100,*) tile_coord(i)%tile_id
+                err_msg = 'forcing has nodata-value in tile ID = ' // trim(tmpstring100) //     &
                      '. No good forcing nearby. ' //                                            &
                      'Use compile-time switch "create_ExcludeList" to create ' //               &
                      'a complete list for use in "ldas_setup".'  
