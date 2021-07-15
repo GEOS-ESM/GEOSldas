@@ -43,7 +43,9 @@ Overview of Git Releases:
   - Added S2S/AODAS and S2S/Forecast surface met forcing reader.
 
 - Infrastructure:
-  - Parallel FFT on each node using shared memory.
+  - Parallel FFT on each node using shared memory (non-zero-diff change for perturbations and data assimilation).
+  - Refined assignment of tiles to processors (non-zero-diff change with aggressive optimization).
+  - By default, limit MKL's freedom to choose algorithms during runtime (MKL_CBWR=AVX2), to ensure 0-diff across architectures.
   - Updated ESMA_env (v3.3.0) --> Baselibs (6.2.4), ESMA_cmake (v3.5.0).
   - Updated GMAO_Shared (v1.4.4).
   - Updated GEOSgcm_GridComp (v1.12.3).
@@ -61,7 +63,7 @@ Overview of Git Releases:
 - Zero-diff vs. v17.9.2
 
 - Science changes:
-  - Added ERA5_LIS surface met forcing reader.
+  - Added ERA5_LIS surface met forcing reader (nearest-neighbor interpolation).
 
 - Infrastructure:
   - Revised interface to SLURM (see sample "batinp" configuration file from "ldas_setup").
