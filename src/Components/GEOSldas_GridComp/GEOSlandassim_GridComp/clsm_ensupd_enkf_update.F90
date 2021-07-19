@@ -16,7 +16,8 @@ module clsm_ensupd_enkf_update
        MAPL_TICE
 
   USE CATCH_CONSTANTS,                  ONLY :    &
-       N_gt           => CATCH_N_GT
+       N_gt           => CATCH_N_GT,              &
+       N_snow         => CATCH_N_SNOW              !added jpark50 (07/19/21) 
 
   use catchment_model,                  ONLY:     &
        catch_calc_tsurf
