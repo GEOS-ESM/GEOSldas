@@ -23,8 +23,9 @@ CATCHMENT_OFFLINE: 1
 # ---- Choice of land surface model
 #
 #    1 : Catchment model   (default)
-#    2 : CatchmentCN model
-#
+#    2 : CatchmentCN-CLM4.0
+#    3 : CatchmentCN-CLM4.5
+
 LSM_CHOICE: 1
 
 
