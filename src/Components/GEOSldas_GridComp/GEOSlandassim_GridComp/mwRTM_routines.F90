@@ -369,9 +369,9 @@ contains
        ! to check one field of mwp because mwRTM_param_nodata_check()
        ! is called in mwRTM_get_param()]
        
-       if ( (SWE(n)<SWE_threshold)                            .and.         &
-            (soiltemp(n)>tsoil_threshold)                     .and.         &
-            (mwp(n)%sand-nodata_generic>nodata_tol_generic) )        then
+       if ( (SWE(n)<SWE_threshold)                                 .and.         &
+            (soiltemp(n)>tsoil_threshold)                          .and.         &
+            (abs(mwp(n)%sand-nodata_generic)>nodata_tol_generic) )        then
        
           ! soil dielectric constant
           
