@@ -1368,6 +1368,46 @@ contains
        end do
 
        cat_progn_has_changed = .true.
+     
+     case(11) select_update_type ! snow update !jpark50
+           if (logit) write (logunit,*) 'applying Snow data increments'
+
+       if ( date_time%hour /= 0 .and. &
+            date_time%min  /= 0 .and. &
+            date_time%sec  /= 0         ) then
+
+          if (logit) write (logunit,*) 'no application of increments at this time'
+          cat_progn_has_changed = .false.
+          return
+
+       end if
+
+       cat_progn_has_changed = .true.     ! conservative initialization
+       if (logit) write (logunit,*) 'apply_enkf_increments(): applying asnow increments'
+       if (logit) write (logunit,*) 'entering do loop'
+
+      !Rule-based snow SCF update
+       do n=1,N_catd       ! for each tile
+
+          do n_e=1,N_ens    ! for each ensemble member 
+
+             do i=1,N_SNOW   ! for each snow layer
+
+                cat_progn(n,n_e)%wesn(i) =  &
+                     cat_progn(n,n_e)%wesn(i) + cat_progn_incr(n,n_e)%wesn(i)
+
+                cat_progn(n,n_e)%sndz(i) =  &
+                     cat_progn(n,n_e)%sndz(i) + cat_progn_incr(n,n_e)%sndz(i)
+
+                cat_progn(n,n_e)%htsn(i) =  &
+                     cat_progn(n,n_e)%htsn(i)+ cat_progn_incr(n,n_e)%htsn(i)
+          end do
+
+          end do
+       end do
+       cat_progn_has_changed = .true.
+
+
 
     case default
 
