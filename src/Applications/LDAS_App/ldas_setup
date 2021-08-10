@@ -760,6 +760,7 @@ class LDASsetup:
         tilefile  = os.path.basename(self.rqdExeInp['TILING_FILE'])
         have_rst  = str(self.rqdExeInp['RESTART'])
         YYYYMMDD  = '%4d%02d%02d' % (_start.year, _start.month,_start.day)
+        YYYYMMDDHH= '%4d%02d%02d_%02d' % (_start.year, _start.month,_start.day, _start.hour)
         rstid     = self.rqdExeInp['RESTART_ID']
         rstdomain = self.rqdExeInp['RESTART_DOMAIN']
         rstpath0  = self.rqdExeInp['RESTART_PATH']
@@ -776,7 +777,7 @@ class LDASsetup:
                self.has_landassim_seed = True
  
         cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, exp_dir,
-                        bcdir, tilefile, self.catch, have_rst, YYYYMMDD,
+                        bcdir, tilefile, self.catch, have_rst, YYYYMMDDHH,
                         rstid, rstdomain, rstpath0, str(self.nens), str(self.rqdExeInp['RUN_IRRIG']),
                         dzsf, wemin_in, wemin_out])
         print "cmd:   " + cmd

@@ -7,7 +7,7 @@ setenv  BCSDIR       $4
 setenv  TILFILE      $5
 setenv  MODEL        $6
 setenv  HAVE_RESTART $7
-setenv  YYYYMMDD     $8 
+setenv  YYYYMMDDHH   $8 
 setenv  RESTART_ID   $9
 setenv  RESTART_DOMAIN $10
 setenv  RESTART_PATH $11
@@ -29,6 +29,8 @@ else
   setenv SCALE bin/Scale_CatchCN
   set models = catchcn
 endif
+
+set YYYYMMDD = `echo $YYYYMMDDHH | cut -c1-8`
 
 switch ($HAVE_RESTART) 
 
@@ -145,11 +147,11 @@ case [1]:
         echo 'endif' >> this.file
         echo 'setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib' >> this.file
 
-        set mpi_mpmd = "${INSTDIR}/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k 0000 -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+        set mpi_mpmd = "${INSTDIR}/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDDHH} -e ${RESTART_ID} -k 0000 -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
         set j = 1
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           set mpi_mpmd = "${mpi_mpmd} : -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+           set mpi_mpmd = "${mpi_mpmd} : -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDDHH} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
            @ j++
         end
         echo $mpi_mpmd >> this.file
@@ -207,7 +209,7 @@ endif
 setenv LAIFILE `find ${BCSDIR}/lai_clim*`
 limit stacksize unlimited
  
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDDHH} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
 sleep 3
 
 
