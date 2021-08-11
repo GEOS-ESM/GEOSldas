@@ -24,10 +24,8 @@ setenv INSTDIR `echo $PWD | rev | cut -d'/' -f2- | rev`
 
 if ($MODEL == 'catch') then
   setenv SCALE bin/Scale_Catch
-  set models = catch
 else
   setenv SCALE bin/Scale_CatchCN
-  set models = catchcn
 endif
 
 set YYYYMMDD = `echo $YYYYMMDDHH | cut -c1-8`
@@ -95,13 +93,13 @@ sleep 3
 
 $INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
-${SCALE} InData/${models}_internal_rst OutData/${models}_internal_rst ${models}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT 
+${SCALE} InData/${MODEL}_internal_rst OutData/${MODEL}_internal_rst ${MODEL}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT 
 
 # Done creating catch*_internal_rst file
 
 sleep 2
 
-ln -s  ${models}_internal_rst ${models}_internal_rst.$YYYYMMDD
+ln -s  ${MODEL}_internal_rst ${MODEL}_internal_rst.$YYYYMMDD
 echo DONE > done_rst_file
 
 _EOI_
@@ -213,13 +211,13 @@ $INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMM
 sleep 3
 
 
-${SCALE} InData/${models}_internal_rst OutData/${models}_internal_rst ${models}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT
+${SCALE} InData/${MODEL}_internal_rst OutData/${MODEL}_internal_rst ${MODEL}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT
 
 # Done creating catch*_internal_rst file
 
 sleep 2
 
-ln -s  ${models}_internal_rst ${models}_internal_rst.$YYYYMMDD
+ln -s  ${MODEL}_internal_rst ${MODEL}_internal_rst.$YYYYMMDD
 echo DONE > done_rst_file
 
 _EOI3_
@@ -371,9 +369,9 @@ $INSTDIR/bin/esma_mpirun -np 1 bin/mk_CatchCNRestarts OutData/OutTilFile OutData
 endif
 /bin/rm OutData
 
-${SCALE} OutData.1/M2Restart OutData.2/M2Restart ${models}_internal_rst $SURFLAY 26 $WEMIN_OUT
+${SCALE} OutData.1/M2Restart OutData.2/M2Restart ${MODEL}_internal_rst $SURFLAY 26 $WEMIN_OUT
 
-/bin/ln -s  ${models}_internal_rst ${models}_internal_rst.$YYYYMMDD
+/bin/ln -s  ${MODEL}_internal_rst ${MODEL}_internal_rst.$YYYYMMDD
 
 echo DONE > done_rst_file  
 _EOI5_

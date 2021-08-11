@@ -760,7 +760,7 @@ class LDASsetup:
         tilefile  = os.path.basename(self.rqdExeInp['TILING_FILE'])
         have_rst  = str(self.rqdExeInp['RESTART'])
         YYYYMMDD  = '%4d%02d%02d' % (_start.year, _start.month,_start.day)
-        YYYYMMDDHH= '%4d%02d%02d_%02d' % (_start.year, _start.month,_start.day, _start.hour)
+        YYYYMMDDHH= '%4d%02d%02d%02d' % (_start.year, _start.month,_start.day, _start.hour)
         rstid     = self.rqdExeInp['RESTART_ID']
         rstdomain = self.rqdExeInp['RESTART_DOMAIN']
         rstpath0  = self.rqdExeInp['RESTART_PATH']
