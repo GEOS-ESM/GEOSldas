@@ -2735,7 +2735,7 @@ contains
 
     if     (index(met_tag(8:11), 'FCST')/=0) then
 
-       FCST = .true.
+       FCST          = .true.
        PAR_available = .true.
 
        dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_FCST
@@ -2752,7 +2752,7 @@ contains
 
     elseif (index(met_tag(8:12), 'AODAS')/=0) then
 
-       AODAS = .true.
+       AODAS         = .true.
        PAR_available = .false.
 
        dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_AODAS
