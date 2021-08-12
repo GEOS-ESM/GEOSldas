@@ -307,7 +307,7 @@ contains
     elseif (index(met_tag(1:7), 'GEOSs2s')/=0) then
 
        call get_GEOSs2s( date_time_tmp, met_path, met_tag, N_catd, tile_coord, &
-            MET_HINTERP, met_force_obs_tile_new, nodata_forcing)
+            MET_HINTERP, met_force_obs_tile_new, nodata_forcing, PAR_available)
 
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
@@ -2606,7 +2606,7 @@ contains
   ! ************************************************************************
   
   subroutine get_GEOSs2s(date_time, met_path, met_tag, N_catd, tile_coord, &
-       met_hinterp, met_force_new, nodata_forcing)
+       met_hinterp, met_force_new, nodata_forcing, PAR_available)
     
     ! read forcing derived from GEOS S2S output and map to tile space
     ! (using nearest neighbor or bilinear interpolation)
@@ -2641,6 +2641,8 @@ contains
     
     real,                 intent(out) :: nodata_forcing
     
+    logical,              intent(out) :: PAR_available
+
     ! Hindcast grid and netcdf parameters
     
     integer, parameter :: GEOSgcm_grid_N_lon  = 576
@@ -2733,7 +2735,8 @@ contains
 
     if     (index(met_tag(8:11), 'FCST')/=0) then
 
-       FCST = .true.
+       FCST          = .true.
+       PAR_available = .true.
 
        dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_FCST
        N_GEOSgcm_vars      = N_GEOSgcm_vars_FCST
@@ -2749,7 +2752,8 @@ contains
 
     elseif (index(met_tag(8:12), 'AODAS')/=0) then
 
-       AODAS = .true.
+       AODAS         = .true.
+       PAR_available = .false.
 
        dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_AODAS
        N_GEOSgcm_vars      = N_GEOSgcm_vars_AODAS
