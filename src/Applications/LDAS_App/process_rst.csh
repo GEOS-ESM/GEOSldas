@@ -7,7 +7,7 @@ setenv  BCSDIR       $4
 setenv  TILFILE      $5
 setenv  MODEL        $6
 setenv  HAVE_RESTART $7
-setenv  YYYYMMDD     $8 
+setenv  YYYYMMDDHH   $8 
 setenv  RESTART_ID   $9
 setenv  RESTART_DOMAIN $10
 setenv  RESTART_PATH $11
@@ -24,11 +24,11 @@ setenv INSTDIR `echo $PWD | rev | cut -d'/' -f2- | rev`
 
 if ($MODEL == 'catch') then
   setenv SCALE bin/Scale_Catch
-  set models = catch
 else
   setenv SCALE bin/Scale_CatchCN
-  set models = catchcn
 endif
+
+set YYYYMMDD = `echo $YYYYMMDDHH | cut -c1-8`
 
 switch ($HAVE_RESTART) 
 
@@ -93,13 +93,13 @@ sleep 3
 
 $INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -a ${SPONSORID} -b ${BCSDIR} -t ${TILFILE} -m ${MODEL} -s ${SURFLAY} -j Y
 
-${SCALE} InData/${models}_internal_rst OutData/${models}_internal_rst ${models}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT 
+${SCALE} InData/${MODEL}_internal_rst OutData/${MODEL}_internal_rst ${MODEL}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT 
 
 # Done creating catch*_internal_rst file
 
 sleep 2
 
-ln -s  ${models}_internal_rst ${models}_internal_rst.$YYYYMMDD
+ln -s  ${MODEL}_internal_rst ${MODEL}_internal_rst.$YYYYMMDD
 echo DONE > done_rst_file
 
 _EOI_
@@ -145,11 +145,11 @@ case [1]:
         echo 'endif' >> this.file
         echo 'setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/Linux/lib' >> this.file
 
-        set mpi_mpmd = "${INSTDIR}/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k 0000 -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+        set mpi_mpmd = "${INSTDIR}/bin/esma_mpirun -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDDHH} -e ${RESTART_ID} -k 0000 -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
         set j = 1
         while ($j < $NUMENS)
            set ENS = `printf '%04d' $j`
-           set mpi_mpmd = "${mpi_mpmd} : -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
+           set mpi_mpmd = "${mpi_mpmd} : -np 1 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDDHH} -e ${RESTART_ID} -k ${ENS} -l ${RESTART_short} -m ${MODEL} -s ${SURFLAY} -r Y -t ${TILFILE}"
            @ j++
         end
         echo $mpi_mpmd >> this.file
@@ -207,17 +207,17 @@ endif
 setenv LAIFILE `find ${BCSDIR}/lai_clim*`
 limit stacksize unlimited
  
-$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDD} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
+$INSTDIR/bin/esma_mpirun -np 56 bin/mk_GEOSldasRestarts -b ${BCSDIR} -d ${YYYYMMDDHH} -e ${RESTART_ID} -l ${RESTART_short} -t ${TILFILE} -m ${MODEL} -s $SURFLAY -j Y -r R -p ${PARAM_FILE}
 sleep 3
 
 
-${SCALE} InData/${models}_internal_rst OutData/${models}_internal_rst ${models}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT
+${SCALE} InData/${MODEL}_internal_rst OutData/${MODEL}_internal_rst ${MODEL}_internal_rst $SURFLAY $WEMIN_IN $WEMIN_OUT
 
 # Done creating catch*_internal_rst file
 
 sleep 2
 
-ln -s  ${models}_internal_rst ${models}_internal_rst.$YYYYMMDD
+ln -s  ${MODEL}_internal_rst ${MODEL}_internal_rst.$YYYYMMDD
 echo DONE > done_rst_file
 
 _EOI3_
@@ -369,9 +369,9 @@ $INSTDIR/bin/esma_mpirun -np 1 bin/mk_CatchCNRestarts OutData/OutTilFile OutData
 endif
 /bin/rm OutData
 
-${SCALE} OutData.1/M2Restart OutData.2/M2Restart ${models}_internal_rst $SURFLAY 26 $WEMIN_OUT
+${SCALE} OutData.1/M2Restart OutData.2/M2Restart ${MODEL}_internal_rst $SURFLAY 26 $WEMIN_OUT
 
-/bin/ln -s  ${models}_internal_rst ${models}_internal_rst.$YYYYMMDD
+/bin/ln -s  ${MODEL}_internal_rst ${MODEL}_internal_rst.$YYYYMMDD
 
 echo DONE > done_rst_file  
 _EOI5_
