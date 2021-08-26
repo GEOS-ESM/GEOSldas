@@ -3147,7 +3147,7 @@ contains
     character(  3)       :: met_file_ext
     character(  3)       :: precip_corr_file_ext
 
-    integer :: N_GEOSgcm_vars    
+    integer :: N_GEOSgcm_vars, N_lon_tmp, N_lat_tmp    
 
     real    :: this_lon, this_lat, tmp_lon, tmp_lat
 
@@ -3689,9 +3689,15 @@ contains
              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
           end if
 
+          N_lon_tmp = -1
+          N_lat_tmp = -1
+          if (associated(ptrShForce)) then
+             N_lon_tmp = size(ptrShForce,1)
+             N_lat_tmp = size(ptrShForce,2)
+          endif
           ! init share memory
-          if( size(ptrShForce,1) /= local_info%N_lon .or.    &
-              size(ptrShForce,2) /= local_info%N_lat ) then
+          if( N_lon_tmp /= local_info%N_lon .or.    &
+              N_lat_tmp /= local_info%N_lat ) then
              call MAPL_SyncSharedMemory(rc=status)
              VERIFY_(status)
              if (associated(ptrShForce)) then
