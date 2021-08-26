@@ -2839,6 +2839,12 @@ contains
        
        if (GEOSgcm_var==1) then
           ! init share memory
+          N_lon_tmp = -1
+          N_lat_tmp = -1
+          if (associated(ptrShForce)) then
+             N_lon_tmp = size(ptrShForce,1)
+             N_lat_tmp = size(ptrShForce,2)
+          endif
           if(  (size(ptrShForce,1) /= GEOSgcm_grid_N_lon) .or.          &
                (size(ptrShForce,2) /= GEOSgcm_grid_N_lat)       ) then
              call MAPL_SyncSharedMemory(rc=status)
@@ -3689,13 +3695,13 @@ contains
              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
           end if
 
+          ! init share memory
           N_lon_tmp = -1
           N_lat_tmp = -1
           if (associated(ptrShForce)) then
              N_lon_tmp = size(ptrShForce,1)
              N_lat_tmp = size(ptrShForce,2)
           endif
-          ! init share memory
           if( N_lon_tmp /= local_info%N_lon .or.    &
               N_lat_tmp /= local_info%N_lat ) then
              call MAPL_SyncSharedMemory(rc=status)
