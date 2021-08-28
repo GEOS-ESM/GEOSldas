@@ -2837,28 +2837,27 @@ contains
     
     do GEOSgcm_var = 1,N_GEOSgcm_vars
        
-       if (GEOSgcm_var==1) then
-          ! init shared memory
-          N_lon_tmp = -1
-          N_lat_tmp = -1
+       ! init shared memory
+       N_lon_tmp = -1
+       N_lat_tmp = -1
+       if (associated(ptrShForce)) then
+          N_lon_tmp = size(ptrShForce,1)
+          N_lat_tmp = size(ptrShForce,2)
+       endif
+       if(  (size(ptrShForce,1) /= GEOSgcm_grid_N_lon) .or.          &
+            (size(ptrShForce,2) /= GEOSgcm_grid_N_lat)       ) then
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
           if (associated(ptrShForce)) then
-             N_lon_tmp = size(ptrShForce,1)
-             N_lat_tmp = size(ptrShForce,2)
+             call MAPL_DeallocNodeArray(ptrShForce,rc=status)
+             VERIFY_(status)
           endif
-          if(  (size(ptrShForce,1) /= GEOSgcm_grid_N_lon) .or.          &
-               (size(ptrShForce,2) /= GEOSgcm_grid_N_lat)       ) then
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-             if (associated(ptrShForce)) then
-                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
-                VERIFY_(status)
-             endif
-             call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
-             VERIFY_(status)
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-          end if
-       endif ! (GEOSgcm_var==1)
+          call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
+          VERIFY_(status)
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+       end if
+
        rc = 0
        call MAPL_SyncSharedMemory(rc=status)
        
