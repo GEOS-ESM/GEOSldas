@@ -32,13 +32,38 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 
 Overview of Git Releases:
 ============================
+[v17.9.4](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.4) - 2021-07-15
+------------------------------
+
+- Zero-diff vs. v17.9.3 for model-only simulations without perturbations using a build with standard optimization.
+
+- Not zero-diff for simulations with perturbations (including data assimilation) or any simulation using a build with aggressive optimization.
+
+- Science changes:
+  - Added S2S/AODAS and S2S/Forecast surface met forcing reader.
+
+- Infrastructure:
+  - Parallel FFT on each node using shared memory (non-zero-diff change for perturbations and data assimilation).
+  - Refined assignment of tiles to processors (non-zero-diff change with aggressive optimization).
+  - By default, limit MKL's freedom to choose algorithms during runtime (MKL_CBWR=AVX2), to ensure 0-diff across architectures.
+  - Updated ESMA_env (v3.3.0) --> Baselibs (6.2.4), ESMA_cmake (v3.5.0).
+  - Updated GMAO_Shared (v1.4.4).
+  - Updated GEOSgcm_GridComp (v1.12.3).
+
+- Documentation:
+  - Clarified help text for RESTART option in ldas_setup.
+
+- Bug fixes and other minor changes:
+  - Minor fixes to support debugging and non-Intel compilers (GNU).
+
+------------------------------
 [v17.9.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.3) - 2021-05-27
 ------------------------------
 
 - Zero-diff vs. v17.9.2
 
 - Science changes:
-  - Added ERA5_LIS surface met forcing reader.
+  - Added ERA5_LIS surface met forcing reader (nearest-neighbor interpolation).
 
 - Infrastructure:
   - Revised interface to SLURM (see sample "batinp" configuration file from "ldas_setup").

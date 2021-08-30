@@ -1614,7 +1614,6 @@ contains
 
        close(10,status='keep')
 
-
     end if
     if (allocated(Observations_f)) deallocate(Observations_f)
 
@@ -2821,6 +2820,7 @@ contains
           deallocate(data_v_9km_tile)
 
        end if  ! root_proc
+
        if(allocated(Observations_f)) deallocate(Observations_f)
 
     end if     ! (option=='orig_obs' .or. option=='obs_fcst')

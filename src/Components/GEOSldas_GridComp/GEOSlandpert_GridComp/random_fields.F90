@@ -33,6 +33,8 @@
 module random_fields_class
 
 #ifdef MKL_AVAILABLE
+  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer, c_ptr, c_sizeof, C_NULL_PTR
+  use mpi
   use MKL_DFTI
 #else
   use nr_fft,                           ONLY:     &
@@ -59,7 +61,16 @@ module random_fields_class
      real, allocatable :: field1_fft(:,:), field2_fft(:,:)
      integer :: fft_lens(2) ! length of each dim for 2D transform
 #ifdef MKL_AVAILABLE
+     integer :: comm
+     integer :: node_comm
+     integer :: win
+     type (c_ptr) :: base_address 
+
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle
+     type(DFTI_DESCRIPTOR), pointer :: Desc_Handle_dim1
+     type(DFTI_DESCRIPTOR), pointer :: Desc_Handle_dim2
+     integer, allocatable :: dim1_counts(:)
+     integer, allocatable :: dim2_counts(:)
 #endif
    contains
      procedure, public  :: initialize
@@ -68,21 +79,28 @@ module random_fields_class
      procedure, public  :: generate_white_field
      procedure, private :: sqrt_gauss_spectrum_2d
      procedure, private :: calc_fft_grid
+#ifdef MKL_AVAILABLE
+     procedure, private :: win_allocate
+     procedure, private :: win_deallocate
+#endif
   end type random_fields
   
 contains
 
   ! constructor (set parameter values), allocate memory
-  subroutine initialize(this, Nx, Ny, var, lx, ly, dx, dy)
+  subroutine initialize(this, Nx, Ny, var, lx, ly, dx, dy, comm)
 
     ! input/output variables [NEED class(random_fields)
     ! instead of type(random_fields)] - F2003 quirk?!?
     class(random_fields), intent(inout) :: this
     integer, intent(in) :: Nx, Ny
     real, intent(in) :: var, lx, ly, dx, dy
+    integer, optional, intent(in) :: comm
     
     ! local variable
-    integer :: mklstat
+    integer :: mklstat, ierror, i, j
+    integer :: rank, npes, local_dim1, local_dim2, remainer
+    integer :: N1, N2, gcount(2), lstart(2), Stride(2)
 
     ! set obj param vals
     this%N_x = Nx
@@ -105,13 +123,64 @@ contains
     allocate(this%field2_fft(this%N_x_fft, this%N_y_fft))
 
 #ifdef MKL_AVAILABLE
-    ! allocate mem and init mkl dft
-    mklstat = DftiCreateDescriptor(this%Desc_Handle, DFTI_SINGLE, DFTI_COMPLEX, 2, this%fft_lens)
-    if (mklstat/=DFTI_NO_ERROR) call quit('DftiCreateDescriptor failed!')
+    if (present(comm)) then
+       this%comm = comm
 
-    ! initialize for actual dft computation
-    mklstat = DftiCommitDescriptor(this%Desc_Handle)
-    if (mklstat/=DFTI_NO_ERROR) call quit('DftiCommitDescriptor failed!')
+       call MPI_Comm_split_type(this%comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, this%Node_Comm,ierror)
+       call MPI_Comm_size(this%Node_Comm, npes,ierror)
+       call MPI_Comm_rank(this%Node_Comm, rank, ierror)
+
+
+       N1 = this%fft_lens(1)
+       N2 = this%fft_lens(2)
+
+       call this%win_allocate(N1, N2)
+
+       ! distribution of the grid for fft
+       allocate(this%dim1_counts(npes),this%dim2_counts(npes))
+       local_dim1 = N1/npes
+       this%dim1_counts = local_dim1
+       remainer = mod(N1, npes)
+       this%dim1_counts(1:remainer) = local_dim1 + 1
+       local_dim1 = this%dim1_counts(rank+1) 
+
+       local_dim2 = N2/npes
+       this%dim2_counts = local_dim2
+       remainer = mod(N2, npes)
+       this%dim2_counts(1:remainer) = local_dim2 + 1
+       local_dim2 = this%dim2_counts(rank+1)
+
+
+       mklstat = DftiCreateDescriptor(this%Desc_Handle_Dim1, DFTI_SINGLE,&
+                                DFTI_COMPLEX, 1, N1 )
+       mklstat = DftiCreateDescriptor(this%Desc_Handle_Dim2, DFTI_SINGLE,&
+                                DFTI_COMPLEX, 1, N2 )
+
+       ! perform local_dim2 one-dimensional transforms along 1st dimension
+       mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_NUMBER_OF_TRANSFORMS, local_dim2 )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_INPUT_DISTANCE, N1 )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_OUTPUT_DISTANCE, N1 )
+       mklstat = DftiCommitDescriptor( this%Desc_Handle_Dim1 )
+       ! mklstat = DftiComputeForward( this%Desc_Handle_Dim1, X )
+       ! local_dim1 one-dimensional transforms along 2nd dimension
+       Stride(1) = 0; Stride(2) = local_dim1
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_NUMBER_OF_TRANSFORMS, local_dim1)
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_INPUT_DISTANCE, 1 )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_OUTPUT_DISTANCE, 1 )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_INPUT_STRIDES, Stride )
+       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_OUTPUT_STRIDES, Stride )
+       mklstat = DftiCommitDescriptor( this%Desc_Handle_Dim2 )
+       !mklstat = DftiComputeForward( this%Desc_Handle_Dim2, X )
+    else
+       this%comm = MPI_COMM_NULL
+       ! allocate mem and init mkl dft
+       mklstat = DftiCreateDescriptor(this%Desc_Handle, DFTI_SINGLE, DFTI_COMPLEX, 2, this%fft_lens)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiCreateDescriptor failed!')
+
+       ! initialize for actual dft computation
+       mklstat = DftiCommitDescriptor(this%Desc_Handle)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiCommitDescriptor failed!')
+    endif
 #endif
 
   end subroutine initialize
@@ -125,15 +194,27 @@ contains
     class(random_fields), intent(inout) :: this
 
     ! local variable
-    integer :: mklstat
+    integer :: mklstat, i , npes, ierror
 
     ! deallocate memory
     if(allocated(this%field1_fft)) deallocate(this%field1_fft)
     if(allocated(this%field2_fft)) deallocate(this%field2_fft)
 
 #ifdef MKL_AVAILABLE
-    mklstat = DftiFreeDescriptor(this%Desc_Handle)
-    if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor failed!')
+    if (this%comm == MPI_COMM_NULL) then
+       mklstat = DftiFreeDescriptor(this%Desc_Handle)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor failed!')
+    else
+
+       mklstat = DftiFreeDescriptor(this%Desc_Handle_dim1)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor dim1 failed!')
+       mklstat = DftiFreeDescriptor(this%Desc_Handle_dim2)
+       if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor dim2 failed!')
+
+       call this%win_deallocate()
+
+       deallocate(this%dim1_counts, this%dim2_counts)
+    endif
 #endif
 
   end subroutine finalize
@@ -216,7 +297,7 @@ contains
     ! local variables
     real :: dkx, dky, fac, lamx2dkx2, lamy2dky2
     real :: lx2kx2(this%N_x_fft), ly2ky2(this%N_y_fft)
-    integer :: i, j
+    integer :: i, j, i1, i2, rank, ierror
 
     ! start
     dkx = (TWO_PI)/(float(this%N_x_fft)*this%dx)
@@ -246,10 +327,16 @@ contains
     end do
 
     ! assemble spectrum in "wrap-around" order
+    i1 = 1
+    i2 = this%N_x_fft
+    if (this%comm /= MPI_COMM_NULL) then
+       call MPI_COMM_Rank(this%node_comm, rank, ierror)
+       i1 = sum(this%dim1_counts(1:rank)) + 1
+       i2 = sum(this%dim1_counts(1:rank+1))
+    endif
+ 
     do j=1,this%N_y_fft
-       do i=1,this%N_x_fft
-          this%field1_fft(i,j) = fac*exp(-.25*(lx2kx2(i)+ly2ky2(j)))  
-       end do
+       this%field1_fft(i1:i2,j) = fac*exp(-.25*(lx2kx2(i1:i2)+ly2ky2(j)))  
     end do
 
     return
@@ -328,6 +415,12 @@ contains
 #ifdef MKL_AVAILABLE
     integer :: mklstat
     complex, allocatable :: z_inout(:)
+    complex, pointer :: tmp_field(:,:)
+    complex, pointer :: tmp_field_dim1(:,:)
+    complex, pointer :: tmp_field_dim2(:,:)
+    integer :: n1, n2, npes, rank, ldim1, ldim2, ierror
+    complex, pointer  :: X(:)
+    type (c_ptr) :: cptr
 #else
     real, allocatable :: tmpdata(:)
 #endif
@@ -357,8 +450,17 @@ contains
 
     call nr_ran2_2d(N_x_fft, N_y_fft, rseed, ran_num)
     theta = (TWO_PI)*ran_num ! random phase angle
-    this%field2_fft = sin(theta)*this%field1_fft
-    this%field1_fft = cos(theta)*this%field1_fft
+    n1 = 1
+    n2 = N_x_fft
+#ifdef MKL_AVAILABLE
+    if (this%comm /= MPI_COMM_NULL) then
+       call MPI_comm_rank(this%node_comm, rank, ierror)
+       n1 = sum(this%dim1_counts(1:rank)) + 1
+       n2 = sum(this%dim1_counts(1:rank+1)) 
+    endif
+#endif
+    this%field2_fft(n1:n2,:) = sin(theta(n1:n2,:))*this%field1_fft(n1:n2,:)
+    this%field1_fft(n1:n2,:) = cos(theta(n1:n2,:))*this%field1_fft(n1:n2,:)
 
     deallocate(  theta)
     deallocate(ran_num)
@@ -376,33 +478,65 @@ contains
 #ifdef MKL_AVAILABLE
     ! use MKL FFT
     ! fill temporary 1D array
-    allocate(z_inout(N_xy_fft))
-    k = 0
-    do j=1,N_y_fft
-       do i=1,N_x_fft
-          k=k+1
-          z_inout(k) = cmplx(this%field1_fft(i,j),this%field2_fft(i,j))
+    if (this%comm == MPI_COMM_NULL) then
+       allocate(z_inout(N_xy_fft))
+       k = 0
+       do j=1,N_y_fft
+          do i=1,N_x_fft
+             k=k+1
+             z_inout(k) = cmplx(this%field1_fft(i,j),this%field2_fft(i,j))
+          end do
+       end do    
+
+       ! compute in-place backward transform (scale=1)
+       ! NOTE: MKL backward transform is the same as NR forward transform
+       mklstat = DftiComputeBackward(this%Desc_Handle, z_inout)
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiComputeBackward failed!')
+
+       ! extract random fields from z_inout
+       z_inout = z_inout/N_xy_fft_real
+       k = 0
+       do j=1,N_y_fft
+          do i=1,N_x_fft      
+             k=k+1
+             this%field1_fft(i,j) = real(z_inout(k))
+             this%field2_fft(i,j) = aimag(z_inout(k))
+          end do
        end do
-    end do    
 
-    ! compute in-place backward transform (scale=1)
-    ! NOTE: MKL backward transform is the same as NR forward transform
-    mklstat = DftiComputeBackward(this%Desc_Handle, z_inout)
-    if (mklstat/= DFTI_NO_ERROR) call quit('DftiComputeBackward failed!')
+       deallocate(z_inout)
+    else
+       call MPI_comm_size(this%node_comm, npes, ierror)
+       call c_f_pointer(this%base_address, tmp_field, shape=[N_x_fft, N_y_fft])
+       ldim1  = this%dim1_counts(rank+1)
 
-    ! extract random fields from z_inout
-    z_inout = z_inout/N_xy_fft_real
-    k = 0
-    do j=1,N_y_fft
-       do i=1,N_x_fft      
-          k=k+1
-          this%field1_fft(i,j) = real(z_inout(k))
-          this%field2_fft(i,j) = aimag(z_inout(k))
-       end do
-    end do
+       allocate(tmp_field_dim1(ldim1, N_y_fft))
+       tmp_field_dim1 = cmplx(this%field1_fft(n1:n2,:),this%field2_fft(n1:n2,:))
+       cptr = c_loc(tmp_field_dim1(1,1))
+       call c_f_pointer (cptr, X, [ldim1*N_y_fft])
+       mklstat = DftiComputeBackward( this%Desc_Handle_Dim2, X )
+       call MPI_Barrier(this%node_comm, ierror)
+       tmp_field(n1:n2,:) = tmp_field_dim1
 
-    deallocate(z_inout)
+       call MPI_Win_fence(0, this%win, ierror)
 
+       n1 = sum(this%dim2_counts(1:rank)) + 1
+       n2 = sum(this%dim2_counts(1:rank+1)) 
+       ldim2  = this%dim2_counts(rank+1)
+       allocate(tmp_field_dim2(N_x_fft, ldim2))
+       tmp_field_dim2 = tmp_field(:,n1:n2)
+       cptr = c_loc(tmp_field_dim2(1,1))
+       call c_f_pointer (cptr, X, [N_x_fft*ldim2])
+       mklstat = DftiComputeBackward( this%Desc_Handle_Dim1, X )
+       tmp_field(:,n1:n2) = tmp_field_dim2/N_xy_fft_real
+       
+       call MPI_Win_fence(0, this%win, ierror)
+
+       this%field1_fft = real(tmp_field)
+       this%field2_fft = aimag(tmp_field)
+
+       deallocate(tmp_field_dim1, tmp_field_dim2)
+    endif
 #else  
     ! use nr_fft
     ! fill tmpdata according to Figs 12.2.2
@@ -507,6 +641,37 @@ contains
     
   end subroutine quit
 
+  subroutine win_allocate(this, nx, ny)
+     class(random_fields), intent(inout) :: this
+     integer, intent(in) :: nx, ny
+     complex :: dummy
+     integer(kind=MPI_ADDRESS_KIND) :: windowsize
+     integer :: disp_unit,status, Rank
+     integer(kind=MPI_ADDRESS_KIND) :: n_bytes 
+     integer :: int_size
+
+
+     call MPI_Comm_rank( this%node_comm, rank, status)
+     n_bytes = nx*ny*c_sizeof(dummy)
+     windowsize = 0_MPI_ADDRESS_KIND
+     if (Rank == 0) windowsize = n_bytes
+     disp_unit  = 4
+     call MPI_Win_allocate_shared(windowsize, disp_unit, MPI_INFO_NULL, this%node_comm, &
+              this%base_address, this%win, status)
+
+     if (rank /=0)  CALL MPI_Win_shared_query(this%win, 0, windowsize, disp_unit, this%base_address, status)
+     call MPI_Win_fence(0, this%win, status)
+     call MPI_Barrier(this%node_comm, status)
+  end subroutine win_allocate
+
+  subroutine win_deallocate(this)
+     class(random_fields), intent(inout) :: this
+     integer :: status
+     call MPI_Win_fence(0, this%win, status)
+     call MPI_Win_free(this%win,status)
+     call MPI_comm_free(this%node_comm, status)
+
+  end subroutine win_deallocate
   
 end module random_fields_class
 
