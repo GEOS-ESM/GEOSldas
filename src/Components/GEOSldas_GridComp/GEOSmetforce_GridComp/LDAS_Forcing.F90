@@ -2694,7 +2694,7 @@ contains
     
     character(40), dimension(:), allocatable  :: GEOSgcm_name
     
-    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours
+    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours, N_lon_tmp, N_lat_tmp
     
     real    :: fnbr(2,2)
     
@@ -2844,8 +2844,8 @@ contains
           N_lon_tmp = size(ptrShForce,1)
           N_lat_tmp = size(ptrShForce,2)
        endif
-       if(  (size(ptrShForce,1) /= GEOSgcm_grid_N_lon) .or.          &
-            (size(ptrShForce,2) /= GEOSgcm_grid_N_lat)       ) then
+       if(  (N_lon_tmp /= GEOSgcm_grid_N_lon) .or.          &
+            (N_lat_tmp /= GEOSgcm_grid_N_lat)       ) then
           call MAPL_SyncSharedMemory(rc=status)
           VERIFY_(status)
           if (associated(ptrShForce)) then
