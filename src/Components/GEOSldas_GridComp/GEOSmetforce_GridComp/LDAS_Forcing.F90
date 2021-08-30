@@ -2854,12 +2854,10 @@ contains
           endif
           call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
           VERIFY_(status)
-          call MAPL_SyncSharedMemory(rc=status)
-          VERIFY_(status)
        end if
 
-       rc = 0
        call MAPL_SyncSharedMemory(rc=status)
+       VERIFY_(status)
        
        ! read variable from netcdf file
        if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
