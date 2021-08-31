@@ -2694,7 +2694,7 @@ contains
     
     character(40), dimension(:), allocatable  :: GEOSgcm_name
     
-    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours
+    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours, N_lon_tmp, N_lat_tmp
     
     real    :: fnbr(2,2)
     
@@ -2837,24 +2837,27 @@ contains
     
     do GEOSgcm_var = 1,N_GEOSgcm_vars
        
-       if (GEOSgcm_var==1) then
-          ! init share memory
-          if(  (size(ptrShForce,1) /= GEOSgcm_grid_N_lon) .or.          &
-               (size(ptrShForce,2) /= GEOSgcm_grid_N_lat)       ) then
-             call MAPL_SyncSharedMemory(rc=status)
+       ! init shared memory
+       N_lon_tmp = -1
+       N_lat_tmp = -1
+       if (associated(ptrShForce)) then
+          N_lon_tmp = size(ptrShForce,1)
+          N_lat_tmp = size(ptrShForce,2)
+       endif
+       if(  (N_lon_tmp /= GEOSgcm_grid_N_lon) .or.          &
+            (N_lat_tmp /= GEOSgcm_grid_N_lat)       ) then
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+          if (associated(ptrShForce)) then
+             call MAPL_DeallocNodeArray(ptrShForce,rc=status)
              VERIFY_(status)
-             if (associated(ptrShForce)) then
-                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
-                VERIFY_(status)
-             endif
-             call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
-             VERIFY_(status)
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-          end if
-       endif ! (GEOSgcm_var==1)
-       rc = 0
+          endif
+          call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
+          VERIFY_(status)
+       end if
+
        call MAPL_SyncSharedMemory(rc=status)
+       VERIFY_(status)
        
        ! read variable from netcdf file
        if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
@@ -3147,7 +3150,7 @@ contains
     character(  3)       :: met_file_ext
     character(  3)       :: precip_corr_file_ext
 
-    integer :: N_GEOSgcm_vars    
+    integer :: N_GEOSgcm_vars, N_lon_tmp, N_lat_tmp    
 
     real    :: this_lon, this_lat, tmp_lon, tmp_lat
 
@@ -3680,31 +3683,29 @@ contains
 
        ! ----------------------------------------------    
        !
-       ! for first variable, process grid dimensions
+       ! process grid dimensions
+       ! NOTE: corrected precipitation forcing from separate netcdf can be on different grid
        
-       if (GEOSgcm_var==1) then
-          
-          if ( (use_prec_corr) .and. (GEOSgcm_defs(GEOSgcm_var,1)(1:4)=='PREC') ) then
-             err_msg = 'grid dims must come from original GEOS-5 file!!'
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          end if
-
-          ! init share memory
-          if( size(ptrShForce,1) /= local_info%N_lon .or.    &
-              size(ptrShForce,2) /= local_info%N_lat ) then
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-             if (associated(ptrShForce)) then
-                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
-                VERIFY_(status)
-             endif 
-             call MAPL_AllocateShared(ptrShForce,(/local_info%N_lon,local_info%N_lat/),TransRoot= .true.,rc=status)
-             VERIFY_(status)
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-          end if
-
+       ! init shared memory
+       N_lon_tmp = -1
+       N_lat_tmp = -1
+       if (associated(ptrShForce)) then
+          N_lon_tmp = size(ptrShForce,1)
+          N_lat_tmp = size(ptrShForce,2)
        endif
+       if ( N_lon_tmp /= local_info%N_lon .or.            &
+            N_lat_tmp /= local_info%N_lat      ) then
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+          if (associated(ptrShForce)) then
+             call MAPL_DeallocNodeArray(ptrShForce,rc=status)
+             VERIFY_(status)
+          endif
+          call MAPL_AllocateShared(ptrShForce,(/local_info%N_lon,local_info%N_lat/),TransRoot= .true.,rc=status)
+          VERIFY_(status)
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+       end if
        
        ! ----------------------------------------------    
        !
