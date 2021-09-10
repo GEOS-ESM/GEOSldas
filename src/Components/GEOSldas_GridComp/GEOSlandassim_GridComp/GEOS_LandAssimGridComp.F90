@@ -1830,8 +1830,8 @@ contains
     
     if (fresh_incr) then
        ! apply EnKF increments (incl. call to catch_calc_soil_moist but not to recompute_diagS())
-       call apply_enkf_increments( N_catl, NUM_ENSEMBLE, update_type, cat_param, &
-            cat_progn_incr, cat_progn )
+       call apply_enkf_increments(date_time_new, N_catl, NUM_ENSEMBLE, update_type, cat_param, &
+            cat_progn_incr, cat_progn, cat_diagS )
        
     end if ! fresh_incr
     

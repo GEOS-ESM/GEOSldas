@@ -46,6 +46,7 @@ module clsm_ensupd_enkf_update
   use catch_types,                      ONLY:     &
        cat_param_type,                            &
        cat_progn_type,                            &
+       cat_diagS_type,                            &
        catprogn2wesn,                             &
        catprogn2htsn,                             &
        catprogn2ghtcnt,                           &
@@ -158,7 +159,7 @@ contains
        cat_progn_incr, fresh_incr,                                       &
        N_obsf, N_obsl, Observations_l,                                   &
        N_adapt_R, obs_pert_adapt_param, Pert_adapt_R,                    &
-       Obs_pert )
+       Obs_pert)
 
     ! -------------------------------------------------------------
 
@@ -308,8 +309,9 @@ contains
     type(cat_progn_type), allocatable               :: tmp_cat_progn_ana(:)
     type(cat_progn_type), allocatable               :: cat_progn_incr_f(:), cat_progn_incr_ana(:,:)
     type(cat_progn_type), allocatable               :: recvBuf(:)
-
-    ! Obs related
+    type(cat_diagS_type), dimension(nTiles_ana, N_ens), allocatable :: cat_diagS(:) !jpark50
+    
+! Obs related
     integer                                         :: nObs_ana
     integer                                         :: nObsAna_vec(numprocs)
     integer                                         :: N_obsf_assim, N_obsl_assim
@@ -1054,7 +1056,8 @@ contains
                Obs_pert_tmp,                              &
                cat_param_ana,                             &
                xcompact, ycompact, fcsterr_inflation_fac, &
-               cat_progn_ana, cat_progn_incr_ana)
+               cat_progn_ana, cat_progn_incr_ana,         &
+               met_force, cat_diagS)
           call cpu_time(t_end)
 
           
@@ -1248,8 +1251,8 @@ contains
 
   ! ********************************************************************
 
-  subroutine apply_enkf_increments( N_catd, N_ens, update_type, &
-       cat_param, cat_progn_incr, cat_progn )
+  subroutine apply_enkf_increments( date_time, N_catd, N_ens, update_type, &
+       cat_param, cat_progn_incr, cat_progn, cat_diagS )
 
     implicit none
 
@@ -1265,10 +1268,13 @@ contains
     type(cat_progn_type), dimension(N_catd,N_ens), intent(in)    :: cat_progn_incr
 
     type(cat_progn_type), dimension(N_catd,N_ens), intent(inout) :: cat_progn
+ 
+    type(date_time_type), intent(in) :: date_time !jpark50
 
+    type(cat_diagS_type), dimension(N_catd,N_ens), intent(in)               :: cat_diagS !jpark50
     ! -----------------
 
-    integer :: n, n_e
+    integer :: n, n_e, i
 
     logical :: cat_progn_has_changed
 

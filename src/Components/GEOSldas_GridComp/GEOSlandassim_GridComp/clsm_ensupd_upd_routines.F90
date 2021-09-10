@@ -12,8 +12,9 @@ module clsm_ensupd_upd_routines
   use MAPL_ConstantsMod,                ONLY:     &
        MAPL_TICE,                                 &
        MAPL_RADIUS,                               &
-       MAPL_PI
-  
+       MAPL_PI,                                   &
+       MAPL_ALHF                                  !jpark50
+
   use LDAS_ensdrv_Globals,              ONLY:     &
        logit,                                     &
        logunit,                                   &
@@ -50,6 +51,7 @@ module clsm_ensupd_upd_routines
        catprogn2wesn,                             &
        catprogn2htsn,                             &
        catprogn2ghtcnt,                           &
+       cat_diagS_type,                            &
        assignment (=),                            &
        operator (+),                              &
        operator (/)
@@ -101,11 +103,10 @@ module clsm_ensupd_upd_routines
 
   use catch_constants,                  ONLY:     &
        N_snow => CATCH_N_SNOW,                    &
-       N_gt   => CATCH_N_GT,                      &
-       wemin !jpark50
+       N_gt   => CATCH_N_GT
 
-  use StieglitzSnow,                    ONLY:     &
-       StieglitzSnow_calc_asnow
+  use STIEGLITZSNOW, ONLY: &
+      StieglitzSnow_calc_asnow
 
   use LDAS_ensdrv_mpi,                  ONLY:     &
        numprocs,                                  &
@@ -990,7 +991,7 @@ contains
     logical                                 :: get_tp_l
     logical                                 :: get_Tb_l,     get_Tb_lH
     logical                                 :: get_FT_l,     get_FT_lH
-    logical                                 :: get_asnow_l,  get_asnow_l     !jpark50 2021_07_27 
+    logical                                 :: get_asnow_l,  get_asnow_lH     !jpark50 2021_07_27 
     type(grid_def_type)                     :: tile_grid_lH        
     
     integer, dimension(N_obs_param)         :: ind_obsparam2Tbspecies
@@ -1018,7 +1019,7 @@ contains
     
     real,    dimension(N_catl,N_ens)        :: sfmc_l,   rzmc_l
     real,    dimension(N_catl,N_ens)        :: tsurf_l,  stemp_l
-    real,    dimension(N_catl,N_ens)        :: FT_l
+    real,    dimension(N_catl,N_ens)        :: FT_l,     asnow_l
     
     real,    dimension(:,:,:), allocatable  :: Tb_h_l, Tb_v_l
 
@@ -1037,7 +1038,7 @@ contains
     
     real,    dimension(:,:),   allocatable  :: sfmc_lH,   rzmc_lH
     real,    dimension(:,:),   allocatable  :: tsurf_lH,  stemp_lH
-    real,    dimension(:,:),   allocatable  :: FT_lH
+    real,    dimension(:,:),   allocatable  :: FT_lH,     asnow_lH
     
     real,    dimension(:,:,:), allocatable  :: Tb_h_lH, Tb_v_lH
     
@@ -1367,17 +1368,6 @@ contains
 
              ! Select a specific configuration of the RTM via the field 
              ! "RTM_ID" in the "obs_param" type. 
-             !
-             ! %RTM_ID = ID of radiative transfer model to use for Tb forward modeling
-             !           (subroutine get_obs_pred()) 
-             !           0 = none
-             !           1 = tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1)
-             !           2 = same as 1 but without Pellarin atmospheric corrections
-             !           3 = ...
-             
-             select case (RTM_id)
-                
-             case (1)
              !
              ! %RTM_ID = ID of radiative transfer model to use for Tb forward modeling
              !           (subroutine get_obs_pred()) 
@@ -1992,7 +1982,7 @@ contains
   ! *****************************************************************
 
   subroutine get_obs_pred_comm_helper(                                           &
-       N_cat, N_ens, N_Tb, get_sfmc, get_rzmc, get_tsurf, get_FT, get_Tb,        &
+       N_cat, N_ens, N_Tb, get_sfmc, get_rzmc, get_tsurf, get_FT, get_asnow, get_Tb,        &
        N_fields, option, tile_data, sfmc, rzmc, tsurf, FT, asnow, stemp, Tb_h, Tb_v )
     
     ! bundle/unbundle individual fields into/from single array for more 
@@ -2011,8 +2001,9 @@ contains
 
     integer, intent(in)    :: N_cat, N_ens, N_Tb
     
-    logical, intent(in)    :: get_sfmc, get_rzmc, get_tsurf, get_FT, geta_asnow, get_Tb !jpark50
-        
+    logical, intent(in)    :: get_sfmc, get_rzmc, get_tsurf, get_FT, get_Tb 
+    logical, intent(in)    :: get_asnow !jpark50
+    
     integer, intent(inout) :: N_fields
     
     integer,                               intent(in),    optional :: option 
@@ -2059,7 +2050,7 @@ contains
           call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error 1')
        end if
        
-       if ( (get_sfmc .or. get_rzmc .or. get_tsurf .or. get_FT .or. get_Tb) .and.   &
+       if ( (get_sfmc .or. get_rzmc .or. get_tsurf .or. get_FT .or. get_Tb .or. get_asnow) .and.   &
             (.not. present(tile_data))                                              &
             )  then
           call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error 2')
@@ -3415,13 +3406,13 @@ contains
   ! *********************************************************************
 
   subroutine cat_enkf_increments(                               &
-       N_ens, N_obs, N_catd, N_obs_param,                       &
+       N_ens, N_obs, N_catd,  N_obs_param,                      &
        update_type, obs_param,                                  &
        tile_grid_f, tile_coord, l2f,                            &
        Observations, Obs_pred, Obs_pert,                        &
        cat_param,                                               &
        xcompact, ycompact, fcsterr_inflation_fac,               &
-       cat_progn, cat_progn_incr, met_force )
+       cat_progn, cat_progn_incr, met_force, cat_diagS)
     
     ! get increments for Catchment prognostic variables
     !
@@ -3447,7 +3438,6 @@ contains
     ! - reichle, 17 Oct 2011
 
     ! -------------------------------------------------------------------
-    
     implicit none
     
     ! inputs
@@ -3467,6 +3457,8 @@ contains
     real, intent(in), dimension(N_obs,N_ens)  :: Obs_pred
     real, intent(in), dimension(N_obs,N_ens)  :: Obs_pert
     
+    type(met_force_type), dimension(N_catd), intent(in) :: met_force !jpark50 
+    type(cat_diagS_type), dimension(N_catd), intent(in) :: cat_diagS !jpark50
     type(cat_param_type), dimension(N_catd), intent(in) :: cat_param
     
     real, intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
@@ -3490,10 +3482,10 @@ contains
     
     real, parameter :: tp1_threshold = -HUGE(1.) ! = 0.2             ! [CELSIUS]
     
-    integer :: n, n_e, kk, ii
+    integer :: n, n_e, kk, ii, i
     
     integer :: N_state, N_selected_obs, N_select_varnames, N_select_species
-    
+
     real    :: halo_minlon, halo_maxlon, halo_minlat, halo_maxlat
     real    :: tmp_minlon,  tmp_maxlon,  tmp_minlat,  tmp_maxlat
 
@@ -3541,14 +3533,19 @@ contains
 
     type(obs_param_type)                  :: this_obs_param
    
-    !jpark50 
+    !jpark50
+    real, dimension(N_catd, N_ens)        :: wesn_sum_old
+    real, dimension(N_catd, N_ens)        :: areasc_old 
     real, parameter:: cpw   = 2065.22 !ice specific heat capacity @ 0C [J/kg/K]
     real, parameter:: model_threshold = 0.40
     real, parameter:: obs_threshold = 0.25
     real, parameter:: wesn_added = 12.0 ! mm of SWE
     real, parameter:: eps = 1.e-4
     real, parameter:: small = 1.e-20
-
+    real, parameter:: rhofs = 150. ! kg/m^3 density of fresh snow
+    real, parameter:: rhoma = 500. ! kg/m^3 maximum snow density
+    real, parameter:: wemin = 13. ! kg/m^3
+    real :: TSN, dens_layer
     ! -----------------------------------------------------------------------
 
     if (logit) write (logunit,*) &
@@ -4056,8 +4053,8 @@ contains
     if (logit) write (logunit, *) 'get 1d snow(asnow) increments; MODIS SCF'
   
     do n_e=1,N_ens
-       call StieglitzSnow_calc_asnow(N_snow, N_catl,                   &
-       catprogn2wesn(N_catl, cat_progn(:,n_e)),                        &
+       call StieglitzSnow_calc_asnow(N_snow, N_catd,                   &
+       catprogn2wesn(N_catd, cat_progn(:,n_e)),                        &
        asnow)
     end do
 
@@ -4082,18 +4079,18 @@ contains
           N_select_species, select_species(1:N_select_species),  &
           N_selected_obs,   ind_obs )
 
-      if (N_selected_obs > 0) then
-         do n_e=1:N_ens ! for each ensemble member
+      if (N_selected_obs == 1) then
+         do n_e=1,N_ens ! for each ensemble member
 
-         if(asnow <= Observations(ind_obs(1)%value*model_threshold) then
+         if(cat_diagS(kk)%asnow <= Observations(ind_obs(1))%obs * model_threshold) then
             if (logit) write (logunit,*) 'Add_snow_section:  ',&
-            'MODIS_SCF = ', observations(ind_obs(1))%value, 'model_SCF = ', asnow
+            'MODIS_SCF = ', observations(ind_obs(1))%obs, 'model_SCF = ', cat_diagS(kk)%asnow
 
            do i=1,N_SNOW
              !a) Snow water equivalent (add equally the snow to all three layers)
               cat_progn_incr(kk, n_e)%wesn(i) = &
-              ( observations(ind_obs(1))%value - &
-               asnow/model_threshold ) * (wesn_added/float(N_SNOW))
+              ( Observations(ind_obs(1))%obs - &
+               cat_diagS(kk)%asnow/model_threshold ) * (wesn_added/float(N_SNOW))
 
              !b) snow depth 
              if(cat_progn(kk,n_e)%sndz(i) > eps) then
@@ -4113,17 +4110,17 @@ contains
              cat_progn_incr(kk,n_e)%sndz(i) = cat_progn_incr(kk,n_e)%wesn(i)/dens_layer
             end if
             !c) heat content
-             TSN=min(met_force(kk)%Tair-Tzero_ice, 0.0)
-             cat_progn_incr(n,n_e)%hstn(i) = (TSN*cpw-ALHM)*cat_progn_incr(kk,n_e)%wesn(i)
+             TSN=min(met_force(kk)%Tair-MAPL_TICE, 0.0)
+             cat_progn_incr(n,n_e)%htsn(i) = (TSN*cpw-MAPL_ALHF)*cat_progn_incr(kk,n_e)%wesn(i)
             end do
 
-       elseif (Observations(ind_obs(1))%value <= obs_threshold) then
+       elseif (Observations(ind_obs(1))%obs <= obs_threshold) then
            if (logit) write (logunit,*) 'Remove snow section: ', &
-           'MODIS_SCF = ', observations(ind_obs(1))%value, 'model_SCF = ', asnow
+           'MODIS_SCF = ', Observations(ind_obs(1))%obs, 'model_SCF = ', cat_diagS(kk)%asnow
 
-           do i=1,N_SNOW
+           do i=1,N_snow
               cat_progn_incr(kk,n_e)%wesn(i) = &
-              -cat_progn(n,n_e)%wesn(i)*(1-observations(ind_obs(1))%value/obs_threshold  )
+              -cat_progn(n,n_e)%wesn(i)*(1-Observations(ind_obs(1))%obs/obs_threshold  )
            
            !b) snow depth
            if (cat_progn(kk,n_e)%sndz(i) > eps) then
@@ -4142,14 +4139,14 @@ contains
               cat_progn_incr(kk,n_e)%sndz(i) = cat_progn_incr(kk,n_e)%wesn(i)/dens_layer
            end if
            !c) heat content
-           TSN=min(met_force(kk)%Tair-Tzero_ice, 0.0)
-          cat_progn_incr(kk,n_e)%htsn(i) = -(TSN*cpw-ALHM)*cat_progn_incr(kk,n_e)%wesn(i)
+           TSN=min(met_force(kk)%Tair-MAPL_TICE, 0.0)
+          cat_progn_incr(kk,n_e)%htsn(i) = -(TSN*cpw-MAPL_ALHF)*cat_progn_incr(kk,n_e)%wesn(i)
           end do
       
         else
         
            if (logit) write (logunit, *) 'No_add_No_removal_section: ', &
-              'MODIS_SCF =  ', observations(ind_obs(1))%value, 'model_SCF = ',cat_diagn(n)%asnow
+              'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',cat_diagS(kk)%asnow
 
            do i=1,N_snow
               cat_progn_incr(kk,n_e)%wesn(i) = 0.0
@@ -5313,3 +5310,15 @@ contains
 !    !
 !    ! -------------------------------------------------------------------
 !    
+!    implicit none
+!    
+!    integer, intent(in) :: N_ens, N_obs, N_catd 
+!    
+!    type(cat_param_type), dimension(N_catd), intent(in) :: cat_param
+!    
+!    type(obs_type), dimension(N_obs), intent(in) :: Observations   
+!    
+!    real, dimension(N_obs,N_ens), intent(inout)  :: Obs_pert
+!    
+!    ! ----------------------------------------------------------------
+end module clsm_ensupd_upd_routines
