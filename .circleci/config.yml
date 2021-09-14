@@ -1,9 +1,9 @@
 version: 2.1
 
 executors:
-  gcc-build-env:
+  gfortran-large:
     docker:
-      - image: gmao/ubuntu20-geos-env-mkl:v6.2.4-openmpi_4.0.5-gcc_10.3.0
+      - image: gmao/ubuntu20-geos-env-mkl:v6.2.7-openmpi_4.0.6-gcc_11.2.0
         auth:
           username: $DOCKERHUB_USER
           password: $DOCKERHUB_AUTH_TOKEN
@@ -14,24 +14,39 @@ executors:
     resource_class: large
     #MEDIUM# resource_class: medium
 
+  ifort-large:
+    docker:
+      - image: gmao/ubuntu20-geos-env:v6.2.7-intelmpi_2021.2.0-intel_2021.2.0
+        auth:
+          username: $DOCKERHUB_USER
+          password: $DOCKERHUB_AUTH_TOKEN
+    resource_class: large
+    #MEDIUM# resource_class: medium
+
 workflows:
-  version: 2.1
   build-test:
     jobs:
       - build-GEOSldas:
+          name: build-GEOSldas-on-<< matrix.compiler >>
+          matrix:
+            parameters:
+              compiler: [gfortran, ifort]
           context:
             - docker-hub-creds
 
 jobs:
   build-GEOSldas:
-    executor: gcc-build-env
+    parameters:
+      compiler:
+        type: string
+    executor: << parameters.compiler >>-large
     working_directory: /root/project
     steps:
       - checkout:
           path: GEOSldas
       - run:
           name: "Versions etc"
-          command: mpirun --version && gfortran --version && echo $BASEDIR && pwd && ls
+          command: mpirun --version && << parameters.compiler>> --version && echo $BASEDIR && pwd && ls
       - run:
           name: "Mepo clone external repos"
           command: |
@@ -51,13 +66,16 @@ jobs:
       - run:
           name: "CMake"
           command: |
+            mkdir -p /logfiles
             cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas
-            mkdir build
-            cd build
-            cmake .. -DBASEDIR=$BASEDIR/Linux -DCMAKE_Fortran_COMPILER=gfortran -DCMAKE_BUILD_TYPE=Debug -DUSE_F2PY=OFF
+            mkdir -p  ${CIRCLE_WORKING_DIRECTORY}/workspace/build-GEOSldas
+            cd ${CIRCLE_WORKING_DIRECTORY}/workspace/build-GEOSldas
+            cmake ${CIRCLE_WORKING_DIRECTORY}/GEOSldas -DBASEDIR=$BASEDIR/Linux -DCMAKE_Fortran_COMPILER=<< parameters.compiler >> -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${CIRCLE_WORKING_DIRECTORY}/workspace/install-GEOSldas -DUSE_F2PY=OFF |& tee /logfiles/cmake.log
       - run:
-          name: "Build"
+          name: "Build and install"
           command: |
-            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas/build
-            make -j"$(nproc)" install
-            #MEDIUM# make -j4 install
+            cd ${CIRCLE_WORKING_DIRECTORY}/workspace/build-GEOSldas
+            make -j"$(nproc)" install |& tee /logfiles/make.log
+            #MEDIUM# make -j4 install |& tee /logfiles/make.log
+      - store_artifacts:
+          path: /logfiles

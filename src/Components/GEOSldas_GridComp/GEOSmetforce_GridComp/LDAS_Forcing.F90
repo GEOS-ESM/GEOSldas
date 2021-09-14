@@ -307,7 +307,7 @@ contains
     elseif (index(met_tag(1:7), 'GEOSs2s')/=0) then
 
        call get_GEOSs2s( date_time_tmp, met_path, met_tag, N_catd, tile_coord, &
-            MET_HINTERP, met_force_obs_tile_new, nodata_forcing)
+            MET_HINTERP, met_force_obs_tile_new, nodata_forcing, PAR_available)
 
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
@@ -2606,7 +2606,7 @@ contains
   ! ************************************************************************
   
   subroutine get_GEOSs2s(date_time, met_path, met_tag, N_catd, tile_coord, &
-       met_hinterp, met_force_new, nodata_forcing)
+       met_hinterp, met_force_new, nodata_forcing, PAR_available)
     
     ! read forcing derived from GEOS S2S output and map to tile space
     ! (using nearest neighbor or bilinear interpolation)
@@ -2641,6 +2641,8 @@ contains
     
     real,                 intent(out) :: nodata_forcing
     
+    logical,              intent(out) :: PAR_available
+
     ! Hindcast grid and netcdf parameters
     
     integer, parameter :: GEOSgcm_grid_N_lon  = 576
@@ -2692,7 +2694,7 @@ contains
     
     character(40), dimension(:), allocatable  :: GEOSgcm_name
     
-    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours
+    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours, N_lon_tmp, N_lat_tmp
     
     real    :: fnbr(2,2)
     
@@ -2733,7 +2735,8 @@ contains
 
     if     (index(met_tag(8:11), 'FCST')/=0) then
 
-       FCST = .true.
+       FCST          = .true.
+       PAR_available = .true.
 
        dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_FCST
        N_GEOSgcm_vars      = N_GEOSgcm_vars_FCST
@@ -2749,7 +2752,8 @@ contains
 
     elseif (index(met_tag(8:12), 'AODAS')/=0) then
 
-       AODAS = .true.
+       AODAS         = .true.
+       PAR_available = .false.
 
        dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_AODAS
        N_GEOSgcm_vars      = N_GEOSgcm_vars_AODAS
@@ -2833,24 +2837,27 @@ contains
     
     do GEOSgcm_var = 1,N_GEOSgcm_vars
        
-       if (GEOSgcm_var==1) then
-          ! init share memory
-          if(  (size(ptrShForce,1) /= GEOSgcm_grid_N_lon) .or.          &
-               (size(ptrShForce,2) /= GEOSgcm_grid_N_lat)       ) then
-             call MAPL_SyncSharedMemory(rc=status)
+       ! init shared memory
+       N_lon_tmp = -1
+       N_lat_tmp = -1
+       if (associated(ptrShForce)) then
+          N_lon_tmp = size(ptrShForce,1)
+          N_lat_tmp = size(ptrShForce,2)
+       endif
+       if(  (N_lon_tmp /= GEOSgcm_grid_N_lon) .or.          &
+            (N_lat_tmp /= GEOSgcm_grid_N_lat)       ) then
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+          if (associated(ptrShForce)) then
+             call MAPL_DeallocNodeArray(ptrShForce,rc=status)
              VERIFY_(status)
-             if (associated(ptrShForce)) then
-                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
-                VERIFY_(status)
-             endif
-             call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
-             VERIFY_(status)
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-          end if
-       endif ! (GEOSgcm_var==1)
-       rc = 0
+          endif
+          call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
+          VERIFY_(status)
+       end if
+
        call MAPL_SyncSharedMemory(rc=status)
+       VERIFY_(status)
        
        ! read variable from netcdf file
        if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
@@ -3143,7 +3150,7 @@ contains
     character(  3)       :: met_file_ext
     character(  3)       :: precip_corr_file_ext
 
-    integer :: N_GEOSgcm_vars    
+    integer :: N_GEOSgcm_vars, N_lon_tmp, N_lat_tmp    
 
     real    :: this_lon, this_lat, tmp_lon, tmp_lat
 
@@ -3676,31 +3683,29 @@ contains
 
        ! ----------------------------------------------    
        !
-       ! for first variable, process grid dimensions
+       ! process grid dimensions
+       ! NOTE: corrected precipitation forcing from separate netcdf can be on different grid
        
-       if (GEOSgcm_var==1) then
-          
-          if ( (use_prec_corr) .and. (GEOSgcm_defs(GEOSgcm_var,1)(1:4)=='PREC') ) then
-             err_msg = 'grid dims must come from original GEOS-5 file!!'
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          end if
-
-          ! init share memory
-          if( size(ptrShForce,1) /= local_info%N_lon .or.    &
-              size(ptrShForce,2) /= local_info%N_lat ) then
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-             if (associated(ptrShForce)) then
-                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
-                VERIFY_(status)
-             endif 
-             call MAPL_AllocateShared(ptrShForce,(/local_info%N_lon,local_info%N_lat/),TransRoot= .true.,rc=status)
-             VERIFY_(status)
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-          end if
-
+       ! init shared memory
+       N_lon_tmp = -1
+       N_lat_tmp = -1
+       if (associated(ptrShForce)) then
+          N_lon_tmp = size(ptrShForce,1)
+          N_lat_tmp = size(ptrShForce,2)
        endif
+       if ( N_lon_tmp /= local_info%N_lon .or.            &
+            N_lat_tmp /= local_info%N_lat      ) then
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+          if (associated(ptrShForce)) then
+             call MAPL_DeallocNodeArray(ptrShForce,rc=status)
+             VERIFY_(status)
+          endif
+          call MAPL_AllocateShared(ptrShForce,(/local_info%N_lon,local_info%N_lat/),TransRoot= .true.,rc=status)
+          VERIFY_(status)
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+       end if
        
        ! ----------------------------------------------    
        !
