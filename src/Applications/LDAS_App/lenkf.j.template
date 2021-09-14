@@ -28,6 +28,8 @@ setenv EXPDOMAIN  MY_EXPDOMAIN
 setenv EXPDIR     MY_EXPDIR
 setenv ESMADIR    $EXPDIR/build/
 setenv GEOSBIN    $ESMADIR/bin/
+# need to unsetenv LD_LIBRARY_PATH for execution of LDAS within the coupled land-atm DAS
+unsetenv LD_LIBRARY_PATH
 source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
