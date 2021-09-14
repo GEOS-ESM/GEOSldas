@@ -9,7 +9,7 @@ env:
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  tag: v3.5.0
+  tag: v3.5.5
 
 ecbuild:
   local: ./@cmake/@ecbuild
@@ -20,15 +20,15 @@ GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
   sparse: ./config/GMAO_Shared.sparse
-  tag: v1.4.4
+  tag: v1.4.6
 
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.7.0
+  tag: v2.8.6
 
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
-  tag: v1.12.3
+  tag: v1.12.4
