@@ -8,6 +8,8 @@ module clsm_ensdrv_out_routines
   !
   ! reichle, 22 Aug 2014
 
+  use ESMF
+  USE MAPL_MOD 
   use LDAS_ensdrv_globals,              ONLY:     &
        log_root_only,                             &
        logunit,                                   &
@@ -162,8 +164,6 @@ contains
     ! reichle, 27 May 2014: - changed wilting point output from "clsm_wpwet" to "clsm_wp"
     ! 
     ! -------------------------------------------------------------------
-    use ESMF
-    USE MAPL_MOD 
 
     implicit none
     type(ESMF_GridComp),intent(inout) :: GC 
@@ -192,7 +192,7 @@ contains
     
     real, dimension(N_catl) :: dztsurf, clsm_wp
 
-    type(MAPL_MetaComp), pointer :: MPL=>null()
+    type(MAPL_MetaComp), pointer :: MAPL=>null()
     type(MAPL_LocStream) :: locstream
     type(ESMF_Grid)                 :: TILEGRID
     integer, pointer                :: mask(:)
@@ -200,10 +200,10 @@ contains
     character(*),parameter :: Iam="GEOS_output_smapL4SMlmc"
 
 
-    call MAPL_GetObjectFromGC ( GC, MPL, RC=STATUS )
+    call MAPL_GetObjectFromGC ( GC, MAPL, RC=STATUS )
     VERIFY_(STATUS)
 
-    call MAPL_Get(MPL, LocStream=locstream,rc=status)
+    call MAPL_Get(MAPL, LocStream=locstream,rc=status)
     VERIFY_(status)
 
     call MAPL_LocStreamGet(LOCSTREAM, TILEGRID=TILEGRID, RC=STATUS)
