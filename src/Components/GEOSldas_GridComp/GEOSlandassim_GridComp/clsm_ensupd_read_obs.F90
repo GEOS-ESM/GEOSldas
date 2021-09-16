@@ -83,7 +83,236 @@ module clsm_ensupd_read_obs
   public :: collect_obs  
 
 contains
+ 
+ subroutine read_MODISsca_hdf(&
+ N_files, fnames, N_data, lon, lat, MODIS_SCA)
+
+ !read snow cover data from daily MOD10C1 data located under lis folder
+ !writer : jpark50
+ !directory: /discover/nobackup/projects/lis/RS_DATA/MODIS_sca/MOD10C1_C6_download/
+ !
+ ! return ONLY valid data point (excluding no-data-value and CI < 20%)
+ 
+ implicit none
+
+ integer, intent(in) :: N_files
+
+ character(300), dimension(N_files), intent(in) :: fnames
+
+ integer, intent(out) :: N_data
+ real, dimension(:), pointer :: lon, lat, MODIS_SCA !output
+
+ !local parameters
+ integer, parameter:: N_fields = 6
+ character(30), dimension(N_fields), parameter:: field_names = (/ &
+  'Day_CMG_Snow_Cover',        &   !1
+  'Day_CMG_Clear_Index',       &   !2
+  'Day_CMG_Cloud_Obscured',    &   !3
+  'Snow_Spatial_QA',           &   !4
+  'Lat',                        &   !5
+  'Lon' /)                         !6
+
+ integer, parameter :: nodata = -9999 !note: integer
+
+ ! Quality control step
+ ! step 1: remove the Snow cover > 100 (e.g., lake, night, inland water, ocean..)
+ ! step 2: Clear Index (CI): CI > 20% is considered
+
+ !declariations of hdf functions
+ integer:: hopen, vfstart, vsfatch, vsqfnelt, vsfseek, vsfsfld, vsfread
+ integer:: vsfdtch, vfend, hclose
+
+ ! declarations of hdf-related parameters and variables
+    
+ integer, dimension(N_files) :: file_id, vdata_id 
+   
+ integer :: status, n_read, n_records, record_pos
+    
+ integer, parameter :: num_dds_block = 0  ! only important for writing hdf
+ integer, parameter :: vdata_ref = 6
+    
+ integer, parameter :: DFACC_READ     = 1 ! from hdf.inc
+ integer, parameter :: FULL_INTERLACE = 0 ! from hdf.inc
+ 
+ ! local variables
+
+ logical :: must_stop
+ integer, dimension(N_files) :: N_data_tmp
+    
+ integer :: i, j, k, k_off
+    
+ integer, dimension(:), allocatable :: Snow_QA
+ integer, dimension(:), allocatable :: CI_Index, Cloud_index
   
+ integer*2, dimension(:), allocatable :: tmpint2vec
+ real,      dimension(:), allocatable :: tmprealvec
+
+ character(len=*), parameter :: Iam = 'read_MOD10C1_hdf'
+ character(len=400) :: err_msg
+
+   ! determine number of data to be read from each file
+    
+    do j=1,N_files
+       
+       ! open and "start" hdf file 
+       file_id(j) = hopen( fnames(j), DFACC_READ, num_dds_block )  
+       status = vfstart(file_id(j))
+         
+       ! select vdata block that contains fields of interest
+       vdata_id(j) = vsfatch(file_id(j), vdata_ref, 'r') 
+       
+       ! determine number of records in vdata
+       status = vsqfnelt(vdata_id(j), n_records)
+       N_data_tmp(j) = n_records
+       
+    end do
+
+    ! allocate pointers (must be deallocated outside this subroutine)
+    
+    must_stop = .false.
+    
+    if ( associated(lon) .or. associated(lat) .or. associated(MODIS_SCA) ) then
+       must_stop = .true.
+    end if
+  
+    if (must_stop) then       
+    err_msg = 'output pointers must not be associated/allocated on input.'
+    call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+ 
+    end if
+
+    allocate(lon(N_data))
+    allocate(lat(N_data))
+    allocate(MODIS_SCA(N_data))
+    
+    allocate(CI_Index(N_data))
+    allocate(Snow_QA(N_data))
+    allocate(Cloud_Index(N_data))
+
+    ! read hdf data into arrays, concatenate data from N_files files
+    
+    k_off = 0
+    
+    do j=1,N_files
+       
+       allocate(tmprealvec(N_data_tmp(j)))
+       allocate(tmpint2vec(N_data_tmp(j)))
+       
+       do i=1,N_fields
+          
+          ! go to start of record (zero-based count)
+          record_pos = vsfseek(vdata_id(j), 0)
+          
+          ! pick the field to be read
+          status = vsfsfld(vdata_id(j), field_names(i))
+          
+          ! read data
+          select case (i)
+             
+          case (1)
+             n_read = vsfread( vdata_id(j), tmprealvec, &
+                  N_data_tmp(j), FULL_INTERLACE)
+             
+             MODIS_SCA(k_off+1:k_off+N_data_tmp(j)) = tmprealvec
+             
+             do k=1,N_data_tmp(j)
+
+                if ( MODIS_SCA(k+k_off) > 100) then
+                   MODIS_SCA(k+k_off) = -1
+                end if
+             end do
+
+          case (2)
+             
+             n_read = vsfread( vdata_id(j), tmprealvec, &
+                  N_data_tmp(j), FULL_INTERLACE)
+             
+             CI_Index(k_off+1:k_off+N_data_tmp(j)) = tmprealvec
+             do k=1,N_data_tmp(j)
+             
+                if (CI_Index(k+k_off) <20) then
+                    CI_Index(k+k_off) = -1
+                end if
+             end do
+          case (3)
+             n_read = vsfread( vdata_id(j) ,tmpint2vec, &
+                  N_data_tmp(j), FULL_INTERLACE)
+
+             Cloud_Index(k_off+1:k_off+N_data_tmp(j)) = tmpint2vec
+             
+          case (4)
+             
+             n_read = vsfread(vdata_id(j), tmpint2vec, &
+                  N_data_tmp(j), FULL_INTERLACE)
+             
+             Snow_QA(k_off+1:k_off+N_data_tmp(j)) = tmpint2vec
+ 
+           case (5)
+
+             n_read = vsfread(vdata_id(j), tmpint2vec, &
+                  N_data_tmp(j), FULL_INTERLACE)
+
+             lat(k_off+1:k_off+N_data_tmp(j)) = tmpint2vec
+
+          case (6)
+              n_read = vsfread(vdata_id(j), tmpint2vec, &
+                  N_data_tmp(j), FULL_INTERLACE)
+
+             lon(k_off+1:k_off+N_data_tmp(j)) = tmpint2vec
+
+          case default
+             
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'Unknown case')
+          end select
+          
+          if (n_read/=N_data_tmp(j)) &
+           call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'ERROR reading hdf')
+       end do
+       
+       ! clean up
+
+       deallocate(tmprealvec)
+       deallocate(tmpint2vec)
+       
+       ! close hdf files
+       
+       status = vsfdtch(vdata_id(j))
+       status = vfend(file_id(j))
+       status = hclose(file_id(j))
+       
+       ! prepare next j
+       k_off = k_off + N_data_tmp(j)
+       
+    end do
+
+    ! -------------------------------------
+    ! eliminate no-data-values and data that fail initial QC
+    
+    j = 0
+    
+    do i=1,N_data
+       
+       if ( (MODIS_SCA(i)>0.)             .and.         &  ! any neg is nodata
+            (CI_Index(i)>20)            .and.         &  ! Ignore obs
+            (Snow_QA(i)<3)            & 
+           ) then     
+          
+          j=j+1
+          
+          MODIS_SCA(j) = MODIS_SCA(i)
+          lon(j)      = lon(i)
+          lat(j)      = lat(i)
+       end if
+       
+    end do
+    
+    N_data = j
+    
+    deallocate(CI_Index)
+    deallocate(Cloud_Index)
+    deallocate(Snow_QA)
+  end subroutine read_MODISsca_hdf  
+
   ! *****************************************************************
   
   subroutine read_ae_l2_sm_hdf( &
