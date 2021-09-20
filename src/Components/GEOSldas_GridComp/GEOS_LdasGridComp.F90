@@ -51,12 +51,14 @@ module GEOS_LdasGridCompMod
   ! All children
   integer,allocatable :: LAND(:)
   integer,allocatable :: LANDPERT(:)
-  integer             :: METFORCE, ENSAVG, LANDASSIM
+  integer,allocatable :: METFORCE(:)
+  integer             :: ENSAVG, LANDASSIM
 
   ! other global variables
   integer :: NUM_ENSEMBLE
   logical :: land_assim
   logical :: mwRTM
+  logical :: ensemble_forcing
   
 contains
 
@@ -75,7 +77,7 @@ contains
 
     ! ensemble set up:
 
-    integer :: i
+    integer :: i, k
     integer,allocatable :: ens_id(:)
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     type(ESMF_GridComp), pointer :: gcs(:)=>null() ! Children gridcomps
@@ -85,7 +87,7 @@ contains
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
     character(len=ESMF_MAXSTR) :: id_string,childname, fmt_str
-    character(len=ESMF_MAXSTR) :: LAND_ASSIM_STR, mwRTM_file
+    character(len=ESMF_MAXSTR) :: LAND_ASSIM_STR, mwRTM_file, ENS_FORCING_STR
     integer                    :: ens_id_width
     ! Local variables
     type(T_TILECOORD_STATE), pointer :: tcinternal
@@ -144,6 +146,11 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, ENS_FORCING_STR, Label="ENSEMBLE_FORCING:", DEFAULT="NO", RC=STATUS)
+    VERIFY_(STATUS)
+    ENS_FORCING_STR =  ESMF_UtilStringUpperCase(ENS_FORCING_STR, rc=STATUS)
+    VERIFY_(STATUS)
+    ensemble_forcing = (trim(ENS_FORCING_STR) == 'YES')
 
     call MAPL_GetResource ( MAPL, LAND_ASSIM_STR, Label="LAND_ASSIM:", DEFAULT="NO", RC=STATUS)
     VERIFY_(STATUS)
@@ -160,12 +167,32 @@ contains
       _ASSERT( .not. (mwRTM .or. land_assim), "CatchCN is Not Ready for assimilation or mwRTM")
     endif
 
-    METFORCE = MAPL_AddChild(gc, name='METFORCE', ss=MetforceSetServices, rc=status)
-    VERIFY_(status)
+    if (ensemble_forcing) then
+       allocate(METFORCE(NUM_ENSEMBLE))
+    else
+       allocate(METFORCE(1))
+    endif
 
     allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
     _ASSERT( ens_id_width < 10, "need 1 billion ensemble members? increase ens_id_width first")
     write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")" 
+
+    do i=1,NUM_ENSEMBLE
+       ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+       if(NUM_ENSEMBLE == 1 .or. .not. ensemble_forcing) then
+          id_string=''
+       else
+          write(id_string, fmt_str) ens_id(i)
+       endif
+
+       id_string=trim(id_string)
+
+       childname='METFORCE'//trim(id_string)
+       METFORCE(i) = MAPL_AddChild(gc, name=trim(childname), ss=MetforceSetServices, rc=status)
+       VERIFY_(status)
+       if (.not. ensemble_forcing ) exit
+    enddo
+
     do i=1,NUM_ENSEMBLE
        ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
        if(NUM_ENSEMBLE == 1 ) then
@@ -196,12 +223,14 @@ contains
     ! Connections
     do i=1,NUM_ENSEMBLE
     ! -METFORCE-feeds-LANDPERT's-imports-
+       k = 1
+       if ( ensemble_forcing ) k = i
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
             SHORT_NAME = ['Tair   ', 'Qair   ', 'Psurf  ', 'Rainf_C', 'Rainf  ',   &
                           'Snowf  ', 'LWdown ', 'SWdown ', 'PARdrct', 'PARdffs',   &
                           'Wind   ', 'RefH   '],                                   &
-            SRC_ID = METFORCE,                                                     &
+            SRC_ID = METFORCE(k),                                                     &
             DST_ID = LANDPERT(i),                                                  &
             rc = status                                                            &
             )
@@ -230,7 +259,7 @@ contains
                         'DUDP ', 'DUSV ', 'DUWT ', 'DUSD ', 'BCDP ', 'BCSV ',      &
                         'BCWT ', 'BCSD ', 'OCDP ', 'OCSV ', 'OCWT ', 'OCSD ',      &
                         'SUDP ', 'SUSV ', 'SUWT ', 'SUSD ', 'SSDP ', 'SSSV ' ],    &
-            SRC_ID = METFORCE,                                                     &
+            SRC_ID = METFORCE(k),                                                     &
             DST_NAME = ['PS  ', 'DZ  ',                                            &
                         'DUDP', 'DUSV', 'DUWT', 'DUSD', 'BCDP', 'BCSV',            &
                         'BCWT', 'BCSD', 'OCDP', 'OCSV', 'OCWT', 'OCSD',            &
@@ -660,16 +689,20 @@ contains
     tcinternal%grid_f = tile_grid_f
     tcinternal%grid_l = tile_grid_l
 
-    call MAPL_GetObjectFromGC(gcs(METFORCE), CHILD_MAPL, rc=status)
-    VERIFY_(status) ! CHILD = METFORCE
-    call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
-    VERIFY_(status)
+    do i = 1, NUM_ENSEMBLE
+       call MAPL_GetObjectFromGC(gcs(METFORCE(i)), CHILD_MAPL, rc=status)
+       VERIFY_(status) ! CHILD = METFORCE
+       call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
+       VERIFY_(status)
+       call ESMF_UserCompSetInternalState(gcs(METFORCE(i)), 'TILE_COORD', tcwrap, status)
+       VERIFY_(status)
+       ! only loop on i = 1 if it is not enenmbel_forcing 
+       if (.not. ensemble_forcing) exit
+    enddo
 
     call MAPL_GetObjectFromGC(gcs(ENSAVG), CHILD_MAPL, rc=status)
     VERIFY_(status) ! CHILD = ens_avg
     call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
-    VERIFY_(status)
-    call ESMF_UserCompSetInternalState(gcs(METFORCE), 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
 
     do i = 1,NUM_ENSEMBLE
@@ -834,11 +867,16 @@ contains
     enddo
 
 
-    igc = METFORCE
-    call MAPL_TimerOn(MAPL, gcnames(igc))
-    call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, userRC=status)
-    VERIFY_(status)
-    call MAPL_TimerOff(MAPL, gcnames(igc))
+    do i = 1, NUM_ENSEMBLE
+       igc = METFORCE(i)
+       call MAPL_TimerOn(MAPL, gcnames(igc))
+       call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, userRC=status)
+       VERIFY_(status)
+       call MAPL_TimerOff(MAPL, gcnames(igc))
+       ! exit after i = 1 if it is not ensemble forcing
+       if (.not. ensemble_forcing) exit
+    enddo
+
 
     do i  = 1,NUM_ENSEMBLE
 
