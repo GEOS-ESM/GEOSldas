@@ -568,10 +568,10 @@ contains
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     ! Misc variables
-    integer :: land_nt_local, k, NUM_ENSEMBLE
+    integer :: land_nt_local, k, NUM_ENSEMBLE, ens_id_width
     integer :: ForceDtStep
     type(met_force_type) :: mf_nodata
-    logical :: MERRA_file_specs, ensemble_forcing, ens_id_width
+    logical :: MERRA_file_specs, ensemble_forcing
     logical :: backward_looking_fluxes  
 
     integer :: AEROSOL_DEPOSITION
