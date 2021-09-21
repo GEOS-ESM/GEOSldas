@@ -55,10 +55,10 @@ module GEOS_LdasGridCompMod
   integer             :: ENSAVG, LANDASSIM
 
   ! other global variables
-  integer :: NUM_ENSEMBLE
+  integer :: NUM_ENSEMBLE       ! number of land ensemble members
   logical :: land_assim
   logical :: mwRTM
-  logical :: ensemble_forcing
+  logical :: ensemble_forcing   ! switch between deterministic and ensemble forcing
   
 contains
 
@@ -190,6 +190,7 @@ contains
        childname='METFORCE'//trim(id_string)
        METFORCE(i) = MAPL_AddChild(gc, name=trim(childname), ss=MetforceSetServices, rc=status)
        VERIFY_(status)
+       ! exit after i=1 if using deterministic forcing
        if (.not. ensemble_forcing ) exit
     enddo
 
@@ -696,7 +697,7 @@ contains
        VERIFY_(status)
        call ESMF_UserCompSetInternalState(gcs(METFORCE(i)), 'TILE_COORD', tcwrap, status)
        VERIFY_(status)
-       ! only loop on i = 1 if it is not enenmbel_forcing 
+       ! exit after i=1 if using deterministic forcing
        if (.not. ensemble_forcing) exit
     enddo
 
@@ -873,7 +874,7 @@ contains
        call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, userRC=status)
        VERIFY_(status)
        call MAPL_TimerOff(MAPL, gcnames(igc))
-       ! exit after i = 1 if it is not ensemble forcing
+       ! exit after i=1 if using deterministic forcing
        if (.not. ensemble_forcing) exit
     enddo
 
