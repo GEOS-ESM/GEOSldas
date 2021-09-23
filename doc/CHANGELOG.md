@@ -46,12 +46,12 @@ Overview of Git Releases:
   - Updated GMAO_Shared (v1.4.6).
   - Updated GEOSgcm_GridComp (v1.12.4, minor change for LADAS coupling).
   - Updated Circle-CI.
-  - Updated license (Apache 2.0).
   - GitHub script to auto-create tarball (fully mepo'd) upon release.
+
+- Updated license (Apache 2.0).
 
 - Bug fixes and other minor changes:
   - Minor fixes for GNU compiler.
-  - Updated LICENSE.md. 
   - Fixed PAR handling in get_GEOSs2s().
 
 - Note: v17.9.6 fixes v17.9.5, which did not compile with GNU and was deleted soon after release.
