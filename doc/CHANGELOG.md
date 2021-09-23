@@ -51,7 +51,6 @@ Overview of Git Releases:
 
 - Bug fixes and other minor changes:
   - Minor fixes for GNU compiler.
-  - Updated LICENSE.md. 
   - Fixed PAR handling in get_GEOSs2s().
 
 - Note: v17.9.6 fixes v17.9.5, which did not compile with GNU and was deleted soon after release.
