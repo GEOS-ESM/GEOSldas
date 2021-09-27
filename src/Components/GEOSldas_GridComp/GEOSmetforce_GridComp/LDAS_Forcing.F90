@@ -1948,7 +1948,6 @@ contains
 
     real,    dimension(era5_grid_N_lon,era5_grid_N_lat) :: tmp_grid
     integer, dimension(N_era5_compressed)               :: land_i_era5, land_j_era5, p2g
-    integer, dimension(N_catd)                          :: i_ind, j_ind
     real,    dimension(N_era5_compressed)               :: tmp_vec
     real,    dimension(N_catd,N_era5_vars)              :: force_array
     integer, dimension(2)                               :: start, icount
@@ -1963,7 +1962,8 @@ contains
     character(len=400)          :: err_msg
 
     ! bilineal interpolation variables
-    real, dimension(N_catd) :: i1,j1,i2,j2,x1,y1,x2,y2
+    integer, dimension(N_catd) :: i1,j1,i2,j2
+    real,    dimension(N_catd) :: x1,y1,x2,y2
     real                    :: tmp_lon,tmp_lat,xnew,ynew,fnbr(2,2)
     integer                 :: inew,jnew
     logical, intent(inout)  :: supported_option_MET_HINTERP
@@ -2000,78 +2000,8 @@ contains
     ! compute indices for the nearest neighbor interpolation from ERA5 grid 
     ! to tile space
 
-    do k=1,N_catd
-       
-       ! ll_lon and ll_lat refer to lower left corner of grid cell
-       ! (as opposed to the grid point in the center of the grid cell)
-       
-       this_lon = tile_coord(k)%com_lon
-       this_lat = tile_coord(k)%com_lat
-       
-       ! add small offsets to avoid unpredictable assignment of
-       ! regularly spaced tiles (such as from the EASEv2 tile space)
-       ! to ERA5 grid cells along certain lat/lon values
-       ! (that is, make it possible for post-processing scripts in other
-       !  languages to exactly reproduce the mapping that is done here)
-       ! TO DO: add if statement so the offset is only applied when
-       !        the model is run in the EASE grid tile space
-       
-       this_lon = this_lon + 0.0001
-       this_lat = this_lat + 0.0001
-       
-       i_ind(k) = ceiling( (this_lon - era5_grid_ll_lon)/era5_grid_dlon )
-       j_ind(k) = ceiling( (this_lat - era5_grid_ll_lat)/era5_grid_dlat )
-
-      if (MET_HINTERP .eq. 1) then
-        ! pchakrab: For bilinear interpolation, for each tile, we need:
-        !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
-        !  i1, i2, j1, j2 (defining the indices of four neighbors)
-
-        ! the nearest neighbor forcing grid cell ("1") is already known.
-        ! It is the: (i_ind(k),j_ind(k))
-
-        ! wrap-around
-        if (i_ind(k)>era5_grid_N_lon) i_ind(k) = 1
-        if (j_ind(k)>era5_grid_N_lat) then
-           err_msg = "encountered tile near the poles"
-           call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-        end if
-
-        xcur =  real(i_ind(k)-1)*era5_grid_dlon - 180.0 + era5_grid_dlon*0.5
-        ycur =  real(j_ind(k)-1)*era5_grid_dlat -  90.0 + era5_grid_dlat*0.5
-
-        i1(k) = i_ind(k)
-        j1(k) = j_ind(k)
-        x1(k) = xcur    ! lon of grid cell center
-        y1(k) = ycur    ! lat of grid cell center
-
-        ! find forcing grid cell ("2") diagonally across from i_ind(k),j_ind(k)
-
-        tmp_lon = this_lon + 0.5*era5_grid_dlon
-        tmp_lat = this_lat + 0.5*era5_grid_dlat
-        inew =  ceiling((tmp_lon - era5_grid_ll_lon)/era5_grid_dlon)
-        jnew =  ceiling((tmp_lat - era5_grid_ll_lat)/era5_grid_dlat)
-        if (inew==i_ind(k)) inew = inew - 1
-        if (jnew==j_ind(k)) jnew = jnew - 1
-
-        xnew = real(inew-1)*era5_grid_dlon - 180.0+era5_grid_dlon*0.5
-        ynew = real(jnew-1)*era5_grid_dlat -  90.0+era5_grid_dlat*0.5
-        ! wrap-around
-        if (inew==0)              inew = era5_grid_N_lon
-        if (inew>era5_grid_N_lon) inew = 1
-        if ((jnew==0) .or. (jnew>era5_grid_N_lat)) then
-           err_msg = "encountered tile near the poles"
-           call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-        end if
-
-        i2(k) = inew
-        j2(k) = jnew
-        x2(k) = xnew    ! lon of grid cell center
-        y2(k) = ynew    ! lat of grid cell center
-
-
-      endif ! if bilinear interpolation
-    end do
+    call get_neighbor_index(met_hinterp, tile_coord, era5_grid_ll_lon, era5_grid_ll_lat, era5_grid_dlon, era5_grid_dlat, \
+                           era5_grid_N_lon, era5_grid_N_lat, i1, j1, i2, j2, x1, y1, x2, y2, isERA5=.true.)
     
     ! read parameters (same for all data variables and time steps)
 
@@ -2137,7 +2067,7 @@ contains
 
        ! interpolate to tile space
        do k=1,N_catd
-          force_array(k,era5_var) = tmp_grid(i_ind(k),j_ind(k))
+          force_array(k,era5_var) = tmp_grid(i1(k),j1(k))
        end do
 
        case (1) ! if if bilinear interpolation 
@@ -5408,24 +5338,14 @@ contains
     allocate(i2(N_cat),j2(N_cat),x1(N_cat),x2(N_cat),y1(N_cat),y2(N_cat))
    
     if (isCubed) then ! cs grid
-    ! cube-sphere grid of forcing data must match cube-sphere grid associated with tile space
+       ! cube-sphere grid of forcing data must match cube-sphere grid associated with tile space
        i1(:) = tile_coord(:)%i_indg
        j1(:) = tile_coord(:)%j_indg
     else
-       i1(:) = ceiling((tile_coord(:)%com_lon - ll_lon)/dlon)
-       j1(:) = ceiling((tile_coord(:)%com_lat - ll_lat)/dlat)
-       ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
-       !  we now have i1=(grid%N_lon+1)
-       ! This needs to be fixed as follows:
-       where( i1 > N_lon)  i1=1
-       if (any(j1 > N_lat)) then
-          err_msg = "encountered tile near the poles"
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       end if
+       ! get neighbor's index
+       call get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, i1, j1, i2, j2, x1, y1, x2, y2)
     endif
     
-    call get_bilinear_neighbors(m_hinterp, tile_coord, i1, j1, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, i2, j2, x1, y1, x2, y2)
-       
     local_info%N_lat = N_lat
     local_info%N_lon = N_lon
     local_info%N_cat = N_cat
@@ -5442,34 +5362,64 @@ contains
     
   end subroutine GEOS_openfile
 
-  subroutine get_bilinear_neighbors(m_hinterp, tile_coord, i1, j1, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, i2, j2, x1, y1, x2, y2, rc) 
+  subroutine get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, i1, j1, i2, j2, x1, y1, x2, y2, isERA5, rc) 
     ! compute indices of nearest neighbors needed for bilinear
     ! interpolation from GEOSgcm grid to tile space
     integer, intent(in) :: m_hinterp
     type(tile_coord_type), dimension(:), intent(in)    :: tile_coord
-    integer,dimension(:), intent(in)  :: i1, j1
     real, intent(in) :: ll_lat, ll_lon, dlat, dlon
     integer, intent(in) :: N_lon, N_lat
-    integer,dimension(:), intent(out) :: i2, j2
-    real,   dimension(:), intent(out) :: x1, x2, y1, y2
+    integer, dimension(:), intent(inout) :: i1, j1
+    integer, dimension(:), intent(inout) :: i2, j2
+    real,    dimension(:), intent(out) :: x1, x2, y1, y2
+    logical, optional, intent(in) :: isERA5
     integer, optional, intent(out) :: rc
 
     real, dimension(:), allocatable :: xnew, ynew, tmp_lat, tmp_lon
     integer, dimension(:), allocatable :: inew, jnew
     character(len=*), parameter :: Iam="get_bilinear_neighbors" 
+    logical :: isERA5_
+    real  :: offset, factor
+
     ! ll_lon and ll_lat refer to lower left corner of grid cell
     ! (as opposed to the grid point in the center of the grid cell)
 
     ! pchakrab: For bilinear interpolation, for each tile, we need:
     !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
     !  i1, i2, j1, j2 (defining the indices of four neighbors)
+    isERA5_ = .false.
+    if (present(isERA5)) then
+       isERA5_ = isERA5
+    endif
+    offset  = 0.0
+    factor = 0.0
+    if (isERA5_) then
+       offset = 0.0001
+       factor = 0.5
+    endif
+    ! add small offsets to avoid unpredictable assignment of
+    ! regularly spaced tiles (such as from the EASEv2 tile space)
+    ! to ERA5 grid cells along certain lat/lon values
+    ! (that is, make it possible for post-processing scripts in other
+    !  languages to exactly reproduce the mapping that is done here)
+    ! TO DO: add if statement so the offset is only applied when
+    !        the model is run in the EASE grid tile space
+    i1 = ceiling((tile_coord%com_lon + offset - ll_lon)/dlon)
+    j1 = ceiling((tile_coord%com_lat + offset - ll_lat)/dlat)
+    ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
+    !  we now have i1=(grid%N_lon+1)
+    ! This needs to be fixed as follows:
+    where( i1 > N_lon)  i1=1
+    if (any(j1 > N_lat)) then
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, "encountered tile near the poles")
+    end if
 
     if (m_hinterp /= 1) then
       RETURN_(ESMF_SUCCESS)
     endif
 
-    x1 = (i1-1)*dlon - 180.0
-    y1 = (j1-1)*dlat - 90.0
+    x1 = (i1-1)*dlon - 180.0 + dlon*factor
+    y1 = (j1-1)*dlat - 90.0  + dlat*factor
     
     tmp_lon = tile_coord%com_lon + 0.5*dlon
     tmp_lat = tile_coord%com_lat + 0.5*dlat
@@ -5482,8 +5432,8 @@ contains
     ! determine center lon and lat of forcing grid cell ("2");
     ! must do this BEFORE wrap-around (such that xnew=x2 will be outside of [-180:180] near dateline),
     ! otherwise distance calculation would not work near dateline
-    xnew = (inew-1)*dlon - 180.0            ! ASSUMES dateline on center!
-    ynew = (jnew-1)*dlat -  90.0            ! ASSUMES pole on center!
+    xnew = (inew-1)*dlon - 180.0  + dlon*factor           ! ASSUMES dateline on center!
+    ynew = (jnew-1)*dlat -  90.0  + dlat*factor           ! ASSUMES pole on center!
 
     ! wrap-around
     where (inew==0) inew = N_lon
