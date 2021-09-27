@@ -5413,7 +5413,7 @@ contains
        j1(:) = tile_coord(:)%j_indg
     else
        i1(:) = ceiling((tile_coord(:)%com_lon - ll_lon)/dlon)
-       j1(:) = ceiling((tile_coord(k)%com_lat - ll_lat)/dlat)
+       j1(:) = ceiling((tile_coord(:)%com_lat - ll_lat)/dlat)
        ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
        !  we now have i1=(grid%N_lon+1)
        ! This needs to be fixed as follows:
