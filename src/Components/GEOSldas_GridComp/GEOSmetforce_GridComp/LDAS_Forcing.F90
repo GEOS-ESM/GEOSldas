@@ -5413,8 +5413,8 @@ contains
     tmp_lon = tile_coord%com_lon + dlon/2.
     tmp_lat = tile_coord%com_lat + dlat/2.
    
-    inew =  ceiling((tmp_lon  - ll_lon)/dlon)   ! nearest-neighbor i index of shifted location
-    jnew =  ceiling((tmp_lat  - ll_lat)/dlat)   ! nearest-neighbor j index of shifted location
+    inew =  ceiling((tmp_lon + offset - ll_lon)/dlon)   ! nearest-neighbor i index of shifted location
+    jnew =  ceiling((tmp_lat + offset - ll_lat)/dlat)   ! nearest-neighbor j index of shifted location
     where (inew==i1) inew = inew - 1             ! if shift results in same lon index, go west (left)
     where (jnew==j1) jnew = jnew - 1             ! if shift results in same lat index, go south (down)
 
