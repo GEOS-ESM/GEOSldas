@@ -2001,7 +2001,7 @@ contains
     ! to tile space
 
     call get_neighbor_index(met_hinterp, tile_coord, era5_grid_ll_lon, era5_grid_ll_lat, era5_grid_dlon, era5_grid_dlat, \
-                           era5_grid_N_lon, era5_grid_N_lat, i1, j1, i2, j2, x1, y1, x2, y2, isERA5=.true.)
+                           era5_grid_N_lon, era5_grid_N_lat, i1, j1, i2, j2, x1, y1, x2, y2)
     
     ! read parameters (same for all data variables and time steps)
 
@@ -5362,7 +5362,7 @@ contains
     
   end subroutine GEOS_openfile
 
-  subroutine get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, i1, j1, i2, j2, x1, y1, x2, y2, isERA5, rc) 
+  subroutine get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, i1, j1, i2, j2, x1, y1, x2, y2, rc) 
     ! compute indices of nearest neighbors needed for bilinear
     ! interpolation from GEOSgcm grid to tile space
     integer, intent(in) :: m_hinterp
@@ -5372,14 +5372,12 @@ contains
     integer, dimension(:), intent(inout) :: i1, j1
     integer, dimension(:), intent(inout) :: i2, j2
     real,    dimension(:), intent(out) :: x1, x2, y1, y2
-    logical, optional, intent(in) :: isERA5
     integer, optional, intent(out) :: rc
 
     real, dimension(:), allocatable :: xnew, ynew, tmp_lat, tmp_lon
     integer, dimension(:), allocatable :: inew, jnew
     character(len=*), parameter :: Iam="get_bilinear_neighbors" 
-    logical :: isERA5_
-    real  :: offset, factor
+    real  :: offset
 
     ! ll_lon and ll_lat refer to lower left corner of grid cell
     ! (as opposed to the grid point in the center of the grid cell)
@@ -5387,16 +5385,7 @@ contains
     ! pchakrab: For bilinear interpolation, for each tile, we need:
     !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
     !  i1, i2, j1, j2 (defining the indices of four neighbors)
-    isERA5_ = .false.
-    if (present(isERA5)) then
-       isERA5_ = isERA5
-    endif
-    offset  = 0.0
-    factor = 0.0
-    if (isERA5_) then
-       offset = 0.0001
-       factor = 0.5
-    endif
+    offset = 0.0001
     ! add small offsets to avoid unpredictable assignment of
     ! regularly spaced tiles (such as from the EASEv2 tile space)
     ! to ERA5 grid cells along certain lat/lon values
@@ -5418,11 +5407,11 @@ contains
       RETURN_(ESMF_SUCCESS)
     endif
 
-    x1 = (i1-1)*dlon - 180.0 + dlon*factor
-    y1 = (j1-1)*dlat - 90.0  + dlat*factor
+    x1 = (i1-1)*dlon + ll_lon  + dlon/2.
+    y1 = (j1-1)*dlat + ll_lat  + dlat/2.
     
-    tmp_lon = tile_coord%com_lon + 0.5*dlon
-    tmp_lat = tile_coord%com_lat + 0.5*dlat
+    tmp_lon = tile_coord%com_lon + dlon/2.
+    tmp_lat = tile_coord%com_lat + dlat/2.
    
     inew =  ceiling((tmp_lon  - ll_lon)/dlon)   ! nearest-neighbor i index of shifted location
     jnew =  ceiling((tmp_lat  - ll_lat)/dlat)   ! nearest-neighbor j index of shifted location
@@ -5432,8 +5421,8 @@ contains
     ! determine center lon and lat of forcing grid cell ("2");
     ! must do this BEFORE wrap-around (such that xnew=x2 will be outside of [-180:180] near dateline),
     ! otherwise distance calculation would not work near dateline
-    xnew = (inew-1)*dlon - 180.0  + dlon*factor           ! ASSUMES dateline on center!
-    ynew = (jnew-1)*dlat -  90.0  + dlat*factor           ! ASSUMES pole on center!
+    xnew = (inew-1)*dlon + ll_lon + dlon/2.     
+    ynew = (jnew-1)*dlat + ll_lat + dlat/2.     
 
     ! wrap-around
     where (inew==0) inew = N_lon
