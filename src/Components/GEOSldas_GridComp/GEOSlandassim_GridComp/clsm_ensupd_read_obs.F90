@@ -142,7 +142,7 @@ contains
  integer :: i, j, k, k_off, ll, mm, kk
  integer :: hh_num, time_index
 
- integer, parameter :: bin_size = 0.5
+ integer, parameter :: bin_size = 0.05
  integer, parameter :: XGRID = 3600
  integer, parameter :: YGRID = 7200
 
