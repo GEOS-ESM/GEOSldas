@@ -1251,8 +1251,8 @@ contains
 
   ! ********************************************************************
 
-  subroutine apply_enkf_increments( date_time, N_catd, N_ens, update_type, &
-       cat_param, cat_progn_incr, cat_progn, cat_diagS )
+  subroutine apply_enkf_increments( N_catd, N_ens, update_type, &
+       cat_param, cat_progn_incr, cat_progn)
 
     implicit none
 
@@ -1269,9 +1269,9 @@ contains
 
     type(cat_progn_type), dimension(N_catd,N_ens), intent(inout) :: cat_progn
  
-    type(date_time_type), intent(in) :: date_time !jpark50
+    ! type(date_time_type), intent(in) :: date_time !jpark50
 
-    type(cat_diagS_type), dimension(N_catd,N_ens), intent(in)               :: cat_diagS !jpark50
+    ! type(cat_diagS_type), dimension(N_catd,N_ens), intent(in)               :: cat_diagS !jpark50
     ! -----------------
 
     integer :: n, n_e, i
@@ -1378,17 +1378,16 @@ contains
      case(11) select_update_type ! snow update !jpark50
            if (logit) write (logunit,*) 'applying Snow data increments'
 
-       if ( date_time%hour /= 0 .and. &
-            date_time%min  /= 0 .and. &
-            date_time%sec  /= 0         ) then
+      ! if ( date_time%hour /= 0 .and. &
+      !      date_time%min  /= 0 .and. &
+      !      date_time%sec  /= 0         ) then
 
           if (logit) write (logunit,*) 'no application of increments at this time'
           cat_progn_has_changed = .false.
           return
 
-       end if
+      ! end if
 
-       cat_progn_has_changed = .true.     ! conservative initialization
        if (logit) write (logunit,*) 'apply_enkf_increments(): applying asnow increments'
        if (logit) write (logunit,*) 'entering do loop'
 

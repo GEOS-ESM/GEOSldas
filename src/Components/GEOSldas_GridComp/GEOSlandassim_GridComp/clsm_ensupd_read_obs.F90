@@ -85,7 +85,8 @@ module clsm_ensupd_read_obs
 contains
  
  subroutine read_MODISsca_hdf(&
- N_files, fnames, N_data, lon, lat, MODIS_SCA)
+ N_files, date_time, fnames, N_data, &
+ lon, lat, MODIS_SCA)
 
  !read snow cover data from daily MOD10C1 data located under lis folder
  !writer : jpark50
@@ -96,51 +97,65 @@ contains
  implicit none
 
  integer, intent(in) :: N_files
-
  character(300), dimension(N_files), intent(in) :: fnames
-
  integer, intent(out) :: N_data
- real, dimension(:), pointer :: lon, lat, MODIS_SCA !output
+
+ real, dimension(:), pointer, allocatable :: lon, lat
+ real, dimension(:), pointer :: lon_c, lat_c
+ real, dimension(:), pointer :: MODIS_SCA
+
+ type(date_time_type),intent(in) :: date_time ! loading the UTC hour information to constrain the longitude of MODIS obs.
+ character(2):: HH
 
  !local parameters
- integer, parameter:: N_fields = 6
+ integer, parameter:: N_fields = 4 
  character(30), dimension(N_fields), parameter:: field_names = (/ &
   'Day_CMG_Snow_Cover',        &   !1
   'Day_CMG_Clear_Index',       &   !2
   'Day_CMG_Cloud_Obscured',    &   !3
-  'Snow_Spatial_QA',           &   !4
-  'Lat',                        &   !5
-  'Lon' /)                         !6
+  'Snow_Spatial_QA'/)   !4
 
  integer, parameter :: nodata = -9999 !note: integer
 
  ! Quality control step
  ! step 1: remove the Snow cover > 100 (e.g., lake, night, inland water, ocean..)
  ! step 2: Clear Index (CI): CI > 20% is considered
+ !
 
  !declariations of hdf functions
  integer:: hopen, vfstart, vsfatch, vsqfnelt, vsfseek, vsfsfld, vsfread
  integer:: vsfdtch, vfend, hclose
 
  ! declarations of hdf-related parameters and variables
-    
  integer, dimension(N_files) :: file_id, vdata_id 
-   
  integer :: status, n_read, n_records, record_pos
-    
  integer, parameter :: num_dds_block = 0  ! only important for writing hdf
- integer, parameter :: vdata_ref = 6
-    
+ integer, parameter :: vdata_ref = 4
  integer, parameter :: DFACC_READ     = 1 ! from hdf.inc
  integer, parameter :: FULL_INTERLACE = 0 ! from hdf.inc
  
  ! local variables
-
  logical :: must_stop
  integer, dimension(N_files) :: N_data_tmp
-    
- integer :: i, j, k, k_off
-    
+
+ ! variables to define latitude and longitude    
+ integer :: i, j, k, k_off, ll, mm, kk
+ integer :: hh_num, time_index
+
+ integer, parameter :: bin_size = 0.5
+ integer, parameter :: XGRID = 3600
+ integer, parameter :: YGRID = 7200
+
+ real :: lat_ind(XGRID) = (/(ll, ll=1, 3600, 1)/)
+ real :: lon_ind(YGRID) = (/(mm, mm=1, 7200, 1)/)
+
+ !-------------------------------------------------------------
+ ! UTC | 0000     | 0300    | 0600    | 0900 | 1200 | 1500 | 1800  | 2100    
+ ! lon | -180 -135| -135 -90| -90 -45 | -45 0| 0 45 | 45 90| 90 135| 135-180
+ !
+
+ real:: lon_subtime(9) = (/(kk, kk=-180, 180, 45)/)
+     
  integer, dimension(:), allocatable :: Snow_QA
  integer, dimension(:), allocatable :: CI_Index, Cloud_index
   
@@ -150,7 +165,15 @@ contains
  character(len=*), parameter :: Iam = 'read_MOD10C1_hdf'
  character(len=400) :: err_msg
 
-   ! determine number of data to be read from each file
+ lat_c = (90-bin_size/2)-bin_size*lat_ind
+ lon_c = (-180+bin_size/2)-bin_size*lon_ind
+
+ do i=1,7200
+ lat(3600*(i-1)+1:3600*i)= lat_c
+ lon(3600*(i-1)+1:3600*i)= lon_c(i)
+ end do
+
+  ! determine number of data to be read from each file
     
     do j=1,N_files
        
@@ -247,18 +270,18 @@ contains
              
              Snow_QA(k_off+1:k_off+N_data_tmp(j)) = tmpint2vec
  
-           case (5)
+            ! case (5)
+            
+            ! n_read = vsfread(vdata_id(j), tmpint2vec, &
+            !     N_data_tmp(j), FULL_INTERLACE)
 
-             n_read = vsfread(vdata_id(j), tmpint2vec, &
-                  N_data_tmp(j), FULL_INTERLACE)
+            ! lat(k_off+1:k_off+N_data_tmp(j)) = tmpint2vec
+             
+            !case (6)
+            !  n_read = vsfread(vdata_id(j), tmpint2vec, &
+            !      N_data_tmp(j), FULL_INTERLACE)
 
-             lat(k_off+1:k_off+N_data_tmp(j)) = tmpint2vec
-
-          case (6)
-              n_read = vsfread(vdata_id(j), tmpint2vec, &
-                  N_data_tmp(j), FULL_INTERLACE)
-
-             lon(k_off+1:k_off+N_data_tmp(j)) = tmpint2vec
+            !lon(k_off+1:k_off+N_data_tmp(j)) = tmpint2vec
 
           case default
              
@@ -269,6 +292,7 @@ contains
            call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'ERROR reading hdf')
        end do
        
+
        ! clean up
 
        deallocate(tmprealvec)
@@ -285,6 +309,11 @@ contains
        
     end do
 
+    write(HH, '(i2.2)') date_time%hour
+    read(HH, '(I10)') hh_num
+
+    time_index = hh_num/3 +1
+    
     ! -------------------------------------
     ! eliminate no-data-values and data that fail initial QC
     
@@ -292,9 +321,11 @@ contains
     
     do i=1,N_data
        
-       if ( (MODIS_SCA(i)>0.)             .and.         &  ! any neg is nodata
+       if ( (MODIS_SCA(i)>0.)           .and.         &  ! any neg is nodata
             (CI_Index(i)>20)            .and.         &  ! Ignore obs
-            (Snow_QA(i)<3)            & 
+            (Snow_QA(i)<3)              .and.         &
+            (lon(i)>=lon_subtime(time_index)) .and.         &
+            (lon(i)<lon_subtime(time_index+1))              & 
            ) then     
           
           j=j+1
@@ -314,7 +345,156 @@ contains
   end subroutine read_MODISsca_hdf  
 
   ! *****************************************************************
+
+  subroutine read_obs_MODISsca(                               &
+  work_path, date_time, dtstep_assim, N_catd, tile_coord,     &
+  tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,        &
+  this_obs_param, found_obs, MODIS_obs, std_MODIS_obs)
+
+  implicit none
+
+  !inputs
+   character(200), intent(in) :: work_path
+
+   type(date_time_type), intent(in):: date_time
+
+   integer, intent(in):: dtstep_assim, N_catd
+
+   type(tile_coord_type), dimension(:), pointer:: tile_coord
+   type(grid_def_type), intent(in) :: tile_grid_d
+
+   integer, dimension(tile_grid_d%N_lon, tile_grid_d%N_lat), intent(in):: &
+   N_tile_in_cell_ij
+   integer, dimension(:,:,:), pointer:: tile_num_in_cell_ij
+   
+   type(obs_param_type), intent(in):: this_obs_param
   
+   ! output
+   real, intent(out), dimension(N_catd):: MODIS_obs
+   real, intent(out), dimension(N_catd):: std_MODIS_obs
+   logical,intent(out) :: found_obs
+
+   !locals
+   character(2):: MM, DD
+   character(4):: YYYY
+   character(3):: DDD ! Day of Year 
+   character(8):: date_string
+   character(10):: time_string
+
+   character(300):: tmpfname1
+    
+   integer, dimension(N_catd)  ::  tmp_tile_id
+
+   integer :: i, ind, N_tmp, N_files
+ 
+   character(300), dimension(:), allocatable :: fnames
+   
+   real, dimension(:), pointer:: tmp_obs, tmp_lat, tmp_lon
+   integer, dimension(:), pointer:: tmp_tile_num
+   
+   integer, dimension(N_catd):: N_obs_in_tile
+
+   nullify (tmp_obs, tmp_lat, tmp_lon, tmp_tile_num)
+
+   !! initializing 
+   found_obs = .false.
+
+   write (YYYY,'(i4.4)') date_time%year
+   write (MM,  '(i2.2)') date_time%month
+   write (DD,  '(i2.2)') date_time%day 
+   write (DDD, '(i3.3)') date_time%dofyr
+
+    write (logunit, *) 'Entered read_obs_MODIS'
+    write (logunit, *) 'Obs time: ', YYYY, MM, DD
+    write (logunit, *) 'DOY: ', DDD
+    
+   tmpfname1 = trim(this_obs_param%path) // '/Y' // YYYY // 'MOD10C1.A' // YYYY // DDD // &
+               '.006.hdf'  
+
+   if (logit) write (logunit, *) 'Trying to read data from', &
+   trim(tmpfname1)
+
+   open(10, file=tmpfname1, form='formatted', action='read')
+   read(10,*), N_files
+   close(10)
+
+   if (N_files > 0) then
+   
+      allocate(fnames(N_files))
+    
+      do i=1,N_files
+         read(10, '(a)') fnames(i)
+      end do
+   end if
+
+   close(10, status='delete')
+
+   if (N_files>0) then 
+   
+    call read_MODISsca_hdf( &
+         N_files, date_time, fnames, N_tmp, tmp_lon, tmp_lat, tmp_obs)
+       
+    if (logit) then
+      write (logunit, *) 'read_obs_MODISsca :read MODIS datasets file name:', &
+      fnames
+    end if
+
+   deallocate(fnames)
+    
+   else 
+   N_tmp = 0
+
+   end if
+
+   if (N_tmp>0) then
+    
+      allocate(tmp_tile_num(N_tmp))
+      
+      call get_tile_num_from_latlon(N_catd, tile_coord,           &
+      tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,        &
+      N_tmp, tmp_lat, tmp_lon, &
+      tmp_tile_num)
+   
+      MODIS_obs = 0.
+      N_obs_in_tile = 0
+    
+      do i=1,N_tmp
+         ind = tmp_tile_num(i)
+  
+         if (ind>0) then
+          MODIS_obs(ind) = MODIS_obs(ind) + tmp_obs(i)
+          N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
+         end if
+      end do
+
+      do i=1,N_catd
+         if (N_obs_in_tile(i)>1) then
+         MODIS_obs(i) = MODIS_obs(i)/real(N_obs_in_tile(i))
+         else if (N_obs_in_tile(i) == 0) then
+         MODIS_obs(i) = this_obs_param%nodata
+         end if
+      end do
+     
+      if (associated(tmp_tile_num)) deallocate (tmp_tile_num)
+
+      do i=1, N_catd
+       std_MODIS_obs(i) = this_obs_param%errstd
+      end do
+
+       if (any(N_obs_in_tile>0)) then
+          found_obs = .true.
+       else 
+          found_obs = .false.
+       end if
+       
+      end if  
+    
+if (associated(tmp_obs))      deallocate(tmp_obs)
+    if (associated(tmp_lon))      deallocate(tmp_lon)
+    if (associated(tmp_lat))      deallocate(tmp_lat)
+  end subroutine read_obs_MODISsca
+
+  ! ***************************************************************** 
   subroutine read_ae_l2_sm_hdf( &
        N_files, fnames, N_data, lon, lat, ae_l2_sm, ease_col, ease_row )
     
@@ -7210,7 +7390,14 @@ contains
     ! choose appropriate reader
     
     select case (trim(this_obs_param%descr))
-       
+    
+    case ('MODIS_SCA')
+     
+      call read_obs_MODISsca(                                        &
+           work_path, date_time, dtstep_assim, N_catd, tile_coord,   &
+           tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,     &
+           this_obs_param, found_obs, tmp_obs, tmp_std_obs)     
+ 
     case ('ae_l2_sm_a', 'ae_l2_sm_d')
        
        call read_obs_ae_l2_sm(                                        &

@@ -1485,7 +1485,7 @@ contains
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_asnow_lH, get_Tb_lH, N_fields, &
          option=1, tile_data=tile_data_l,                                        &
          sfmc=sfmc_l, rzmc=rzmc_l, tsurf=tsurf_l, FT=FT_l, stemp=stemp_l,        &
-         Tb_h=Tb_h_l, Tb_v=Tb_v_l )
+         Tb_h=Tb_h_l, Tb_v=Tb_v_l, asnow=asnow_l )
     
     ! communicate tile_data_l as needed and get tile_data_lH
     
@@ -1498,7 +1498,7 @@ contains
     call get_obs_pred_comm_helper( N_catlH, N_ens, N_TbuniqFreqAngRTMid,         &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_asnow_lH, get_Tb_lH, N_fields, &
          option=2, tile_data=tile_data_lH,                                       &
-         sfmc=sfmc_lH, rzmc=rzmc_lH, tsurf=tsurf_lH, asnow=asnow_l, FT=FT_l, stemp=stemp_lH,    &
+         sfmc=sfmc_lH, rzmc=rzmc_lH, tsurf=tsurf_lH, asnow=asnow_lH, FT=FT_l, stemp=stemp_lH,    &
          Tb_h=Tb_h_lH, Tb_v=Tb_v_lH )
     
     ! clean up
@@ -3438,8 +3438,13 @@ contains
     ! - reichle, 17 Oct 2011
 
     ! -------------------------------------------------------------------
-    implicit none
     
+    USE SurfParams, ONLY: WEMIN
+    USE StieglitzSnow, ONLY: RHOMA_pub, cpw_pub 
+    use Catch_Constants, ONLY: RHOFS => CATCH_SNWALB_RHOFS
+    
+    implicit none
+ 
     ! inputs
     
     integer, intent(in) :: N_ens, N_obs, N_catd, N_obs_param, update_type
@@ -3536,15 +3541,15 @@ contains
     !jpark50
     real, dimension(N_catd, N_ens)        :: wesn_sum_old
     real, dimension(N_catd, N_ens)        :: areasc_old 
-    real, parameter:: cpw   = 2065.22 !ice specific heat capacity @ 0C [J/kg/K]
+    !real, parameter:: cpw   = 2065.22 !ice specific heat capacity @ 0C [J/kg/K]
     real, parameter:: model_threshold = 0.40
     real, parameter:: obs_threshold = 0.25
     real, parameter:: wesn_added = 12.0 ! mm of SWE
     real, parameter:: eps = 1.e-4
     real, parameter:: small = 1.e-20
-    real, parameter:: rhofs = 150. ! kg/m^3 density of fresh snow
-    real, parameter:: rhoma = 500. ! kg/m^3 maximum snow density
-    real, parameter:: wemin = 13. ! kg/m^3
+   ! real, parameter:: rhofs = 150. ! kg/m^3 density of fresh snow
+   ! real, parameter:: rhoma = 500. ! kg/m^3 maximum snow density
+   ! real, parameter:: wemin = 13. ! kg/m^3
     real :: TSN, dens_layer
     ! -----------------------------------------------------------------------
 
@@ -4052,11 +4057,11 @@ contains
     !=============================================================================
     if (logit) write (logunit, *) 'get 1d snow(asnow) increments; MODIS SCF'
   
-    do n_e=1,N_ens
-       call StieglitzSnow_calc_asnow(N_snow, N_catd,                   &
-       catprogn2wesn(N_catd, cat_progn(:,n_e)),                        &
-       asnow)
-    end do
+    !do n_e=1,N_ens
+    !   call StieglitzSnow_calc_asnow(N_snow, N_catd,                   &
+    !   catprogn2wesn(N_catd, cat_progn(:,n_e)),                        &
+    !   asnow)
+    !end do
 
     !identify the species ID number of interest       
      N_select_varnames  = 1
@@ -4101,7 +4106,7 @@ contains
 
               !Estimate the density of the ld layers of snow
               dens_layer = max(cat_progn(kk,n_e)%wesn(i)/ &
-              (cat_progn(kk,n_e)%sndz(i)*areasc_old(kk,n_e)),rhofs)
+              (cat_progn(kk,n_e)%sndz(i)*areasc_old(kk,n_e)),RHOFS)
 
               cat_progn_incr(kk,n_e)%sndz(i)=&
                 cat_progn_incr(kk,n_e)%wesn(i)/dens_layer
@@ -4111,7 +4116,7 @@ contains
             end if
             !c) heat content
              TSN=min(met_force(kk)%Tair-MAPL_TICE, 0.0)
-             cat_progn_incr(n,n_e)%htsn(i) = (TSN*cpw-MAPL_ALHF)*cat_progn_incr(kk,n_e)%wesn(i)
+             cat_progn_incr(n,n_e)%htsn(i) = (TSN*cpw_pub-MAPL_ALHF)*cat_progn_incr(kk,n_e)%wesn(i)
             end do
 
        elseif (Observations(ind_obs(1))%obs <= obs_threshold) then
@@ -4140,7 +4145,7 @@ contains
            end if
            !c) heat content
            TSN=min(met_force(kk)%Tair-MAPL_TICE, 0.0)
-          cat_progn_incr(kk,n_e)%htsn(i) = -(TSN*cpw-MAPL_ALHF)*cat_progn_incr(kk,n_e)%wesn(i)
+          cat_progn_incr(kk,n_e)%htsn(i) = -(TSN*cpw_pub-MAPL_ALHF)*cat_progn_incr(kk,n_e)%wesn(i)
           end do
       
         else
