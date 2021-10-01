@@ -1510,7 +1510,7 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '# - walltime         = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
     print '# - ntasks_model     = number of processors requested for the model (typically 112; output server is not included)'
     print '# - ntasks-per-node  = number of tasks per node (typically 48 for cascade lake, 40 for skylake, and 28 for haswell nodes)'
-    print '#                      [If >48, cascade lake nodes will be allocated, if >40, cascade or skylake, else cascade, skylake or haswell.]'
+    print '#                      [If >40, cascade lake nodes will be allocated, if >28, cascade or skylake, else cascade, skylake or haswell.]'
     print '#'
     for key in rqdRmInpKeys:
         print key + ':'
