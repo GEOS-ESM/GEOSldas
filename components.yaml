@@ -36,5 +36,4 @@ GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
-  branch: feature/jkolassa_cnclm45
-  develop: develop
+  tag: v1.12.5
