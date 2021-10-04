@@ -34,6 +34,7 @@ COLLECTIONS:
 #CUBE PC720x361-DC.LM: 1
 
   tavg24_1d_lfs_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
+  tavg24_1d_lfs_Nt.nbits:       12,
   tavg24_1d_lfs_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
   tavg24_1d_lfs_Nt.archive:     '%c/Y%y4',
   tavg24_1d_lfs_Nt.mode:        'time-averaged',
@@ -60,6 +61,7 @@ COLLECTIONS:
           ::
 
   tavg24_2d_lfs_Nx.descr:       '2d,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
+  tavg24_2d_lfs_Nx.nbits:       12,
   tavg24_2d_lfs_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
   tavg24_2d_lfs_Nx.archive:     '%c/Y%y4',
   tavg24_2d_lfs_Nx.mode:        'time-averaged',
@@ -91,6 +93,7 @@ COLLECTIONS:
           ::
 
   tavg24_1d_lnd_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics',
+  tavg24_1d_lnd_Nt.nbits:       12,
   tavg24_1d_lnd_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
   tavg24_1d_lnd_Nt.mode:        'time-averaged',
   tavg24_1d_lnd_Nt.frequency:   240000,
@@ -184,6 +187,7 @@ COLLECTIONS:
                                ::
 
   tavg24_2d_lnd_Nx.descr:       '2d,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics',
+  tavg24_2d_lnd_Nx.nbits:       12,
   tavg24_2d_lnd_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
   tavg24_2d_lnd_Nx.mode:        'time-averaged',
   tavg24_2d_lnd_Nx.frequency:    240000,
@@ -282,6 +286,7 @@ COLLECTIONS:
                                ::
 
   SMAP_L4_SM_gph.descr:         'Tile-space,3-Hourly,Time-Averaged,Single-Level,Assimilation,SMAP L4_SM Land Geophysical Diagnostics',
+  SMAP_L4_SM_gph.nbits:         12,
   SMAP_L4_SM_gph.template:      '%y4%m2%d2_%h2%n2z.bin',
   SMAP_L4_SM_gph.mode:          'time-averaged',
   SMAP_L4_SM_gph.frequency:     030000,
@@ -329,6 +334,7 @@ COLLECTIONS:
                                ::
 
   inst1_1d_lnr_Nt.descr:        'Tile-space,1-Hourly,Instantaneous,Single-Level,Assimilation,Land Nature Run Diagnostics',
+  inst1_1d_lnr_Nt.nbits:       12,
   inst1_1d_lnr_Nt.template:     '%y4%m2%d2_%h2%n2z.bin' ,
   inst1_1d_lnr_Nt.mode:         'instantaneous' ,
   inst1_1d_lnr_Nt.frequency:    010000 ,
@@ -344,6 +350,7 @@ COLLECTIONS:
 # parameters LANDASSIM_DT and LANDASSIM_T0.
 
   catch_progn_incr.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Prognostics Increments',
+  catch_progn_incr.nbits:       0,
   catch_progn_incr.template:    '%y4%m2%d2_%h2%n2z.bin',
   catch_progn_incr.mode:        'instantaneous',
   catch_progn_incr.frequency:   030000,
@@ -379,6 +386,7 @@ COLLECTIONS:
 # parameters LANDASSIM_DT and LANDASSIM_T0.
 
   inst3_1d_lndfcstana_Nt.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
+  inst3_1d_lndfcstana_Nt.nbits:       12,
   inst3_1d_lndfcstana_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
   inst3_1d_lndfcstana_Nt.mode:        'instantaneous',
   inst3_1d_lndfcstana_Nt.frequency:   030000,
@@ -399,6 +407,7 @@ COLLECTIONS:
 # parameters LANDASSIM_DT and LANDASSIM_T0.
 
   inst3_2d_lndfcstana_Nx.descr:       '2d,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
+  inst3_2d_lndfcstana_Nx.nbits:       12,
   inst3_2d_lndfcstana_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
   inst3_2d_lndfcstana_Nx.archive:     '%c/Y%y4',
   inst3_2d_lndfcstana_Nx.mode:        'instantaneous',
