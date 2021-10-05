@@ -2000,8 +2000,9 @@ contains
     ! compute indices for the nearest neighbor interpolation from ERA5 grid 
     ! to tile space
 
-    call get_neighbor_index(met_hinterp, tile_coord, era5_grid_ll_lon, era5_grid_ll_lat, era5_grid_dlon, era5_grid_dlat, \
-                           era5_grid_N_lon, era5_grid_N_lat, i1, j1, i2, j2, x1, y1, x2, y2)
+    call get_neighbor_index(met_hinterp, tile_coord,                         &
+         era5_grid_ll_lon, era5_grid_ll_lat, era5_grid_dlon, era5_grid_dlat, &
+         era5_grid_N_lon, era5_grid_N_lat, i1, j1, i2, j2, x1, y1, x2, y2)
     
     ! read parameters (same for all data variables and time steps)
 
@@ -5343,7 +5344,8 @@ contains
        j1(:) = tile_coord(:)%j_indg
     else
        ! get neighbor's index
-       call get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, i1, j1, i2, j2, x1, y1, x2, y2)
+       call get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, &
+            i1, j1, i2, j2, x1, y1, x2, y2)
     endif
     
     local_info%N_lat = N_lat
@@ -5362,81 +5364,138 @@ contains
     
   end subroutine GEOS_openfile
 
-  subroutine get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, i1, j1, i2, j2, x1, y1, x2, y2, rc) 
-    ! compute indices of nearest neighbors needed for bilinear
-    ! interpolation from GEOSgcm grid to tile space
-    integer, intent(in) :: m_hinterp
+  ! **************************************************************** 
+  
+  subroutine get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, &
+       i1, j1, i2, j2, x1, y1, x2, y2, rc)
+
+    ! Prep info for horizontal interpolation of lat/lon gridded forcing data to tile space:
+    !  Compute indices of nearest neighbors needed for nearest-neighbor or bilinear interpolation 
+    !  from regular lat/lon grid to tile space.
+    !
+    ! This functionality was previously contained in GEOS_openfile.  Some of the hard-coded assumptions
+    !  about the grid extent and grid origin location from GEOS_openfile were relaxed.  Nearest-neighbor
+    !  interpolation of cube-sphere gridded forcing remains in GEOS_openfile.
+    !
+    ! - wjiang+reichle,  5 Oct 2021
+    
+    integer,                             intent(in)    :: m_hinterp    ! 0=nearest-neighbor, 1=bilinear
     type(tile_coord_type), dimension(:), intent(in)    :: tile_coord
-    real, intent(in) :: ll_lat, ll_lon, dlat, dlon
-    integer, intent(in) :: N_lon, N_lat
-    integer, dimension(:), intent(inout) :: i1, j1
-    integer, dimension(:), intent(inout) :: i2, j2
-    real,    dimension(:), intent(out) :: x1, x2, y1, y2
-    integer, optional, intent(out) :: rc
+    real,                                intent(in)    :: ll_lat, ll_lon, dlat, dlon
+    integer,                             intent(in)    :: N_lat, N_lon
+    integer,               dimension(:), intent(inout) :: i1, i2, j1, j2
+    real,                  dimension(:), intent(out)   :: x1, x2, y1, y2
+    integer, optional,                   intent(out)   :: rc
 
-    real, dimension(:), allocatable :: xnew, ynew, tmp_lat, tmp_lon
-    integer, dimension(:), allocatable :: inew, jnew
-    character(len=*), parameter :: Iam="get_bilinear_neighbors" 
-    real  :: offset
-
-    ! ll_lon and ll_lat refer to lower left corner of grid cell
-    ! (as opposed to the grid point in the center of the grid cell)
+    ! N_lon, N_lat, dlon, dlat, ll_lon, and ll_lat provide a complete description of the
+    ! regular lat/lon grid.
+    ! NOTE: ll_lon and ll_lat refer to lower left corner of grid cell
+    !       (as opposed to the grid point in the center of the grid cell)
 
     ! pchakrab: For bilinear interpolation, for each tile, we need:
     !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
     !  i1, i2, j1, j2 (defining the indices of four neighbors)
-    offset = 0.0001
+
+    ! local variables
+
     ! add small offsets to avoid unpredictable assignment of
     ! regularly spaced tiles (such as from the EASEv2 tile space)
-    ! to ERA5 grid cells along certain lat/lon values
+    ! to forcing grid cells along certain lat/lon values
     ! (that is, make it possible for post-processing scripts in other
     !  languages to exactly reproduce the mapping that is done here)
     ! TO DO: add if statement so the offset is only applied when
-    !        the model is run in the EASE grid tile space
+    !        the model is run when tiles are (mostly) identical to grid cells (e.g., EASE tile space)
+    
+    real,             parameter        :: offset=0.0001
+
+    integer                            :: N_cat
+    
+    real,    dimension(:), allocatable :: tmp_lat, tmp_lon
+    
+    character(len=*), parameter        :: Iam="get_neighbor_index" 
+
+    ! -------------------------------------------------------------------
+    !
+    ! find nearest neighbor
+    
     i1 = ceiling((tile_coord%com_lon + offset - ll_lon)/dlon)
     j1 = ceiling((tile_coord%com_lat + offset - ll_lat)/dlat)
+
     ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
-    !  we now have i1=(grid%N_lon+1)
+    !  we now have i1=(grid%N_lon+1).
     ! This needs to be fixed as follows:
+
     where( i1 > N_lon)  i1=1
     if (any(j1 > N_lat)) then
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, "encountered tile near the poles")
     end if
 
-    if (m_hinterp /= 1) then
+    ! done if nearest-neighbor interpolation is requested
+
+    if (m_hinterp == 0) then
       RETURN_(ESMF_SUCCESS)
     endif
 
-    x1 = (i1-1)*dlon + ll_lon  + dlon/2.
-    y1 = (j1-1)*dlat + ll_lat  + dlat/2.
+    ! continue for bilinear interpolation
+
+    x1 = (i1-1)*dlon + ll_lon  + 0.5*dlon                ! longitude of nearest neighbor
+    y1 = (j1-1)*dlat + ll_lat  + 0.5*dlat                ! latitude  of nearest neighbor
     
-    tmp_lon = tile_coord%com_lon + dlon/2.
-    tmp_lat = tile_coord%com_lat + dlat/2.
-   
-    inew =  ceiling((tmp_lon + offset - ll_lon)/dlon)   ! nearest-neighbor i index of shifted location
-    jnew =  ceiling((tmp_lat + offset - ll_lat)/dlat)   ! nearest-neighbor j index of shifted location
-    where (inew==i1) inew = inew - 1             ! if shift results in same lon index, go west (left)
-    where (jnew==j1) jnew = jnew - 1             ! if shift results in same lat index, go south (down)
+    ! find forcing grid cell ("2") diagonally across the tile from nearest neighbor (i1,j1) 
+    !
+    ! to this end, determine quadrant of forcing grid cell that contains center-of-mass coord of tile
+    !     
+    ! quadrant is found by determining nearest-neighbor indices (i2, j2) when tile is shifted 
+    !  by 1/2 of the grid-spacing to the northeast (upper right) and testing if the nearest
+    !  neighbor changes
+    
+    ! location of tiles when shifted by 1/2 grid spacing in positive lon and lat directions (northeast)
 
-    ! determine center lon and lat of forcing grid cell ("2");
-    ! must do this BEFORE wrap-around (such that xnew=x2 will be outside of [-180:180] near dateline),
+    N_cat = size(tile_coord,1)
+    
+    allocate(tmp_lon(N_cat))
+    allocate(tmp_lat(N_cat))
+    
+    tmp_lon = tile_coord%com_lon + 0.5*dlon              
+    tmp_lat = tile_coord%com_lat + 0.5*dlat
+
+    ! find nearest neighbor grid cell (i2,j2) of shifted tile (use same "offset" as above)
+    
+    i2 =  ceiling((tmp_lon + offset - ll_lon)/dlon)   
+    j2 =  ceiling((tmp_lat + offset - ll_lat)/dlat)   
+    
+    ! now determine desired quadrant and correct (i2,j2) accordingly
+    
+    where (i2==i1) i2 = i2 - 1        ! if 0.5*dlon shift results in same lon index, go west (left)
+    where (j2==j1) j2 = j2 - 1        ! if 0.5*dlat shift results in same lat index, go south (down)
+    
+    ! determine center lon and lat of forcing grid cell "2";
+    ! must do this BEFORE wrap-around (such that x2 will be outside of [-180:180] near dateline),
     ! otherwise distance calculation would not work near dateline
-    xnew = (inew-1)*dlon + ll_lon + dlon/2.     
-    ynew = (jnew-1)*dlat + ll_lat + dlat/2.     
-
-    ! wrap-around
-    where (inew==0) inew = N_lon
-    where (inew > N_lon) inew = 1
-    if (any(jnew==0) .or. any(jnew>N_lat)) then
+    
+    x2 = real(i2-1)*dlon + ll_lon + 0.5*dlon     
+    y2 = real(j2-1)*dlat + ll_lat + 0.5*dlat     
+    
+    ! wrap-around and check for proximity to poles
+    
+    where (i2==0) i2 = N_lon
+    where (i2 > N_lon) i2 = 1
+    if (any(j2==0) .or. any(j2>N_lat)) then
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, "encountered tile near the poles")
     end if
 
-    i2 = inew
-    j2 = jnew
-    x2 = xnew    ! lon of grid cell center (note that this intentionally 
-    y2 = ynew    ! lat of grid cell center
+    ! return cleanly after bilinear interpolation 
+    
+    if allocated(tmp_lon) deallocate(tmp_lon)
+    if allocated(tmp_lat) deallocate(tmp_lat)
+    
+    if (m_hinterp == 1) then
+      RETURN_(ESMF_SUCCESS)
+    endif
 
-    RETURN_(ESMF_SUCCESS)
+    ! error in m_hinterp input if we get to here:
+    
+    call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown m_hinterp!!')
  
  end subroutine 
 
