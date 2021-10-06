@@ -5486,8 +5486,8 @@ contains
 
     ! return cleanly after bilinear interpolation 
     
-    if allocated(tmp_lon) deallocate(tmp_lon)
-    if allocated(tmp_lat) deallocate(tmp_lat)
+    if (allocated(tmp_lon)) deallocate(tmp_lon)
+    if (allocated(tmp_lat)) deallocate(tmp_lat)
     
     if (m_hinterp == 1) then
       RETURN_(ESMF_SUCCESS)
