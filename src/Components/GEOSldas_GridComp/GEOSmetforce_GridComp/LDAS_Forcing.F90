@@ -5446,8 +5446,8 @@ contains
 
     ! continue for bilinear interpolation
 
-    x1 = (i1-1)*dlon + ll_lon  + 0.5*dlon                ! longitude of nearest neighbor
-    y1 = (j1-1)*dlat + ll_lat  + 0.5*dlat                ! latitude  of nearest neighbor
+    x1 = real(i1-1)*dlon + ll_lon  + 0.5*dlon                ! longitude of nearest neighbor
+    y1 = real(j1-1)*dlat + ll_lat  + 0.5*dlat                ! latitude  of nearest neighbor
     
     ! find forcing grid cell ("2") diagonally across the tile from nearest neighbor (i1,j1) 
     !
