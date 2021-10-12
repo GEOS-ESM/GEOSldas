@@ -146,15 +146,15 @@ contains
  integer, parameter :: XGRID = 3600
  integer, parameter :: YGRID = 7200
 
- real :: lat_ind(XGRID) = (/(ll, ll=1, 3600, 1)/)
- real :: lon_ind(YGRID) = (/(mm, mm=1, 7200, 1)/)
+ real :: lat_ind(XGRID) = (/(ll, ll=0, 3600-1, 1)/)
+ real :: lon_ind(YGRID) = (/(mm, mm=0, 7200-1, 1)/)
 
  !-------------------------------------------------------------
- ! UTC | 0000     | 0300    | 0600    | 0900 | 1200 | 1500 | 1800  | 2100    
- ! lon | -180 -135| -135 -90| -90 -45 | -45 0| 0 45 | 45 90| 90 135| 135-180
+ ! UTC | 0000    | 0300   | 0600  | 0900 | 1200 | 1500   | 1800    | 2100    
+ ! lon | 180 135 | 135 90 | 90 45 | 45 0 | 0 -45| -45 -90| -90 -135| -135 -180
  !
 
- real:: lon_subtime(9) = (/(kk, kk=-180, 180, 45)/)
+ real:: lon_subtime(9) = (/(kk, kk=180, -180, -45)/)
      
  integer, dimension(:), allocatable :: Snow_QA
  integer, dimension(:), allocatable :: CI_Index, Cloud_index
@@ -320,7 +320,9 @@ contains
     j = 0
     
     do i=1,N_data
-       
+       if (logit) write (logunit, *) 'hh_num=', hh_num
+       if (logit) write (logunit, *) 'time_index =', time_index
+
        if ( (MODIS_SCA(i)>0.)           .and.         &  ! any neg is nodata
             (CI_Index(i)>20)            .and.         &  ! Ignore obs
             (Snow_QA(i)<3)              .and.         &
@@ -336,6 +338,11 @@ contains
        end if
        
     end do
+   
+   if (logit) write (logunit, *) 'assimilation time', HH
+   if (logit) write (logunit, *) 'lat = ', lat
+   if (logit) write (logunit, *) 'lon = ', lon
+   if (logit) write (logunit, *) 'MODIS_SCA=', MODIS_SCA
     
     N_data = j
     
@@ -373,20 +380,22 @@ contains
    real, intent(out), dimension(N_catd):: MODIS_obs
    real, intent(out), dimension(N_catd):: std_MODIS_obs
    logical,intent(out) :: found_obs
+   logical :: file_exists
 
    !locals
-   character(2):: MM, DD
+   character(2):: MM, HH, MI
    character(4):: YYYY
    character(3):: DDD ! Day of Year 
-   character(8):: date_string
-   character(10):: time_string
 
    character(300):: tmpfname1
     
    integer, dimension(N_catd)  ::  tmp_tile_id
 
    integer :: i, ind, N_tmp, N_files
- 
+   integer :: hh_num, mi_num
+
+   integer:: dtstep_assim_max=10800
+
    character(300), dimension(:), allocatable :: fnames
    
    real, dimension(:), pointer:: tmp_obs, tmp_lat, tmp_lon
@@ -394,40 +403,52 @@ contains
    
    integer, dimension(N_catd):: N_obs_in_tile
 
+   character(len=*), parameter :: Iam = 'read_obs_MODISsca'
+   character(len=400) :: err_msg
+
    nullify (tmp_obs, tmp_lat, tmp_lon, tmp_tile_num)
 
+   write(HH, '(i2.2)') date_time%hour
+   read(HH, '(I10)') hh_num
+
+   write(MI, '(i2.2)') date_time%min
+   read(MI, '(I10)') mi_num
+
+   !restricting the assimilation time step not exceeding 3 hr
+   if (dtstep_assim > dtstep_assim_max) then
+     err_msg = 'dtstep_assim must not exceed 3 hours'
+   call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+   end if 
+
+   ! restricting the time stamp to only 0z 3z 6z ...
+   if ((mod(hh_num,3).NE.0) .or. (mi_num .NE. 0)) then
+      err_msg= 'assimilation timestep does not match'
+      call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+   end if
+ 
    !! initializing 
    found_obs = .false.
 
    write (YYYY,'(i4.4)') date_time%year
    write (MM,  '(i2.2)') date_time%month
-   write (DD,  '(i2.2)') date_time%day 
    write (DDD, '(i3.3)') date_time%dofyr
 
     write (logunit, *) 'Entered read_obs_MODIS'
-    write (logunit, *) 'Obs time: ', YYYY, MM, DD
+    write (logunit, *) 'Obs time: ', YYYY, MM 
     write (logunit, *) 'DOY: ', DDD
     
-   tmpfname1 = trim(this_obs_param%path) // '/Y' // YYYY // 'MOD10C1.A' // YYYY // DDD // &
+   tmpfname1 = trim(this_obs_param%path) //  YYYY // 'MOD10C1.A' // YYYY // DDD // &
                '.006.hdf'  
 
    if (logit) write (logunit, *) 'Trying to read data from', &
    trim(tmpfname1)
 
-   open(10, file=tmpfname1, form='formatted', action='read')
-   read(10,*), N_files
-   close(10)
-
-   if (N_files > 0) then
+   inquire(file=trim(tmpfname1), exist=file_exists)
    
-      allocate(fnames(N_files))
-    
-      do i=1,N_files
-         read(10, '(a)') fnames(i)
-      end do
+   if (file_exists) then
+      N_files= 1
+      fnames(N_files) = tmpfname1
    end if
-
-   close(10, status='delete')
 
    if (N_files>0) then 
    
@@ -489,7 +510,7 @@ contains
        
       end if  
     
-if (associated(tmp_obs))      deallocate(tmp_obs)
+    if (associated(tmp_obs))      deallocate(tmp_obs)
     if (associated(tmp_lon))      deallocate(tmp_lon)
     if (associated(tmp_lat))      deallocate(tmp_lat)
   end subroutine read_obs_MODISsca
