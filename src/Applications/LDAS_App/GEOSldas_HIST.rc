@@ -1,14 +1,17 @@
 # Sample HISTORY.rc file for GEOSldas
 #
-# This file is edited by "ldsetup" via "process_hist.csh".  The strings '#ASSIM', '#EASE', and '#CUBE' 
-#  are not linked to MAPL HISTORY functionality.  For example, the line 
+# This HISTORY template is edited by "ldas_setup" via "process_hist.csh".  
+# The strings '#ASSIM', '#EASE', and '#CUBE' are *not* linked to MAPL HISTORY 
+# functionality.  For example, the line 
 #    "#CUBE            'tavg24_2d_lnd_Nx'"
-#  does not mean that the 'lnd' output will be on a cube-sphere grid. 
+#  does *not* mean that the 'lnd' output will be on a cube-sphere grid. 
 
 #CUBE VERSION: 1
+
+# Must edit 'EXPID' manually if HISTORY file is re-used without going  
+#  through "ldas_setup".
+#
 EXPID:  GEOSldas_expid
-EXPDSC: GEOSldas_output
-EXPSRC: GEOSldas
 
 COLLECTIONS:
 #EASE            'tavg24_1d_lfs_Nt'
