@@ -80,15 +80,22 @@ module LDAS_ForceMod
   type(local_grid), target :: local_info
 
   ! for cubed sphere forcing checking, initialized by GEOS_MetforceGridComp
+  !
   integer, public :: im_world_cs = 0
-  ! add small offsets to avoid unpredictable assignment of
-  ! regularly spaced tiles (such as from the EASEv2 tile space)
-  ! to forcing grid cells along certain lat/lon values
-  ! (that is, make it possible for post-processing scripts in other
-  ! languages to exactly reproduce the mapping that is done here)
-  ! default 0.0. It is set to 0.0001 by GEOS_MetforceGridComp during initialization if it is EASE grid
-  public :: set_neighbor_offset
-  real, private :: neighbor_offset = 0.0
+
+  ! For (mostly) regularly spaced tiles (such as in the EASE tile spaces),
+  ! add a small offset to each tile's center-of-mass lat/lon when looking
+  ! for the nearest neighbor.  This is done to avoid the unpredictable assignment 
+  ! of tiles to forcing grid cells, which would otherwise happen along certain 
+  ! lat/lon values (that is, make it possible for post-processing scripts in
+  ! other languages to exactly reproduce the nearest-neighbor mapping that is 
+  ! done here).
+  ! Default offset is 0.0. Offset is changed to 0.0001 by GEOS_MetforceGridComp 
+  ! during initialization if tile space is based on EASE grid.
+  !
+  public        :: set_neighbor_offset 
+  real, private :: neighbor_offset     = 0.0
+  
 contains
 
   ! ********************************************************************
