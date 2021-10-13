@@ -16,8 +16,8 @@ module GEOS_MetforceGridCompMod
   use LDAS_TileCoordType, only: TILECOORD_WRAP
   use LDAS_ForceMod, only: LDAS_GetForcing => get_forcing
   use LDAS_ForceMod, only: LDAS_move_new_force_to_old
-  use LDAS_ForceMod, only: FileOpenedHash,GEOS_closefile
-  use LDAS_ForceMod, only: im_world_cs, neighbor_offset
+  use LDAS_ForceMod, only: FileOpenedHash,GEOS_closefile, set_neighbor_offset
+  use LDAS_ForceMod, only: im_world_cs
   use LDAS_DriverTypes, only: met_force_type, assignment(=)
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_InterpMod, only: LDAS_TInterpForcing=>metforcing_tinterp
@@ -621,8 +621,9 @@ contains
        call MAPL_GridGet(agrid, globalCellCountPerDim=dims, rc=status) 
        VERIFY_(STATUS)
        im_world_cs = dims(1)
-       neighbor_offset = 0.0
-    endif 
+    endif
+
+    if( index(trim(grid_type), 'EASE') /=0) call set_neighbor_offset(0.0001) 
 
     ! Get MetForcing values and put them in Ldas' internal state
     ! Get resources needed to call LDAS_ForceMod::get_forcing()

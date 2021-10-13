@@ -86,8 +86,9 @@ module LDAS_ForceMod
   ! to forcing grid cells along certain lat/lon values
   ! (that is, make it possible for post-processing scripts in other
   ! languages to exactly reproduce the mapping that is done here)
-  ! default 0.001. It is changed to 0.0 if it is Cubed Sphere grid by GEOS_MetforceGridComp during initialization
-  real, public :: neighbor_offset = 0.0001
+  ! default 0.0. It is set to 0.0001 by GEOS_MetforceGridComp during initialization if it is EASE grid
+  public :: set_neighbor_offset
+  real, private :: neighbor_offset = 0.0
 contains
 
   ! ********************************************************************
@@ -5378,6 +5379,10 @@ contains
     
   end subroutine GEOS_openfile
 
+  subroutine set_neighbor_offset(offset)
+    real, intent(in) :: offset
+    neighbor_offset = offset
+  end subroutine
   ! **************************************************************** 
   
   subroutine get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, &
