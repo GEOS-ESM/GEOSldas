@@ -81,7 +81,13 @@ module LDAS_ForceMod
 
   ! for cubed sphere forcing checking, initialized by GEOS_MetforceGridComp
   integer, public :: im_world_cs = 0
-
+  ! add small offsets to avoid unpredictable assignment of
+  ! regularly spaced tiles (such as from the EASEv2 tile space)
+  ! to forcing grid cells along certain lat/lon values
+  ! (that is, make it possible for post-processing scripts in other
+  ! languages to exactly reproduce the mapping that is done here)
+  ! default 0.001. It is changed to 0.0 if it is Cubed Sphere grid by GEOS_MetforceGridComp during initialization
+  real, public :: neighbor_offset = 0.0001
 contains
 
   ! ********************************************************************
@@ -5406,16 +5412,7 @@ contains
 
     ! local variables
 
-    ! add small offsets to avoid unpredictable assignment of
-    ! regularly spaced tiles (such as from the EASEv2 tile space)
-    ! to forcing grid cells along certain lat/lon values
-    ! (that is, make it possible for post-processing scripts in other
-    !  languages to exactly reproduce the mapping that is done here)
-    ! TO DO: add if statement so the offset is only applied when
-    !        the model is run when tiles are (mostly) identical to grid cells (e.g., EASE tile space)
     
-    real,             parameter        :: offset=0.0001
-
     integer                            :: N_cat
     
     real,    dimension(:), allocatable :: tmp_lat, tmp_lon
@@ -5426,8 +5423,8 @@ contains
     !
     ! find nearest neighbor
     
-    i1 = ceiling((tile_coord%com_lon + offset - ll_lon)/dlon)
-    j1 = ceiling((tile_coord%com_lat + offset - ll_lat)/dlat)
+    i1 = ceiling((tile_coord%com_lon + neighbor_offset - ll_lon)/dlon)
+    j1 = ceiling((tile_coord%com_lat + neighbor_offset - ll_lat)/dlat)
 
     ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
     !  we now have i1=(grid%N_lon+1).
@@ -5469,8 +5466,8 @@ contains
 
     ! find nearest neighbor grid cell (i2,j2) of shifted tile (use same "offset" as above)
     
-    i2 =  ceiling((tmp_lon + offset - ll_lon)/dlon)   
-    j2 =  ceiling((tmp_lat + offset - ll_lat)/dlat)   
+    i2 =  ceiling((tmp_lon + neighbor_offset - ll_lon)/dlon)   
+    j2 =  ceiling((tmp_lat + neighbor_offset - ll_lat)/dlat)   
     
     ! now determine desired quadrant and correct (i2,j2) accordingly
     
