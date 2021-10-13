@@ -568,6 +568,7 @@ contains
     integer :: AEROSOL_DEPOSITION
     type(MAPL_LocStream) :: locstream
     character(len=ESMF_MAXSTR) :: grid_type
+    character(len=ESMF_MAXSTR) :: gridname
     type(ESMF_Grid) :: agrid
     integer :: dims(ESMF_MAXDIM)
     ! Begin...
@@ -623,7 +624,9 @@ contains
        im_world_cs = dims(1)
     endif
 
-    if( index(trim(grid_type), 'EASE') /=0) call set_neighbor_offset(0.0001) 
+    call MAPL_GetResource(MAPL, gridname,Label="GEOSldas.GRIDNAME:",RC=STATUS)
+    VERIFY_(STATUS)
+    if( index(trim(gridname), 'EASE') /=0) call set_neighbor_offset(0.0001) 
 
     ! Get MetForcing values and put them in Ldas' internal state
     ! Get resources needed to call LDAS_ForceMod::get_forcing()
