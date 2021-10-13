@@ -142,7 +142,7 @@ FIRST_ENS_ID: 0
 
 # ---- Job segments: Length
 #
-#      Specify period between GEOSldas.x shutdown and restart.
+#      Specify period between GEOSldas.x restart and shutdown.
 #      Default is the entire simulation period (END_DATE minus BEG_DATE).
 #      Format:            yyyymmdd hhmmss
 #
@@ -150,10 +150,11 @@ FIRST_ENS_ID: 0
 
 # ---- Job segments: Number
 #
-#      One lenkf.j job simulates NUM_SGMT*JOB_SGMT time, then re-submits itself,
-#      so (NUM_SGMT*JOB_SGMT) should be done within the 12 hour CPU time limit (at NCCS).
-#      Low values for NUM_SGMT are recommended for run-time and storage efficiency.
-#      Default is 1.
+#      One lenkf.j job simulates (NUM_SGMT*JOB_SGMT) time, then re-submits itself.
+#      Avoid unnecessarily exiting and re-initializing GEOSldas.x by using 
+#      NUM_SGMT=1 (default) and the max possible JOB_SGMT so that (NUM_SGMT*JOB_SGMT) 
+#      completes within the job's wall time limit (12 hours at NCCS).  
+#      If desired, request intermediate restart files using RECORD_FREQUENCY. 
 #
 # NUM_SGMT: 1
 
