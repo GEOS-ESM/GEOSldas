@@ -108,6 +108,16 @@ if( ${LSMCHOICE} > 1 ) then # CatchCN Only
     ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/FPAR_CDF_Params-M09.nc4
 endif
 
+########################################################################
+#    if $LADAS_COUPLING == 1 use $FVWORK and copy forcing to Scratch
+########################################################################
+
+if ( $LADAS_COUPLING == 1 ) then
+   echo $FVWORK
+   ls $FVWORK/*lfo_Nx+-*nc4
+   /bin/cp -f $FVWORK/*lfo_Nx+-*nc4  $SCRDIR/.
+endif
+
 #######################################################################
 #              Create HISTORY Collection Directories
 #######################################################################
