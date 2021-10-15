@@ -5086,7 +5086,7 @@ contains
     
     select case (update_type)
 
-    case (1,3,4,5,6,9)   ! "1d" updates
+    case (1,3,4,5,6,9,11)   ! "1d" updates
 
        ! Make xcompact and ycompact just large enough so that 
        ! the EnKF analysis correctly identifies the tiles 

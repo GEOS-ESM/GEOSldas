@@ -85,7 +85,7 @@ module clsm_ensupd_read_obs
 contains
  
  subroutine read_MODISsca_hdf(&
- N_files, date_time, fnames, N_data, &
+ N_files, date_time, N_data, fnames, &
  lon, lat, MODIS_SCA)
 
  !read snow cover data from daily MOD10C1 data located under lis folder
@@ -101,11 +101,10 @@ contains
  integer, intent(out) :: N_data
 
  real, dimension(:), pointer, allocatable :: lon, lat
- real, dimension(:), pointer :: lon_c, lat_c
+ ! real, dimension(:), pointer :: lon_c, lat_c, lon_1D, lat_1D
  real, dimension(:), pointer :: MODIS_SCA
 
  type(date_time_type),intent(in) :: date_time ! loading the UTC hour information to constrain the longitude of MODIS obs.
- character(2):: HH
 
  !local parameters
  integer, parameter:: N_fields = 4 
@@ -121,37 +120,42 @@ contains
  ! step 1: remove the Snow cover > 100 (e.g., lake, night, inland water, ocean..)
  ! step 2: Clear Index (CI): CI > 20% is considered
  !
+ integer,parameter :: qc_clear_index_threshold = 20 !screen for sufficiently clear condition
+ integer,parameter :: qc_snow_spatial_threshold = 3 !screen for basic data quality (e.g., 0:best 1:good 2:OK 3:poor, 4:others) 
+ integer,parameter :: qc_snow_cover_threshold = 100 !screen for areas inland water, ocean, cloud obscured and fill
 
  !declariations of hdf functions
  integer:: hopen, vfstart, vsfatch, vsqfnelt, vsfseek, vsfsfld, vsfread
- integer:: vsfdtch, vfend, hclose
+ integer:: vsfdtch, vfend, hclose, vsffnd
 
  ! declarations of hdf-related parameters and variables
  integer, dimension(N_files) :: file_id, vdata_id 
- integer :: status, n_read, n_records, record_pos
+ integer :: status, n_read, record_pos
  integer, parameter :: num_dds_block = 0  ! only important for writing hdf
- integer, parameter :: vdata_ref = 4
+ integer, parameter :: vdata_ref = 7
  integer, parameter :: DFACC_READ     = 1 ! from hdf.inc
  integer, parameter :: FULL_INTERLACE = 0 ! from hdf.inc
  
  ! local variables
  logical :: must_stop
- integer, dimension(N_files) :: N_data_tmp
 
  ! variables to define latitude and longitude    
  integer :: i, j, k, k_off, ll, mm, kk
- integer :: hh_num, time_index
+ integer :: time_index
 
- integer, parameter :: bin_size = 0.05
+ real, parameter :: bin_size = 0.05
  integer, parameter :: XGRID = 3600
  integer, parameter :: YGRID = 7200
+ integer, dimension(N_files) :: N_data_tmp
 
- real :: lat_ind(XGRID) = (/(ll, ll=0, 3600-1, 1)/)
- real :: lon_ind(YGRID) = (/(mm, mm=0, 7200-1, 1)/)
-
+ real :: lat_ind(XGRID) = (/(ll, ll=0, XGRID-1, 1)/)
+ real :: lon_ind(YGRID) = (/(mm, mm=0, YGRID-1, 1)/)
+ real, dimension(XGRID) :: lat_c(XGRID)
+ real, dimension(YGRID) :: lon_c(YGRID)
+ real, dimension(XGRID*YGRID) :: lat_1D, lon_1D
  !-------------------------------------------------------------
  ! UTC | 0000    | 0300   | 0600  | 0900 | 1200 | 1500   | 1800    | 2100    
- ! lon | 180 135 | 135 90 | 90 45 | 45 0 | 0 -45| -45 -90| -90 -135| -135 -180
+ ! lon | 135 180 | 90 135 | 45 90 | 0 45 | -45 0| -90 -45| -135 -90| -180 -135
  !
 
  real:: lon_subtime(9) = (/(kk, kk=180, -180, -45)/)
@@ -165,47 +169,43 @@ contains
  character(len=*), parameter :: Iam = 'read_MOD10C1_hdf'
  character(len=400) :: err_msg
 
+ if (logit) write(logunit,*) 'Entering the hdf reader'
+ 
+ ! initialize N_data
+ N_data_tmp(N_files) = 3600*7200
+
+ if (logit) write(logunit, *) 'N_data_tmp=', N_data_tmp(1)
+
+ N_data = sum(N_data_tmp)
+ 
+  if (logit) write(logunit, *) 'N_data', N_data
+
  lat_c = (90-bin_size/2)-bin_size*lat_ind
- lon_c = (-180+bin_size/2)-bin_size*lon_ind
+ lon_c = (-180+bin_size/2)+bin_size*lon_ind
+
+ if (logit) write(logunit, *) 'lon_c=', lon_c
+
 
  do i=1,7200
- lat(3600*(i-1)+1:3600*i)= lat_c
- lon(3600*(i-1)+1:3600*i)= lon_c(i)
+ lat_1D(3600*(i-1)+1:3600*i)= lat_c
+ lon_1D(3600*(i-1)+1:3600*i)= lon_c(i)
  end do
 
-  ! determine number of data to be read from each file
+ ! allocate pointers (must be deallocated outside this subroutine)
     
-    do j=1,N_files
-       
-       ! open and "start" hdf file 
-       file_id(j) = hopen( fnames(j), DFACC_READ, num_dds_block )  
-       status = vfstart(file_id(j))
-         
-       ! select vdata block that contains fields of interest
-       vdata_id(j) = vsfatch(file_id(j), vdata_ref, 'r') 
-       
-       ! determine number of records in vdata
-       status = vsqfnelt(vdata_id(j), n_records)
-       N_data_tmp(j) = n_records
-       
-    end do
-
-    ! allocate pointers (must be deallocated outside this subroutine)
-    
-    must_stop = .false.
-    
-    if ( associated(lon) .or. associated(lat) .or. associated(MODIS_SCA) ) then
-       must_stop = .true.
-    end if
+ must_stop = .false.
+   
+ if ( associated(lon) .or. associated(lat) .or. associated(MODIS_SCA) ) then
+    must_stop = .true.
+ end if
   
-    if (must_stop) then       
-    err_msg = 'output pointers must not be associated/allocated on input.'
-    call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
- 
-    end if
+ if (must_stop) then       
+   err_msg = 'output pointers must not be associated/allocated on input.'
+   call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+ end if
 
-    allocate(lon(N_data))
     allocate(lat(N_data))
+    allocate(lon(N_data))
     allocate(MODIS_SCA(N_data))
     
     allocate(CI_Index(N_data))
@@ -217,15 +217,21 @@ contains
     k_off = 0
     
     do j=1,N_files
-       
+       ! open and start "hdf file"       
+       if(logit) write(logunit, *) 'fname: ', fnames(j)
+       file_id(j) = hopen(fnames(j), DFACC_READ, num_dds_block)
+       status = vfstart(file_id(j))
+      
        allocate(tmprealvec(N_data_tmp(j)))
        allocate(tmpint2vec(N_data_tmp(j)))
-       
+      
+       vdata_id(j) = vsfatch(file_id(j), vdata_ref, 'r')
+       if (logit) write (logunit, *) 'vdata_id: ', vdata_id(j)
+ 
        do i=1,N_fields
-          
           ! go to start of record (zero-based count)
           record_pos = vsfseek(vdata_id(j), 0)
-          
+
           ! pick the field to be read
           status = vsfsfld(vdata_id(j), field_names(i))
           
@@ -240,7 +246,7 @@ contains
              
              do k=1,N_data_tmp(j)
 
-                if ( MODIS_SCA(k+k_off) > 100) then
+                if ( MODIS_SCA(k+k_off) > qc_snow_cover_threshold) then
                    MODIS_SCA(k+k_off) = -1
                 end if
              end do
@@ -251,12 +257,7 @@ contains
                   N_data_tmp(j), FULL_INTERLACE)
              
              CI_Index(k_off+1:k_off+N_data_tmp(j)) = tmprealvec
-             do k=1,N_data_tmp(j)
-             
-                if (CI_Index(k+k_off) <20) then
-                    CI_Index(k+k_off) = -1
-                end if
-             end do
+          
           case (3)
              n_read = vsfread( vdata_id(j) ,tmpint2vec, &
                   N_data_tmp(j), FULL_INTERLACE)
@@ -292,14 +293,11 @@ contains
            call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'ERROR reading hdf')
        end do
        
-
        ! clean up
-
        deallocate(tmprealvec)
        deallocate(tmpint2vec)
        
        ! close hdf files
-       
        status = vsfdtch(vdata_id(j))
        status = vfend(file_id(j))
        status = hclose(file_id(j))
@@ -309,10 +307,7 @@ contains
        
     end do
 
-    write(HH, '(i2.2)') date_time%hour
-    read(HH, '(I10)') hh_num
-
-    time_index = hh_num/3 +1
+    time_index = date_time%hour/3 +1
     
     ! -------------------------------------
     ! eliminate no-data-values and data that fail initial QC
@@ -320,14 +315,13 @@ contains
     j = 0
     
     do i=1,N_data
-       if (logit) write (logunit, *) 'hh_num=', hh_num
        if (logit) write (logunit, *) 'time_index =', time_index
 
-       if ( (MODIS_SCA(i)>0.)           .and.         &  ! any neg is nodata
-            (CI_Index(i)>20)            .and.         &  ! Ignore obs
-            (Snow_QA(i)<3)              .and.         &
-            (lon(i)>=lon_subtime(time_index)) .and.         &
-            (lon(i)<lon_subtime(time_index+1))              & 
+       if ( (MODIS_SCA(i)>0.)                        .and.         &  ! any neg is nodata
+            (CI_Index(i)>qc_clear_index_threshold)   .and.         &  
+            (Snow_QA(i)<qc_snow_spatial_threshold)   .and.         &
+            (lon(i)<=lon_subtime(time_index)) .and.                &  !selection of longitudal band
+            (lon(i)>lon_subtime(time_index+1))                     &  !depending on the time info
            ) then     
           
           j=j+1
@@ -339,10 +333,11 @@ contains
        
     end do
    
-   if (logit) write (logunit, *) 'assimilation time', HH
-   if (logit) write (logunit, *) 'lat = ', lat
-   if (logit) write (logunit, *) 'lon = ', lon
-   if (logit) write (logunit, *) 'MODIS_SCA=', MODIS_SCA
+   ! debugging purpose to check whehter reader works properly or not
+   if (logit) write (logunit, *) 'assimilation time', date_time%hour
+   if (logit) write (logunit, *) 'lat = ', lat(1:j)
+   if (logit) write (logunit, *) 'lon = ', lon(1:j)
+   if (logit) write (logunit, *) 'MODIS_SCA=', MODIS_SCA(1:j)
     
     N_data = j
     
@@ -383,7 +378,7 @@ contains
    logical :: file_exists
 
    !locals
-   character(2):: MM, HH, MI
+   character(2):: MM
    character(4):: YYYY
    character(3):: DDD ! Day of Year 
 
@@ -391,11 +386,10 @@ contains
     
    integer, dimension(N_catd)  ::  tmp_tile_id
 
-   integer :: i, ind, N_tmp, N_files
-   integer :: hh_num, mi_num
+   integer :: i, ind, N_files, N_tmp
 
-   integer:: dtstep_assim_max=10800
-
+   integer, parameter :: dtstep_assim_threshold=10800  ! restricting dtstep_assim to 3 hours
+ 
    character(300), dimension(:), allocatable :: fnames
    
    real, dimension(:), pointer:: tmp_obs, tmp_lat, tmp_lon
@@ -407,27 +401,21 @@ contains
    character(len=400) :: err_msg
 
    nullify (tmp_obs, tmp_lat, tmp_lon, tmp_tile_num)
-
-   write(HH, '(i2.2)') date_time%hour
-   read(HH, '(I10)') hh_num
-
-   write(MI, '(i2.2)') date_time%min
-   read(MI, '(I10)') mi_num
-
-   !restricting the assimilation time step not exceeding 3 hr
-   if (dtstep_assim > dtstep_assim_max) then
-     err_msg = 'dtstep_assim must not exceed 3 hours'
+   !restricting the assimilation time step to *only* 3 hr
+   if (dtstep_assim .NE. dtstep_assim_threshold) then
+     err_msg = 'dtstep_assim should be equal to 3 hours'
    call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
    end if 
 
    ! restricting the time stamp to only 0z 3z 6z ...
-   if ((mod(hh_num,3).NE.0) .or. (mi_num .NE. 0)) then
+   if ((mod(date_time%hour,3).NE.0) .or. (date_time%min .NE. 0)) then
       err_msg= 'assimilation timestep does not match'
       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
    end if
  
    !! initializing 
    found_obs = .false.
+   N_tmp = 3600*7200
 
    write (YYYY,'(i4.4)') date_time%year
    write (MM,  '(i2.2)') date_time%month
@@ -437,23 +425,36 @@ contains
     write (logunit, *) 'Obs time: ', YYYY, MM 
     write (logunit, *) 'DOY: ', DDD
     
-   tmpfname1 = trim(this_obs_param%path) //  YYYY // 'MOD10C1.A' // YYYY // DDD // &
+   tmpfname1 = trim(this_obs_param%path) //  YYYY // '/MOD10C1.A' // YYYY // DDD // &
                '.006.hdf'  
 
    if (logit) write (logunit, *) 'Trying to read data from', &
    trim(tmpfname1)
 
    inquire(file=trim(tmpfname1), exist=file_exists)
-   
+  
+   if (logit) write (logunit, *), file_exists
+       
    if (file_exists) then
+      if (logit) write (logunit, *) 'Entering file exist routine'
       N_files= 1
+      allocate(fnames(N_files))
+      
       fnames(N_files) = tmpfname1
    end if
 
+   if (logit) write (logunit, *) 'N_files = ', N_files
+   if (logit) write (logunit, *) 'fnames = ', fnames
+
    if (N_files>0) then 
    
+     if (logit) write (logunit, *) 'calling MODISsca_hdf subroutine'
+     if (logit) write (logunit, *) 'N_files = ', N_files
+     if (logit) write (logunit, *) 'N_tmp = ', N_tmp
+     if (logit) write (logunit, *) 'fnames = ', fnames(N_files)
+
     call read_MODISsca_hdf( &
-         N_files, date_time, fnames, N_tmp, tmp_lon, tmp_lat, tmp_obs)
+         N_files, date_time, N_tmp, fnames, tmp_lon, tmp_lat, tmp_obs)
        
     if (logit) then
       write (logunit, *) 'read_obs_MODISsca :read MODIS datasets file name:', &
@@ -479,7 +480,7 @@ contains
       MODIS_obs = 0.
       N_obs_in_tile = 0
     
-      do i=1,N_tmp
+      do i=1,N_files
          ind = tmp_tile_num(i)
   
          if (ind>0) then
@@ -624,7 +625,6 @@ contains
     do j=1,N_files
        
        ! open and "start" hdf file 
-       
        file_id(j) = hopen( fnames(j), DFACC_READ, num_dds_block )  
        
        status = vfstart(file_id(j))
@@ -813,7 +813,7 @@ contains
     ! -------------------------------------
     !
     ! eliminate no-data-values and data that fail initial QC
-    
+ 
     j = 0
     
     do i=1,N_data
