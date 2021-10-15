@@ -365,7 +365,7 @@ COLLECTIONS:
 
 # For catch_progn_incr, *.frequency and *.ref_time must be consistent with the LDAS.rc resource
 # parameters LANDASSIM_DT and LANDASSIM_T0.
-# By default, no bit shaving for increments output,
+# By default, no bit shaving for increments output.
 
   catch_progn_incr.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Prognostics Increments',
   catch_progn_incr.template:    '%y4%m2%d2_%h2%n2z.bin',
