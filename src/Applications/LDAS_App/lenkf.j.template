@@ -113,8 +113,7 @@ endif
 ########################################################################
 
 if ( $LADAS_COUPLING == 1 ) then
-   echo $FVWORK
-   ls $FVWORK/*lfo_Nx+-*nc4
+   echo "copying lfo_Nx+- met forcing from $FVWORK to $SCRDIR"
    /bin/cp -f $FVWORK/*lfo_Nx+-*nc4  $SCRDIR/.
 endif
 
