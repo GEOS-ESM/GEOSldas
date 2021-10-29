@@ -522,7 +522,6 @@ contains
 
           if (allocated(obsbias_ok)) deallocate(obsbias_ok)
 
-
           ! IF NEEDED, INCLUDE WITHHOLDING SUBROUTINE HERE.
           ! SUCH A SUBROUTINE SHOULD CHANGE Observations(i)%assim TO FALSE
           ! IF THE OBSERVATION IS TO BE WITHHELD
@@ -533,6 +532,7 @@ contains
           ! count observations across all processors that are left after
           !  model-based QC (done within get_obs_pred())
 
+  
 #ifdef LDAS_MPI
 
           call MPI_AllReduce(                             &
@@ -542,7 +542,6 @@ contains
 #else
           N_obsf = N_obsl
 #endif
-
           ! check whether any "assim" flag is set in obs_param
 
 	  ! CSD - if want to skip cat_enkf_incr and apply_incr blocks
@@ -563,7 +562,6 @@ contains
           ! Obs bias
           !
           ! B2. Update obs_bias and Observations with the obs bias increment
-
 	  if ( (N_obsl>0) .and. (N_obsbias_max>0) )                              &
                call obs_bias_upd_bias_and_Obs(date_time, N_catl, N_catf,           &
                N_obsl, N_ens,  N_obs_param, N_obsbias_max, f2l, obs_param,         &
@@ -651,6 +649,7 @@ contains
           !-AnaLoadBal-Prereq-starts-here-
           ! Step 1a: identify obs w/ obs%assim==.true.
           allocate(ind_obsl_assim(N_obsl), source=-99)
+        
           call get_ind_obs_assim(N_obsl, Observations_l%assim, N_obsl_assim, ind_obsl_assim)
           ! its easier to write ptr2indx than ind_obsl_assim(1:N_obsl_assim)
           ptr2indx => ind_obsl_assim(1:N_obsl_assim)
@@ -780,6 +779,7 @@ contains
           allocate(indObs_ana(N_obsf_assim), source=-99)
           allocate(tmp_ind_obs(N_obsf_assim), source=-99)
           nObs_ana = 0
+          
           do ctr=1,nTiles_ana
              iTile = indTiles_ana(ctr) ! 'full' index
              halo = get_halo_around_tile(tile_coord_f(iTile), xcompact, ycompact)
@@ -990,10 +990,12 @@ contains
           !       of Observations_l and Obs_pred_l that are "good"
           !       [allocation of these arrays in get_obs_pred() is larger
           !        than eventual size]
+          
           call get_halo_obs( N_ens, N_catl, N_obsl,                          &
                Observations_l(1:N_obsl), Obs_pred_l(1:N_obsl,1:N_ens),       &
                tile_coord_l, xcompact, ycompact,                             &
                N_obslH, Observations_lH, Obs_pred_lH )
+
 
 #endif
 
@@ -1057,7 +1059,7 @@ contains
                cat_param_ana,                             &
                xcompact, ycompact, fcsterr_inflation_fac, &
                cat_progn_ana, cat_progn_incr_ana,         &
-               met_force, cat_diagS)
+               met_force)
           call cpu_time(t_end)
 
           

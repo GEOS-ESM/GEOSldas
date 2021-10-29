@@ -1484,7 +1484,6 @@ contains
     ! ---------------------------------------------------------------------
 
     ! get species-dependent time of day index
-
     do i=1,N_obs_param
        
        indv_time(i) = bias_time_of_day_index( date_time, obs_param(i)%bias_Npar )

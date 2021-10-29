@@ -51,7 +51,6 @@ module clsm_ensupd_upd_routines
        catprogn2wesn,                             &
        catprogn2htsn,                             &
        catprogn2ghtcnt,                           &
-       cat_diagS_type,                            &
        assignment (=),                            &
        operator (+),                              &
        operator (/)
@@ -1332,7 +1331,7 @@ contains
           
           call StieglitzSnow_calc_asnow( N_snow, N_catl,                         &
                catprogn2wesn(N_catl,cat_progn(:,n_e)),                           &
-               asnow )
+               asnow)
           
           call catch_calc_tsurf_excl_snow( N_catl,                               &
                cat_progn(:,n_e)%tc1, cat_progn(:,n_e)%tc2, cat_progn(:,n_e)%tc4, &
@@ -1347,7 +1346,7 @@ contains
        if (get_asnow_l) then !jpark50
            call StieglitzSnow_calc_asnow( N_snow, N_catl,                         &
                 catprogn2wesn(N_catl,cat_progn(:,n_e)),                           &
-                asnow)
+                asnow_l)
        end if
  
        if (get_Tb_l) then
@@ -1481,6 +1480,7 @@ contains
     ! added get_asnow_lH at the function jpark50
     if (allocated(tile_data_l))  deallocate(tile_data_l)
     allocate(tile_data_l(N_catl,N_fields,N_ens))
+
     call get_obs_pred_comm_helper( N_catl, N_ens, N_TbuniqFreqAngRTMid,          &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_asnow_lH, get_Tb_lH, N_fields, &
          option=1, tile_data=tile_data_l,                                        &
@@ -1488,7 +1488,6 @@ contains
          Tb_h=Tb_h_l, Tb_v=Tb_v_l, asnow=asnow_l )
     
     ! communicate tile_data_l as needed and get tile_data_lH
-    
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
          N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
          N_catlH, tile_data_lH=tile_data_lH )    
@@ -1548,7 +1547,7 @@ contains
             tile_grid_lH, maxval(N_tile_in_cell_ij_lH), tile_num_in_cell_ij_lH )
        
     end if
-    
+    if(logit) write(logunit,*) 'Tile change completed' 
     ! -----------------------
     
     allocate(ind_tmp(    N_catlH))
@@ -1974,7 +1973,7 @@ contains
        end do
 
     end if
-
+    if(logit) write(logunit,*) 'Ending get_obs_pred'
     ! ----------------------------------------------------------------
     
   end subroutine get_obs_pred
@@ -3158,7 +3157,6 @@ contains
     ! -----------------------------------------------------------------
     
     nullify(obs_pert_param)
-    
     ! determine pert_grid_lH 
     !  - pert_grid_lH is the local grid for which perturbations are needed
     !  - pert_grid_lH is larger than pert_grid_l by the "halo"
@@ -3400,7 +3398,8 @@ contains
 
     !call check_obs_pert( N_ens, N_catd, N_obs, cat_param, Observations, &
     !     Obs_pert )
-    
+    if(logit) write(logunit, *) 'exit get_obs_pert' 
+ 
   end subroutine get_obs_pert
   
   ! *********************************************************************
@@ -3412,7 +3411,7 @@ contains
        Observations, Obs_pred, Obs_pert,                        &
        cat_param,                                               &
        xcompact, ycompact, fcsterr_inflation_fac,               &
-       cat_progn, cat_progn_incr, met_force, cat_diagS)
+       cat_progn, cat_progn_incr, met_force)
     
     ! get increments for Catchment prognostic variables
     !
@@ -3463,7 +3462,7 @@ contains
     real, intent(in), dimension(N_obs,N_ens)  :: Obs_pert
     
     type(met_force_type), dimension(N_catd), intent(in) :: met_force !jpark50 
-    type(cat_diagS_type), dimension(N_catd), intent(in) :: cat_diagS !jpark50
+    !type(cat_diagS_type), dimension(N_catd), intent(in) :: cat_diagS !jpark50
     type(cat_param_type), dimension(N_catd), intent(in) :: cat_param
     
     real, intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
@@ -3535,6 +3534,7 @@ contains
     real, dimension(     N_catd)          :: tsurf_ensavg
     real, dimension(     N_catd)          :: SWE_ensavg
     real, dimension(     N_catd)          :: tp1_ensavg
+    real, dimension(     N_catd)          :: asnow_ensavg
 
     type(obs_param_type)                  :: this_obs_param
    
@@ -3657,19 +3657,21 @@ contains
     SWE_ensavg   = 0.
     tsurf_ensavg = 0.
     tp1_ensavg   = 0.
-    
+    asnow_ensavg = 0.
+
     do n_e=1,N_ens
        
        SWE_ensavg   = SWE_ensavg   + SWE(    :,n_e)
        tsurf_ensavg = tsurf_ensavg + tsurf(  :,n_e)
        tp1_ensavg   = tp1_ensavg   + tp(   1,:,n_e)
-       
+       asnow_ensavg = asnow_ensavg + asnow(  :,n_e)
     end do
     
     SWE_ensavg   = SWE_ensavg   /real(N_ens)
     tsurf_ensavg = tsurf_ensavg /real(N_ens)
     tp1_ensavg   = tp1_ensavg   /real(N_ens)
-    
+    asnow_ensavg = asnow_ensavg /real(N_ens)
+
     ! ---------------------------------------------------------------------
 
     select_update_type: select case (update_type)
@@ -4066,18 +4068,29 @@ contains
     !identify the species ID number of interest       
      N_select_varnames  = 1
      select_varnames(1) = 'asnow'
-    
+   
      call get_select_species(                                           &
           N_select_varnames, select_varnames(1:N_select_varnames),      &
           N_obs_param, obs_param, N_select_species, select_species )
+    
+     if(logit) write(logunit,*) 'select_species=', select_species
+     if(logit) write(logunit,*) 'N_catd=', N_catd
 
      !Rule-based snow SCF update
-     !loop through all tiles and compte increments
+      allocate(select_tilenum(1))
 
-     do kk=1,N_catd
+     do n=1,N_catd
       
       ! find observations for catchment n
+          if(logit) write(logunit,*) 'l2f', l2f(n)
+          if(logit) write(logunit,*) 'n: ', n
+          if(logit) write(logunit,*) 'Observations%species', Observations(ind_obs(1))%species
+          if(logit) write(logunit,*) 'N_obs', N_obs
+          if(logit) write(logunit,*) 'select_tilenum', select_tilenum
+          if(logit) write(logunit,*) 'N_selected_obs', N_selected_obs
+          
           select_tilenum(1) = l2f(n)
+
           call get_ind_obs(                                      &
           N_obs,            Observations,                        &
           1,                select_tilenum,                      &
@@ -4085,79 +4098,114 @@ contains
           N_selected_obs,   ind_obs )
 
       if (N_selected_obs == 1) then
+          if(logit) write(logunit,*) 'N_selected_obs', N_selected_obs
+          if(logit) write(logunit,*) 'ind_obs', ind_obs(1)
+          if(logit) write(logunit,*) 'Observations', Observations(ind_obs(1))%obs
+          if(logit) write(logunit,*) 'asnow_ensavg', asnow_ensavg(n)
          do n_e=1,N_ens ! for each ensemble member
 
-         if(cat_diagS(kk)%asnow <= Observations(ind_obs(1))%obs * model_threshold) then
+         if(asnow_ensavg(n) <= Observations(ind_obs(1))%obs * model_threshold) then
             if (logit) write (logunit,*) 'Add_snow_section:  ',&
-            'MODIS_SCF = ', observations(ind_obs(1))%obs, 'model_SCF = ', cat_diagS(kk)%asnow
+            'MODIS_SCF = ', Observations(ind_obs(1))%obs, 'model_SCF = ', asnow_ensavg(n)
 
-           do i=1,N_SNOW
+           do i=1,N_snow
              !a) Snow water equivalent (add equally the snow to all three layers)
-              cat_progn_incr(kk, n_e)%wesn(i) = &
+              cat_progn_incr(n, n_e)%wesn(i) = &
               ( Observations(ind_obs(1))%obs - &
-               cat_diagS(kk)%asnow/model_threshold ) * (wesn_added/float(N_SNOW))
+               asnow_ensavg(n)/model_threshold ) * (wesn_added/float(N_snow))
 
              !b) snow depth 
-             if(cat_progn(kk,n_e)%sndz(i) > eps) then
+             if(cat_progn(n,n_e)%sndz(i) > eps) then
 
                !Determine the fractional snow coverage
-               wesn_sum_old(kk,n_e) = sum( cat_progn(kk,n_e)%wesn)
-               areasc_old (kk,n_e) = min(wesn_sum_old(kk,n_e)/wemin,1.)
+               wesn_sum_old(n,n_e) = sum(cat_progn(n,n_e)%wesn)
+               areasc_old (n,n_e) = min(wesn_sum_old(n,n_e)/wemin,1.)
 
               !Estimate the density of the ld layers of snow
-              dens_layer = max(cat_progn(kk,n_e)%wesn(i)/ &
-              (cat_progn(kk,n_e)%sndz(i)*areasc_old(kk,n_e)),RHOFS)
+              dens_layer = max(cat_progn(n,n_e)%wesn(i)/ &
+              (cat_progn(n,n_e)%sndz(i)*areasc_old(n,n_e)),RHOFS)
 
-              cat_progn_incr(kk,n_e)%sndz(i)=&
-                cat_progn_incr(kk,n_e)%wesn(i)/dens_layer
+              cat_progn_incr(n,n_e)%sndz(i)=&
+                cat_progn_incr(n,n_e)%wesn(i)/dens_layer
             else
              dens_layer = rhofs
-             cat_progn_incr(kk,n_e)%sndz(i) = cat_progn_incr(kk,n_e)%wesn(i)/dens_layer
+             cat_progn_incr(n,n_e)%sndz(i) = cat_progn_incr(n,n_e)%wesn(i)/dens_layer
             end if
             !c) heat content
-             TSN=min(met_force(kk)%Tair-MAPL_TICE, 0.0)
-             cat_progn_incr(n,n_e)%htsn(i) = (TSN*cpw_pub-MAPL_ALHF)*cat_progn_incr(kk,n_e)%wesn(i)
+             TSN=min(met_force(n)%Tair-MAPL_TICE, 0.0)
+             cat_progn_incr(n,n_e)%htsn(i) = (TSN*cpw_pub-MAPL_ALHF)*cat_progn_incr(n,n_e)%wesn(i)
             end do
+
+                  if (n== 595) then
+                   if (logit) write (logunit, *)
+                   if (logit) write (logunit, *) '********Adding_Snow***********'
+                   if (logit) write (logunit, *)
+                   if (logit) write (logunit, *) 'tile_number = ',n
+                   if (logit) write (logunit, *) 'add_snow_density  = ', dens_layer
+                   if (logit) write (logunit, *) 'added_wesn  = ', cat_progn_incr(n,n_e)%wesn
+                   if (logit) write (logunit, *) 'added_sndz  = ', cat_progn_incr(n,n_e)%sndz
+                   if (logit) write (logunit, *) 'added_htsn  = ', cat_progn_incr(n,n_e)%htsn
+                  endif
 
        elseif (Observations(ind_obs(1))%obs <= obs_threshold) then
            if (logit) write (logunit,*) 'Remove snow section: ', &
-           'MODIS_SCF = ', Observations(ind_obs(1))%obs, 'model_SCF = ', cat_diagS(kk)%asnow
+           'MODIS_SCF = ', Observations(ind_obs(1))%obs, 'model_SCF = ', asnow_ensavg(n)
 
            do i=1,N_snow
-              cat_progn_incr(kk,n_e)%wesn(i) = &
+              cat_progn_incr(n,n_e)%wesn(i) = &
               -cat_progn(n,n_e)%wesn(i)*(1-Observations(ind_obs(1))%obs/obs_threshold  )
            
            !b) snow depth
-           if (cat_progn(kk,n_e)%sndz(i) > eps) then
-              wesn_sum_old(kk,n_e)=sum(cat_progn(kk,n_e)%wesn)
-              areasc_old(kk,n_e)=min(wesn_sum_old(kk,n_e)/wemin,1.)
+           if (cat_progn(n,n_e)%sndz(i) > eps) then
+              wesn_sum_old(n,n_e)=sum(cat_progn(n,n_e)%wesn)
+              areasc_old(n,n_e)=min(wesn_sum_old(n,n_e)/wemin,1.)
              
            !Estimate the density of the old layers of snow
-              dens_layer = max( cat_progn(kk,n_e)%wesn(i)/&
-              (cat_progn(kk,n_e)%sndz(i)*areasc_old(kk,n_e)),rhofs)
+              dens_layer = max( cat_progn(n,n_e)%wesn(i)/&
+              (cat_progn(n,n_e)%sndz(i)*areasc_old(n,n_e)),rhofs)
            
-              cat_progn_incr(kk,n_e)%sndz(i)=&
-                 cat_progn_incr(kk,n_e)%wesn(i)/dens_layer
+              cat_progn_incr(n,n_e)%sndz(i)=&
+                 cat_progn_incr(n,n_e)%wesn(i)/dens_layer
               
            else
               dens_layer = rhofs
-              cat_progn_incr(kk,n_e)%sndz(i) = cat_progn_incr(kk,n_e)%wesn(i)/dens_layer
+              cat_progn_incr(n,n_e)%sndz(i) = cat_progn_incr(n,n_e)%wesn(i)/dens_layer
            end if
            !c) heat content
-           TSN=min(met_force(kk)%Tair-MAPL_TICE, 0.0)
-          cat_progn_incr(kk,n_e)%htsn(i) = -(TSN*cpw_pub-MAPL_ALHF)*cat_progn_incr(kk,n_e)%wesn(i)
+           TSN=min(met_force(n)%Tair-MAPL_TICE, 0.0)
+          cat_progn_incr(n,n_e)%htsn(i) = -(TSN*cpw_pub-MAPL_ALHF)*cat_progn_incr(n,n_e)%wesn(i)
           end do
       
+             if (n== 595) then
+                   if (logit) write (logunit, *)
+                   if (logit) write (logunit, *) '********Remove_Snow***********'
+                   if (logit) write (logunit, *)
+                   if (logit) write (logunit, *) 'tile_number = ',n
+                   if (logit) write (logunit, *) 'remove_snow_density  = ', dens_layer
+                   if (logit) write (logunit, *) 'remove_wesn  = ', cat_progn_incr(n,n_e)%wesn
+                   if (logit) write (logunit, *) 'remove_sndz  = ', cat_progn_incr(n,n_e)%sndz
+                   if (logit) write (logunit, *) 'remove_htsn  = ', cat_progn_incr(n,n_e)%htsn
+             endif
+
         else
         
            if (logit) write (logunit, *) 'No_add_No_removal_section: ', &
-              'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',cat_diagS(kk)%asnow
+              'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n)
 
            do i=1,N_snow
-              cat_progn_incr(kk,n_e)%wesn(i) = 0.0
-              cat_progn_incr(kk,n_e)%sndz(i) = 0.0
-              cat_progn_incr(kk,n_e)%htsn(i) = 0.0
+              cat_progn_incr(n,n_e)%wesn(i) = 0.0
+              cat_progn_incr(n,n_e)%sndz(i) = 0.0
+              cat_progn_incr(n,n_e)%htsn(i) = 0.0
            end do
+             if (n== 595) then
+                   if (logit) write (logunit, *)
+                   if (logit) write (logunit, *) '********No_add_or_removal***********'
+                   if (logit) write (logunit, *)
+                   if (logit) write (logunit, *) 'tile_number = ',n
+                   if (logit) write (logunit, *) 'incr_wesn  = ', cat_progn_incr(n,n_e)%wesn
+                   if (logit) write (logunit, *) 'incr_sndz  = ', cat_progn_incr(n,n_e)%sndz
+                   if (logit) write (logunit, *) 'incr_htsn  = ', cat_progn_incr(n,n_e)%htsn
+             endif
          end if
 
        end do
@@ -4603,7 +4651,7 @@ contains
     ! NO checks of prognostics after update, this is now done after 
     ! increments have been applied.
     ! - reichle, 18 Oct 2005
-
+    if (logit) write(logunit,*) 'Cat_enkf_increment completed'
   end subroutine cat_enkf_increments
   
   ! **********************************************************************
@@ -4725,7 +4773,7 @@ contains
        k = 0                              ! counter for selected obs
        
        do i=1,N_obs
-
+         
           if (any(Observations(i)%tilenum == select_tilenum)) then
              
              k          = k+1
