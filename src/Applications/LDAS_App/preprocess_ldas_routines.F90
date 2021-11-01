@@ -2438,7 +2438,22 @@ contains
        
        if( sum(local_land) /= total_land) stop ("wrong distribution")
        if( sum(IMS) /= N_lon) stop ("wrong domain distribution")
+
+       ! redistribute IMS and try to make it >=2 ( it is impossible when N_Proc is big enough)
+       do i = 1, N_proc
+          if(IMS(i) == 0) then
+            n = maxloc(IMS,DIM=1)
+            IMS(i) = 1
+            IMS(n) = IMS(n)-1
+          endif
+          if(IMS(i) == 1) then
+            n = maxloc(IMS,DIM=1)
+            IMS(i) = 2
+            IMS(n) = IMS(n)-1
+          endif
+       enddo
        if( any(IMS <=1) ) stop ("Ask for too many processors. Each processor should have at least 2 grid cells")  
+
        open(10,file="optimized_distribution",action='write')
        write(10,'(A)')    "GEOSldas.GRID_TYPE:  LatLon"
        write(10,'(A)')    "GEOSldas.GRIDNAME:  "//trim(gridname)
