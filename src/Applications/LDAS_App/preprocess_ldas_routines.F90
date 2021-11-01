@@ -2220,12 +2220,12 @@ contains
           enddo
           local = j
        enddo
-      if( sum(JMS) /= JMGLOB) then
+       if( sum(JMS) /= JMGLOB) then
           print*, sum(JMS), JMGLOB
           stop ("wrong cs-domain distribution in the first place")
        endif 
-       ! adjust JMS.rc make make sure no processor ("stripe") has 0 or 1 grid cells in j dimension
-       ! (i.e., each proc's subdomain must include at least 2 grid cells in the j dimension;
+       ! adjust JMS.rc to make sure each processor has at least 2 grid cells in j dimension 
+       ! (i.e., each proc's subdomain must include at least 2 latitude stripes;
        !  stripes of grid cells may or may not contain land tiles)
        j = 1
        do k = 1,6
@@ -2439,7 +2439,7 @@ contains
        if( sum(local_land) /= total_land) stop ("wrong distribution")
        if( sum(IMS) /= N_lon) stop ("wrong domain distribution")
 
-       ! redistribute IMS and try to make it >=2 ( it is impossible when N_Proc is big enough)
+       ! redistribute IMS and try to make it >=2 (may be impossible for large N_Proc)
        do i = 1, N_proc
           if(IMS(i) == 0) then
             n = maxloc(IMS,DIM=1)
@@ -2452,21 +2452,21 @@ contains
             IMS(n) = IMS(n)-1
           endif
        enddo
-       if( any(IMS <=1) ) stop ("Ask for too many processors. Each processor should have at least 2 grid cells")  
+       if( any(IMS <=1) ) stop ("Each processor must have at least 2 longitude stripes. Request fewer processors.")  
 
        open(10,file="optimized_distribution",action='write')
        write(10,'(A)')    "GEOSldas.GRID_TYPE:  LatLon"
-       write(10,'(A)')    "GEOSldas.GRIDNAME:  "//trim(gridname)
-       write(10,'(A)')    "GEOSldas.LM:  1"
-       write(10,'(A)')    "GEOSldas.POLE:  PE"
-       write(10,'(A)')    "GEOSldas.DATELINE:  DE"
-       write(10,'(A,I6)') "GEOSldas.IM_WORLD: ",N_lon
-       write(10,'(A,I6)') "GEOSldas.JM_WORLD: ",N_lat
+       write(10,'(A)')    "GEOSldas.GRIDNAME:   "//trim(gridname)
+       write(10,'(A)')    "GEOSldas.LM:         1"
+       write(10,'(A)')    "GEOSldas.POLE:       PE"
+       write(10,'(A)')    "GEOSldas.DATELINE:   DE"
+       write(10,'(A,I6)') "GEOSldas.IM_WORLD:   ", N_lon
+       write(10,'(A,I6)') "GEOSldas.JM_WORLD:   ", N_lat
        
-       write(10,'(A,I5)') "NX: ",N_proc
-       write(10,'(A)')    "NY:   1"
+       write(10,'(A,I5)') "NX:                  ",N_proc
+       write(10,'(A)')    "NY:                  1"
        
-       write(10,'(A)')    "GEOSldas.IMS_FILE:    IMS.rc"
+       write(10,'(A)')    "GEOSldas.IMS_FILE:   IMS.rc"
        close(10)
        
        open(10,file="IMS.rc",action='write')
