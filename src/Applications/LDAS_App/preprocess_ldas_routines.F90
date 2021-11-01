@@ -2438,7 +2438,7 @@ contains
        
        if( sum(local_land) /= total_land) stop ("wrong distribution")
        if( sum(IMS) /= N_lon) stop ("wrong domain distribution")
-       
+       if( any(IMS <=1) ) stop ("Ask for too many processors. Each processor should have at least 2 grid cells")  
        open(10,file="optimized_distribution",action='write')
        write(10,'(A)')    "GEOSldas.GRID_TYPE:  LatLon"
        write(10,'(A)')    "GEOSldas.GRIDNAME:  "//trim(gridname)
