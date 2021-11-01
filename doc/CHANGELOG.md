@@ -32,7 +32,7 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 
 Overview of Git Releases:
 ============================
-[v17.9.5](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.5) - 2021-09-14
+[v17.9.6](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.6) - 2021-09-23
 ------------------------------
 
 - Zero-diff vs. v17.9.4.
@@ -41,17 +41,20 @@ Overview of Git Releases:
   - For GEOS-FP and MERRA-2 forcing, corrected precipitation can be on a different grid than rest of forcing data. 
 
 - Infrastructure:
-  - Updated MAPL (v2.8.6, support for bit shaving of binary HISTORY output).
+  - Updated MAPL (v2.8.6, support for bit shaving of tile-space binary HISTORY output).
   - Updated ESMA_cmake (v3.5.5).
   - Updated GMAO_Shared (v1.4.6).
   - Updated GEOSgcm_GridComp (v1.12.4, minor change for LADAS coupling).
-  - Support for build of tarball of source code.
   - Updated Circle-CI.
+  - GitHub script to auto-create tarball (fully mepo'd) upon release.
+
+- Updated license (Apache 2.0).
 
 - Bug fixes and other minor changes:
   - Minor fixes for GNU compiler.
-  - Updated LICENSE.md. 
   - Fixed PAR handling in get_GEOSs2s().
+
+- Note: v17.9.6 fixes v17.9.5, which did not compile with GNU and was deleted soon after release.
 
 ------------------------------
 [v17.9.4](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.4) - 2021-07-15

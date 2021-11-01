@@ -13,11 +13,10 @@ module GEOS_MetforceGridCompMod
   use LDAS_ensdrv_Globals, only: logunit,logit   !,root_logit
   use LDAS_DateTimeMod, only: date_time_type, date_time_print
   use LDAS_TileCoordType, only: tile_coord_type
-  use LDAS_TileCoordType, only: T_TILECOORD_STATE 
   use LDAS_TileCoordType, only: TILECOORD_WRAP
   use LDAS_ForceMod, only: LDAS_GetForcing => get_forcing
   use LDAS_ForceMod, only: LDAS_move_new_force_to_old
-  use LDAS_ForceMod, only: FileOpenedHash,GEOS_closefile
+  use LDAS_ForceMod, only: FileOpenedHash,GEOS_closefile, set_neighbor_offset
   use LDAS_ForceMod, only: im_world_cs
   use LDAS_DriverTypes, only: met_force_type, assignment(=)
   use LDAS_ConvertMod, only: esmf2ldas
@@ -70,14 +69,6 @@ module GEOS_MetforceGridCompMod
   type METFORCE_WRAP
      type(T_METFORCE_STATE), pointer :: ptr=>null()
   end type METFORCE_WRAP
-
-  !! Wrapper to the tile_coord variable
-  !type T_TILECOORD_STATE
-  !   type(tile_coord_type), pointer, contiguous :: tile_coord(:)=>null()
-  !end type T_TILECOORD_STATE
-  !type TILECOORD_WRAP
-  !   type(T_TILECOORD_STATE), pointer :: ptr=>null()
-  !end type TILECOORD_WRAP
 
 contains
 
@@ -577,6 +568,7 @@ contains
     integer :: AEROSOL_DEPOSITION
     type(MAPL_LocStream) :: locstream
     character(len=ESMF_MAXSTR) :: grid_type, ENS_FORCING_STR, ens_forcing_path, id_string
+    character(len=ESMF_MAXSTR) :: gridname
     type(ESMF_Grid) :: agrid
     integer :: dims(ESMF_MAXDIM)
     ! Begin...
@@ -630,7 +622,11 @@ contains
        call MAPL_GridGet(agrid, globalCellCountPerDim=dims, rc=status) 
        VERIFY_(STATUS)
        im_world_cs = dims(1)
-    endif 
+    endif
+
+    call MAPL_GetResource(MAPL, gridname,Label="GEOSldas.GRIDNAME:",RC=STATUS)
+    VERIFY_(STATUS)
+    if( index(trim(gridname), 'EASE') /=0) call set_neighbor_offset(0.0001) 
 
     ! Get MetForcing values and put them in Ldas' internal state
     ! Get resources needed to call LDAS_ForceMod::get_forcing()
