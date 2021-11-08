@@ -116,7 +116,7 @@ contains
 
  real, dimension(:), pointer, allocatable :: lon, lat
  character(1), dimension(:,:), allocatable :: tmp_MODIS_SCA, tmp_CI_Index, tmp_Cloud_index, tmp_Snow_QA
- real, dimension(:), pointer :: MODIS_SCA
+ real, dimension(:), pointer :: MODIS_SCA, MODIS_SCA_raw
 
  type(date_time_type),intent(in) :: date_time ! loading the UTC hour information to constrain the longitude of MODIS obs.
 
@@ -129,12 +129,12 @@ contains
   'Day_CMG_Cloud_Obscured        ',        &   !3
   'Snow_Spatial_QA               '/)           !4
 
- integer, parameter :: nodata = -9999 !note: integer
+ integer,parameter :: nodata = -9999 !note: integer
  integer,parameter :: qc_clear_index_threshold = 20 !screen for sufficiently clear condition
  integer,parameter :: qc_clear_index_max_threshold = 100 ! removing the lake ice, night obs, ocean etc.
  integer,parameter :: qc_snow_spatial_threshold = 3 !screen for basic data quality (e.g., 0:best 1:good 2:OK 3:poor, 4:others) 
  integer,parameter :: qc_snow_cover_threshold = 100 !screen for areas inland water, ocean, cloud obscured and fill
- integer, parameter :: qc_antarctica = 252 ! screen for antarctica
+ integer,parameter :: qc_antarctica = 252 ! screen for antarctica
 
  !declariations of hdf functions
  integer:: sfstart, sffinfo, sfselect, sfn2index, sfginfo, sfrdata
@@ -154,7 +154,7 @@ contains
  integer, parameter :: FULL_INTERLACE = 0 ! from hdf.inc
  
  ! local variables
- logical :: must_stop
+ logical :: must_stop, keep_data
 
  ! variables to define latitude and longitude    
  integer :: i, j, k, k_off, ll, mm, kk, L
@@ -181,11 +181,11 @@ contains
  ! initialize N_data
  N_data_tmp(N_files) = 3600*7200
 
- if (logit) write(logunit, *) 'N_data_tmp=', N_data_tmp(1)
+ !if(logit) write(logunit, *) 'N_data_tmp=', N_data_tmp(1)
 
  N_data = sum(N_data_tmp)
  
-  if (logit) write(logunit, *) 'N_data', N_data
+ !if (logit) write(logunit, *) 'N_data', N_data
 
  lat_c = (90-bin_size/2)-bin_size*lat_ind
  lon_c = (-180+bin_size/2)+bin_size*lon_ind
@@ -209,7 +209,7 @@ contains
 
     allocate(lat(N_data))
     allocate(lon(N_data))
-    allocate(MODIS_SCA(N_data))
+    allocate(MODIS_SCA_raw(N_data))
     
     allocate(CI_Index(N_data))
     allocate(Snow_QA(N_data))
@@ -221,10 +221,10 @@ contains
     
     do j=1,N_files
        ! open and start "hdf file"       
-       if(logit) write(logunit, *) 'fname: ', fnames(j)
+       !if(logit) write(logunit, *) 'fname: ', fnames(j)
 
        sd_id(j) = sfstart(fnames(j), DFACC_READ)
-       if(logit) write (logunit, *), 'sd_id:' , sd_id(j)
+       !if(logit) write (logunit, *), 'sd_id:' , sd_id(j)
 
        status = sffinfo(sd_id(j), n_datasets, n_file_attrs)
        ! if(logit) write(logunit, *)  '! Number of data sets in the file and Number of file attributes :'
@@ -233,8 +233,8 @@ contains
       do i=1,N_fields
    
          ind(i) = sfn2index(sd_id(j), trim(field_names(i)))
-         if (logit) write(logunit, *), 'Field_name:', field_names(i)
-         if (logit) write(logunit, *), 'ind:', ind(i)
+        ! if (logit) write(logunit, *), 'Field_name:', field_names(i)
+        ! if (logit) write(logunit, *), 'ind:', ind(i)
 
          sds_id(i) = sfselect(sd_id(j), ind(i))
          status = sfginfo(sds_id(i), var_name, rank, dim_sizes, data_type, n_attrs)
@@ -253,23 +253,23 @@ contains
              allocate(tmp_MODIS_SCA(dim_sizes(1),dim_sizes(2)))
              status = sfrdata(sds_id(i), start, stride, edges, tmp_MODIS_SCA)
 
-            L=1
+            L=0
             do k=1, YGRID
               do kk=1, XGRID
-               MODIS_SCA(L) = ichar(tmp_MODIS_SCA(k, kk))
-               L=L+1
+                L=L+1
+                MODIS_SCA_raw(L) = ichar(tmp_MODIS_SCA(k, kk))
               end do
             end do 
 
           case (2)
              allocate(tmp_CI_Index(dim_sizes(1), dim_sizes(2)))
              status = sfrdata(sds_id(i), start, stride, edges, tmp_CI_index)
- 
-             L=1
+
+             L=0
              do k=1, YGRID
                do kk=1, XGRID
+               L=L+1
                CI_Index(L) = ichar(tmp_CI_index(k,kk))
-               L = L+1
                end do
              end do
 
@@ -277,23 +277,26 @@ contains
             allocate(tmp_Cloud_index(dim_sizes(1), dim_sizes(2))) 
             status = sfrdata(sds_id(i), start, stride, edges, tmp_Cloud_index)
 
-            L=1
+            L=0
             do k=1, YGRID
              do kk=1, XGRID
+               L = L+1
                Cloud_index(L) = ichar(tmp_Cloud_index(k, kk))
              end do
             end do
-
-           if(logit) write(logunit,*) "Cloud_Index (252):", ichar(tmp_Cloud_index(5500,3500))
-           if(logit) write(logunit,*) "Cloud_Index (252):", ichar(tmp_Cloud_index(5800,3500))
-             
+           !if(logit) write(logunit,*) "L:", L
+           !if(logit) write(logunit,*) "size of Cloud_index", size(Cloud_index)   
+           !if(logit) write(logunit,*) "Cloud_Index (252):", ichar(tmp_Cloud_index(5500,3500))
+           !if(logit) write(logunit,*) "Cloud_Index (5499*3600+3500):", Cloud_index(19799900)  
+          
           case (4)
              allocate(tmp_Snow_QA(dim_sizes(1),dim_sizes(2)))
              status = sfrdata(sds_id(i), start, stride, edges, tmp_Snow_QA)
 
-           L=1
+           L=0
             do k=1, YGRID
              do kk=1, XGRID
+               L = L+1
                Snow_QA(L) = ichar(tmp_Snow_QA(k, kk))
              end do
             end do
@@ -303,9 +306,10 @@ contains
           call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'Unknown case')
           end select
 
-          if (dim_sizes(1)*dim_sizes(2)/=N_data_tmp(j)) &
-           call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'ERROR reading hdf')
-        
+          if (dim_sizes(1)*dim_sizes(2)/=N_data_tmp(j)) then
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'ERROR reading hdf')
+          end if
+
        status = sfendacc(sds_id(i))
        
        end do
@@ -326,42 +330,52 @@ contains
     ! -------------------------------------
     ! eliminate no-data-values and data that fail initial QC
     
-    j = 0
-       if (logit) write (logunit, *) 'time_index =', time_index     
-       if (logit) write (logunit, *) 'lon_subtime_front = ', lon_subtime(time_index)
-       if (logit) write (logunit, *) 'lon_subtime_back = ', lon_subtime(time_index+1)
+    j=0
+    allocate(MODIS_SCA(N_data))
+  
     do i=1,N_data
-    if ( (MODIS_SCA(i)>=0 .and. MODIS_SCA(i)<=100)       .and.     &  ! any neg is nodata
-         (lon_1D(i)<=lon_subtime(time_index))            .and.     &  !selection of longitudal band
-         (lon_1D(i)>lon_subtime(time_index+1))           .and.     &         
-         (CI_Index(i)>qc_clear_index_threshold)          .and.     & 
-         (CI_Index(i)<=qc_clear_index_max_threshold)     .and.     &   
-         (Cloud_index(i)/=qc_antarctica)                 .and.     & 
-         (Snow_QA(i)<qc_snow_spatial_threshold)                    &
-           ) then     
-          
+
+       keep_data =                                                         & 
+         (MODIS_SCA_raw(i)>=0 .and. MODIS_SCA_raw(i)<=100)       .and.     &  ! any neg is nodata
+         (lon_1D(i)<=lon_subtime(time_index))                    .and.     &  !selection of longitudal band
+         (lon_1D(i)>lon_subtime(time_index+1))                   .and.     &
+         (CI_Index(i)>qc_clear_index_threshold)                  .and.     &
+         (CI_Index(i)<=qc_clear_index_max_threshold)             .and.     &
+         (Cloud_index(i)/=qc_antarctica)                         .and.     &
+         (Snow_QA(i)<qc_snow_spatial_threshold)                            
+ 
+     if( keep_data ) then     
+         
           j=j+1
-          
-          MODIS_SCA(j) = MODIS_SCA(i)/100
+         
+          MODIS_SCA(j) = MODIS_SCA_raw(i)/100
           lon(j)      = lon_1D(i)
           lat(j)      = lat_1D(i)
-       end if
+    
+      end if
        
     end do
-   
-   !debugging purpose to check whehter reader works properly or not
-   if (logit) write (logunit, *) 'number of datasets', j
-   !if (logit) write (logunit, *) 'assimilation time', date_time%hour
-   !if (logit) write (logunit, *) 'lat = ', lat(1:j)
-   !if (logit) write (logunit, *) 'lon = ', lon(1:j)
-   !if (logit) write (logunit, *) 'MODIS_SCA=', MODIS_SCA(1:j)
-   
+     
+   !if (logit) write (logunit, *) 'number of datasets', j
+ 
+   N_data = j
     
-    N_data = j
-    
+  if (logit) write(logunit,*) 'N_data:', N_data
+ 
+         lat = lat(1:j)
+         lon = lon(1:j)
+         MODIS_SCA = MODIS_SCA(1:j)
+
+      !  if (logit) write(logunit,*) 'readMODISsca_hdf subroutine' 
+      !  if (logit) write(logunit,*) 'lat size:', size(lat) 
+      !  if (logit) write(logunit,*) 'lon size:', size(lon)
+      !  if (logit) write(logunit,*) 'MODIS_SCA size', size(MODIS_SCA)
+
     deallocate(CI_Index)
     deallocate(Cloud_Index)
     deallocate(Snow_QA)
+    deallocate(MODIS_SCA_raw)
+
   end subroutine read_MODISsca_hdf  
 
   ! *****************************************************************
@@ -472,12 +486,14 @@ contains
 
     call read_MODISsca_hdf( &
          N_files, date_time, N_tmp, fnames, tmp_lon, tmp_lat, tmp_obs)
-       
-    if (logit) then
-      write (logunit, *) 'read_obs_MODISsca :read MODIS datasets file name:', &
-      fnames
-    end if
-    
+   
+    if (logit) write (logunit, *) 'read_obs_MODISsca: read MODIS datasets'    
+    if (logit) write (logunit, *) 'length of tmp_lon', size(tmp_lon)
+    if (logit) write (logunit, *) 'tmp_lat: ', size(tmp_lat)
+    if (logit) write (logunit, *) 'tmp_obs: ', size(tmp_obs)
+    if (logit) write (logunit, *) 'tmp_obs: ', tmp_obs
+    if (logit) write (logunit, *) 'N_tmp:', N_tmp
+   
    deallocate(fnames)
     
    else 
@@ -491,7 +507,7 @@ contains
  
       call get_tile_num_for_obs(N_catd, tile_coord,                 &
             tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,     &
-            N_tmp, tmp_lat(1:N_tmp), tmp_lon(1:N_tmp),                                 &
+            N_tmp, tmp_lat, tmp_lon,                                 &
             this_obs_param,                                          &
             tmp_tile_num(1:N_tmp) )
   
@@ -501,23 +517,29 @@ contains
       N_obs_in_tile = 0
     
       do i=1,N_tmp
-         ind = tmp_tile_num(i)
-  
-         if (ind>0) then
+
+         ind = tmp_tile_num(i) ! 1<=tmp_tile_num<=N_catd (unless nodata)
+
+         if (ind>0) then ! this step eliminates obs outside domain
           MODIS_obs(ind) = MODIS_obs(ind) + tmp_obs(i)
           N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
          end if
+
       end do
+          !if(logit) write(logunit,*) 'N_obs_in_tile', N_obs_in_tile         
 
      !normalize
       do i=1,N_catd
-         if (N_obs_in_tile(i)>1) then
+         if (N_obs_in_tile(i)>0) then
          MODIS_obs(i) = MODIS_obs(i)/real(N_obs_in_tile(i))
+         
          else if (N_obs_in_tile(i) == 0) then
          MODIS_obs(i) = this_obs_param%nodata
          end if
       end do
      
+         !if(logit) write(logunit,*), 'MODIS_obs (after normalization)', MODIS_obs
+
       if (associated(tmp_tile_num)) deallocate (tmp_tile_num)
 
       do i=1, N_catd
@@ -531,7 +553,9 @@ contains
        end if
        
       end if  
-    
+
+    !if(logit) write(logunit, *) 'found_obs=', found_obs
+ 
     if (associated(tmp_obs))      deallocate(tmp_obs)
     if (associated(tmp_lon))      deallocate(tmp_lon)
     if (associated(tmp_lat))      deallocate(tmp_lat)
@@ -8661,7 +8685,8 @@ contains
           if (scaled_obs)  any_scaled_obs = .true.
 
        end if
-       
+          if (logit) write(logunit,*) 'found_obs (after read_obs)=', found_obs
+      
        ! put "tmp_obs" (in "tile" space) into "compressed" vector "Observations_l"
        !
        ! each observation is "managed" ("administered") by the processor that 
@@ -8929,7 +8954,9 @@ contains
     real :: nodatavalue, tol
     
     ! ------------------------------------------------------
-    
+   
+    !if(logit) write(logunit,*) 'Entering put_into_Observations'
+ 
     nodatavalue = this_obs_param%nodata
     
     tol = abs(nodatavalue*nodata_tolfrac_generic)
@@ -8954,14 +8981,16 @@ contains
              Observations(obs_count)%obsvar = this_obs_param%errstd**2
              
           end if
-          
+          !if(logit) write(logunit,*) 'i:', i, 'tilenum', l2f(i)
+   
           Observations(obs_count)%tilenum = l2f(i)
 
           Observations(obs_count)%time    = tmp_time(i)
 
           Observations(obs_count)%lat     = tmp_lat(i)
           Observations(obs_count)%lon     = tmp_lon(i)
-          
+         
+          !if(logit) write(logunit, *) 'Obs species:', this_obs_param%species 
           Observations(obs_count)%species = this_obs_param%species 
           
           Observations(obs_count)%assim   = this_obs_param%assim .and. tmp_assim(i)

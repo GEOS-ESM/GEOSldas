@@ -320,7 +320,7 @@ contains
     integer, dimension(:), allocatable, target      :: ind_obsl_assim
     integer, dimension(:), pointer                  :: ptr2indx => null()
     type(varLenIntArr)                              :: indObsAna_vec(numprocs)
-    integer, dimension(:), allocatable              :: tmp_ind_obs
+    integer, dimension(:), allocatable                 :: tmp_ind_obs
     type(obs_type), dimension(:), allocatable       :: Obs_f_assim, Obs_ana  ! collect obs before distributing for ana
     real, allocatable                               :: Obs_pred_f_assim(:), Obs_pred_ana(:,:)
 

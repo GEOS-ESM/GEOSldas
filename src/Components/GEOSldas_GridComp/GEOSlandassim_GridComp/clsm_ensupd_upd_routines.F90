@@ -1547,7 +1547,7 @@ contains
             tile_grid_lH, maxval(N_tile_in_cell_ij_lH), tile_num_in_cell_ij_lH )
        
     end if
-    if(logit) write(logunit,*) 'Tile change completed' 
+    !if(logit) write(logunit,*) 'Tile change completed' 
     ! -----------------------
     
     allocate(ind_tmp(    N_catlH))
@@ -1973,7 +1973,7 @@ contains
        end do
 
     end if
-    if(logit) write(logunit,*) 'Ending get_obs_pred'
+    !if(logit) write(logunit,*) 'Ending get_obs_pred'
     ! ----------------------------------------------------------------
     
   end subroutine get_obs_pred
@@ -3398,7 +3398,7 @@ contains
 
     !call check_obs_pert( N_ens, N_catd, N_obs, cat_param, Observations, &
     !     Obs_pert )
-    if(logit) write(logunit, *) 'exit get_obs_pert' 
+    !if(logit) write(logunit, *) 'exit get_obs_pert' 
  
   end subroutine get_obs_pert
   
@@ -4068,13 +4068,17 @@ contains
     !identify the species ID number of interest       
      N_select_varnames  = 1
      select_varnames(1) = 'asnow'
-   
+  
+     !if(logit) write(logunit,*) 'Entering get_select_species'
+  
      call get_select_species(                                           &
           N_select_varnames, select_varnames(1:N_select_varnames),      &
           N_obs_param, obs_param, N_select_species, select_species )
     
-     if(logit) write(logunit,*) 'select_species=', select_species
-     if(logit) write(logunit,*) 'N_catd=', N_catd
+     !if(logit) write(logunit,*) 'output of select_species=', select_species
+     !if(logit) write(logunit,*) 'output of N_select_species=', N_select_species 
+   
+     !if(logit) write(logunit,*) 'N_catd=', N_catd
 
      !Rule-based snow SCF update
       allocate(select_tilenum(1))
@@ -4082,14 +4086,15 @@ contains
      do n=1,N_catd
       
       ! find observations for catchment n
-          if(logit) write(logunit,*) 'l2f', l2f(n)
-          if(logit) write(logunit,*) 'n: ', n
-          if(logit) write(logunit,*) 'Observations%species', Observations(ind_obs(1))%species
-          if(logit) write(logunit,*) 'N_obs', N_obs
-          if(logit) write(logunit,*) 'select_tilenum', select_tilenum
-          if(logit) write(logunit,*) 'N_selected_obs', N_selected_obs
+         ! if(logit) write(logunit,*) 'l2f', l2f(n)
+         ! if(logit) write(logunit,*) 'n: ', n
+         ! if(logit) write(logunit,*) 'N_obs', N_obs
           
           select_tilenum(1) = l2f(n)
+          
+         ! if(logit) write(logunit,*) 'select_tilenum', select_tilenum(1)
+         ! if(logit) write(logunit,*) 'Entering get_ind_obs subroutine'
+         ! if(logit) write(logunit,*) 'size of Observation', size(Observations)
 
           call get_ind_obs(                                      &
           N_obs,            Observations,                        &
@@ -4097,16 +4102,19 @@ contains
           N_select_species, select_species(1:N_select_species),  &
           N_selected_obs,   ind_obs )
 
+         ! if(logit) write(logunit,*) 'Observations%species', Observations(ind_obs(1))%species
+
       if (N_selected_obs == 1) then
-          if(logit) write(logunit,*) 'N_selected_obs', N_selected_obs
-          if(logit) write(logunit,*) 'ind_obs', ind_obs(1)
-          if(logit) write(logunit,*) 'Observations', Observations(ind_obs(1))%obs
-          if(logit) write(logunit,*) 'asnow_ensavg', asnow_ensavg(n)
+         
+          ! if(logit) write(logunit,*) 'N_selected_obs', N_selected_obs
+          ! if(logit) write(logunit,*) 'ind_obs', ind_obs(1)
+          ! if(logit) write(logunit,*) 'Observations', Observations(ind_obs(1))%obs
+          ! if(logit) write(logunit,*) 'asnow_ensavg', asnow_ensavg(n)
          do n_e=1,N_ens ! for each ensemble member
 
          if(asnow_ensavg(n) <= Observations(ind_obs(1))%obs * model_threshold) then
-            if (logit) write (logunit,*) 'Add_snow_section:  ',&
-            'MODIS_SCF = ', Observations(ind_obs(1))%obs, 'model_SCF = ', asnow_ensavg(n)
+           ! if (logit) write (logunit,*) 'Add_snow_section:  ',&
+           ! 'MODIS_SCF = ', Observations(ind_obs(1))%obs, 'model_SCF = ', asnow_ensavg(n)
 
            do i=1,N_snow
              !a) Snow water equivalent (add equally the snow to all three layers)
@@ -4136,20 +4144,20 @@ contains
              cat_progn_incr(n,n_e)%htsn(i) = (TSN*cpw_pub-MAPL_ALHF)*cat_progn_incr(n,n_e)%wesn(i)
             end do
 
-                  if (n== 595) then
-                   if (logit) write (logunit, *)
-                   if (logit) write (logunit, *) '********Adding_Snow***********'
-                   if (logit) write (logunit, *)
-                   if (logit) write (logunit, *) 'tile_number = ',n
-                   if (logit) write (logunit, *) 'add_snow_density  = ', dens_layer
-                   if (logit) write (logunit, *) 'added_wesn  = ', cat_progn_incr(n,n_e)%wesn
-                   if (logit) write (logunit, *) 'added_sndz  = ', cat_progn_incr(n,n_e)%sndz
-                   if (logit) write (logunit, *) 'added_htsn  = ', cat_progn_incr(n,n_e)%htsn
-                  endif
+              !    if (n== 595) then
+              !     if (logit) write (logunit, *)
+              !     if (logit) write (logunit, *) '********Adding_Snow***********'
+              !     if (logit) write (logunit, *)
+              !     if (logit) write (logunit, *) 'tile_number = ',n
+              !     if (logit) write (logunit, *) 'add_snow_density  = ', dens_layer
+              !     if (logit) write (logunit, *) 'added_wesn  = ', cat_progn_incr(n,n_e)%wesn
+              !     if (logit) write (logunit, *) 'added_sndz  = ', cat_progn_incr(n,n_e)%sndz
+              !     if (logit) write (logunit, *) 'added_htsn  = ', cat_progn_incr(n,n_e)%htsn
+              !    endif
 
        elseif (Observations(ind_obs(1))%obs <= obs_threshold) then
-           if (logit) write (logunit,*) 'Remove snow section: ', &
-           'MODIS_SCF = ', Observations(ind_obs(1))%obs, 'model_SCF = ', asnow_ensavg(n)
+          ! if (logit) write (logunit,*) 'Remove snow section: ', &
+          ! 'MODIS_SCF = ', Observations(ind_obs(1))%obs, 'model_SCF = ', asnow_ensavg(n)
 
            do i=1,N_snow
               cat_progn_incr(n,n_e)%wesn(i) = &
@@ -4176,36 +4184,36 @@ contains
           cat_progn_incr(n,n_e)%htsn(i) = -(TSN*cpw_pub-MAPL_ALHF)*cat_progn_incr(n,n_e)%wesn(i)
           end do
       
-             if (n== 595) then
-                   if (logit) write (logunit, *)
-                   if (logit) write (logunit, *) '********Remove_Snow***********'
-                   if (logit) write (logunit, *)
-                   if (logit) write (logunit, *) 'tile_number = ',n
-                   if (logit) write (logunit, *) 'remove_snow_density  = ', dens_layer
-                   if (logit) write (logunit, *) 'remove_wesn  = ', cat_progn_incr(n,n_e)%wesn
-                   if (logit) write (logunit, *) 'remove_sndz  = ', cat_progn_incr(n,n_e)%sndz
-                   if (logit) write (logunit, *) 'remove_htsn  = ', cat_progn_incr(n,n_e)%htsn
-             endif
+            ! if (n== 595) then
+            !       if (logit) write (logunit, *)
+            !       if (logit) write (logunit, *) '********Remove_Snow***********'
+            !       if (logit) write (logunit, *)
+            !       if (logit) write (logunit, *) 'tile_number = ',n
+            !       if (logit) write (logunit, *) 'remove_snow_density  = ', dens_layer
+            !       if (logit) write (logunit, *) 'remove_wesn  = ', cat_progn_incr(n,n_e)%wesn
+            !       if (logit) write (logunit, *) 'remove_sndz  = ', cat_progn_incr(n,n_e)%sndz
+            !       if (logit) write (logunit, *) 'remove_htsn  = ', cat_progn_incr(n,n_e)%htsn
+            ! endif
 
         else
         
-           if (logit) write (logunit, *) 'No_add_No_removal_section: ', &
-              'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n)
+          ! if (logit) write (logunit, *) 'No_add_No_removal_section: ', &
+          !    'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n)
 
            do i=1,N_snow
               cat_progn_incr(n,n_e)%wesn(i) = 0.0
               cat_progn_incr(n,n_e)%sndz(i) = 0.0
               cat_progn_incr(n,n_e)%htsn(i) = 0.0
            end do
-             if (n== 595) then
-                   if (logit) write (logunit, *)
-                   if (logit) write (logunit, *) '********No_add_or_removal***********'
-                   if (logit) write (logunit, *)
-                   if (logit) write (logunit, *) 'tile_number = ',n
-                   if (logit) write (logunit, *) 'incr_wesn  = ', cat_progn_incr(n,n_e)%wesn
-                   if (logit) write (logunit, *) 'incr_sndz  = ', cat_progn_incr(n,n_e)%sndz
-                   if (logit) write (logunit, *) 'incr_htsn  = ', cat_progn_incr(n,n_e)%htsn
-             endif
+            ! if (n== 595) then
+            !       if (logit) write (logunit, *)
+            !       if (logit) write (logunit, *) '********No_add_or_removal***********'
+            !       if (logit) write (logunit, *)
+            !       if (logit) write (logunit, *) 'tile_number = ',n
+            !       if (logit) write (logunit, *) 'incr_wesn  = ', cat_progn_incr(n,n_e)%wesn
+            !       if (logit) write (logunit, *) 'incr_sndz  = ', cat_progn_incr(n,n_e)%sndz
+            !       if (logit) write (logunit, *) 'incr_htsn  = ', cat_progn_incr(n,n_e)%htsn
+            ! endif
          end if
 
        end do
@@ -4674,7 +4682,7 @@ contains
     type(obs_param_type), dimension(N_obs_param),       intent(in)  :: obs_param        
     
     integer,                                            intent(out) :: N_select_species
-    integer,              dimension(N_obs_param),       intent(out) :: select_species
+    integer,                 dimension(N_obs_param),       intent(out) :: select_species
     
     ! local variables
     
@@ -4689,8 +4697,14 @@ contains
     kk = 0
 
     if (N_select_varnames > 0) then
-       
+
+       !if(logit) write(logunit,*) 'N_obs_param:', N_obs_param
+       !if(logit) write(logunit,*) 'Select_varnames:', select_varnames
+
        do ii=1,N_obs_param
+     
+          !if(logit) write(logunit,*) obs_param(ii)%varname
+          !if(logit) write(logunit,*) select_varnames          
           
           if (any(trim(obs_param(ii)%varname)==select_varnames)) then
              
@@ -4743,7 +4757,7 @@ contains
     
     integer,        intent(in),  dimension(N_select_tilenum) :: select_tilenum
     integer,        intent(in),  dimension(N_select_species) :: select_species
-    
+   
     integer,        intent(out)                              :: N_selected_obs
     
     integer,        intent(out), dimension(N_obs)            :: ind_obs
@@ -4807,10 +4821,13 @@ contains
        k = 0                              ! counter for selected obs
        
        do i=1,N_obs
+          !if(logit) write(logunit,*) 'tilenum:', Observations(i)%tilenum
+          !if(logit) write(logunit,*) 'species:', Observations(i)%species 
 
           if ( any(Observations(i)%tilenum == select_tilenum) .and.         &
                any(Observations(i)%species == select_species)       ) then
-             
+          !if(logit) write(logunit,*) '********Found matching point*********'
+ 
              k          = k+1
              ind_obs(k) = i
              
