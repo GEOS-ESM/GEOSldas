@@ -344,19 +344,17 @@ contains
          (Cloud_index(i)/=qc_antarctica)                         .and.     &
          (Snow_QA(i)<qc_snow_spatial_threshold)                            
  
-     if( keep_data ) then     
-         
+     if(keep_data) then     
           j=j+1
-         
           MODIS_SCA(j) = MODIS_SCA_raw(i)/100
           lon(j)      = lon_1D(i)
           lat(j)      = lat_1D(i)
     
-      end if
+     end if
        
     end do
      
-   !if (logit) write (logunit, *) 'number of datasets', j
+   if (logit) write (logunit, *) 'number of datasets', j
  
    N_data = j
     
@@ -480,19 +478,18 @@ contains
    if (N_files>0) then 
    
      if (logit) write (logunit, *) 'calling MODISsca_hdf subroutine'
-     if (logit) write (logunit, *) 'N_files = ', N_files
-     if (logit) write (logunit, *) 'N_tmp = ', N_tmp
-     if (logit) write (logunit, *) 'fnames = ', fnames(N_files)
+     !if (logit) write (logunit, *) 'N_files = ', N_files
+     !if (logit) write (logunit, *) 'N_tmp = ', N_tmp
+     !if (logit) write (logunit, *) 'fnames = ', fnames(N_files)
 
     call read_MODISsca_hdf( &
          N_files, date_time, N_tmp, fnames, tmp_lon, tmp_lat, tmp_obs)
    
     if (logit) write (logunit, *) 'read_obs_MODISsca: read MODIS datasets'    
-    if (logit) write (logunit, *) 'length of tmp_lon', size(tmp_lon)
-    if (logit) write (logunit, *) 'tmp_lat: ', size(tmp_lat)
-    if (logit) write (logunit, *) 'tmp_obs: ', size(tmp_obs)
-    if (logit) write (logunit, *) 'tmp_obs: ', tmp_obs
-    if (logit) write (logunit, *) 'N_tmp:', N_tmp
+    !if (logit) write (logunit, *) 'length of tmp_lon', size(tmp_lon)
+    !if (logit) write (logunit, *) 'tmp_lat: ', size(tmp_lat)
+    !if (logit) write (logunit, *) 'tmp_obs: ', size(tmp_obs)
+    !if (logit) write (logunit, *) 'N_tmp:', N_tmp
    
    deallocate(fnames)
     
@@ -511,7 +508,7 @@ contains
             this_obs_param,                                          &
             tmp_tile_num(1:N_tmp) )
   
-      !if(logit) write(logunit,*) 'tmp_tile_num:', tmp_tile_num
+      !if(logit) write(logunit,*) 'tmp_tile_num:', size(tmp_tile_num)
  
       MODIS_obs = 0.
       N_obs_in_tile = 0
@@ -526,7 +523,9 @@ contains
          end if
 
       end do
-          !if(logit) write(logunit,*) 'N_obs_in_tile', N_obs_in_tile         
+    !    if(logit) write(logunit,*) 'length of MODIS_obs', size(MODIS_obs)
+    !    if(logit) write(logunit,*) 'length of N_obs_in_tile', size(N_obs_in_tile)  
+    !    if(logit) write(logunit,*) 'N_obs_in_tile', N_obs_in_tile         
 
      !normalize
       do i=1,N_catd
@@ -538,7 +537,9 @@ contains
          end if
       end do
      
-         !if(logit) write(logunit,*), 'MODIS_obs (after normalization)', MODIS_obs
+         !if(logit) write(logunit,*) 'N_catd', N_catd
+         !if(logit) write(logunit,*) 'length of MODIS_obs after super_obsing', size(MODIS_obs)
+         !if(logit) write(logunit,*) 'MODIS_obs (after normalization)', MODIS_obs
 
       if (associated(tmp_tile_num)) deallocate (tmp_tile_num)
 
@@ -564,7 +565,7 @@ contains
   ! ***************************************************************** 
   subroutine read_ae_l2_sm_hdf( &
        N_files, fnames, N_data, lon, lat, ae_l2_sm, ease_col, ease_row )
-    
+   
     ! read soil moisture data from one or more AMSR-E Land hdf files
     !
     ! return ONLY valid data points (ie. excluding no-data-values)
@@ -7457,11 +7458,14 @@ contains
     select case (trim(this_obs_param%descr))
     
     case ('MODIS_SCA')
-     
+        ! if(logit) write(logunit,*) 'tile_coord: (read_obs)', tile_coord
+        ! if(logit) write(logunit,*) 'tile_grid_d: (read_obs)', tile_grid_d 
       call read_obs_MODISsca(                                        &
            work_path, date_time, dtstep_assim, N_catd, tile_coord,   &
            tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,     &
            this_obs_param, found_obs, tmp_obs, tmp_std_obs)     
+
+           !scaled_obs = .false.
  
     case ('ae_l2_sm_a', 'ae_l2_sm_d')
        
@@ -8673,7 +8677,7 @@ contains
           ! (typically global) and returns a vector in (full domain) 
           ! tile space with the values of the observations (at most one
           ! observation per tile and per species)
-          
+                    
           call read_obs(                                                               &
                work_path, exp_id,                                                      &
                date_time, dtstep_assim, N_catf, tile_coord_f,                          &
@@ -8685,7 +8689,14 @@ contains
           if (scaled_obs)  any_scaled_obs = .true.
 
        end if
-          if (logit) write(logunit,*) 'found_obs (after read_obs)=', found_obs
+         
+          !if(logit) write(logunit,*) 'length of obs after finishing read_obs', size(tmp_obs_f)
+          !if(logit) write(logunit,*) 'tmp_obs_f after finishing read_obs', tmp_obs_f
+          !if(logit) write(logunit,*) 'length of lon after finishing read_obs', size(tmp_lon_f)
+          !if(logit) write(logunit,*) 'length of lat after finishing read_obs', size(tmp_lat_f)
+          !if(logit) write(logunit,*) 'N_catf', N_catf
+          !if(logit) write(logunit,*) 'tile_coord_f', tile_coord_f
+          !if(logit) write(logunit,*) 'found_obs (after read_obs)=', found_obs
       
        ! put "tmp_obs" (in "tile" space) into "compressed" vector "Observations_l"
        !
@@ -8717,11 +8728,22 @@ contains
           
 
           ! NOTE: "Observations" here are l(ocal) obs only
-          
+         !if(logit) write(logunit,*), 'N_obsl_max:', N_obsl_max
+         !if(logit) write(logunit,*), 'N_catl:', N_catl
+         !if(logit) write(logunit,*), 'l2f:', l2f
+         !if(logit) write(logunit,*), 'tmp_obs', tmp_obs
+         !if(logit) write(logunit,*), 'size tmp_obs', size(tmp_obs)
+         !if(logit) write(logunit,*), 'size tmp_lat', size(tmp_lat)
+         !if(logit) write(logunit,*), 'size tmp_lon', size(tmp_lon)
+         !if(logit) write(logunit,*), 'obs_count', obs_count
+ 
           call put_into_Observations( obs_param(species), N_obsl_max, N_catl, l2f,  &
                tmp_obs, tmp_std_obs, tmp_lon, tmp_lat, tmp_time, tmp_assim,         &
                obs_count, Observations_l )
-          
+         !if(logit) write(logunit,*), 'obs_count (after subroutine):', obs_count
+         !if(logit) write(logunit,*), 'Observations_l:', size(Observations_l)
+         !if(logit) write(logunit,*), 'Observation_l%obs', Observations_l%obs
+         !if(logit) write(logunit,*), 'Observations_l%tilenum', Observations_l%tilenum
        end if
        
     end do
@@ -8731,7 +8753,7 @@ contains
     call MPI_BCAST(any_scaled_obs, 1, MPI_LOGICAL, 0,mpicomm, mpierr)
 
 #endif
-    
+    !if(logit) write(logunit,*) 'N_obsl:', obs_count 
     N_obsl = obs_count
 
     ! -----------------------------------------------------------------
@@ -8763,11 +8785,12 @@ contains
        ind_start    = 1
        
        this_tilenum = Observations_l(ind_start)%tilenum
-       
+ 
        do ii=2,N_obsl
           
           this_tilenum_new = Observations_l(ii)%tilenum
-          
+          !if(logit) write(logunit,*) 'tilenum', this_tilenum_new
+
           if ( (this_tilenum_new/=this_tilenum) .or. (ii==N_obsl) ) then
              
              if ( (this_tilenum_new/=this_tilenum) .and. (ii<=N_obsl) ) then
@@ -8784,11 +8807,13 @@ contains
              !  of (local) obs with the same tilenum
              
              N_tmp   = ind_end - ind_start + 1
-             
+             !if(logit) write(logunit,*) 'N_tmp', 'N_tmp'
+
              if (N_tmp>1) then
                 
                 tmp_species(1:N_tmp) = Observations_l(ind_start:ind_end)%species
-                
+                !if(logit) write(logunit,*) 'tmp_species', tmp_species
+ 
                 ! get index vector for sorting by species (see NOTES above!)
                 
                 call nr_indexx( N_tmp, real(tmp_species(1:N_tmp)), indx(1:N_tmp) )
@@ -8955,16 +8980,19 @@ contains
     
     ! ------------------------------------------------------
    
-    !if(logit) write(logunit,*) 'Entering put_into_Observations'
+    if(logit) write(logunit,*) 'Entering put_into_Observations'
  
     nodatavalue = this_obs_param%nodata
     
     tol = abs(nodatavalue*nodata_tolfrac_generic)
-    
+   
+    !if(logit) write(logunit,*) 'tol:', tol
+    !if(logit) write(logunit,*) 'N_catd:', N_catd
+ 
     do i=1,N_catd
-       
+
        if (abs(tmp_obs(i)-nodatavalue) > tol) then  ! check for no-data-value
-          
+           
           obs_count = obs_count+1             ! augment observation counter 
           
           Observations(obs_count)%obs  = tmp_obs(i)
@@ -8981,7 +9009,6 @@ contains
              Observations(obs_count)%obsvar = this_obs_param%errstd**2
              
           end if
-          !if(logit) write(logunit,*) 'i:', i, 'tilenum', l2f(i)
    
           Observations(obs_count)%tilenum = l2f(i)
 
@@ -8990,7 +9017,6 @@ contains
           Observations(obs_count)%lat     = tmp_lat(i)
           Observations(obs_count)%lon     = tmp_lon(i)
          
-          !if(logit) write(logunit, *) 'Obs species:', this_obs_param%species 
           Observations(obs_count)%species = this_obs_param%species 
           
           Observations(obs_count)%assim   = this_obs_param%assim .and. tmp_assim(i)

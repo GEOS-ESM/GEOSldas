@@ -1827,7 +1827,6 @@ contains
          ! below  are dummy for now
          N_adapt_R, obs_pert_adapt_param, Pert_adapt_R)
     
-    
     if (fresh_incr) then
        ! apply EnKF increments (incl. call to catch_calc_soil_moist but not to recompute_diagS())
        call apply_enkf_increments( N_catl, NUM_ENSEMBLE, update_type, cat_param, &

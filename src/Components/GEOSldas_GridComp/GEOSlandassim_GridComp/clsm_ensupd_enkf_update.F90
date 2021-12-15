@@ -405,6 +405,7 @@ contains
           call get_tile_num_in_cell_ij( N_catf,                                  &
                tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
                tile_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
+
        else
           allocate(N_tile_in_cell_ij_f(0,0)) !for debugging
        end if
@@ -439,7 +440,7 @@ contains
 
 
        ! --------------------------------------------------------------------
-
+       if (logit) write(logunit,*) 'found_obs_f', found_obs_f
        if (found_obs_f) then
 
           ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -476,7 +477,7 @@ contains
 
       ! B1. Adjust observations to remove the obs bias
       !     and set obsbias_ok flag
-
+           if(logit) write(logunit,*) 'entering obs_bias_corr_obs'
              call obs_bias_corr_obs(date_time, N_catl, N_catf,           &
                   N_obsl , N_obs_param, N_obsbias_max, f2l, obs_param,   &
                   obs_bias, Observations_l, obsbias_ok)
@@ -521,6 +522,10 @@ contains
                fcsterr_inflation_fac )
 
           if (allocated(obsbias_ok)) deallocate(obsbias_ok)
+          !if(logit) write(logunit,*) 'N_obs_l after obs_pred', N_obsl
+          !if(logit) write(logunit,*) 'Observations_l length', size(Observations_l)
+          !if(logit) write(logunit,*) 'Observations_l',Observations_l%ana
+          !if(logit) write(logunit,*) 'Obs_pred_l', Obs_pred_l
 
           ! IF NEEDED, INCLUDE WITHHOLDING SUBROUTINE HERE.
           ! SUCH A SUBROUTINE SHOULD CHANGE Observations(i)%assim TO FALSE
@@ -677,7 +682,7 @@ contains
                Obs_f_assim,              N_obsl_assim_vec, tmp_low_ind-1, MPI_obs_type, &
                mpicomm, mpierr)
           !-AnaLoadBal-Prereq-ends-here-
-
+          !if(logit) write(logunit,*) 'Obs_f_assim', Obs_f_assim
           !-AnaLodaBal-Decomposition-starts-here
           ! Step 2a: compute nTiles_l, indTiles_l, nTilesl_vec (on root), nTiles_f (on root)
           ! NOTE: loop over tile_coord_l, if tile has nnz obs, store the 'full' index
@@ -1047,7 +1052,20 @@ contains
 
 #ifdef LDAS_MPI
           allocate(cat_progn_incr_ana(nTiles_ana,N_ens))
-
+          !if(logit) write(logunit,*) 'Entering cat_enkf_increments'
+          !if(logit) write(logunit,*) 'length of Obs_ana', size(Obs_ana)
+          !if(logit) write(logunit,*) 'length of Obs_pred_ana', size(Obs_pred_ana)
+          !if(logit) write(logunit,*) 'length of Obs_pert_tmp', size(Obs_pert_tmp)
+          !if(logit) write(logunit,*) 'length of tile_coord_ana', size(tile_coord_ana)
+          !if(logit) write(logunit,*) 'Obs_ana', Obs_ana
+          !if(logit) write(logunit,*) 'Obs_ana%species', Obs_ana%species
+          !if(logit) write(logunit,*) 'Obs_ana%tilenum', Obs_ana%tilenum
+          !if(logit) write(logunit,*) 'Obs_ana%lat', Obs_ana%lat
+          !if(logit) write(logunit,*) 'Obs_ana%lon', Obs_ana%lon
+          !if(logit) write(logunit,*) 'Obs_ana%obs', Obs_ana%obs
+          !if(logit) write(logunit,*) 'Obs_pred_ana', Obs_pred_ana
+          !if(logit) write(logunit,*) 'Obs_pert_tmp', Obs_pert_tmp
+          !if(logit) write(logunit,*) 'tile_corrd_ana', tile_coord_ana
           call cpu_time(t_start)
           call cat_enkf_increments(                       &
                N_ens, nObs_ana, nTiles_ana, N_obs_param,  &
@@ -1087,7 +1105,7 @@ contains
                Obs_pert_tmp,                                            &
                cat_param,                                               &
                xcompact, ycompact, fcsterr_inflation_fac,               &
-               cat_progn, cat_progn_incr )
+               cat_progn, cat_progn_incr, met_force )
 #endif          
 
 #ifdef LDAS_MPI
@@ -1286,7 +1304,7 @@ contains
     ! ----------------------------------------------------------------
     !
     ! apply increments
-
+    if(logit) write(logunit,*) "apply increment"
     cat_progn_has_changed = .true.     ! conservative initialization
 
     select_update_type: select case (update_type)
@@ -1380,15 +1398,15 @@ contains
      case(11) select_update_type ! snow update !jpark50
            if (logit) write (logunit,*) 'applying Snow data increments'
 
-      ! if ( date_time%hour /= 0 .and. &
-      !      date_time%min  /= 0 .and. &
-      !      date_time%sec  /= 0         ) then
+       !if ( date_time%hour /= 0 .and. &
+       !     date_time%min  /= 0 .and. &
+       !     date_time%sec  /= 0         ) then
 
-          if (logit) write (logunit,*) 'no application of increments at this time'
-          cat_progn_has_changed = .false.
-          return
+       !   if (logit) write (logunit,*) 'no application of increments at this time'
+       !   cat_progn_has_changed = .false.
+       !   return
 
-      ! end if
+       !end if
 
        if (logit) write (logunit,*) 'apply_enkf_increments(): applying asnow increments'
        if (logit) write (logunit,*) 'entering do loop'
