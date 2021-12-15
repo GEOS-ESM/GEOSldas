@@ -46,7 +46,6 @@ module clsm_ensupd_enkf_update
   use catch_types,                      ONLY:     &
        cat_param_type,                            &
        cat_progn_type,                            &
-       cat_diagS_type,                            &
        catprogn2wesn,                             &
        catprogn2htsn,                             &
        catprogn2ghtcnt,                           &
@@ -309,7 +308,6 @@ contains
     type(cat_progn_type), allocatable               :: tmp_cat_progn_ana(:)
     type(cat_progn_type), allocatable               :: cat_progn_incr_f(:), cat_progn_incr_ana(:,:)
     type(cat_progn_type), allocatable               :: recvBuf(:)
-    type(cat_diagS_type), dimension(nTiles_ana, N_ens), allocatable :: cat_diagS(:) !jpark50
     
 ! Obs related
     integer                                         :: nObs_ana
@@ -1289,9 +1287,6 @@ contains
 
     type(cat_progn_type), dimension(N_catd,N_ens), intent(inout) :: cat_progn
  
-    ! type(date_time_type), intent(in) :: date_time !jpark50
-
-    ! type(cat_diagS_type), dimension(N_catd,N_ens), intent(in)               :: cat_diagS !jpark50
     ! -----------------
 
     integer :: n, n_e, i
