@@ -29,7 +29,7 @@ GMAO_Shared:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: release/MAPL-v3
+  branch: release/MAPL-v3
   develop: develop
 
 GEOSgcm_GridComp:
