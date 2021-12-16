@@ -5,13 +5,13 @@ GEOSldas:
 env:
   local: ./@env
   remote: ../ESMA_env.git
-  tag: v3.4.0
+  tag: v3.4.1
   develop: main
 
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  tag: v3.6.0
+  tag: v3.6.5
   develop: develop
 
 ecbuild:
@@ -29,7 +29,7 @@ GMAO_Shared:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.8.6
+  tag: v2.10.1
   develop: develop
 
 GEOSgcm_GridComp:
