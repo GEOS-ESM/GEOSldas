@@ -1,18 +1,15 @@
 GEOSldas:
   fixture: true
-  develop: develop
 
 env:
   local: ./@env
   remote: ../ESMA_env.git
   tag: v3.8.0
-  develop: main
 
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
   tag: v3.8.0
-  develop: develop
 
 ecbuild:
   local: ./@cmake/@ecbuild
@@ -22,19 +19,16 @@ ecbuild:
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
-  branch: main
   sparse: ./config/GMAO_Shared.sparse
-  develop: main
+  tag: v1.5.0
 
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
   tag: v2.14.1
-  develop: develop
 
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: develop  
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
-  develop: develop
+  tag: v1.13.1
