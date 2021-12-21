@@ -32,6 +32,34 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 
 Overview of Git Releases:
 ============================
+[v17.10.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.10.0) - 2021-12-21
+------------------------------
+
+- Zero-diff vs. v17.9.6.
+
+- Science changes:
+  - Added CatchmentCN-CLM4.5. 
+  - Added bilinear interpolation option for ERA5_LIS forcing.
+
+- Infrastructure:
+  - Updated MAPL (v2.14.1; fixes bit shaving error in GEOSldas v17.9.6 when a processor was not assigned any tiles).
+  - Bit shaving turned on by default in HISTORY.rc template (except for increments output).
+  - Updated ESMA_env (v3.8.0).
+  - Updated ESMA_cmake (v3.8.0).
+  - Updated GMAO_Shared (v1.5.0).
+  - Updated GEOSgcm_GridComp (v1.13.1; added CatchmentCN-CLM4.5, make_bcs refactoring and bug fixes, minor fixes).
+  - Updated ldas_setup to facilitate use of Cascade Lake nodes.
+
+- Documentation:
+  - Clarified parallel_build and external sub-repositories in README.md.
+  - Clarified NUM_SGMT in LDAS.rc template. 
+
+- Bug fixes and other minor changes:
+  - Fixed vegdyn restart issue when restarting an ensemble run from a single-member run for reduced domains.
+  - Minor changes to support weakly-coupled land-atmosphere DAS.
+  - Domain decomposition fix (ensure IMS>1).
+
+------------------------------
 [v17.9.6](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.6) - 2021-09-23
 ------------------------------
 
