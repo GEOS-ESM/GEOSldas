@@ -41,7 +41,7 @@ class LDASsetup:
         # These keywords are excluded from LDAS.rc (i.e., only needed in pre- or post-processing)
         self.NoneLDASrcKeys=['EXP_ID', 'EXP_DOMAIN',
             'BEG_DATE', 'END_DATE','RESTART','RESTART_PATH',
-            'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','NIRDF_FILE',
+            'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','LNFM_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
             'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME',
@@ -260,10 +260,14 @@ class LDASsetup:
                     if _numg != _numd : 
                         self.rqdExeInp['RST_FROM_GLOBAL'] = 0
 
+        self.rqdExeInp['LNFM_FILE'] = ''
         if int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1 :
             self.rqdExeInp['TILING_FILE'] =glob.glob(self.rqdExeInp['BCS_PATH']+'*.til')[0]
             self.rqdExeInp['GRN_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'green_clim_*.data')[0]
             self.rqdExeInp['LAI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'lai_clim_*.data')[0]
+            tmp_ = glob.glob(self.rqdExeInp['BCS_PATH']+'lnfm_clim_*.data')
+            if (len(tmp_) ==1) :
+               self.rqdExeInp['LNFM_FILE'] = tmp_[0]
             self.rqdExeInp['NDVI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'ndvi_clim_*.data')[0]
             self.rqdExeInp['NIRDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'nirdf_*.dat')[0]
             self.rqdExeInp['VISDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'visdf_*.dat')[0]
@@ -272,6 +276,9 @@ class LDASsetup:
             self.rqdExeInp['TILING_FILE'] =os.path.realpath(glob.glob(inpdir+'*tile.data')[0])
             self.rqdExeInp['GRN_FILE']=    os.path.realpath(glob.glob(inpdir+'green*data')[0])
             self.rqdExeInp['LAI_FILE']=    os.path.realpath(glob.glob(inpdir+'lai*data')[0])
+            tmp_ = glob.glob(self.rqdExeInp['BCS_PATH']+'lnfm_clim_*.data')
+            if (len(tmp_) == 1) :
+               self.rqdExeInp['LNFM_FILE'] = tmp_[0]
             self.rqdExeInp['NDVI_FILE']=    os.path.realpath(glob.glob(inpdir+'ndvi*data')[0])
             self.rqdExeInp['NIRDF_FILE']=  os.path.realpath(glob.glob(inpdir+'nirdf*data')[0])
             self.rqdExeInp['VISDF_FILE']=  os.path.realpath(glob.glob(inpdir+'visdf*data')[0])
@@ -287,6 +294,10 @@ class LDASsetup:
                     self.rqdExeInp['TILING_FILE'] =glob.glob(self.rqdExeInp['BCS_PATH']+'*.til')[0]
                     self.rqdExeInp['GRN_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'green_clim_*.data')[0]
                     self.rqdExeInp['LAI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'lai_clim_*.data')[0]
+                    tmp_ = glob.glob(self.rqdExeInp['BCS_PATH']+'lnfm_clim_*.data')
+                    if (len(tmp_) == 1) :
+                       self.rqdExeInp['LNFM_FILE'] = tmp_[0]
+                    self.rqdExeInp['LNFM_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'lnfm_clim_*.data')[0]
                     self.rqdExeInp['NDVI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'ndvi_clim_*.data')[0]
                     self.rqdExeInp['NIRDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'nirdf_*.dat')[0]
                     self.rqdExeInp['VISDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'visdf_*.dat')[0]                
@@ -300,9 +311,10 @@ class LDASsetup:
 
         if  int(self.rqdExeInp['LSM_CHOICE']) == 1 :
             self.catch = 'catch'
-        else :
-            self.catch = 'catchcn'
-
+        if  int(self.rqdExeInp['LSM_CHOICE']) == 2 :
+            self.catch = 'catchcnclm40'
+        if  int(self.rqdExeInp['LSM_CHOICE']) == 3 : 
+            self.catch = 'catchcnclm45'
         if 'POSTPROC_HIST' not in self.rqdExeInp:
             self.rqdExeInp['POSTPROC_HIST'] = 0
 
@@ -696,6 +708,8 @@ class LDASsetup:
              self.rqdExeInp['NDVI_FILE'],
              self.rqdExeInp['NIRDF_FILE'],
              self.rqdExeInp['VISDF_FILE'] ]
+        if (self.rqdExeInp['LNFM_FILE'] != ''):
+           bcs += [self.rqdExeInp['LNFM_FILE']]
         bcstmp=[]
         for bcf in bcs :
             shutil.copy(bcf, self.bcsdir+'/')
@@ -716,6 +730,8 @@ class LDASsetup:
         # link BC
         print "linking bcs..." 
         bcnames=['green','lai','ndvi','nirdf','visdf']
+        if (self.rqdExeInp['LNFM_FILE'] != ''):
+           bcnames += ['lnfm']
         for bcln,bc in zip(bcnames,bcs) :
            myBC=self.inpdir+'/'+bcln+'.data'
            os.symlink(bc,myBC)
@@ -742,9 +758,9 @@ class LDASsetup:
         exp_dir   = self.exphome
         bcdir     = self.rqdExeInp['BCS_PATH']
         tilefile  = os.path.basename(self.rqdExeInp['TILING_FILE'])
-        lsmchoice = str(self.rqdExeInp['LSM_CHOICE'])
         have_rst  = str(self.rqdExeInp['RESTART'])
         YYYYMMDD  = '%4d%02d%02d' % (_start.year, _start.month,_start.day)
+        YYYYMMDDHH= '%4d%02d%02d%02d' % (_start.year, _start.month,_start.day, _start.hour)
         rstid     = self.rqdExeInp['RESTART_ID']
         rstdomain = self.rqdExeInp['RESTART_DOMAIN']
         rstpath0  = self.rqdExeInp['RESTART_PATH']
@@ -761,7 +777,7 @@ class LDASsetup:
                self.has_landassim_seed = True
  
         cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, exp_dir,
-                        bcdir, tilefile, lsmchoice, have_rst, YYYYMMDD,
+                        bcdir, tilefile, self.catch, have_rst, YYYYMMDDHH,
                         rstid, rstdomain, rstpath0, str(self.nens), str(self.rqdExeInp['RUN_IRRIG']),
                         dzsf, wemin_in, wemin_out])
         print "cmd:   " + cmd
@@ -801,6 +817,7 @@ class LDASsetup:
                     _catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+ensid+'_internal_rst.'+YYYYMMDD
                     vegdynRstFile= rstpath+ens +'/'+self.rqdExeInp['RESTART_ID']+ '.vegdyn_internal_rst'
                     if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
+                      if not os.path.isfile(vegdynRstFile0): 
                         vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
                     if (self.nens == 1) :
                         _catchRstFile = self.exphome+'/'+exp_id+'/mk_restarts/'+self.catch+'0000_internal_rst.'+YYYYMMDD
@@ -1050,8 +1067,8 @@ class LDASsetup:
                    tmpl_='%s' 
                 if self.perturb == 1:
                    ldasrcInp['PERTURBATIONS'] ='1'
-                bcval=['../input/green','../input/lai','../input/ndvi','../input/nirdf','../input/visdf']
-                bckey=['GREEN','LAI','NDVI','NIRDF','VISDF']
+                bcval=['../input/green','../input/lai','../input/lnfm','../input/ndvi','../input/nirdf','../input/visdf']
+                bckey=['GREEN','LAI','LNFM','NDVI','NIRDF','VISDF']
                 for key, val in zip(bckey,bcval):
                    keyn = key+'_FILE'
                    valn = val+'.data'
@@ -1059,6 +1076,7 @@ class LDASsetup:
 
                 # create restart item in RC
                 catch_ = self.catch.upper()
+
                 if catch_+'_INTERNAL_RESTART_TYPE' in ldasrcInp :
                     # avoid duplicate
                     del ldasrcInp[ catch_ +'_INTERNAL_RESTART_TYPE']
@@ -1241,7 +1259,9 @@ class LDASsetup:
                     elif 'MY_NODES' in line :
                         line_ = line.replace('MY_NODES',str(self.optRmInp['nodes']))
                         fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
-                        if int(self.rqdRmInp['ntasks-per-node']) > 28:
+                        if int(self.rqdRmInp['ntasks-per-node']) > 40:
+                           fout.write("#SBATCH --constraint=cas\n")
+                        if (28 < int(self.rqdRmInp['ntasks-per-node']) and int(self.rqdRmInp['ntasks-per-node']) <= 40) :
                            fout.write("#SBATCH --constraint=sky\n")
                     elif 'MY_OSERVER_NODES' in line :
                         fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
@@ -1358,7 +1378,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#   Re-tile from FP (Forward Processing) restart file.     #'       
     print '#                                                          #'
     print '# RESTART: G                                               #'
-    print '#   Re-tile from any AGCM catch[cn]_internal_rst file.     #'
+    print '#   Re-tile from any AGCM catch[cnclmxx]_internal_rst file.#'
     print '#                                                          #'
     print '# -------------------------------------------------------- #'
     print '# IMPORTANT:                                               #'
@@ -1437,7 +1457,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#  (3) MET_TAG  must be set to [ADAS_EXPID]__Nx+-          #'
     print '#      MET_PATH must be set as follows for                 #'
     print '#        LADAS_COUPLING = 1:                               #'        
-    print '#          [ADAS_EXPDIR]/lana/forc                         #'        
+    print '#          [full_path]/[LDAS_EXPID]/scratch/               #'        
     print '#        LADAS_COUPLING = 2:                               #'        
     print '#          [ADAS_EXPDIR]/atmens/ensdiag/forc               #'
     print '#      After ldas exp setup, verify the following link:    #'        
@@ -1509,8 +1529,9 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print '#                      [At NCCS: Use command "getsponsor" to see available account number(s).]'  
     print '# - walltime         = walltime requested; format is HH:MM:SS (hours/minutes/seconds)'
     print '# - ntasks_model     = number of processors requested for the model (typically 112; output server is not included)'
-    print '# - ntasks-per-node  = number of tasks per node (typically 40 for skylake and 28 for haswell nodes)'
-    print '#                      [If >28, skylake nodes will be allocated, else skylake or haswell.]'
+    print '# - ntasks-per-node  = number of tasks per node (typically 46 for cascade lake*, 40 for skylake, and 28 for haswell nodes)'
+    print '#                      [If >40, cascade lake nodes will be allocated, if >28, cascade or skylake, else cascade, skylake or haswell.]'
+    print '#                      [*NCCS recommends <=46 cores per node on SCU16 (cascade lake) due to OS issues (as of 6 Oct 2021).]'
     print '#'
     for key in rqdRmInpKeys:
         print key + ':'
