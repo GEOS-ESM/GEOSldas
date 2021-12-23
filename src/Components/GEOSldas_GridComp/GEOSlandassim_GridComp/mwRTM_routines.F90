@@ -339,8 +339,11 @@ contains
     
     !real    ::  er_r   ! for realdobson
 
+>>>>>>>>>>>>>>>>>>>> File 1
+>>>>>>>>>>>>>>>>>>>> File 2
     logical :: veg_params_nodata
     
+<<<<<<<<<<<<<<<<<<<<
     character(len=*), parameter :: Iam = 'mwRTM_get_Tb'
     character(len=400) :: err_msg
     
@@ -368,19 +371,34 @@ contains
     do n=1,N_tile
        
        ! compute Tb only under snow-free and non-frozen conditions
+>>>>>>>>>>>>>>>>>>>> File 1
+       ! and only where mwRTM parameters are available [only need 
+       ! to check one field of mwp because mwRTM_param_nodata_check()
+       ! is called in mwRTM_get_param()]
+>>>>>>>>>>>>>>>>>>>> File 2
        ! and only where mwRTM parameters are available
        !
        ! abbreviated check for "good" mwRTM parameter values here relies on prep work done
        ! in subroutine mwRTM_param_nodata_check(), which was called in mwRTM_get_param()
+<<<<<<<<<<<<<<<<<<<<
        
+>>>>>>>>>>>>>>>>>>>> File 1
+       if ( (SWE(n)<SWE_threshold)                                 .and.         &
+            (soiltemp(n)>tsoil_threshold)                          .and.         &
+            (abs(mwp(n)%sand-nodata_generic)>nodata_tol_generic) )        then
+>>>>>>>>>>>>>>>>>>>> File 2
        veg_params_nodata = ( LDAS_is_nodata(mwp(n)%bh) .and. LDAS_is_nodata(mwp(n)%vegopacity) )
+<<<<<<<<<<<<<<<<<<<<
        
+>>>>>>>>>>>>>>>>>>>> File 1
+>>>>>>>>>>>>>>>>>>>> File 2
        if ( (SWE(n)<SWE_threshold)                                .and.         &
             (soiltemp(n)>tsoil_threshold)                         .and.         &
             (.not. LDAS_is_nodata(mwp(n)%sand))                   .and.         &
             (.not. veg_params_nodata)                                           &
             )                                                      then
           
+<<<<<<<<<<<<<<<<<<<<
           ! soil dielectric constant
           
           soiltemp_in_C = soiltemp(n) - MAPL_TICE
@@ -426,7 +444,11 @@ contains
              h_mc = mwp(n)%rgh_hmax + slope * (soilmoist(n) - mwp(n)%rgh_wmin)
                           
           endif
+>>>>>>>>>>>>>>>>>>>> File 1
+          
+>>>>>>>>>>>>>>>>>>>> File 2
          
+<<<<<<<<<<<<<<<<<<<<
           ! 2) polarization mixing, Q as defined in CMEM:
           
           if (freq < 2.e9) then
@@ -449,6 +471,13 @@ contains
           !
           ! Tb at top of vegetation (excl atmos contribution)  (tau-omega model)
 
+>>>>>>>>>>>>>>>>>>>> File 1
+          ! == vwc: Vegetation water content in kg/m2 (=mm)
+          ! needs to be the total columnar vegetation water content,
+          ! depends on greenness/NDVI/LAI...
+          ! VWC=LEWT*LAI, lewt is actually a time-varying parameter!
+          ! For now LEWT is guessed based on literature, and kept cst. 
+>>>>>>>>>>>>>>>>>>>> File 2
           ! vegetation attenuation parameters can come from either of two sources:
           ! - static look-up table or calibrated parameters (bh, bv, lewt), to be combined
           !   with time-varying LAI
@@ -456,7 +485,11 @@ contains
 
           ! the if statement above, in conjunction with mwRTM_param_nodata_check() called earlier,
           ! ensures that we have "good" values for either (vegopacity) or (bh,bv,lewt)
+<<<<<<<<<<<<<<<<<<<<
           
+>>>>>>>>>>>>>>>>>>>> File 1
+          vwc = mwp(n)%lewt * lai(n)
+>>>>>>>>>>>>>>>>>>>> File 2
           if ( LDAS_is_nodata( mwp(n)%vegopacity ) ) then
              
              ! == vwc: Vegetation water content in kg/m2 (=mm)
@@ -466,7 +499,17 @@ contains
              ! For now LEWT is guessed based on literature, and kept cst. 
              
              vwc = mwp(n)%lewt * lai(n)
+<<<<<<<<<<<<<<<<<<<<
 
+>>>>>>>>>>>>>>>>>>>> File 1
+          ! removed contribution of interception water ("capac")
+          !
+          !! ! add bit of intercepted water as well    
+          !!          
+          !! vwc = vwc + capac(n)
+                    
+          ! Vegetation optical thickness tau=b*VWC  (eq. (2) in Crow et al. 2005)
+>>>>>>>>>>>>>>>>>>>> File 2
              ! removed contribution of interception water ("capac")
              !
              !! ! add bit of intercepted water as well    
@@ -479,14 +522,25 @@ contains
              
              exptauh = EXP( -mwp(n)%bh * tmpreal )
              exptauv = EXP( -mwp(n)%bv * tmpreal )
+<<<<<<<<<<<<<<<<<<<<
 
+>>>>>>>>>>>>>>>>>>>> File 1
+          tmpreal = vwc/cos_inc
+>>>>>>>>>>>>>>>>>>>> File 2
           else
              
              exptauh = EXP( -mwp(n)%vegopacity)
              exptauv = EXP( -mwp(n)%vegopacity)
+<<<<<<<<<<<<<<<<<<<<
 
+>>>>>>>>>>>>>>>>>>>> File 1
+          exptauh = EXP( -mwp(n)%bh * tmpreal )
+          exptauv = EXP( -mwp(n)%bv * tmpreal )
+          
+>>>>>>>>>>>>>>>>>>>> File 2
           end if
              
+<<<<<<<<<<<<<<<<<<<<
           Tc = soiltemp(n)        ! canopy temp = soil temp
           
           tmpreal = Tc * (1. - mwp(n)%omega)
