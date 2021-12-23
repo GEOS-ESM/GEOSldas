@@ -1,12 +1,20 @@
 # Sample HISTORY.rc file for GEOSldas
 #
-# This file is edited by "ldsetup" via "process_hist.csh".  The strings '#ASSIM', '#EASE', and '#CUBE' 
-#  are not linked to MAPL HISTORY functionality.  For example, the line 
+# This HISTORY template is edited by "ldas_setup" via "process_hist.csh".  
+# The strings '#ASSIM', '#EASE', and '#CUBE' are *not* linked to MAPL HISTORY 
+# functionality.  For example, the line 
 #    "#CUBE            'tavg24_2d_lnd_Nx'"
-#  does not mean that the 'lnd' output will be on a cube-sphere grid. 
+#  does *not* mean that the 'lnd' output will be on a cube-sphere grid. 
 
 #CUBE VERSION: 1
+
+# Must edit 'EXPID' manually if HISTORY file is re-used without going  
+#  through "ldas_setup".
+#
 EXPID:  GEOSldas_expid
+
+# Experiment description and source code info are expected by MAPL but  
+#  not used (as of 13 Oct 2021).
 EXPDSC: GEOSldas_output
 EXPSRC: GEOSldas
 
@@ -33,7 +41,15 @@ COLLECTIONS:
 #CUBE PC720x361-DC.DATELINE: DC
 #CUBE PC720x361-DC.LM: 1
 
+# Detailed definition of the collections listed above 
+#
+# Bit shaving: Retain only scientifically meaningful precision and modify meaningless 
+#              bits to facilitate better compression in post-processing;
+#              *.nbits specifies the number of bits retained; 
+#              MERRA-2 uses nbits=12 and FP uses nbits=10 for many collections.
+
   tavg24_1d_lfs_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
+  tavg24_1d_lfs_Nt.nbits:       12,
   tavg24_1d_lfs_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
   tavg24_1d_lfs_Nt.archive:     '%c/Y%y4',
   tavg24_1d_lfs_Nt.mode:        'time-averaged',
@@ -60,6 +76,7 @@ COLLECTIONS:
           ::
 
   tavg24_2d_lfs_Nx.descr:       '2d,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
+  tavg24_2d_lfs_Nx.nbits:       12,
   tavg24_2d_lfs_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
   tavg24_2d_lfs_Nx.archive:     '%c/Y%y4',
   tavg24_2d_lfs_Nx.mode:        'time-averaged',
@@ -91,6 +108,7 @@ COLLECTIONS:
           ::
 
   tavg24_1d_lnd_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics',
+  tavg24_1d_lnd_Nt.nbits:       12,
   tavg24_1d_lnd_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
   tavg24_1d_lnd_Nt.mode:        'time-averaged',
   tavg24_1d_lnd_Nt.frequency:   240000,
@@ -160,6 +178,7 @@ COLLECTIONS:
 >>>HIST_CATCHCN<<<        'CNTOTC'   , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'CNVEGC'   , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'CNROOT'   , 'GridComp'  ,
+>>>HIST_CATCHCNCLM45<<<   'CNFROOTC' , 'CATCHCNCLM45'  ,
 >>>HIST_CATCHCN<<<        'CNNPP'    , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'CNGPP'    , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'CNSR'     , 'GridComp'  ,
@@ -184,6 +203,7 @@ COLLECTIONS:
                                ::
 
   tavg24_2d_lnd_Nx.descr:       '2d,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Diagnostics',
+  tavg24_2d_lnd_Nx.nbits:       12,
   tavg24_2d_lnd_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
   tavg24_2d_lnd_Nx.mode:        'time-averaged',
   tavg24_2d_lnd_Nx.frequency:    240000,
@@ -258,6 +278,7 @@ COLLECTIONS:
 >>>HIST_CATCHCN<<<        'CNTOTC'   , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'CNVEGC'   , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'CNROOT'   , 'GridComp'  ,
+>>>HIST_CATCHCNCLM45<<<   'CNFROOTC' , 'CATCHCNCLM45'  ,
 >>>HIST_CATCHCN<<<        'CNNPP'    , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'CNGPP'    , 'GridComp'  ,
 >>>HIST_CATCHCN<<<        'CNSR'     , 'GridComp'  ,
@@ -282,6 +303,7 @@ COLLECTIONS:
                                ::
 
   SMAP_L4_SM_gph.descr:         'Tile-space,3-Hourly,Time-Averaged,Single-Level,Assimilation,SMAP L4_SM Land Geophysical Diagnostics',
+  SMAP_L4_SM_gph.nbits:         12,
   SMAP_L4_SM_gph.template:      '%y4%m2%d2_%h2%n2z.bin',
   SMAP_L4_SM_gph.mode:          'time-averaged',
   SMAP_L4_SM_gph.frequency:     030000,
@@ -329,6 +351,7 @@ COLLECTIONS:
                                ::
 
   inst1_1d_lnr_Nt.descr:        'Tile-space,1-Hourly,Instantaneous,Single-Level,Assimilation,Land Nature Run Diagnostics',
+  inst1_1d_lnr_Nt.nbits:       12,
   inst1_1d_lnr_Nt.template:     '%y4%m2%d2_%h2%n2z.bin' ,
   inst1_1d_lnr_Nt.mode:         'instantaneous' ,
   inst1_1d_lnr_Nt.frequency:    010000 ,
@@ -342,6 +365,7 @@ COLLECTIONS:
 
 # For catch_progn_incr, *.frequency and *.ref_time must be consistent with the LDAS.rc resource
 # parameters LANDASSIM_DT and LANDASSIM_T0.
+# By default, no bit shaving for increments output.
 
   catch_progn_incr.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Prognostics Increments',
   catch_progn_incr.template:    '%y4%m2%d2_%h2%n2z.bin',
@@ -379,6 +403,7 @@ COLLECTIONS:
 # parameters LANDASSIM_DT and LANDASSIM_T0.
 
   inst3_1d_lndfcstana_Nt.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
+  inst3_1d_lndfcstana_Nt.nbits:       12,
   inst3_1d_lndfcstana_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
   inst3_1d_lndfcstana_Nt.mode:        'instantaneous',
   inst3_1d_lndfcstana_Nt.frequency:   030000,
@@ -399,6 +424,7 @@ COLLECTIONS:
 # parameters LANDASSIM_DT and LANDASSIM_T0.
 
   inst3_2d_lndfcstana_Nx.descr:       '2d,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
+  inst3_2d_lndfcstana_Nx.nbits:       12,
   inst3_2d_lndfcstana_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
   inst3_2d_lndfcstana_Nx.archive:     '%c/Y%y4',
   inst3_2d_lndfcstana_Nx.mode:        'instantaneous',
