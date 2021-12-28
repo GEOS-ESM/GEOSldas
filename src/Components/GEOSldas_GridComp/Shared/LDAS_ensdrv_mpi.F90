@@ -41,11 +41,11 @@
 
 ! ********************************************************************************
 
-! removed MPI types that are no longer used. - reichle, 14 July 2021
-
 module LDAS_ensdrv_mpi
 
-  use catch_types,     only: N_gt, N_snow, N_cat_progn
+!  use catch_constants, only: N_gt => CATCH_N_GT
+  
+  use catch_types,     only: N_gt, N_snow, N_cat_progn, N_cat_diagS, N_cat_diagF
 
   use enkf_types,      only: N_obs_ang_max
   
@@ -54,9 +54,8 @@ module LDAS_ensdrv_mpi
   include 'mpif.h'
   
   public :: init_MPI_types
-  
   ! initialize to non-MPI values
-  
+ 
   integer, public  :: myid=0, numprocs=1, mpicomm
   integer, public  :: mpierr, mpistatus(MPI_STATUS_SIZE)
   
@@ -64,10 +63,16 @@ module LDAS_ensdrv_mpi
   
   integer, public  :: MPI_tile_coord_type, MPI_grid_def_type
   integer, public  :: MPI_cat_param_type,  MPI_cat_progn_type
-  integer, public  :: MPI_obs_type,        MPI_obs_param_type
+  integer, public  :: MPI_cat_diagS_type,  MPI_cat_diagF_type
+  integer, public  :: MPI_met_force_type,  MPI_veg_param_type
+  integer, public  :: MPI_bal_diagn_type,  MPI_alb_param_type  
+  integer, public  :: MPI_date_time_type
+  integer, public  :: MPI_mwRTM_param_type,MPI_obs_type,        MPI_obs_param_type
+  integer, public  :: MPI_cat_progn_int_type,                   MPI_cat_bias_param_type
   integer, public  :: MPI_obs_bias_type
-  
+
   integer, private :: N_real, N_int
+  
   
 contains
   
@@ -78,6 +83,44 @@ contains
     integer                                                   :: icount
     integer,                        allocatable, dimension(:) :: iblock, itype
     integer(KIND=MPI_ADDRESS_KIND), allocatable, dimension(:) :: idisp
+
+    ! ---------------------------------------------------------------------
+    !
+    ! WARNING: do not confuse date_time_type with the f90 intrisic
+    !          function "date_and_time()"
+    !
+    !  type :: date_time_type              
+    !   integer :: year               ! 4-digit year
+    !   integer :: month              ! month in year
+    !   integer :: day                ! day in month
+    !   integer :: hour               ! hour of day
+    !   integer :: min                ! minute of hour
+    !   integer :: sec                ! seconds of minute
+    !   integer :: pentad             ! pentad of year
+    !   integer :: dofyr              ! day of year
+    !  end type date_time_type
+
+    icount = 1
+
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    itype(1)  = MPI_INTEGER
+    
+    iblock(1) = 8
+    
+    idisp(1)  = 0
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_date_time_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_date_time_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+
 
     ! --------------------------------------------------------------------------------
     !
@@ -310,8 +353,319 @@ contains
     deallocate(iblock)
     deallocate(idisp)
     deallocate(itype)
-
     
+    ! ---------------------------------------------------------------------------------
+    !
+    ! integer, parameter :: N_cat_diagS = 7 + N_gt + N_snow
+    !
+    ! type :: cat_diagS_type
+    ! 
+    ! real :: ar1      ! area fraction of saturated zone
+    ! real :: ar2      ! area fraction of unsaturated and unstressed zone
+    ! real :: asnow    ! area fraction of snow
+    ! real :: sfmc     ! surface moisture content
+    ! real :: rzmc     ! root zone moisture content
+    ! real :: prmc     ! profile moisture content
+    ! real :: tsurf    ! mean surface temperature over entire catchment 
+    ! real, dimension(N_gt)   :: tp     ! temperature of soil layers
+    ! real, dimension(N_snow) :: tpsn   ! temperature of snow layers
+    
+    N_real = N_cat_diagS
+
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    ! split MPI type into two blocks of real numbers
+    ! (having just one with N_cat_diagS MPI_REAL entries did not work)
+
+    itype(1)  = MPI_REAL
+    itype(2)  = MPI_REAL
+    
+    iblock(1) = 1
+    iblock(2) = N_real-1
+    
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_cat_diagS_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_cat_diagS_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+        
+    ! --------------------------------------------------------------------------------
+    !
+    ! integer, parameter :: N_cat_diagF = 22
+    !
+    ! type :: cat_diagF_type
+    ! 
+    ! real :: shflux   ! sensible heat flux
+    ! real :: lhflux   ! total latent heat flux
+    ! real :: ghflux   ! ground heat flux to top soil layer
+    ! real :: evap     ! total evaporation 
+    ! real :: eint     ! interception loss
+    ! real :: esoi     ! evaporation from bare soil
+    ! real :: eveg     ! transpiration 
+    ! real :: esno     ! evaporation from snow
+    ! real :: runoff   ! total runoff
+    ! real :: runsrf   ! surface runoff
+    ! real :: bflow    ! baseflow
+    ! real :: snmelt   ! snow melt
+    ! real :: lwup     ! outgoing/upward longwave radiation
+    ! real :: swup     ! outgoing/upward shortwave radiation
+    ! real :: qinfil   ! infiltration
+    ! real :: hsnacc   ! accounting term for energy related to snowfall etc.
+    ! real :: evacc    ! accounting term for evaporation   (see catchment()) 
+    ! real :: shacc    ! accounting term for sensible heat (see catchment()) 
+    ! real :: lhacc    ! accounting term for latent heat   (see catchment()) 
+    ! real :: eacc_0   ! accounting term for oscillations  (see catchment()) 
+    ! real :: t2m      ! air temperature at 2m above the displacement height
+    ! real :: q2m      ! specific humidity at 2m above the displacement height
+    
+    N_real = N_cat_diagF
+
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    ! split MPI type into two blocks of real numbers
+    ! (having just one with N_cat_diagF MPI_REAL entries did not work)
+
+    itype(1)  = MPI_REAL
+    itype(2)  = MPI_REAL
+    
+    iblock(1) = 1
+    iblock(2) = N_real-1
+    
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_cat_diagF_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_cat_diagF_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+        
+    ! --------------------------------------------------------------------------------
+    !
+    ! type met_force_type
+    !
+    ! real :: Tair                 ! air temperature at RefH                 [K]
+    ! real :: Qair                 ! specific humidity at RefH               [kg/kg]
+    ! real :: Psurf                ! surface pressure                        [Pa]
+    ! real :: Rainf_C              ! convective rainfall                     [kg/m2/s]
+    ! real :: Rainf                ! total rainfall                          [kg/m2/s]
+    ! real :: Snowf                ! total snowfall                          [kg/m2/s]
+    ! real :: LWdown               ! downward longwave radiation             [W/m2]
+    ! real :: SWdown               ! downward shortwave radiation            [W/m2]
+    ! real :: PARdrct              ! Photosynth. Active Radiation (direct)   [W/m2]
+    ! real :: PARdffs              ! Photosynth. Active Radiation (diffuse)  [W/m2]
+    ! real :: Wind                 ! wind speed at RefH                      [m/s]
+    ! real :: RefH                 ! reference height for Tair, Qair, Wind   [m]
+    
+    N_real = 12
+
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    ! split MPI type into two blocks of real numbers
+    ! (having just one with N_met_force MPI_REAL entries did not work)
+    
+    itype(1)  = MPI_REAL
+    itype(2)  = MPI_REAL
+    
+    iblock(1) = 1
+    iblock(2) = N_real-1
+    
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_met_force_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_met_force_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+
+    ! --------------------------------------------------------------------------------
+    !    
+    ! type veg_param_type
+    ! 
+    ! real :: grn                  ! vegetation greenness fraction           [-]
+    ! real :: lai                  ! leaf-area-index                         [m2/m2]
+    
+    N_real = 2   
+
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    ! split MPI type into two blocks of real numbers
+    ! (having just one with N_veg_param MPI_REAL entries did not work)
+    
+    itype(1)  = MPI_REAL
+    itype(2)  = MPI_REAL
+    
+    iblock(1) = 1
+    iblock(2) = N_real-1
+    
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_veg_param_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_veg_param_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+
+    ! --------------------------------------------------------------------------------
+    !    
+    ! type bal_diagn_type
+    ! 
+    ! real :: etotl                ! total energy store (in all model progn)  [J/m2]
+    ! real :: echng                ! energy change per unit time (model only) [W/m2]
+    ! real :: eincr                ! energy analysis increment per unit time  [W/m2]
+    ! real :: wtotl                ! total water store (in all model progn)   [kg/m2]
+    ! real :: wchng                ! water change per unit time (model only)  [kg/m2/s]
+    ! real :: wincr                ! water analysis increment per unit time   [kg/m2/s]
+    
+    N_real = 6
+
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    ! split MPI type into two blocks of real numbers
+    ! (having just one with N_bal_diagn MPI_REAL entries did not work)
+    
+    itype(1)  = MPI_REAL
+    itype(2)  = MPI_REAL
+    
+    iblock(1) = 1
+    iblock(2) = N_real-1
+    
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_bal_diagn_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_bal_diagn_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+
+    ! --------------------------------------------------------------------------------
+    !    
+    ! type alb_param_type
+    ! 
+    ! reichle,  5 Apr 2013 - removed alb_param_type fields "sc_albvr" and "sc_albnr" 
+    !
+    ! !real :: sc_albvr    ! Scaling factor for direct  visible  or blacksky 0.3-0.7 
+    ! !real :: sc_albnr    ! Scaling factor for direct  infrared or blacksky 0.7-5.0
+    ! real :: sc_albvf    ! Scaling factor for diffuse visible  or whitesky 0.3-0.7 
+    ! real :: sc_albnf    ! Scaling factor for diffuse infrared or whitesky 0.7-5.0
+    
+    N_real = 2   
+
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    ! split MPI type into two blocks of real numbers
+    ! (having just one with N_alb_param MPI_REAL entries did not work)
+    
+    itype(1)  = MPI_REAL
+    itype(2)  = MPI_REAL
+    
+    iblock(1) = 1
+    iblock(2) = N_real-1
+    
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_alb_param_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_alb_param_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+    
+    ! --------------------------------------------------------------------------------
+    !
+    ! type mwRTM_param_type
+    ! 
+    ! integer :: vegcls     
+    ! integer :: soilcls    
+    ! real    :: sand       
+    ! real    :: clay       
+    ! real    :: poros
+    ! real    :: wang_wt    
+    ! real    :: wang_wp    
+    ! real    :: rgh_hmin   
+    ! real    :: rgh_hmax   
+    ! real    :: rgh_wmin   
+    ! real    :: rgh_wmax   
+    ! real    :: rgh_Nrh    
+    ! real    :: rgh_Nrv    
+    ! real    :: rgh_polmix 
+    ! real    :: omega      
+    ! real    :: bh         
+    ! real    :: bv         
+    ! real    :: lewt       
+
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    itype(1)  = MPI_INTEGER
+    itype(2)  = MPI_REAL
+
+    iblock(1) = 2
+    iblock(2) = 16
+        
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_mwRTM_param_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_mwRTM_param_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+
     ! ---------------------------------------------------------------------------------
     !
     ! type obs_type
@@ -453,6 +807,89 @@ contains
     deallocate(itype)
 
 
+
+
+    !--------------------------------------------------------------------------------
+    !
+    ! type :: cat_progn_int_type
+    !
+    !   integer :: tc1     ! surface/canopy temperature 
+    !   integer :: tc2
+    !   integer :: tc4
+    !   integer :: qa1     ! specific humidity in canopy air
+    !   integer :: qa2
+    !   integer :: qa4
+    !   integer :: capac   ! canopy interception water
+    !   integer :: catdef  ! catchment deficit
+    !   integer :: rzexc   ! root zone excess
+    !   integer :: srfexc  ! surface excess
+    !   integer, dimension(N_gt)   :: ght     ! ground heat content
+    !   integer, dimension(N_snow) :: wesn    ! snow water equivalent
+    !   integer, dimension(N_snow) :: htsn    ! snow heat content
+    !   integer, dimension(N_snow) :: sndz    ! snow depth
+    
+    N_int  = N_cat_progn
+    
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    itype(1)  = MPI_INTEGER
+    itype(2)  = MPI_INTEGER
+    
+    iblock(1) = 1
+    iblock(2) = N_int-1
+    
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_cat_progn_int_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_cat_progn_int_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+
+    ! ---------------------------------------------------------------------------------
+    !
+    ! type :: cat_bias_param_type
+    !
+    !   type(cat_progn_type)     :: tconst
+    !   type(cat_progn_type)     :: trelax
+    !   type(cat_progn_int_type) :: Nparam
+    
+    N_real = 2*N_cat_progn
+    N_int  =   N_cat_progn
+    
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    itype(1)  = MPI_REAL
+    itype(2)  = MPI_INTEGER
+    
+    iblock(1) = N_real
+    iblock(2) = N_int
+    
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_cat_bias_param_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_cat_bias_param_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+
+    
     ! ---------------------------------------------------------------------------------
     !
     ! type :: obs_bias_type
