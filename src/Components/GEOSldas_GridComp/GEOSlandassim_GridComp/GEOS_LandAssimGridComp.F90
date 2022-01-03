@@ -2632,8 +2632,11 @@ contains
 
 
     if(allocated(mwRTM_param)) then
-       _RETURN(_SUCCESS)
-    endif
+
+       call get_vegopacity(MAPL, clock, N_catl, rc=status)
+        _VERIFY(STATUS)
+
+    else
 
     call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
     _VERIFY(STATUS)
@@ -2708,7 +2711,8 @@ contains
     call MPI_AllReduce(all_nodata_l, mwRTM_all_nodata, 1, MPI_LOGICAL, &
          MPI_LAND, mpicomm, mpierr)
     _RETURN(_SUCCESS)
-
+    
+    endif
   end subroutine get_mwrtm_param
 
   subroutine get_vegopacity(MAPL, clock, N_catl, rc)
