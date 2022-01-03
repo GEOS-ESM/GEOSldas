@@ -2701,6 +2701,8 @@ contains
     call get_vegopacity(MAPL, clock, N_catl, rc=status)
     _VERIFY(STATUS)
 
+    endif
+
     all_nodata_l = .true.
     do n=1,N_catl
        call mwRTM_param_nodata_check(mwRTM_param(n), mwp_nodata )
@@ -2712,7 +2714,6 @@ contains
          MPI_LAND, mpicomm, mpierr)
     _RETURN(_SUCCESS)
     
-    endif
   end subroutine get_mwrtm_param
 
   subroutine get_vegopacity(MAPL, clock, N_catl, rc)
