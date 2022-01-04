@@ -362,6 +362,9 @@ PROGRAM tile_bin2nc4
     case ('RMELTBC002'); LONG_NAME = 'flushed_out_black_carbon_mass_flux_from_the_bottom_layer_bin_2';   UNITS = 'kg m-2 s-1'
     case ('RMELTOC001'); LONG_NAME = 'flushed_out_organic_carbon_mass_flux_from_the_bottom_layer_bin_1'; UNITS = 'kg m-2 s-1'
     case ('RMELTOC002'); LONG_NAME = 'flushed_out_organic_carbon_mass_flux_from_the_bottom_layer_bin_2'; UNITS = 'kg m-2 s-1'
+    case ('WATERTABLED');LONG_NAME = 'depth_to_water_table_from_surface';                                UNITS = 'm'
+    case ('FSWCHANGE');  LONG_NAME = 'change_in_free_surface_water_reservoir_on_peat';                   UNITS = 'kg m-2 s-1'
+
  
     ! land assimilation increments for Catchment prognostic variables in coupled land-atmosphere DAS (#sqz 2020-01)
 

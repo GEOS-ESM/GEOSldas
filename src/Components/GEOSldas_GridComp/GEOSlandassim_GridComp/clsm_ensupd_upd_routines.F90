@@ -1289,6 +1289,7 @@ contains
                cat_param%ara1,   cat_param%ara2,   cat_param%ara3,   &
                cat_param%ara4,   cat_param%arw1,   cat_param%arw2,   &
                cat_param%arw3,   cat_param%arw4,                     &
+               cat_param%bf1,    cat_param%bf2,                      &
                srfexc, rzexc, catdef,                                &
                ar1_l,  ar2_l,  ar4_l,                                &
                sfmc_l(:,n_e), rzmc_l(:,n_e), prmc_l )
@@ -3570,6 +3571,7 @@ contains
             cat_param%ara1,   cat_param%ara2,   cat_param%ara3,               &
             cat_param%ara4,   cat_param%arw1,   cat_param%arw2,               &
             cat_param%arw3,   cat_param%arw4,                                 &
+            cat_param%bf1,    cat_param%bf2,                                  &
             srfexc, rzexc, catdef, ar1, ar2, ar4,                             &
             sfmc(:,n_e), rzmc(:,n_e), prmc(:,n_e) )
        

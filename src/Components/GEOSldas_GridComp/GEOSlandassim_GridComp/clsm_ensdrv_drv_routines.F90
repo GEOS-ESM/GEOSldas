@@ -119,6 +119,7 @@ contains
          cat_param%ars1, cat_param%ars2, cat_param%ars3,                     &
          cat_param%ara1, cat_param%ara2, cat_param%ara3, cat_param%ara4,     &
          cat_param%arw1, cat_param%arw2, cat_param%arw3, cat_param%arw4,     &
+         cat_param%bf1,  cat_param%bf2,                                      &
          cat_progn%tc1, cat_progn%tc2, cat_progn%tc4,                        &
          cat_progn%qa1, cat_progn%qa2, cat_progn%qa4,                        &
          cat_progn%capac, cat_progn%catdef,                                  &
@@ -197,6 +198,7 @@ contains
          cat_param%ara1,   cat_param%ara2,  cat_param%ara3,         &
          cat_param%ara4,   cat_param%arw1,  cat_param%arw2,         &
          cat_param%arw3,   cat_param%arw4,                          &
+         cat_param%bf1,    cat_param%bf2,                           &
          cat_progn%srfexc, cat_progn%rzexc, cat_progn%catdef,       &
          cat_diagS%ar1,    cat_diagS%ar2,   ar4,                    &
          cat_diagS%sfmc,   cat_diagS%rzmc,  cat_diagS%prmc)            
