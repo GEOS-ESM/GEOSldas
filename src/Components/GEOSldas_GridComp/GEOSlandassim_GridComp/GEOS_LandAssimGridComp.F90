@@ -1826,6 +1826,9 @@ contains
          )
     _VERIFY(status)   
    
+    call get_vegopacity(MAPL, clock, N_catl, rc=status)
+    _VERIFY(STATUS)
+
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
@@ -2632,11 +2635,8 @@ contains
 
 
     if(allocated(mwRTM_param)) then
-
-       call get_vegopacity(MAPL, clock, N_catl, rc=status)
-        _VERIFY(STATUS)
-
-    else
+       _RETURN(_SUCCESS)
+    endif
 
     call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
     _VERIFY(STATUS)
@@ -2700,8 +2700,6 @@ contains
 
     call get_vegopacity(MAPL, clock, N_catl, rc=status)
     _VERIFY(STATUS)
-
-    endif
 
     all_nodata_l = .true.
     do n=1,N_catl
