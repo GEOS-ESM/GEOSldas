@@ -817,7 +817,7 @@ contains
   !
   ! INTERNAL STATE
   !
-
+  if (mwRTM) then
   call MAPL_AddInternalSpec(GC                 ,&
       LONG_NAME   = 'L-band Microwave RTM: Vegetation class. Type is Unsigned32'   ,&
       UNITS       = '1'                         ,&
@@ -980,6 +980,9 @@ contains
       VLOCATION   = MAPL_VLocationNone          ,&
       DEFAULT     = nodata_generic              ,&
       RC=STATUS)
+   else
+     allocate(mwRTM_param(0))
+   endif ! mwRTM File
 
 !
    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
@@ -2187,14 +2190,16 @@ contains
     !----------------------
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
     _VERIFY(status)
-    
-    call get_mwrtm_param(INTERNAL, N_catl, rc=status)
-    _VERIFY(STATUS)
-    ! make sure that at least some mwRTM parameters are not nodata 
-    if (mwRTM_all_nodata) then
-       _ASSERT(.false., "Tb output requested but all mwRTM parameters are nodata")
+   
+    if (mwRTM) then 
+       call get_mwrtm_param(INTERNAL, N_catl, rc=status)
+       _VERIFY(STATUS)
+       ! make sure that at least some mwRTM parameters are not nodata 
+       if (mwRTM_all_nodata) then
+          _ASSERT(.false., "Tb output requested but all mwRTM parameters are nodata")
+       endif
     endif
-    
+
     call MAPL_GetPointer(import, LAI,     'LAI'      ,rc=status)
     _VERIFY(status)
     call MAPL_GetPointer(import, TP1,     'TP1'      ,rc=status)         ! units now K, rreichle & borescan, 6 Nov 2020
@@ -2336,13 +2341,15 @@ contains
      _VERIFY(status)
      call esmf2ldas(ModelTimeCur, start_time, rc=status)
      _VERIFY(status)
+    
+     if (mwRTM) then
+        call get_mwrtm_param(INTERNAL, N_catl, rc=status)
+        _VERIFY(status)
 
-     call get_mwrtm_param(INTERNAL, N_catl, rc=status)
-     _VERIFY(status)
-
-     call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
+        call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
             N_catl, tile_coord_l, cat_param, mwRTM_param )
-     first_time = .false.
+        first_time = .false.
+     endif
 
      _RETURN(_SUCCESS)
 
