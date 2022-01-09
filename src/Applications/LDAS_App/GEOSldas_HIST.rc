@@ -13,11 +13,6 @@
 #
 EXPID:  GEOSldas_expid
 
-# Experiment description and source code info are expected by MAPL but  
-#  not used (as of 13 Oct 2021).
-EXPDSC: GEOSldas_output
-EXPSRC: GEOSldas
-
 COLLECTIONS:
 #EASE            'tavg24_1d_lfs_Nt'
 #CUBE            'tavg24_2d_lfs_Nx'	
