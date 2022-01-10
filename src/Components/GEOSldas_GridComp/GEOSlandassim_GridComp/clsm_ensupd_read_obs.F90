@@ -360,9 +360,9 @@ contains
     
   if (logit) write(logunit,*) 'N_data:', N_data
  
-         lat = lat(1:j)
-         lon = lon(1:j)
-         MODIS_SCA = MODIS_SCA(1:j)
+         ! lat = lat(1:j)
+         ! lon = lon(1:j)
+         ! MODIS_SCA = MODIS_SCA(1:j)
 
       !  if (logit) write(logunit,*) 'readMODISsca_hdf subroutine' 
       !  if (logit) write(logunit,*) 'lat size:', size(lat) 
