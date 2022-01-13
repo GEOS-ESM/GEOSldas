@@ -993,29 +993,31 @@ contains
       RC=STATUS)
 
 !
-   call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-   _VERIFY(STATUS)
-   call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
-   _VERIFY(STATUS)
-   call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
-   VERIFY_(STATUS)
+   if (land_assim) then
+      call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+      _VERIFY(STATUS)
+      call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+      _VERIFY(STATUS)
+      call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+      VERIFY_(STATUS)
 
-   write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
-   allocate(ens_id(NUM_ENSEMBLE), export_id(NUM_ENSEMBLE))
-   do i=1,NUM_ENSEMBLE
-      ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
-      if (NUM_ENSEMBLE == 1 ) then
-         id_string=''
-      else
-         write(id_string, fmt_str) ens_id(i)
-      endif
+      write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
+      allocate(ens_id(NUM_ENSEMBLE), export_id(NUM_ENSEMBLE))
+      do i=1,NUM_ENSEMBLE
+         ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+         if (NUM_ENSEMBLE == 1 ) then
+            id_string=''
+         else
+            write(id_string, fmt_str) ens_id(i)
+         endif
 
-      id_string=trim(id_string)
+         id_string=trim(id_string)
 
-      childname='CATCHINCR'//trim(id_string)
-      export_id(i) = MAPL_AddChild(gc, name=childname, ss=ExportCatchIncrSetServices, rc=status)
-      VERIFY_(status)
-   enddo
+         childname='CATCHINCR'//trim(id_string)
+         export_id(i) = MAPL_AddChild(gc, name=childname, ss=ExportCatchIncrSetServices, rc=status)
+         VERIFY_(status)
+      enddo
+   endif
 
    call MAPL_TimerAdd(GC, name="Initialize"    ,RC=STATUS)
    _VERIFY(STATUS)
@@ -1850,7 +1852,6 @@ contains
          ! below  are dummy for now
          N_adapt_R, obs_pert_adapt_param, Pert_adapt_R)
     
-    
     if (fresh_incr) then
        ! apply EnKF increments (incl. call to catch_calc_soil_moist but not to recompute_diagS())
        call apply_enkf_increments( N_catl, NUM_ENSEMBLE, update_type, cat_param, &
@@ -2181,6 +2182,7 @@ contains
     ! export
     real, dimension(:), pointer :: TB_H_enavg
     real, dimension(:), pointer :: TB_V_enavg
+    real, dimension(:), pointer :: MWRTM_VEGOPACITY 
 
     ! local
     real,    allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
@@ -2200,6 +2202,9 @@ contains
     call MAPL_GetPointer(export, TB_V_enavg,  'TB_LAND_1410MHZ_40DEG_VPOL' ,rc=status)
     _VERIFY(STATUS)
     
+    call MAPL_GetPointer(export, MWRTM_VEGOPACITY,  'MWRTM_VEGOPACITY' ,rc=status)
+    _VERIFY(STATUS)
+
     !if HISTORY does not ask for these variables, no calculation necessary; return
     if (.not. associated(TB_H_enavg) .or. .not. associated(TB_V_enavg)) then
        _RETURN(_SUCCESS)
@@ -2223,7 +2228,13 @@ contains
     if (mwRTM_all_nodata) then
        _ASSERT(.false., "Tb output requested but all mwRTM parameters are nodata")
     endif
-    
+
+    if(associated(MWRTM_VEGOPACITY)) then
+          MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
+          ! make sure no-data-value matches that of other exports
+          where (LDAS_is_nodata(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY = nodata_generic
+    end if
+ 
     call MAPL_GetPointer(import, LAI,     'LAI'      ,rc=status)
     _VERIFY(status)
     call MAPL_GetPointer(import, TP1,     'TP1'      ,rc=status)         ! units now K, rreichle & borescan, 6 Nov 2020
@@ -2635,9 +2646,11 @@ contains
 
 
     if(allocated(mwRTM_param)) then
-       _RETURN(_SUCCESS)
-    endif
 
+       call get_vegopacity(MAPL, clock, N_catl, rc=status)
+        _VERIFY(STATUS)
+
+    else
     call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
     _VERIFY(STATUS)
     call MAPL_GetPointer(INTERNAL, SOILCLS  , 'MWRTM_SOILCLS'  ,    RC=STATUS)
@@ -2701,6 +2714,7 @@ contains
     call get_vegopacity(MAPL, clock, N_catl, rc=status)
     _VERIFY(STATUS)
 
+    endif
     all_nodata_l = .true.
     do n=1,N_catl
        call mwRTM_param_nodata_check(mwRTM_param(n), mwp_nodata )
