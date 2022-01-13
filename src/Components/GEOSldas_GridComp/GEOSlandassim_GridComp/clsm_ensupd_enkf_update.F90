@@ -112,6 +112,7 @@ module clsm_ensupd_enkf_update
        apply_adapt_R
 
   use LDAS_ensdrv_mpi,                  ONLY:     &
+       MPI_met_force_type,                        &
        MPI_cat_param_type,                        &
        MPI_cat_progn_type,                        &
        root_proc,                                 &
@@ -303,6 +304,7 @@ contains
     integer, dimension(:), allocatable :: indTiles_l, indTiles_f, indTiles_ana
     type(varLenIntArr)                 :: indTilesAna_vec(numprocs)
     type(tile_coord_type), dimension(:), pointer    :: tile_coord_ana  ! input to cat_enkf_increment() is a pointer
+    type(met_force_type), dimension(:), allocatable :: met_force_f,         met_force_ana
     type(cat_param_type), dimension(:), allocatable :: cat_param_f,         cat_param_ana
     type(cat_progn_type), allocatable               :: cat_progn_f(:),      cat_progn_ana(:,:)
     type(cat_progn_type), allocatable               :: tmp_cat_progn_ana(:)
@@ -618,7 +620,7 @@ contains
           ! them evenly among all procs, indTiles_ana. The corresponding
           ! numbers are nTiles_l, nTiles_f, nTiles_ana. Root needs
           ! nTilesAna_vec, indTilesAna_vec (list of nTiles_ana,
-          ! indTiles_ana on each proc) to distribute cat_param, cat_progn.
+          ! indTiles_ana on each proc) to distribute cat_param, cat_progn, etc.
           !
           ! IMPORTANT: Regardless of update_type, obs from *all* species are
           !            considered (ie, N_select_species=0).  This could result in
@@ -748,7 +750,7 @@ contains
           if (allocated(indTiles_f)) deallocate(indTiles_f)
 
           ! Step 2d: indTiles_ana -> indTilesAna_vec (on root)
-          ! root needs indTiles_ana from each proc to distribute cat_param, cat_progn etc.
+          ! root needs indTiles_ana from each proc to distribute cat_param, cat_progn, etc.
           if (root_proc) then
              do iproc=1,numprocs
                 allocate(indTilesAna_vec(iproc)%ind(nTilesAna_vec(iproc)))
@@ -850,7 +852,36 @@ contains
           allocate(tile_coord_ana(nTiles_ana))
           tile_coord_ana = tile_coord_f(indTiles_ana)
 
-          ! Step 4c: cat_param(N_catl) -> cat_param_f (on root) -> cat_param_ana
+          ! Step 4c: met_force(N_catl) -> met_force_f (on root) -> met_force_ana
+          if (root_proc) then
+             allocate(met_force_f(N_catf))
+          else
+             allocate(met_force_f(0)) !for debugging mode
+          endif
+          call MPI_Gatherv(                                             &
+               met_force,   N_catl,                MPI_met_force_type,  &
+               met_force_f, N_catl_vec, low_ind-1, MPI_met_force_type,  &
+               0, mpicomm, mpierr )
+          allocate(met_force_ana(nTiles_ana))
+          if (root_proc) then
+             met_force_ana = met_force_f(indTilesAna_vec(1)%ind)
+             do dest=1,numprocs-1
+                sendtag = dest
+                sendct = nTilesAna_vec(dest+1)
+                call MPI_Send(met_force_f(indTilesAna_vec(dest+1)%ind), &
+                     sendct,MPI_met_force_type,                         &
+                     dest,sendtag,mpicomm,mpierr)
+             end do
+          else
+             ! source = 0
+             recvtag = myid
+             recvct = nTiles_ana
+             call MPI_Recv(met_force_ana,recvct,MPI_met_force_type, &
+                  0,recvtag,mpicomm,mpistatus,mpierr)
+          end if
+          if (allocated(met_force_f)) deallocate(met_force_f)
+
+          ! Step 4d: cat_param(N_catl) -> cat_param_f (on root) -> cat_param_ana
           if (root_proc) then
              allocate(cat_param_f(N_catf))
           else
@@ -879,7 +910,7 @@ contains
           end if
           if (allocated(cat_param_f)) deallocate(cat_param_f)
 
-          ! Step 4d: cat_progn -> cat_progn_f (on root) -> cat_progn_ana
+          ! Step 4e: cat_progn -> cat_progn_f (on root) -> cat_progn_ana
           ! one ensemble at a time
           if (root_proc) then
              allocate(cat_progn_f(N_catf))
@@ -931,7 +962,7 @@ contains
           if (allocated( tmp_cat_progn_ana))  deallocate(tmp_cat_progn_ana)
           if (allocated(cat_progn_f)) deallocate(cat_progn_f)
 
-          ! Step 4e: Obs_pred_l (obs%assim=.true.) -> Obs_pred_f_assim (on root) -> Obs_pred_ana
+          ! Step 4f: Obs_pred_l (obs%assim=.true.) -> Obs_pred_f_assim (on root) -> Obs_pred_ana
           ! one ensemble at a time
           if (root_proc) then
              allocate(Obs_pred_f_assim(N_obsf_assim))
@@ -1072,10 +1103,10 @@ contains
                Obs_ana,                                   & ! size: nObs_ana
                Obs_pred_ana,                              & ! size: (nObs_ana,N_ens)
                Obs_pert_tmp,                              &
+               met_force_ana,                             &
                cat_param_ana,                             &
                xcompact, ycompact, fcsterr_inflation_fac, &
-               cat_progn_ana, cat_progn_incr_ana,         &
-               met_force)
+               cat_progn_ana, cat_progn_incr_ana)
           call cpu_time(t_end)
 
           
@@ -1101,6 +1132,7 @@ contains
                Observations_lH(1:N_obslH),                              &
                Obs_pred_lH(1:N_obslH,1:N_ens),                          &
                Obs_pert_tmp,                                            &
+               met_force,                                               &
                cat_param,                                               &
                xcompact, ycompact, fcsterr_inflation_fac,               &
                cat_progn, cat_progn_incr, met_force )
@@ -1180,6 +1212,7 @@ contains
           if (allocated( indObs_ana))         deallocate(indObs_ana)
           if (allocated( cat_progn_ana))      deallocate(cat_progn_ana)
           if (allocated( cat_param_ana))      deallocate(cat_param_ana)
+          if (allocated( met_force_ana))      deallocate(met_force_ana)
           do iproc=1,numprocs
              if (allocated(indTilesAna_vec(iproc)%ind))   &
                   deallocate(indTilesAna_vec(iproc)%ind)

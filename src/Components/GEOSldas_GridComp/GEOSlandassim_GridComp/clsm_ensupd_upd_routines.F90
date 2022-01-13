@@ -3409,9 +3409,9 @@ contains
        update_type, obs_param,                                  &
        tile_grid_f, tile_coord, l2f,                            &
        Observations, Obs_pred, Obs_pert,                        &
-       cat_param,                                               &
+       met_force, cat_param,                                    &
        xcompact, ycompact, fcsterr_inflation_fac,               &
-       cat_progn, cat_progn_incr, met_force)
+       cat_progn, cat_progn_incr)
     
     ! get increments for Catchment prognostic variables
     !
@@ -3461,8 +3461,7 @@ contains
     real, intent(in), dimension(N_obs,N_ens)  :: Obs_pred
     real, intent(in), dimension(N_obs,N_ens)  :: Obs_pert
     
-    type(met_force_type), dimension(N_catd), intent(in) :: met_force !jpark50 
-    !type(cat_diagS_type), dimension(N_catd), intent(in) :: cat_diagS !jpark50
+    type(met_force_type), dimension(N_catd), intent(in) :: met_force
     type(cat_param_type), dimension(N_catd), intent(in) :: cat_param
     
     real, intent(in) :: xcompact, ycompact, fcsterr_inflation_fac
