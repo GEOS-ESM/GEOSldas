@@ -84,9 +84,8 @@ module clsm_ensupd_read_obs
 
 contains
  
- subroutine read_MODISsca_hdf(&
- N_files, date_time, N_data, fnames, &
- lon, lat, MODIS_SCA)
+ subroutine read_MODISsca_hdf( N_files, date_time, N_data, fnames, &
+                               lon, lat, MODIS_SCA)
 
  !subroutine read_MODISsca_hdf routine description
  !a. purpose: read snow cover data from daily MOD10C1 data located under lis folder
@@ -111,14 +110,14 @@ contains
  implicit none
 
  integer, intent(in) :: N_files
- character(300), dimension(N_files), intent(in) :: fnames
- integer, intent(out) :: N_data
-
- real, dimension(:), pointer, allocatable :: lon, lat
- character(1), dimension(:,:), allocatable :: tmp_MODIS_SCA, tmp_CI_Index, tmp_Cloud_index, tmp_Snow_QA
- real, dimension(:), pointer :: MODIS_SCA, MODIS_SCA_raw
-
  type(date_time_type),intent(in) :: date_time ! loading the UTC hour information to constrain the longitude of MODIS obs.
+ integer, intent(out) :: N_data
+ character(*), dimension(N_files), intent(in) :: fnames
+ real, dimension(:), pointer :: lon, lat
+ real, dimension(:), pointer :: MODIS_SCA
+ real, dimension(:), allocatable :: MODIS_SCA_raw
+ character(1), dimension(:,:), allocatable :: tmp_MODIS_SCA, tmp_CI_Index, tmp_Cloud_index, tmp_Snow_QA
+ real, allocatable :: MODIS_SCA_tmp(:), lon_tmp(:), lat_tmp(:)
 
  !local parameters
  integer, parameter:: N_fields = 4 
@@ -179,11 +178,12 @@ contains
  character(len=400) :: err_msg
 
  ! initialize N_data
- N_data_tmp(N_files) = 3600*7200
+ N_data_tmp(N_files) = XGRID*YGRID
 
  !if(logit) write(logunit, *) 'N_data_tmp=', N_data_tmp(1)
 
- N_data = sum(N_data_tmp)
+! N_data = sum(N_data_tmp)
+ N_data = XGRID*YGRID 
  
  !if (logit) write(logunit, *) 'N_data', N_data
 
@@ -191,8 +191,8 @@ contains
  lon_c = (-180+bin_size/2)+bin_size*lon_ind
 
  do i=1,7200
- lat_1D(3600*(i-1)+1:3600*i)= lat_c
- lon_1D(3600*(i-1)+1:3600*i)= lon_c(i)
+   lat_1D(3600*(i-1)+1:3600*i)= lat_c
+   lon_1D(3600*(i-1)+1:3600*i)= lon_c(i)
  end do
 
  ! allocate pointers (must be deallocated outside this subroutine)
@@ -207,19 +207,17 @@ contains
    call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
  end if
 
-    allocate(lat(N_data))
-    allocate(lon(N_data))
-    allocate(MODIS_SCA_raw(N_data))
+ allocate(MODIS_SCA_raw(N_data))
     
-    allocate(CI_Index(N_data))
-    allocate(Snow_QA(N_data))
-    allocate(Cloud_Index(N_data))
+ allocate(CI_Index(N_data))
+ allocate(Snow_QA(N_data))
+ allocate(Cloud_Index(N_data))
 
-    ! read hdf data into arrays, concatenate data from N_files files
+ ! read hdf data into arrays, concatenate data from N_files files
     
-    k_off = 0
+ k_off = 0
     
-    do j=1,N_files
+ do j=1,N_files
        ! open and start "hdf file"       
        !if(logit) write(logunit, *) 'fname: ', fnames(j)
 
@@ -330,8 +328,10 @@ contains
     ! -------------------------------------
     ! eliminate no-data-values and data that fail initial QC
     
+    allocate(MODIS_SCA_tmp(N_data))
+    allocate(lat_tmp(N_data))
+    allocate(lon_tmp(N_data))
     j=0
-    allocate(MODIS_SCA(N_data))
   
     do i=1,N_data
 
@@ -346,24 +346,31 @@ contains
  
      if(keep_data) then     
           j=j+1
-          MODIS_SCA(j) = MODIS_SCA_raw(i)/100
-          lon(j)      = lon_1D(i)
-          lat(j)      = lat_1D(i)
+          MODIS_SCA_tmp(j) = MODIS_SCA_raw(i)/100
+          lon_tmp(j)      = lon_1D(i)
+          lat_tmp(j)      = lat_1D(i)
     
      end if
        
     end do
      
-   if (logit) write (logunit, *) 'number of datasets', j
+ 
+  if (logit) write (logunit, *) 'number of datasets', j
  
    N_data = j
+
+   allocate(MODIS_SCA(N_data))
+   allocate(lat(N_data))
+   allocate(lon(N_data))
+
     
   if (logit) write(logunit,*) 'N_data:', N_data
  
-         ! lat = lat(1:j)
-         ! lon = lon(1:j)
-         ! MODIS_SCA = MODIS_SCA(1:j)
+  lat = lat_tmp(1:j)
+  lon = lon_tmp(1:j)
+  MODIS_SCA = MODIS_SCA_tmp(1:j)
 
+  deallocate(lat_tmp, lon_tmp, MODIS_SCA_tmp)
       !  if (logit) write(logunit,*) 'readMODISsca_hdf subroutine' 
       !  if (logit) write(logunit,*) 'lat size:', size(lat) 
       !  if (logit) write(logunit,*) 'lon size:', size(lon)
@@ -386,7 +393,7 @@ contains
   implicit none
 
   !inputs
-   character(200), intent(in) :: work_path
+   character(*), intent(in) :: work_path
 
    type(date_time_type), intent(in):: date_time
 
