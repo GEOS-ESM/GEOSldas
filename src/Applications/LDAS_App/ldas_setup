@@ -10,6 +10,7 @@ import argparse
 import fileinput
 import time
 import subprocess as sp
+import shlex
 from dateutil import rrule
 from datetime import datetime
 from datetime import timedelta
@@ -647,7 +648,7 @@ class LDASsetup:
         EASEtile=self.bcsdir+'/MAPL_'+short_tile
         cmd = './preprocess_ldas.x correctease  '+ tile + ' '+ EASEtile  
         print "cmd:   " + cmd
-        sp.call(cmd.split())
+        sp.call(shlex.split(cmd))
 
         if os.path.isfile(EASEtile) :
             #update tile file name
@@ -681,7 +682,7 @@ class LDASsetup:
 
         print 'Creating f2g.txt....\n'
         print "cmd:   " + cmd
-        sp.call(cmd.split())
+        sp.call(shlex.split(cmd))
         # check if it is local or global
         with open('f2g.txt') as f2gfile :
             head=[next(f2gfile) for x in range(2)]
@@ -695,7 +696,7 @@ class LDASsetup:
             print "\n by excluding land type MAPL_Land_ExcludeFromDomain=1100...\n"
             cmd = './preprocess_ldas.x c_localtile ' + tile + ' ' + newlocalTile 
             print "cmd:   " + cmd
-            sp.call(cmd.split())
+            sp.call(shlex.split(cmd))
             short_tile=short_tile +'.domain'
             tile = newlocalTile
    
@@ -722,7 +723,7 @@ class LDASsetup:
            for bcf in bcs :
                cmd = './preprocess_ldas.x c_localbc ' + bcf + ' '+ bcf+'.domain'
                print "cmd:   " + cmd
-               sp.call(cmd.split())
+               sp.call(shlex.split(cmd))
                bcs_tmp=bcs_tmp+[bcf+'.domain']
            bcs=bcs_tmp
 
@@ -837,7 +838,7 @@ class LDASsetup:
                     print "Creating local catchment restart file... \n"
                     cmd='./preprocess_ldas.x c_localcatchrst '+ catchRstFile +' ' + catchLocal 
                     print "cmd:  "+cmd
-                    sp.call(cmd.split())
+                    sp.call(shlex.split(cmd))
                 else :
                     shutil.copy(catchRstFile,catchLocal)
 
@@ -856,7 +857,7 @@ class LDASsetup:
                     print "Creating the local veg restart file... \n"
                     cmd='./preprocess_ldas.x c_localvegrst '+ vegdynRstFile +' ' + vegdynLocal  
                     print "cmd:   " + cmd
-                    sp.call(cmd.split())
+                    sp.call(shlex.split(cmd))
                 else :
                     shutil.copy(vegdynRstFile,vegdynLocal)
 
@@ -878,7 +879,7 @@ class LDASsetup:
                 pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                 print "Convert LDASsa pert " + ensid + " rst to GEOSldas rst"
                 cmd = './preprocess_ldas.x c_convert_pert '+ pertRstFile + ' ' + pertLocal + ' ' + self.out_path + ' ' + self.rqdExeInp['EXP_ID'] 
-                sp.call(cmd.split())
+                sp.call(shlex.split(cmd))
                 pertRstFile = pertLocal
 
             print 'catchRstFile: ' +  catchRstFile
@@ -899,7 +900,7 @@ class LDASsetup:
                 print "Creating the local mwRTM restart file... \n"
                 cmd='./preprocess_ldas.x c_localmwrtmrst '+ mwRTMRstFile +' ' + mwRTMLocal 
                 print "cmd:   " + cmd
-                sp.call(cmd.split())
+                sp.call(shlex.split(cmd))
             else :
                 shutil.copy(mwRTMRstFile,mwRTMLocal)
 
@@ -972,7 +973,7 @@ class LDASsetup:
         print  "Optimizing... decomposition of processes.... \n"
         cmd = './preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model'])
         print "cmd:   " + cmd
-        sp.call(cmd.split())
+        sp.call(shlex.split(cmd))
         optinxny=self._parseInputFile('optimized_distribution')
         if (int(optinxny['NX']) == 1):
             if int(optinxny['NY']) != int(self.rqdRmInp['ntasks_model']):
@@ -1018,7 +1019,7 @@ class LDASsetup:
                           ' ' + GRID + ' ' + str(self.rqdExeInp['RUN_IRRIG']) + ' ' + _assim + ' '+ str(self.nens)
                     print(cmd)
                     #os.system(cmd)
-                    sp.call(cmd.split()) 
+                    sp.call(shlex.split(cmd)) 
                 for line in fileinput.input(tmprcfile,inplace=True):
                     print line.rstrip().replace('GEOSldas_expid',self.rqdExeInp['EXP_ID'])
             # just copy an empty ExtData.rc
