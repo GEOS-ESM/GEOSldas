@@ -2299,9 +2299,6 @@ contains
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
 
-    ! Turn timers on
-    call MAPL_TimerOn(MAPL, "TOTAL")
-    call MAPL_TimerOn(MAPL, "Run_ApplyPrognPert")
 
     ! MPI
     call ESMF_VmGetCurrent(vm, rc=status)
@@ -2312,6 +2309,14 @@ contains
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
+    ! if no perturbation, do nothing
+    if(internal%PERTURBATIONS == 0) then
+       RETURN_(ESMF_SUCCESS)
+    endif
+    ! Turn timers on
+    call MAPL_TimerOn(MAPL, "TOTAL")
+    call MAPL_TimerOn(MAPL, "Run_ApplyPrognPert")
+
     n_lon = internal%pgrid_l%n_lon
     n_lat = internal%pgrid_l%n_lat
 
@@ -2320,10 +2325,6 @@ contains
     VERIFY_(status)
     tile_coord => tcwrap%ptr%tile_coord
  
-    ! if no perturbation, do nothing
-    if(internal%PERTURBATIONS == 0) then
-       RETURN_(ESMF_SUCCESS)
-    endif
     ! Pointers to imports
     call MAPL_GetPointer(import, tcPert, 'TCPert', rc=status)
     VERIFY_(status)
@@ -2450,7 +2451,7 @@ contains
             ! Weiyuan notes: propagate_pert is called in GenerateRaw, not here
             diagnose_pert_only=.true.                                           &
             )
-       call MAPL_TimerOn(MAPL, '-GetPert')
+       call MAPL_TimerOff(MAPL, '-GetPert')
 
        ! -convert-nxt-gridded-perturbations-to-tile-
        call MAPL_TimerOn(MAPL, '-LocStreamTransform')

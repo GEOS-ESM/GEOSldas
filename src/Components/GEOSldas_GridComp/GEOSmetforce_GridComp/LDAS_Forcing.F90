@@ -80,8 +80,22 @@ module LDAS_ForceMod
   type(local_grid), target :: local_info
 
   ! for cubed sphere forcing checking, initialized by GEOS_MetforceGridComp
+  !
   integer, public :: im_world_cs = 0
 
+  ! For (mostly) regularly spaced tiles (such as in the EASE tile spaces),
+  ! add a small offset to each tile's center-of-mass lat/lon when looking
+  ! for the nearest neighbor.  This is done to avoid the unpredictable assignment 
+  ! of tiles to forcing grid cells, which would otherwise happen along certain 
+  ! lat/lon values (that is, make it possible for post-processing scripts in
+  ! other languages to exactly reproduce the nearest-neighbor mapping that is 
+  ! done here).
+  ! Default offset is 0.0. Offset is changed to 0.0001 by GEOS_MetforceGridComp 
+  ! during initialization if tile space is based on EASE grid.
+  !
+  public        :: set_neighbor_offset 
+  real, private :: neighbor_offset     = 0.0
+  
 contains
 
   ! ********************************************************************
@@ -291,6 +305,8 @@ contains
     elseif (index(met_tag, 'ERA5_LIS')/=0) then 
        
        call get_ERA5_LIS(          date_time_tmp, met_path, N_catd, tile_coord, &
+            MET_HINTERP,                                                        &
+            supported_option_MET_HINTERP,                                       &
             met_force_obs_tile_new, nodata_forcing)
        
        ! Subroutine get_ERA5_LIS() provided backward-looking fluxes.
@@ -307,7 +323,7 @@ contains
     elseif (index(met_tag(1:7), 'GEOSs2s')/=0) then
 
        call get_GEOSs2s( date_time_tmp, met_path, met_tag, N_catd, tile_coord, &
-            MET_HINTERP, met_force_obs_tile_new, nodata_forcing)
+            MET_HINTERP, met_force_obs_tile_new, nodata_forcing, PAR_available)
 
     else ! assume forcing from GEOS5 GCM ("DAS" or "MERRA") output
        
@@ -1879,11 +1895,13 @@ contains
 
   ! ****************************************************************  
   
-  subroutine get_ERA5_LIS(date_time, met_path, N_catd, tile_coord, &
-       met_force_new, nodata_forcing )
-
+  subroutine get_ERA5_LIS(date_time, met_path, N_catd, tile_coord, MET_HINTERP, &
+       supported_option_MET_HINTERP, met_force_new, nodata_forcing )
+    
     ! Read ERA5 NetCDF files maintained and shared by the NASA LIS group
     ! and based on forcing data put together originally for LDAS-Monde.
+    !
+    ! Forcing data available over land only!
     !
     ! Forcing data are interpolated into tile space using nearest-neighbor;
     ! select MET_HINTERP accordingly during run configuration.
@@ -1902,18 +1920,22 @@ contains
     !    
     ! borescan+reichle, 14 Apr 2021
     !
+    ! borescan+wjiang+reichle,  7 Oct 2021: added bilinear interpolation option
+    !
     ! ----------------------------------------------------------
     
     use netcdf
     implicit none
     include 'mpif.h'
 
-    type(date_time_type), intent(in) :: date_time
-    character(*),         intent(in) :: met_path
-    integer,              intent(in) :: N_catd
+    type(date_time_type),                     intent(in)    :: date_time
+    character(*),                             intent(in)    :: met_path
+    integer,                                  intent(in)    :: N_catd, MET_HINTERP
 
-    type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+    type(tile_coord_type), dimension(:),      pointer       :: tile_coord  ! input
 
+    logical,                                  intent(inout) :: supported_option_MET_HINTERP
+    
     type(met_force_type) , dimension(N_catd), intent(inout) :: met_force_new
     real,                                     intent(out)   :: nodata_forcing
 
@@ -1925,7 +1947,7 @@ contains
     real,    parameter :: era5_grid_ll_lat  =  -90.0000 
     real,    parameter :: era5_grid_dlon    =    0.25
     real,    parameter :: era5_grid_dlat    =    0.25
-    integer, parameter :: N_era5_compressed = 340819
+    integer, parameter :: N_era5_compressed = 340819     ! number of land grid cells
     integer, parameter :: N_era5_vars       = 9
     real,    parameter :: nodata_era5       = 1.e20
     
@@ -1944,19 +1966,24 @@ contains
 
     real,    dimension(era5_grid_N_lon,era5_grid_N_lat) :: tmp_grid
     integer, dimension(N_era5_compressed)               :: land_i_era5, land_j_era5, p2g
-    integer, dimension(N_catd)                          :: i_ind, j_ind
     real,    dimension(N_era5_compressed)               :: tmp_vec
     real,    dimension(N_catd,N_era5_vars)              :: force_array
     integer, dimension(2)                               :: start, icount
 
     integer :: k, n, hours_in_month, era5_var, ierr, ncid, era5_varid, kk
-    real    :: tol,  this_lon, this_lat  
+    real    :: tol,  this_lon, this_lat
 
     character(4)                :: YYYY
     character(2)                :: MM
     character(300)              :: fname
     character(len=*), parameter :: Iam = 'get_ERA5_LIS'
     character(len=400)          :: err_msg
+
+    ! bilinear interpolation variables
+
+    integer, dimension(N_catd)  :: i1, j1, i2, j2
+    real,    dimension(N_catd)  :: x1, y1, x2, y2
+    real                        :: fnbr(2,2)
 
     ! ----------------------------------------------------------------------------------------
     
@@ -1989,29 +2016,9 @@ contains
     ! compute indices for the nearest neighbor interpolation from ERA5 grid 
     ! to tile space
 
-    do k=1,N_catd
-       
-       ! ll_lon and ll_lat refer to lower left corner of grid cell
-       ! (as opposed to the grid point in the center of the grid cell)
-       
-       this_lon = tile_coord(k)%com_lon
-       this_lat = tile_coord(k)%com_lat
-       
-       ! add small offsets to avoid unpredictable assignment of
-       ! regularly spaced tiles (such as from the EASEv2 tile space)
-       ! to ERA5 grid cells along certain lat/lon values
-       ! (that is, make it possible for post-processing scripts in other
-       !  languages to exactly reproduce the mapping that is done here)
-       ! TO DO: add if statement so the offset is only applied when
-       !        the model is run in the EASE grid tile space
-       
-       this_lon = this_lon + 0.0001
-       this_lat = this_lat + 0.0001
-       
-       i_ind(k) = ceiling( (this_lon - era5_grid_ll_lon)/era5_grid_dlon )
-       j_ind(k) = ceiling( (this_lat - era5_grid_ll_lat)/era5_grid_dlat )
-
-    end do
+    call get_neighbor_index(MET_HINTERP, tile_coord,                           &
+         era5_grid_ll_lon, era5_grid_ll_lat, era5_grid_dlon, era5_grid_dlat,   &
+         era5_grid_N_lon,  era5_grid_N_lat,  i1, j1, i2, j2, x1, y1, x2, y2)
     
     ! read parameters (same for all data variables and time steps)
 
@@ -2070,17 +2077,48 @@ contains
        do n=1,N_era5_compressed
           tmp_grid(land_i_era5(n),land_j_era5(n)) = tmp_vec(n)
        end do
-       
-       ! interpolate to tile space
-       do k=1,N_catd
-          force_array(k,era5_var) = tmp_grid(i_ind(k),j_ind(k))
-       end do
-       
-    end do ! era5_var
 
-    ! close NC file
-    ierr = NF90_CLOSE(ncid)
+       select case (MET_HINTERP)     ! interpolation method
 
+       case (0) ! nearest neighbor interpolation  
+
+          ! interpolate to tile space
+
+          do k=1,N_catd
+             force_array(k,era5_var) = tmp_grid(i1(k),j1(k))
+          end do
+          
+       case (1) ! bilinear interpolation 
+          
+          ! confirm that bilinear interpolation is supported in this reader 
+          
+          supported_option_MET_HINTERP        = .true.
+          
+          do k=1,N_catd
+             
+             this_lon  = tile_coord(k)%com_lon
+             this_lat  = tile_coord(k)%com_lat
+
+             fnbr(1,1) = tmp_grid(i1(k),j1(k))   !  ptrShForce(i1(k),j1(k))
+             fnbr(1,2) = tmp_grid(i1(k),j2(k))   !  ptrShForce(i1(k),j2(k))
+             fnbr(2,1) = tmp_grid(i2(k),j1(k))   !  ptrShForce(i2(k),j1(k))
+             fnbr(2,2) = tmp_grid(i2(k),j2(k))   !  ptrShForce(i2(k),j2(k))
+             
+             force_array(k,era5_var) = BilinearInterpolation(this_lon, this_lat, x1(k), x2(k),  &
+                  y1(k), y2(k), fnbr, nodata_forcing, tol)
+
+          end do
+          
+       case default
+          
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unsupported MET_HINTERP option')
+          
+       end select ! interpolation method
+       
+    end do        ! era5_var
+    
+    ierr = NF90_CLOSE(ncid)       ! close NC file
+    
     ! All variables in ERA5_LIS files have the units needed by met_force_type. 
     !
     !  force_array(:, 1) = DIR_SWdown W/m2     ; flux  ;(ssrd)
@@ -2091,7 +2129,7 @@ contains
     !  force_array(:, 6) = Qair       kg/kg    ; state ;(corresponds to Q at the lowest model layer (~10m))
     !  force_array(:, 7) = Wind       m/s      ; state ;(sqrt(u2+v2))
     !  force_array(:, 8) = PSurf      Pa       ; state ;(derived from lnsp)
-
+    
     met_force_new%SWdown   = force_array(:,1)
     met_force_new%LWdown   = force_array(:,2)
     met_force_new%Snowf    = force_array(:,3)        
@@ -2606,7 +2644,7 @@ contains
   ! ************************************************************************
   
   subroutine get_GEOSs2s(date_time, met_path, met_tag, N_catd, tile_coord, &
-       met_hinterp, met_force_new, nodata_forcing)
+       met_hinterp, met_force_new, nodata_forcing, PAR_available)
     
     ! read forcing derived from GEOS S2S output and map to tile space
     ! (using nearest neighbor or bilinear interpolation)
@@ -2641,6 +2679,8 @@ contains
     
     real,                 intent(out) :: nodata_forcing
     
+    logical,              intent(out) :: PAR_available
+
     ! Hindcast grid and netcdf parameters
     
     integer, parameter :: GEOSgcm_grid_N_lon  = 576
@@ -2692,7 +2732,7 @@ contains
     
     character(40), dimension(:), allocatable  :: GEOSgcm_name
     
-    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours
+    integer :: N_GEOSgcm_vars, dt_GEOSgcm_in_hours, N_lon_tmp, N_lat_tmp
     
     real    :: fnbr(2,2)
     
@@ -2733,7 +2773,8 @@ contains
 
     if     (index(met_tag(8:11), 'FCST')/=0) then
 
-       FCST = .true.
+       FCST          = .true.
+       PAR_available = .true.
 
        dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_FCST
        N_GEOSgcm_vars      = N_GEOSgcm_vars_FCST
@@ -2749,7 +2790,8 @@ contains
 
     elseif (index(met_tag(8:12), 'AODAS')/=0) then
 
-       AODAS = .true.
+       AODAS         = .true.
+       PAR_available = .false.
 
        dt_GEOSgcm_in_hours = dt_GEOSgcm_in_hours_AODAS
        N_GEOSgcm_vars      = N_GEOSgcm_vars_AODAS
@@ -2833,24 +2875,27 @@ contains
     
     do GEOSgcm_var = 1,N_GEOSgcm_vars
        
-       if (GEOSgcm_var==1) then
-          ! init share memory
-          if(  (size(ptrShForce,1) /= GEOSgcm_grid_N_lon) .or.          &
-               (size(ptrShForce,2) /= GEOSgcm_grid_N_lat)       ) then
-             call MAPL_SyncSharedMemory(rc=status)
+       ! init shared memory
+       N_lon_tmp = -1
+       N_lat_tmp = -1
+       if (associated(ptrShForce)) then
+          N_lon_tmp = size(ptrShForce,1)
+          N_lat_tmp = size(ptrShForce,2)
+       endif
+       if(  (N_lon_tmp /= GEOSgcm_grid_N_lon) .or.          &
+            (N_lat_tmp /= GEOSgcm_grid_N_lat)       ) then
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+          if (associated(ptrShForce)) then
+             call MAPL_DeallocNodeArray(ptrShForce,rc=status)
              VERIFY_(status)
-             if (associated(ptrShForce)) then
-                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
-                VERIFY_(status)
-             endif
-             call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
-             VERIFY_(status)
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-          end if
-       endif ! (GEOSgcm_var==1)
-       rc = 0
+          endif
+          call MAPL_AllocateShared(ptrShForce,(/GEOSgcm_grid_N_lon,GEOSgcm_grid_N_lat/),TransRoot= .true.,rc=status)
+          VERIFY_(status)
+       end if
+
        call MAPL_SyncSharedMemory(rc=status)
+       VERIFY_(status)
        
        ! read variable from netcdf file
        if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
@@ -3143,9 +3188,9 @@ contains
     character(  3)       :: met_file_ext
     character(  3)       :: precip_corr_file_ext
 
-    integer :: N_GEOSgcm_vars    
+    integer :: N_GEOSgcm_vars, N_lon_tmp, N_lat_tmp    
 
-    real    :: this_lon, this_lat, tmp_lon, tmp_lat
+    real    :: this_lon, this_lat
 
     real    :: tol 
     
@@ -3162,13 +3207,13 @@ contains
 
     logical :: daily_met_files
     
-    integer :: nv_id, ierr, icount(3), istart(3),lonid,latid
+    integer :: nv_id, ierr, icount(3), istart(3), lonid, latid
 
     character(len=*), parameter :: Iam = 'get_GEOS'
-    integer :: status
-    character(len=400) :: err_msg
-    character(len=300) :: fname_full
-    logical :: file_exists, single_time_in_file
+    integer                     :: status
+    character(len=400)          :: err_msg
+    character(len=300)          :: fname_full
+    logical                     :: file_exists, single_time_in_file
 
     ! -----------------------------------------------------------------------
     !
@@ -3676,38 +3721,36 @@ contains
 
        ! ----------------------------------------------    
        !
-       ! for first variable, process grid dimensions
+       ! process grid dimensions
+       ! NOTE: corrected precipitation forcing from separate netcdf can be on different grid
        
-       if (GEOSgcm_var==1) then
-          
-          if ( (use_prec_corr) .and. (GEOSgcm_defs(GEOSgcm_var,1)(1:4)=='PREC') ) then
-             err_msg = 'grid dims must come from original GEOS-5 file!!'
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          end if
-
-          ! init share memory
-          if( size(ptrShForce,1) /= local_info%N_lon .or.    &
-              size(ptrShForce,2) /= local_info%N_lat ) then
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-             if (associated(ptrShForce)) then
-                call MAPL_DeallocNodeArray(ptrShForce,rc=status)
-                VERIFY_(status)
-             endif 
-             call MAPL_AllocateShared(ptrShForce,(/local_info%N_lon,local_info%N_lat/),TransRoot= .true.,rc=status)
-             VERIFY_(status)
-             call MAPL_SyncSharedMemory(rc=status)
-             VERIFY_(status)
-          end if
-
+       ! init shared memory
+       N_lon_tmp = -1
+       N_lat_tmp = -1
+       if (associated(ptrShForce)) then
+          N_lon_tmp = size(ptrShForce,1)
+          N_lat_tmp = size(ptrShForce,2)
        endif
+       if ( N_lon_tmp /= local_info%N_lon .or.            &
+            N_lat_tmp /= local_info%N_lat      ) then
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+          if (associated(ptrShForce)) then
+             call MAPL_DeallocNodeArray(ptrShForce,rc=status)
+             VERIFY_(status)
+          endif
+          call MAPL_AllocateShared(ptrShForce,(/local_info%N_lon,local_info%N_lat/),TransRoot= .true.,rc=status)
+          VERIFY_(status)
+          call MAPL_SyncSharedMemory(rc=status)
+          VERIFY_(status)
+       end if
        
        ! ----------------------------------------------    
        !
        ! read global gridded field of given variable
        
        call LDAS_GetVar( fid, trim(GEOSgcm_defs(GEOSgcm_var,1)),                  &
-               YYYYMMDD, HHMMSS, ptrShForce, single_time_in_file, local_info, rc)
+               YYYYMMDD, HHMMSS, single_time_in_file, local_info, ptrShForce, rc)
        if (rc<0) then
            call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'error reading gfio file')
        endif 
@@ -3772,8 +3815,8 @@ contains
           
           ! open file
           
-          call get_GEOS_forcing_filename( fname_full,file_exists,date_time_tmp, daily_met_files,           &
-               met_path_tmp, met_tag_tmp,                                        &
+          call get_GEOS_forcing_filename( fname_full,file_exists,date_time_tmp, daily_met_files,    &
+               met_path_tmp, met_tag_tmp,                                                           &
                GEOSgcm_defs(GEOSgcm_var,:), met_file_ext)
 
           call GEOS_openfile(FileOpenedHash,fname_full,fid,tile_coord,MET_HINTERP)
@@ -3797,7 +3840,7 @@ contains
              ! read global gridded field of given variable
              
              call LDAS_GetVar( fid, trim(GEOSgcm_defs(GEOSgcm_var,1)),         &
-               YYYYMMDD, HHMMSS, ptrShForce, .false.,local_info ,rc)
+               YYYYMMDD, HHMMSS, .false., local_info, ptrShForce, rc)
              
              if (rc<0) then
                 err_msg = 'error reading gfio file'
@@ -4045,104 +4088,108 @@ contains
     deallocate(force_array)
     
   end subroutine get_GEOS
- 
-! ******************************************************************
-  subroutine LDAS_GetVar(fid, vname, yyyymmdd, hhmmss, &
-                         ptrShForce,single_time_in_file,local_info, rc)
-     use netcdf
-     implicit none
-     include 'mpif.h'
+  
+  ! ******************************************************************
+  
+  subroutine LDAS_GetVar(fid, vname, yyyymmdd, hhmmss, single_time_in_file, local_info,  &
+       ptrShForce, rc)
 
-     integer,intent(in)           ::  fid                 ! File handle
-     character(len=*), intent(in) ::  vname               ! Variable name
-     integer, intent(in)          ::  yyyymmdd            ! Year-month-day, e.g., 19971003
-     integer,intent(in)           ::  hhmmss              ! Hour-minute-second, e.g., 120000
-     logical,intent(in)           ::  single_time_in_file ! if true, no time index is necessary
-     type(local_grid),intent(in)  ::  local_info
-     !OUTPUT PARAMETERS:
-     real,pointer,intent(inout)   ::  ptrShForce(:,:)     ! Gridded data read for this time
-     integer,intent(out)          ::  rc
-
-     ! local
-     integer                      :: begDate, begTime, seconds, minutes, incSecs
-     integer                      :: iistart(3), iicount(3), timeIndex
-     integer                      :: istart(4), icount(4)     ! cs grid
-     real,         pointer        :: tmpShared(:,:,:,:) ! cs grid
-     type(c_ptr)                  ::   c_address
-     integer                      :: nv_id,imin, jmin, imax, jmax,ierr
-     integer                      :: DiffDate
-     integer                      :: status
-     character(*), parameter      :: Iam="LDAS_getvar" 
-     logical                      :: isCubed
-
-     rc = 0
-     isCubed = .false.
-     if(local_info%N_lat == 6*local_info%N_lon) then
-        isCubed = .true.
-        istart = 1
-        icount(1) = local_info%N_lon
-        icount(2) = local_info%N_lon
-        icount(3) = 6
-        icount(4) = 1
-     else
-        iistart = 1
-        iicount(1) = local_info%N_lon
-        iicount(2) = local_info%N_lat
-        iicount(3) = 1
-     endif
-
-     if (.not. single_time_in_file ) then   ! determine start index
-        call GetBegDateTime ( fid, begDate, begTime, incSecs, rc )
-        if (rc .NE. 0) then
-           print* ,"LDAS_GetVar: could not determine begin_date/begin_time"
-           return
-        endif
-        seconds = DiffDate (begDate, begTime, yyyymmdd, hhmmss)
-        ! Make sure input time are valid (assume time is not periodic)
-        if (seconds .LT. 0) then
-           print *, 'LDAS_GetVar: Error code from diffdate.  Problem with date/time.'
-           rc = -7
-           return
-        endif
-
-        if ( MOD (seconds,60) .eq. 0 ) then
-           minutes = seconds / 60
-        else
-           print *, 'LDAS_GetVar: Currently, times must fall on minute boundaries.'
-           rc = -6
-           return
-        endif
-
-        ! Determine the time index from the offset and time increment.
-        if ( MOD (seconds, incSecs) .ne. 0 ) then
-           print *, 'GFIO_getvar: Absolute time of ',seconds,' not ',  &
-                'possible with an interval of ',incSecs
-           rc = -2
-           return
-        else
-           timeIndex = seconds/incSecs + 1
-        endif
-        iistart(3)=timeIndex
-        istart(4) =timeIndex
-     endif
-     ! node root read and share
-     call MAPL_SyncSharedMemory(rc=status)
-
-     if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
-        rc= NF90_INQ_VARID( fid, vname, nv_id)
-        _ASSERT( rc == nf90_noerr, "nf90 error")
-        if (isCubed) then
+    ! get LDAS forcing variable 
+    
+    use netcdf
+    implicit none
+    include 'mpif.h'
+    
+    integer,          intent(in)    ::  fid                 ! File handle
+    character(len=*), intent(in)    ::  vname               ! Variable name
+    integer,          intent(in)    ::  yyyymmdd            ! Year-month-day, e.g., 19971003
+    integer,          intent(in)    ::  hhmmss              ! Hour-minute-second, e.g., 120000
+    logical,          intent(in)    ::  single_time_in_file ! if true, no time index is necessary
+    type(local_grid), intent(in)    ::  local_info
+    !OUTPUT PARAMETERS:
+    real, pointer,    intent(inout) ::  ptrShForce(:,:)     ! Gridded data read for this time
+    integer,          intent(out)   ::  rc
+    
+    ! local
+    integer                      :: begDate, begTime, seconds, minutes, incSecs
+    integer                      :: iistart(3), iicount(3), timeIndex
+    integer                      :: istart(4),  icount(4)               ! cs grid
+    real,         pointer        :: tmpShared(:,:,:,:)                  ! cs grid
+    type(c_ptr)                  :: c_address
+    integer                      :: nv_id,imin, jmin, imax, jmax,ierr
+    integer                      :: DiffDate
+    integer                      :: status
+    character(*), parameter      :: Iam="LDAS_getvar" 
+    logical                      :: isCubed                             ! forcing on cs grid: true/false
+    
+    rc = 0
+    isCubed = .false.
+    if(local_info%N_lat == 6*local_info%N_lon) then
+       isCubed = .true.
+       istart = 1
+       icount(1) = local_info%N_lon
+       icount(2) = local_info%N_lon
+       icount(3) = 6
+       icount(4) = 1
+    else
+       iistart = 1
+       iicount(1) = local_info%N_lon
+       iicount(2) = local_info%N_lat
+       iicount(3) = 1
+    endif
+    
+    if (.not. single_time_in_file ) then   ! determine start index
+       call GetBegDateTime ( fid, begDate, begTime, incSecs, rc )
+       if (rc .NE. 0) then
+          print *, 'LDAS_GetVar: could not determine begin_date/begin_time'
+          return
+       endif
+       seconds = DiffDate (begDate, begTime, yyyymmdd, hhmmss)
+       ! Make sure input time are valid (assume time is not periodic)
+       if (seconds .LT. 0) then
+          print *, 'LDAS_GetVar: Error code from diffdate.  Problem with date/time.'
+          rc = -7
+          return
+       endif
+       
+       if ( MOD (seconds,60) .eq. 0 ) then
+          minutes = seconds / 60
+       else
+          print *, 'LDAS_GetVar: Currently, times must fall on minute boundaries.'
+          rc = -6
+          return
+       endif
+       
+       ! Determine the time index from the offset and time increment.
+       if ( MOD (seconds, incSecs) .ne. 0 ) then
+          print *, 'GFIO_getvar: Absolute time of ',seconds,' not ',  &
+               'possible with an interval of ',incSecs
+          rc = -2
+          return
+       else
+          timeIndex = seconds/incSecs + 1
+       endif
+       iistart(3)=timeIndex
+       istart(4) =timeIndex
+    endif
+    ! node root read and share
+    call MAPL_SyncSharedMemory(rc=status)
+    
+    if (MAPL_AmNodeRoot .or. (.not. MAPL_ShmInitialized)) then
+       rc= NF90_INQ_VARID( fid, vname, nv_id)
+       _ASSERT( rc == nf90_noerr, "nf90 error")
+       if (isCubed) then
           c_address = c_loc(ptrShForce(1,1))
           call c_f_pointer(c_address,tmpShared,shape=icount)
           rc= NF90_GET_VAR( fid, nv_id, tmpShared, start=istart,count=icount) 
-        else
+       else
           rc= NF90_GET_VAR( fid, nv_id, ptrShForce, start=iistart,count=iicount) 
-        endif
-        _ASSERT( rc == nf90_noerr, "nf90 error")
-     endif
-
-     call MAPL_SyncSharedMemory(rc=status)
-
+       endif
+       _ASSERT( rc == nf90_noerr, "nf90 error")
+    endif
+    
+    call MAPL_SyncSharedMemory(rc=status)
+    
   end subroutine LDAS_GetVar
 
   ! ****************************************************************
@@ -5216,12 +5263,10 @@ contains
     real,    allocatable    :: x1(:), x2(:), y1(:), y2(:)
     integer                 :: ierr, k
     integer                 :: latid, lonid, nfid, xdimid
-    real                    :: dlon, dlat, ll_lon, ll_lat, this_lon, this_lat, tmp_lon, tmp_lat
-    integer                 :: icur, jcur, inew, jnew
-    real                    :: xcur, ycur, xnew, ynew
+    real                    :: dlon, dlat, ll_lon, ll_lat
     character(len=100)      :: err_msg
     character(*), parameter :: Iam="GEOS_openfile"
-    logical                 :: isCubed
+    logical                 :: isCubed                     ! forcing on cs grid: true/false
     ! add mpi
     type(ESMF_VM)           :: vm
     integer                 :: comm, total_prcs, myrank
@@ -5256,10 +5301,10 @@ contains
     ! ONLY the grid dimensions are read from the file;
     ! the grid spacing and offset/extent are determined based on hard-wired assumptions!
     
-    ! check if forcing file is on cs grid
+    ! check if forcing in file is on cs grid
     ierr =  nf90_inq_dimid(fid,"nf",nfid)   ! check if number-of-faces (nf) dimension exists 
     
-    if (ierr == nf90_noerr) then ! it is cubed-sphere grid if face dimension is found
+    if (ierr == nf90_noerr) then ! forcing is on cubed-sphere grid if face dimension is found
        
        ! cube-sphere grid: need N_f (number-of-faces), N_lon, N_lat
        
@@ -5273,7 +5318,8 @@ contains
        _ASSERT( N_lon == im_world_cs, "forcing on cube-sphere grid: forcing grid dimension must match native grid dimension (grid associated with tile space)")
        N_lat = N_f*N_lon
        _ASSERT( m_hinterp == 0, "forcing on cubed-sphere grid requires nearest-neighbor interpolation (m_hinterp = 0)")
-       isCubed = .true.       
+
+       isCubed = .true.       ! forcing is on cube sphere grid
 
     else
 
@@ -5288,7 +5334,8 @@ contains
        endif
        ierr =  nf90_Inquire_Dimension(fid,latid,len=N_lat)
        ierr =  nf90_Inquire_Dimension(fid,lonid,len=N_lon)
-       isCubed = .false.       
+
+       isCubed = .false.      ! forcing is on regular lat/lon grid
        
        ! assume global grid w/ dateline on center and pole on center  
        
@@ -5312,124 +5359,17 @@ contains
     
     allocate(i1(N_cat),j1(N_cat))
     allocate(i2(N_cat),j2(N_cat),x1(N_cat),x2(N_cat),y1(N_cat),y2(N_cat))
+   
+    if (isCubed) then ! forcing is on cs grid
+       ! cube-sphere grid of forcing data must match cube-sphere grid associated with tile space
+       i1(:) = tile_coord(:)%i_indg
+       j1(:) = tile_coord(:)%j_indg
+    else
+       ! get index and coord info of neighbor(s)
+       call get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, &
+            i1, j1, i2, j2, x1, y1, x2, y2)
+    endif
     
-    select case (m_hinterp)
-       
-    case (0)  ! nearest-neighbor
-       
-       ! compute indices for nearest neighbor interpolation from GEOSgcm grid to tile space
-       
-       if( isCubed ) then ! cs grid
-          
-          ! cube-sphere grid of forcing data must match cube-sphere grid associated with tile space
-          do k=1,N_cat
-             i1(k) = tile_coord(k)%i_indg
-             j1(k) = tile_coord(k)%j_indg
-          enddo
-
-       else
-
-          do k=1,N_cat
-             
-             ! ll_lon and ll_lat refer to lower left corner of grid cell
-             ! (as opposed to the grid point in the center of the grid cell)
-             
-             this_lon = tile_coord(k)%com_lon
-             this_lat = tile_coord(k)%com_lat
-             
-             i1(k) = ceiling((this_lon - ll_lon)/dlon)
-             j1(k) = ceiling((this_lat - ll_lat)/dlat)
-             
-             ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
-             !  we now have i1=(grid%N_lon+1)
-             ! This needs to be fixed as follows:
-             
-             if (i1(k)> N_lon)  i1(k)=1
-             
-          end do
-          
-       endif ! cs grid
-
-    case (1)  ! bilinear interpolation
-       
-       ! compute indices of nearest neighbors needed for bilinear
-       ! interpolation from GEOSgcm grid to tile space
-       
-       do k=1,N_cat
-          
-          ! ll_lon and ll_lat refer to lower left corner of grid cell
-          ! (as opposed to the grid point in the center of the grid cell)
-          
-          ! pchakrab: For bilinear interpolation, for each tile, we need:
-          !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
-          !  i1, i2, j1, j2 (defining the indices of four neighbors)
-          
-          ! find nearest neighbor forcing grid cell ("1")
-
-          ! com of kth tile
-          this_lon = tile_coord(k)%com_lon
-          this_lat = tile_coord(k)%com_lat
-          icur =  ceiling((this_lon - ll_lon)/dlon)
-          jcur =  ceiling((this_lat - ll_lat)/dlat)
-          
-          ! wrap-around
-          if (icur>N_lon) icur = 1
-          if (jcur>N_lat) then
-             err_msg = "encountered tile near the poles"
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          end if
-
-          ! determine lon and lat of forcing grid cell center
-          xcur = real(icur-1)*dlon - 180.0    ! ASSUMES dateline on center!
-          ycur = real(jcur-1)*dlat -  90.0    ! ASSUMES pole on center!
-
-          ! finalize "1"
-          i1(k) = icur
-          j1(k) = jcur
-          x1(k) = xcur    ! lon of grid cell center
-          y1(k) = ycur    ! lat of grid cell center
-          
-          ! find forcing grid cell ("2") diagonally across from icur, jcur
-
-          ! to this end, determine quadrant of forcing grid cell that contains com of tile (this_lon, this_lat)
-          
-          ! quadrant is found by determining nearest-neighbor indices (inew, jnew) when tile is shifted 
-          ! by 1/2 of the grid-spacing to the northeast (upper right)
-          tmp_lon = this_lon + 0.5*dlon               
-          tmp_lat = this_lat + 0.5*dlat
-          inew =  ceiling((tmp_lon  - ll_lon)/dlon)   ! nearest-neighbor i index of shifted location
-          jnew =  ceiling((tmp_lat  - ll_lat)/dlat)   ! nearest-neighbor j index of shifted location
-          if (inew==icur) inew = inew - 1             ! if shift results in same lon index, go west (left)
-          if (jnew==jcur) jnew = jnew - 1             ! if shift results in same lat index, go south (down)
-          
-          ! determine center lon and lat of forcing grid cell ("2");
-          ! must do this BEFORE wrap-around (such that xnew=x2 will be outside of [-180:180] near dateline),
-          ! otherwise distance calculation would not work near dateline
-          xnew = real(inew-1)*dlon - 180.0            ! ASSUMES dateline on center!
-          ynew = real(jnew-1)*dlat -  90.0            ! ASSUMES pole on center!
-          
-          ! wrap-around
-          if (inew==0) inew = N_lon
-          if (inew>N_lon) inew = 1
-          if ((jnew==0) .or. (jnew>N_lat)) then
-             err_msg = "encountered tile near the poles"
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          end if
-          
-          i2(k) = inew
-          j2(k) = jnew
-          x2(k) = xnew    ! lon of grid cell center (note that this intentionally 
-          y2(k) = ynew    ! lat of grid cell center
-          
-       end do
-       
-    case default
-       
-       err_msg = "unknown horizontal interpolation method"
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       
-    end select
-
     local_info%N_lat = N_lat
     local_info%N_lon = N_lon
     local_info%N_cat = N_cat
@@ -5445,6 +5385,136 @@ contains
     RETURN_(ESMF_SUCCESS)
     
   end subroutine GEOS_openfile
+
+  subroutine set_neighbor_offset(offset)
+    real, intent(in) :: offset
+    neighbor_offset = offset
+  end subroutine
+  ! **************************************************************** 
+  
+  subroutine get_neighbor_index(m_hinterp, tile_coord, ll_lon, ll_lat, dlon, dlat, N_lon, N_lat, &
+       i1, j1, i2, j2, x1, y1, x2, y2, rc)
+
+    ! Prep info for horizontal interpolation of lat/lon gridded forcing data to tile space:
+    !  Compute indices of nearest neighbors needed for nearest-neighbor or bilinear interpolation 
+    !  from regular lat/lon grid to tile space.
+    !
+    ! This functionality was previously contained in GEOS_openfile.  Some of the hard-coded assumptions
+    !  about the grid extent and grid origin location from GEOS_openfile were relaxed.  Nearest-neighbor
+    !  interpolation of cube-sphere gridded forcing remains in GEOS_openfile.
+    !
+    ! - wjiang+reichle,  5 Oct 2021
+    
+    integer,                             intent(in)    :: m_hinterp    ! 0=nearest-neighbor, 1=bilinear
+    type(tile_coord_type), dimension(:), intent(in)    :: tile_coord
+    real,                                intent(in)    :: ll_lat, ll_lon, dlat, dlon
+    integer,                             intent(in)    :: N_lat, N_lon
+    integer,               dimension(:), intent(inout) :: i1, i2, j1, j2
+    real,                  dimension(:), intent(out)   :: x1, x2, y1, y2
+    integer, optional,                   intent(out)   :: rc
+
+    ! N_lon, N_lat, dlon, dlat, ll_lon, and ll_lat provide a complete description of the
+    ! regular lat/lon grid.
+    ! NOTE: ll_lon and ll_lat refer to lower left corner of grid cell
+    !       (as opposed to the grid point in the center of the grid cell)
+
+    ! pchakrab: For bilinear interpolation, for each tile, we need:
+    !  x1, x2, y1, y2 (defining the co-ords of four neighbors) and
+    !  i1, i2, j1, j2 (defining the indices of four neighbors)
+
+    ! local variables
+
+    
+    integer                            :: N_cat
+    
+    real,    dimension(:), allocatable :: tmp_lat, tmp_lon
+    
+    character(len=*), parameter        :: Iam="get_neighbor_index" 
+
+    ! -------------------------------------------------------------------
+    !
+    ! find nearest neighbor
+    
+    i1 = ceiling((tile_coord%com_lon + neighbor_offset - ll_lon)/dlon)
+    j1 = ceiling((tile_coord%com_lat + neighbor_offset - ll_lat)/dlat)
+
+    ! NOTE: For a "date line on center" grid and (180-dlon/2) < lon < 180
+    !  we now have i1=(grid%N_lon+1).
+    ! This needs to be fixed as follows:
+
+    where( i1 > N_lon)  i1=1
+    if (any(j1 > N_lat)) then
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, "encountered tile near the poles")
+    end if
+
+    ! done if nearest-neighbor interpolation is requested
+
+    if (m_hinterp == 0) then
+      RETURN_(ESMF_SUCCESS)
+    endif
+
+    ! continue for bilinear interpolation
+
+    x1 = real(i1-1)*dlon + ll_lon  + 0.5*dlon                ! longitude of nearest neighbor
+    y1 = real(j1-1)*dlat + ll_lat  + 0.5*dlat                ! latitude  of nearest neighbor
+    
+    ! find forcing grid cell ("2") diagonally across the tile from nearest neighbor (i1,j1) 
+    !
+    ! to this end, determine quadrant of forcing grid cell that contains center-of-mass coord of tile
+    !     
+    ! quadrant is found by determining nearest-neighbor indices (i2, j2) when tile is shifted 
+    !  by 1/2 of the grid-spacing to the northeast (upper right) and testing if the nearest
+    !  neighbor changes
+    
+    ! location of tiles when shifted by 1/2 grid spacing in positive lon and lat directions (northeast)
+
+    N_cat = size(tile_coord,1)
+    
+    allocate(tmp_lon(N_cat))
+    allocate(tmp_lat(N_cat))
+    
+    tmp_lon = tile_coord%com_lon + 0.5*dlon              
+    tmp_lat = tile_coord%com_lat + 0.5*dlat
+
+    ! find nearest neighbor grid cell (i2,j2) of shifted tile (use same "offset" as above)
+    
+    i2 =  ceiling((tmp_lon + neighbor_offset - ll_lon)/dlon)   
+    j2 =  ceiling((tmp_lat + neighbor_offset - ll_lat)/dlat)   
+    
+    ! now determine desired quadrant and correct (i2,j2) accordingly
+    
+    where (i2==i1) i2 = i2 - 1        ! if 0.5*dlon shift results in same lon index, go west (left)
+    where (j2==j1) j2 = j2 - 1        ! if 0.5*dlat shift results in same lat index, go south (down)
+    
+    ! determine center lon and lat of forcing grid cell "2";
+    ! must do this BEFORE wrap-around (such that x2 will be outside of [-180:180] near dateline),
+    ! otherwise distance calculation would not work near dateline
+    
+    x2 = real(i2-1)*dlon + ll_lon + 0.5*dlon     
+    y2 = real(j2-1)*dlat + ll_lat + 0.5*dlat     
+    
+    ! wrap-around and check for proximity to poles
+    
+    where (i2==0) i2 = N_lon
+    where (i2 > N_lon) i2 = 1
+    if (any(j2==0) .or. any(j2>N_lat)) then
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, "encountered tile near the poles")
+    end if
+
+    ! return cleanly after bilinear interpolation 
+    
+    if (allocated(tmp_lon)) deallocate(tmp_lon)
+    if (allocated(tmp_lat)) deallocate(tmp_lat)
+    
+    if (m_hinterp == 1) then
+      RETURN_(ESMF_SUCCESS)
+    endif
+
+    ! error in m_hinterp input if we get to here:
+    
+    call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown m_hinterp!!')
+ 
+ end subroutine 
 
   ! ****************************************************************
   

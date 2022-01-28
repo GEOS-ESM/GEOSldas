@@ -8,6 +8,8 @@ module clsm_ensdrv_out_routines
   !
   ! reichle, 22 Aug 2014
 
+  use ESMF
+  USE MAPL_MOD 
   use LDAS_ensdrv_globals,              ONLY:     &
        log_root_only,                             &
        logunit,                                   &
@@ -162,8 +164,6 @@ contains
     ! reichle, 27 May 2014: - changed wilting point output from "clsm_wpwet" to "clsm_wp"
     ! 
     ! -------------------------------------------------------------------
-    use ESMF
-    USE MAPL_MOD 
 
     implicit none
     type(ESMF_GridComp),intent(inout) :: GC 

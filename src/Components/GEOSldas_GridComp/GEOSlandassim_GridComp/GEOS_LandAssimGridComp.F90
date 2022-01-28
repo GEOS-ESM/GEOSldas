@@ -985,29 +985,31 @@ contains
    endif ! mwRTM File
 
 !
-   call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
-   _VERIFY(STATUS)
-   call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
-   _VERIFY(STATUS)
-   call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
-   VERIFY_(STATUS)
+   if ( land_assim ) then
+      call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
+      _VERIFY(STATUS)
+      call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+      _VERIFY(STATUS)
+      call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+      VERIFY_(STATUS)
 
-   write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
-   allocate(ens_id(NUM_ENSEMBLE), export_id(NUM_ENSEMBLE))
-   do i=1,NUM_ENSEMBLE
-      ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
-      if (NUM_ENSEMBLE == 1 ) then
-         id_string=''
-      else
-         write(id_string, fmt_str) ens_id(i)
-      endif
+      write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
+      allocate(ens_id(NUM_ENSEMBLE), export_id(NUM_ENSEMBLE))
+      do i=1,NUM_ENSEMBLE
+         ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+         if (NUM_ENSEMBLE == 1 ) then
+            id_string=''
+         else
+            write(id_string, fmt_str) ens_id(i)
+         endif
 
-      id_string=trim(id_string)
+         id_string=trim(id_string)
 
-      childname='CATCHINCR'//trim(id_string)
-      export_id(i) = MAPL_AddChild(gc, name=childname, ss=ExportCatchIncrSetServices, rc=status)
-      VERIFY_(status)
-   enddo
+         childname='CATCHINCR'//trim(id_string)
+         export_id(i) = MAPL_AddChild(gc, name=childname, ss=ExportCatchIncrSetServices, rc=status)
+         VERIFY_(status)
+      enddo
+   endif
 
    call MAPL_TimerAdd(GC, name="Initialize"    ,RC=STATUS)
    _VERIFY(STATUS)

@@ -10,3 +10,5 @@
 /install*/
 /.mepo/
 parallel_build.o*
+log.*
+CMakeUserPresets.json

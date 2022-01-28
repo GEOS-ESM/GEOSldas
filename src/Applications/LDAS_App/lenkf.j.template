@@ -28,6 +28,8 @@ setenv EXPDOMAIN  MY_EXPDOMAIN
 setenv EXPDIR     MY_EXPDIR
 setenv ESMADIR    $EXPDIR/build/
 setenv GEOSBIN    $ESMADIR/bin/
+# need to unsetenv LD_LIBRARY_PATH for execution of LDAS within the coupled land-atm DAS
+unsetenv LD_LIBRARY_PATH
 source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
@@ -41,7 +43,7 @@ setenv MKL_CBWR "AVX2"
 
 #setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
 # reversed sequence for LADAS_COUPLING (Sep 2020)  (needed when coupling with ADAS using different BASEDIR)
-setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${LD_LIBRARY_PATH} 
+setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${ESMADIR}/lib:${LD_LIBRARY_PATH} 
 
 if ( -e /etc/os-release ) then
   module load nco/4.8.1
@@ -101,9 +103,18 @@ cd $SCRDIR
 
 set LSMCHOICE = `grep -n -m 1 "LSM_CHOICE" $HOMDIR/LDAS.rc | cut -d':' -f3`
 
-if( ${LSMCHOICE} == 2 ) then # CatchCN Only
+if( ${LSMCHOICE} > 1 ) then # CatchCN Only
     ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/CO2_MonthlyMean_DiurnalCycle.nc4
     ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/FPAR_CDF_Params-M09.nc4
+endif
+
+########################################################################
+#    if $LADAS_COUPLING == 1 use $FVWORK and copy forcing to Scratch
+########################################################################
+
+if ( $LADAS_COUPLING == 1 ) then
+   echo "copying lfo_Nx+- met forcing from $FVWORK to $SCRDIR"
+   /bin/cp -f $FVWORK/*lfo_Nx+-*nc4  $SCRDIR/.
 endif
 
 #######################################################################
