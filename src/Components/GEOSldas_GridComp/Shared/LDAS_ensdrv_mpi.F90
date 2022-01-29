@@ -43,9 +43,9 @@
 
 module LDAS_ensdrv_mpi
 
-!  use catch_constants, only: N_gt => CATCH_N_GT
+  use catch_constants, only: N_gt => CATCH_N_GT
   
-  use catch_types,     only: N_gt, N_snow, N_cat_progn, N_cat_diagS, N_cat_diagF
+  use catch_types,     only: N_cat_progn, N_cat_diagS, N_cat_diagF
 
   use enkf_types,      only: N_obs_ang_max
   
