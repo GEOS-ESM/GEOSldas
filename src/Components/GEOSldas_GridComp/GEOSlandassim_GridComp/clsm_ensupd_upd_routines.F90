@@ -1281,8 +1281,7 @@ contains
           ! updated to new interface - reichle, 3 Apr 2012
           
           call catch_calc_soil_moist(                                &
-               N_catl,                                               &
-               cat_param%vegcls, cat_param%dzsf,   cat_param%vgwmax, &
+               N_catl,           cat_param%dzsf,   cat_param%vgwmax, &
                cat_param%cdcr1,  cat_param%cdcr2,  cat_param%psis,   &
                cat_param%bee,    cat_param%poros,  cat_param%wpwet,  &
                cat_param%ars1,   cat_param%ars2,   cat_param%ars3,   &
@@ -3563,8 +3562,7 @@ contains
        catdef = cat_progn(:,n_e)%catdef
 
        call catch_calc_soil_moist(                                            &
-            N_catd,                                                           &
-            cat_param%vegcls, cat_param%dzsf,   cat_param%vgwmax,             &
+            N_catd,           cat_param%dzsf,   cat_param%vgwmax,             &
             cat_param%cdcr1,  cat_param%cdcr2,  cat_param%psis,               &
             cat_param%bee,    cat_param%poros,  cat_param%wpwet,              &
             cat_param%ars1,   cat_param%ars2,   cat_param%ars3,               &
