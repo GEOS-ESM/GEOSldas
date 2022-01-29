@@ -39,14 +39,12 @@ module catch_types
   public :: assignment (=), operator (/), operator (+)
 
   public :: catprogn2wesn, catprogn2htsn, catprogn2sndz, catprogn2ghtcnt
+
   ! -------------------------------------------------------------------------
   !
-  ! N_cat_progn = total # states in Catchment model (including 3*N_snow states 
-  ! for snow and N_gt states for ground temperature)
-  ! N_snow        => CATCH_N_SNOW,             &
-  ! N_gt          => CATCH_N_GT
-  !integer,parameter :: N_gt   = 6
-  !integer,parameter :: N_snow = 3
+  ! N_cat_progn = total # states in Catchment model, incl. 3*N_snow states for
+  ! snow (water equivalent, depth, and heat content) and N_gt states for ground 
+  ! temperature, where N_* is the number of layers.
  
   integer, parameter :: N_cat_progn = 10 + N_gt + 3*N_snow
 

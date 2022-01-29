@@ -62,8 +62,8 @@ module preprocess_ldas_routines
   use catch_types,                     ONLY:   &
        cat_param_type
 
-  use catch_constants,                  ONLY:     &
-       N_gt          => CATCH_N_GT 
+  use catch_constants,                 ONLY:   &
+       N_gt   => CATCH_N_GT 
 
   use LDAS_ensdrv_functions,           ONLY:   &
        get_io_filename
