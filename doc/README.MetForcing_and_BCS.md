@@ -36,13 +36,17 @@ by `MET_HINTERP` (see optional parameters in `exeinp` input file to ldas_setup).
     parsing conventions in subroutines parse_MERRA_met_tag(), parse_MERRA2_met_tag()
     and parse_G5DAS_met_tag()
 
- - For details on corrected precipitation data see also Reichle and Liu (2014), 
-    Observation-Corrected Precipitation Estimates in GEOS-5, 
-    NASA Technical Report Series on Global Modeling and Data Assimilation, 
-    NASA/TM-2014-104606, Vol. 35, National Aeronautics and Space Administration, 
-    Goddard Space Flight Center, Greenbelt, Maryland, USA, 18pp.
-    https://gmao.gsfc.nasa.gov/pubs/     
-
+ - For details on corrected precipitation data see also (https://gmao.gsfc.nasa.gov/pubs/): 
+   - Reichle and Liu (2014), 
+     Observation-Corrected Precipitation Estimates in GEOS-5, 
+     NASA Technical Report Series on Global Modeling and Data Assimilation, 
+     NASA/TM-2014-104606, Vol. 35, National Aeronautics and Space Administration, 
+     Goddard Space Flight Center, Greenbelt, Maryland, USA, 18pp.
+   - Reichle, R. H., and Q. Liu (2021), 
+     Observation-Corrected Precipitation for the SMAP Level 4 Soil Moisture (Version 6) Product and the GEOS R21C Reanalysis, 
+     NASA Technical Report Series on Global Modeling and Data Assimilation, 
+     NASA/TM-2021-104606, Vol. 59, National Aeronautics and Space Administration, 
+     Goddard Space Flight Center, Greenbelt, Maryland, USA, 28pp.
 
 COMMONLY USED values for `MET_PATH`:
 ------------------------------------
@@ -88,8 +92,7 @@ COMMONLY USED values for `MET_PATH`:
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/   ! after  1/1/2015
 ```
 
-#### GEOS FP forcing with "seamless" file names, for use with MET_TAG=GEOS.fp.asm[__prec*] (__PREFERRED__);  
-SMAP L4_SM Version 5  
+#### GEOS FP forcing with "seamless" file names, for use with MET_TAG=GEOS.fp.asm[__prec*] (__PREFERRED__)
 ```
   MET_PATH : /discover/nobackup/projects/gmao/smap/SMAP_L4/GEOS/FP/
 ```
@@ -210,13 +213,16 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : f522_fp       ! starting 13 Mar 2019
   MET_TAG  : f525_fp       ! starting 30 Jan 2020
   MET_TAG  : f525_p5_fp    ! starting  7 Apr 2020
+  ...
 
-  MET_TAG  : cross_FP      ! stitch FP experiment names across years 
+  MET_TAG  : cross_FP      ! stitch FP experiment names across years (DEPRECATED)
 
-  MET_TAG  : GEOS.fp.asm   ! "seamless" FP files (published/generic file names, ~same result as cross_FP)
+  MET_TAG  : GEOS.fp.asm   ! "seamless" FP files (published/generic file names, ~same result as cross_FP, PREFERRED)
 ```
 
-#### FP with precip corrections as in pre-beta SMAP L4_SM products
+#### With precip corrections:
+
+#### Pre-beta SMAP L4_SM
 ```
   MET_TAG  : cross_FP__precCPCUG5FPv2
 ```
@@ -249,6 +255,13 @@ COMMONLY USED values for `MET_TAG`:
 ```
   MET_TAG  : GEOS.fp.asm__precCPCULLKG5FPv3                  ! (precip corr with late-look CPCU)
   MET_TAG  : GEOS.fp.asm__precCPCUFLKG5FPv3                  ! (precip corr with first-look CPCU)
+```
+
+#### SMAP L4_SM Version 6
+```
+  MET_TAG  : GEOS.fp.asm__precCPCU_IMGFinal_IMGFclim_G5FP    ! (precip corr with IMERG-Final and late-look  CPCU) 
+  MET_TAG  : GEOS.fp.asm__precCPCULLK_IMERGLateV06b_fp_v1    ! (precip corr with IMERG-Late  and late-look  CPCU)
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06b_fp_v1    ! (precip corr with IMERG-Late  and first-look CPCU)
 ```
 
 #### Forcing from post-processed output of the GEOS S2S system 
@@ -368,7 +381,7 @@ Notes:
 - Generated with cvs tag Jason-3_0_LANDBCS
 - DEFAULT for GEOSldas AFTER v17.8.0
 
-#### Icarus-NLv4, SMAP_Nature_v8.3, SMAP L4_SM Version 5
+#### Icarus-NLv4, SMAP_Nature_v8.3, SMAP L4_SM Version 5, SMAP_Nature_v9.1, SMAP L4_SM Version 6
 ```
   BCS_PATH = /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv4_EASE/
 ```
