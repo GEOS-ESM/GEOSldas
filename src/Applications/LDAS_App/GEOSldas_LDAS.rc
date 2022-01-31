@@ -219,3 +219,7 @@ MAPL_ENABLE_BOOTSTRAP: NO
 #----- Write restart or checkpoint by oserver
 #
 WRITE_RESTART_BY_OSERVER: NO
+
+#----- Ensemble forcing
+#  MET_PATH should not contain the ensemble IDs. Default is NO 
+ENSEMBLE_FORCING: NO

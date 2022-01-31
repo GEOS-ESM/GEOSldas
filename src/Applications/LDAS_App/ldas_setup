@@ -628,13 +628,26 @@ class LDASsetup:
         os.symlink(self.blddir, self.blddirLn)
 
         # met forcing dir
-        if 'MET_PATH' in self.rqdExeInp:
-            metpath = self.rqdExeInp['MET_PATH'].rstrip('/')
-            myMetDir = self.inpdir + '/met_forcing'
-            myMetPath = myMetDir + '/' + metpath.split('/')[-1]
-            os.symlink(metpath, myMetPath)
-            # update 'met_path' to use relative path from outdir
-            self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)
+        self.ensemble_forcing = True if self.rqdExeInp.get('ENSEMBLE_FORCING', 'NO').upper() == 'YES' else False
+
+        myMetPath =''
+        for _i in range(1, _nens+1) :
+           if (_nens == 1 or not self.ensemble_forcing):
+              str_ens = ''
+           else:
+              str_ens = '%03d'%(_i)
+           metpath = self.rqdExeInp['MET_PATH'].rstrip('/')+str_ens
+           myMetDir = self.inpdir + '/met_forcing'
+           myMetPath = myMetDir + '/' + metpath.split('/')[-1]
+           os.symlink(metpath, myMetPath)
+           # update 'met_path' to use relative path from outdir
+           if ( not self.ensemble_forcing):
+              break
+        if ( _nens !=1 and self.ensemble_forcing) :
+           # replace last three character with '%s"
+           self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)[:-3]+'%s'
+        else:
+           self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)
 
         # update tile file
         tile= self.rqdExeInp['TILING_FILE']

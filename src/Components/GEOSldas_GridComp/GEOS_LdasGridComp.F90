@@ -179,6 +179,7 @@ contains
 
     do i=1,NUM_ENSEMBLE
        ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+       ens_id(i) = ens_id(i)+1 ! ensemble forcing is starting with 1 ( 1 off with GEOSldas)
        if(NUM_ENSEMBLE == 1 .or. .not. ensemble_forcing) then
           id_string=''
        else
