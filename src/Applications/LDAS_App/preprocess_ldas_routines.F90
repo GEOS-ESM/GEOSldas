@@ -60,9 +60,11 @@ module preprocess_ldas_routines
        N_force_pert_max
   
   use catch_types,                     ONLY:   &
-       cat_param_type,                         &
-       N_gt
-  
+       cat_param_type
+
+  use catch_constants,                 ONLY:   &
+       N_gt   => CATCH_N_GT 
+
   use LDAS_ensdrv_functions,           ONLY:   &
        get_io_filename
   

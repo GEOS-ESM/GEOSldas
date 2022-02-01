@@ -12,7 +12,7 @@ module clsm_ensdrv_drv_routines
   ! reichle,  5 Apr 2013 - revised treatment of output collections
 
   use MAPL_ConstantsMod,                ONLY:     &
-       Tzero => MAPL_TICE
+       Tzero  => MAPL_TICE
   
   use catch_constants,                  ONLY:     &
        N_snow => CATCH_N_SNOW,                    &
