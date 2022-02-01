@@ -631,10 +631,9 @@ class LDASsetup:
         self.ensemble_forcing = True if self.rqdExeInp.get('ENSEMBLE_FORCING', 'NO').upper() == 'YES' else False
 
         myMetPath =''
-        for _i in range(1, _nens+1) :
-           if (_nens == 1 or not self.ensemble_forcing):
-              str_ens = ''
-           else:
+        for _i in range(self.first_ens_id, _nens + self.first_ens_id) :
+           str_ens = ''
+           if ( _nens != 1 and self.ensemble_forcing):
               str_ens = '%03d'%(_i)
            metpath = self.rqdExeInp['MET_PATH'].rstrip('/')+str_ens
            myMetDir = self.inpdir + '/met_forcing'
