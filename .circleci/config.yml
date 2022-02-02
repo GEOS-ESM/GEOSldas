@@ -54,6 +54,12 @@ jobs:
             mepo clone
             mepo status
       - run:
+          name: "Mepo checkout MAPL3 branches"
+          command: |
+            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas
+            mepo checkout-if-exists release/MAPL-v3
+            mepo status
+      - run:
           name: "Mepo checkout-if-exists"
           command: |
             cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas
