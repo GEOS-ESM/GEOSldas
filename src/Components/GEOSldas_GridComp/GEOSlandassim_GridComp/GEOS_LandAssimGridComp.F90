@@ -40,7 +40,7 @@ module GEOS_LandAssimGridCompMod
   use GEOS_LandPertGridCompMod,  only: progn_pert_param
   use GEOS_LandPertGridCompMod,  only: force_pert_param
   
-  use lsm_routines,              only: DZGT
+  use catch_constants,           only: DZGT=>CATCH_DZGT
   use GEOS_EnsGridCompMod,       only: cat_progn=>catch_progn
   use GEOS_EnsGridCompMod,       only: cat_param=>catch_param
   use mwRTM_types,               only: mwRTM_param_type, mwRTM_param_nodata_check
