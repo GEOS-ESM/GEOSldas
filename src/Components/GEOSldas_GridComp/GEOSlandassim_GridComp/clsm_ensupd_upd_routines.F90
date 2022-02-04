@@ -3439,7 +3439,7 @@ contains
     ! -------------------------------------------------------------------
     
     USE SurfParams, ONLY: WEMIN
-    USE StieglitzSnow, ONLY: RHOMA_pub, cpw_pub 
+    USE StieglitzSnow, ONLY: cpw_pub !Removed RHOMA_pub, unreferenced. LCA 1/28/22 
     use Catch_Constants, ONLY: RHOFS => CATCH_SNWALB_RHOFS
     
     implicit none
@@ -3540,9 +3540,10 @@ contains
     real, dimension(N_catd, N_ens)        :: wesn_sum_old
     real, dimension(N_catd, N_ens)        :: areasc_old 
     !real, parameter:: cpw   = 2065.22 !ice specific heat capacity @ 0C [J/kg/K]
-    real, parameter:: model_threshold = 0.40
-    real, parameter:: obs_threshold = 0.25
-    real, parameter:: wesn_added = 12.0 ! mm of SWE
+    real, parameter:: alpha_threshold = 0.20 !lca modified name and value 2/2/22
+    real, parameter:: beta_threshold  = 0.40 !lca modified name and value 2/2/22
+    real, parameter:: wesn_max = 5.0 ! kg m-2 from Toure et al. 2018, lca modified 2/3/22
+    real, parameter:: wesn_min = 13.0  ! kg m-2 from Toure et al. 2018, lca added 2/3/22
     real, parameter:: eps = 1.e-4
     real, parameter:: small = 1.e-20
    ! real, parameter:: rhofs = 150. ! kg/m^3 density of fresh snow
@@ -4052,226 +4053,6 @@ contains
        end do
        
        ! ----------------------------------
-
-       ! reichle_15Dec2021: ultimately, the block associated with case(11) should be moved to a place *after* case(8,10) and case(9)
-       
-    case (11) select_update_type ! 1d snow (asnow) analysis; MODIS snow cover fraction jpark50
-
-       !=============================================================================
-       !jpark50: 28-Jul-2021: For asnow update:
-       !The increment defined here is a direct replacement; there is no use of EnkF
-       !=============================================================================
-       if (logit) write (logunit, *) 'get 1d snow(asnow) increments; MODIS SCF'
-       
-       !identify the species ID number of interest       
-       N_select_varnames  = 1
-       select_varnames(1) = 'asnow'
-  
-       call get_select_species(                                           &
-            N_select_varnames, select_varnames(1:N_select_varnames),      &
-            N_obs_param, obs_param, N_select_species, select_species )
-       
-       !if(logit) write(logunit,*) 'N_catd=', N_catd
-       !if(logit) write(logunit,*) 'MET forcing length', size(met_force%Tair)
-       !if(logit) write(logunit,*) 'metforce%Tair', met_force%Tair
-       !if(logit) write(logunit,*) 'lat', tile_coord%com_lat
-       !if(logit) write(logunit,*) 'lon', tile_coord%com_lon
-       
-       !Rule-based snow SCF update
-       allocate(select_tilenum(1))
-       allocate(deduction(N_catd))
-      
-       deduction = met_force%Tair-MAPL_TICE
-       !if(logit) write(logunit,*) 'length of deduction:', size(deduction)
-       !if(logit) write(logunit,*) 'N_catd', N_catd
-       !if(logit) write(logunit,*) 'deduction: ', deduction
-       !if(logit) write(logunit,*) 'MAPL_TICE:', MAPL_TICE
-       
-       do n=1,N_catd !for each tile
-          
-          ! find observations for catchment n
-          select_tilenum(1) = l2f(n)
-          ! if(logit) write(logunit,*) 'n:', n
-          
-          call get_ind_obs(                                           &
-               N_obs,            Observations,                        &
-               1,                select_tilenum,                      &
-               N_select_species, select_species(1:N_select_species),  &
-               N_selected_obs,   ind_obs )
-          
-          if (N_selected_obs == 1) then
-             
-             do n_e=1,N_ens ! for each ensemble member
-                
-                !if(logit) write(logunit,*) 'MODIS_SCF = ', Observations(ind_obs(1))%obs
-                !if(logit) write(logunit,*) 'modeled_SCF = ', asnow_ensavg(n)
-                !if(logit) write(logunit,*) 'RHS= ', Observations(ind_obs(1))%obs*model_threshold
-                
-                if(asnow_ensavg(n) < Observations(ind_obs(1))%obs*model_threshold) then
-
-                   ! *** Add snow ***
-                   
-                   do i=1,N_snow
-                      
-                      ! a) Snow water equivalent (add equally the snow to all three layers)
-                      
-                      cat_progn_incr(n, n_e)%wesn(i) = &
-                           ( Observations(ind_obs(1))%obs - &
-                           asnow_ensavg(n)/model_threshold ) * (wesn_added/float(N_snow))
-                      
-                      !if(logit) write(logunit,*) 'cat_progn_incr(n_n_e)%wesn = ', cat_progn_incr(n, n_e)%wesn(i)
-                      
-                      ! b) snow depth 
-
-                      !if(logit) write(logunit,*) 'cat_progn(n,n_e)%sndz(i)', cat_progn(n,n_e)%sndz(i)
-
-                      if(cat_progn(n,n_e)%sndz(i) > eps) then
-                         
-                         ! Determine the fractional snow coverage
-                         wesn_sum_old(n,n_e) = sum(cat_progn(n,n_e)%wesn)
-                         areasc_old(  n,n_e) = min(wesn_sum_old(n,n_e)/wemin,1.)
-                         
-                         ! if(logit) write(logunit,*) 'wesn_sum_old(n,n_e)', wesn_sum_old(n,n_e)
-                         ! if(logit) write(logunit,*) 'areasc_old(n,n_e)', areasc_old(n,n_e)
-                         
-                         ! Estimate the density of the ld layers of snow
-                         dens_layer = max(cat_progn(n,n_e)%wesn(i)/ &
-                              (cat_progn(n,n_e)%sndz(i)*areasc_old(n,n_e)),RHOFS)
-                         
-                         !if(logit) write(logunit,*) 'dens_layer', dens_layer
-                         
-                         cat_progn_incr(n,n_e)%sndz(i)=&
-                              cat_progn_incr(n,n_e)%wesn(i)/dens_layer
-                         
-                         !if(logit) write(logunit,*) 'cat_progn_incr(n,n_e)%sndz:', cat_progn_incr(n,n_e)%sndz(i)
-                         
-                      else
-                         dens_layer = RHOFS
-                         cat_progn_incr(n,n_e)%sndz(i) = cat_progn_incr(n,n_e)%wesn(i)/dens_layer
-                      end if
-
-                      ! c) snow heat content
-                      
-                      !if(logit) write(logunit,*) 'Deduction:', deduction(n)
-                      !original plan : use the min function --> continuously giving the floating error
-                      !TSN = min( deduction(n), 0.0)
-                      !Second options : replace the min function with if-else statement 
-                      if (deduction(n) .gt. 0.0) then
-                         TSN = 0.0
-                      else
-                         TSN = deduction(n)
-                      end if
-                      !if(logit) write(logunit,*) 'TSN = ',TSN
-                      !if(logit) write(logunit,*) 'wesn increment', cat_progn_incr(n,n_e)%wesn(i)
-                      !if(logit) write(logunit,*) 'cpw_pub: ', cpw_pub, 'MAPL_ALHF', MAPL_ALHF
-                      cat_progn_incr(n,n_e)%htsn(i) = real((TSN*cpw_pub-MAPL_ALHF))*cat_progn_incr(n,n_e)%wesn(i)
-                      
-                   end do  ! i=1,N_snow
-                   
-                   !    if (n== 595) then
-                   !     if (logit) write (logunit, *)
-                   !     if (logit) write (logunit, *) '********Adding_Snow***********'
-                   !     if (logit) write (logunit, *)
-                   !     if (logit) write (logunit, *) 'tile_number = ',n
-                   !     if (logit) write (logunit, *) 'add_snow_density  = ', dens_layer
-                   !     if (logit) write (logunit, *) 'added_wesn  = ', cat_progn_incr(n,n_e)%wesn
-                   !     if (logit) write (logunit, *) 'added_sndz  = ', cat_progn_incr(n,n_e)%sndz
-                   !     if (logit) write (logunit, *) 'added_htsn  = ', cat_progn_incr(n,n_e)%htsn
-                   !    endif
-                   
-                elseif (Observations(ind_obs(1))%obs <= obs_threshold) then
-                   
-                   ! *** Remove snow ***
-                   
-                   if (logit) write (logunit,*) 'Remove snow section: ', &
-                        'MODIS_SCF = ', Observations(ind_obs(1))%obs, 'model_SCF = ', asnow_ensavg(n)
-                   
-                   do i=1,N_snow
-
-                      ! a) snow water equivalent
-                      
-                      cat_progn_incr(n,n_e)%wesn(i) = &
-                           -cat_progn(n,n_e)%wesn(i)*(1-Observations(ind_obs(1))%obs/obs_threshold  )
-                      
-                      ! b) snow depth
-
-                      if (cat_progn(n,n_e)%sndz(i) > eps) then
-
-                         wesn_sum_old(n,n_e)=sum(cat_progn(n,n_e)%wesn)
-                         areasc_old(n,n_e)=min(wesn_sum_old(n,n_e)/wemin,1.)
-                         
-                         !Estimate the density of the old layers of snow
-                         dens_layer = max( cat_progn(n,n_e)%wesn(i)/&
-                              (cat_progn(n,n_e)%sndz(i)*areasc_old(n,n_e)),RHOFS)
-                         
-                         cat_progn_incr(n,n_e)%sndz(i)=&
-                              cat_progn_incr(n,n_e)%wesn(i)/dens_layer
-                         
-                      else
-                         dens_layer = RHOFS
-                         cat_progn_incr(n,n_e)%sndz(i) = cat_progn_incr(n,n_e)%wesn(i)/dens_layer
-                      end if
-
-                      !c) heat content
-
-                      if(deduction(n) .gt. 0.0) then
-                         TSN = 0.0
-                      else 
-                         TSN = deduction(n)
-                      end if
-
-                      !TSN = min( deduction(n), 0.0)
-                      !if(logit) write(logunit,*) 'TSN: ', TSN
-                      !if(logit) write(logunit,*) 'wesn increment', cat_progn_incr(n,n_e)%wesn(i)
-                      !if(logit) write(logunit,*) 'cpw_pub: ', cpw_pub, 'MAPL_ALHF', MAPL_ALHF
-                      
-                      cat_progn_incr(n,n_e)%htsn(i) = -real((TSN*cpw_pub-MAPL_ALHF))*cat_progn_incr(n,n_e)%wesn(i)
-                      
-                   end do !  i=1,N_snow
-                   
-                   ! if (n== 595) then
-                   !       if (logit) write (logunit, *)
-                   !       if (logit) write (logunit, *) '********Remove_Snow***********'
-                   !       if (logit) write (logunit, *)
-                   !       if (logit) write (logunit, *) 'tile_number = ',n
-                   !       if (logit) write (logunit, *) 'remove_snow_density  = ', dens_layer
-                   !       if (logit) write (logunit, *) 'remove_wesn  = ', cat_progn_incr(n,n_e)%wesn
-                   !       if (logit) write (logunit, *) 'remove_sndz  = ', cat_progn_incr(n,n_e)%sndz
-                   !       if (logit) write (logunit, *) 'remove_htsn  = ', cat_progn_incr(n,n_e)%htsn
-                   ! endif
-                   
-                else
-
-                   ! *** Do nothing ***
-                   
-                   if (logit) write (logunit, *) 'No_add_No_removal_section: ', &
-                        'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n)
-
-                   ! reichle_15Dec2021: Do *nothing*!
-                   !                   (cat_progn_incr was already initialized to 0)
-                   !
-                   ! do i=1,N_snow
-                   !   cat_progn_incr(n,n_e)%wesn(i) = 0.0
-                   !   cat_progn_incr(n,n_e)%sndz(i) = 0.0
-                   !   cat_progn_incr(n,n_e)%htsn(i) = 0.0
-                   ! end do
-                   
-                   ! if (n== 595) then
-                   !       if (logit) write (logunit, *)
-                   !       if (logit) write (logunit, *) '********No_add_or_removal***********'
-                   !       if (logit) write (logunit, *)
-                   !       if (logit) write (logunit, *) 'tile_number = ',n
-                   !       if (logit) write (logunit, *) 'incr_wesn  = ', cat_progn_incr(n,n_e)%wesn
-                   !       if (logit) write (logunit, *) 'incr_sndz  = ', cat_progn_incr(n,n_e)%sndz
-                   !       if (logit) write (logunit, *) 'incr_htsn  = ', cat_progn_incr(n,n_e)%htsn
-                   ! endif
-                   
-                end if
-                
-             end do   ! n_e=1,N_ens
-          end if      ! (N_selected_obs == 1)
-       end do
-       
     case (7) select_update_type   ! 3d Tskin/ght(1) analysis; tskin obs 
        
        ! update each tile separately using all observations within 
@@ -4687,6 +4468,156 @@ contains
           end if
           
        end do
+       ! ----------------------------------
+
+     
+    case (11) select_update_type ! 1d snow (asnow) analysis; MODIS snow cover fraction jpark50
+
+       !=============================================================================
+       !lcandre2: updated 02-Feb-2022 to include appropriate update to mass, heat content, 
+       ! &  depth. Then apply relayering following adjustments using GRACE DA.
+       !jpark50: 28-Jul-2021: For asnow update:
+       !The increment defined here is a direct replacement; there is no use of EnkF
+       !=============================================================================
+       if (logit) write (logunit, *) 'get 1d snow(asnow) increments; MODIS SCF'
+       
+       !identify the species ID number of interest       
+       N_select_varnames  = 1       select_varnames(1) = 'asnow'
+  
+       call get_select_species(                                           &
+            N_select_varnames, select_varnames(1:N_select_varnames),      &
+            N_obs_param, obs_param, N_select_species, select_species )
+       
+       !if(logit) write(logunit,*) 'N_catd=', N_catd
+       !if(logit) write(logunit,*) 'MET forcing length', size(met_force%Tair)
+       !if(logit) write(logunit,*) 'metforce%Tair', met_force%Tair
+       !if(logit) write(logunit,*) 'lat', tile_coord%com_lat
+       !if(logit) write(logunit,*) 'lon', tile_coord%com_lon
+       
+       !Rule-based snow SCF update
+       allocate(select_tilenum(1))
+       allocate(deduction(N_catd))
+     
+       deduction = met_force%Tair-MAPL_TICE !this can be negative or positive lca 2/2/22, but still not sure what it is for and why it isnt calculated in the catchment for loop
+       !Print the value and length of 'deduction'
+       !if(logit) write(logunit,*) 'deduction: ', deduction
+       !if(logit) write(logunit,*) 'length of deduction:', size(deduction)
+             
+       do n=1,N_catd !for each catchment
+
+          ! find observations for catchment n
+          select_tilenum(1) = l2f(n)
+          ! if(logit) write(logunit,*) 'n:', n
+          
+          call get_ind_obs(                                           &
+               N_obs,            Observations,                        &
+               1,                select_tilenum,                      &
+               N_select_species, select_species(1:N_select_species),  &
+               N_selected_obs,   ind_obs )
+          
+          if (N_selected_obs == 1) then
+             
+             do n_e=1,N_ens ! for each ensemble member (1) determine action and 
+ 
+                !*** Add snow ***
+                !****************
+                !if the model SCF is less than the Obs SCF times alpha then ADD snow
+                !alpha = alpha_threshold = 0.2 
+                if(asnow_ensavg(n) .lt. Observations(ind_obs(1))%obs * alpha_threshold) then
+                     !if(logit) write (logunit, *) 'Add snow: ' &
+                     !   'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n) 
+                     !tot_swe_init = cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3)                
+                
+                     areasc_minus  = min( (cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3))  / WEMIN, 1.0) 
+
+
+                     do isnow = 1,N_snow  
+                       !1. calculate increment to be added and update SWE
+                       cat_progn_incr(n,n_e)%wesn(isnow) = (wesn_max / float(N_snow)) * &
+                                                            (observations(ind_obs(1)%obs - asnow_ensavg(n) /alpha_threshold)
+                                                              
+                       !2. Update wesn   
+                       wesn_ratio(isnow) = (cat_progn(n,n_e)%wesn(isnow) + cat_progn_incr(n,n_e)%wesn(isnow) / cat_progn(n,n_e)%wesn(isnow)
+ 
+                       cat_progn(n,n_e)%wesn(isnow) =  cat_progn(n,n_e)%wesn(isnow) * wesn_ratio(isnow)                              
+
+                     end do
+                     
+                     !Calculate new snow cover area
+                     areasc_plus = min( ( cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3)/ WEMIN, 1.0) 
+                     
+                     !3. Update snow depth using rules to define density and heat content
+                     do isnow = 1, N_snow
+                      
+                        !Case 1: if the inital area is zero and snow is added then the depth is dependent on updated SWE and fresh density
+                        ! and the heat content is updated assuming the snow is at MAPL_TICE (273.16)
+                        if ( (areasc_minus.eq.0.0) .and. (areasc_plus.gt.0.0) ) then !These can probably be simplified
+                           cat_progn(n,n_e)%sndz(isnow) =  cat_progn(n,n_e)%wesn(isnow) /RHOFS
+                           cat_progn(n,n_e)%htsn(isnow) =  0.0 ! heat content = ci * wesn * (Ti-Tm). If assume fresh snow is isothermal and @0*C 
+                        endif
+                        !Case 2: if the initial area is less than 1 and final area is less than or equal to 1
+                        ! then depth increases based on the wesn_ratio (?? check)
+                        if ( (areasc_minus.le.1.0) .and. (areasc_plus.le.1.0) ) then ! These can probably be simplified
+                           cat_progn(n, n_e)%sndz(isnow) = cat_progn(n,n_e)%sndz(isnow) * wesn_ratio(isnow)
+                           cat_progn(n, n_e)%htsn(isnow) = cat_progn(n,n_e%htsn(isnow)  * wesn_ratio(isnow)
+                        endif
+                     end do 
+                 
+                !*** Remove snow ***
+                !*******************
+                !if the model SCF is greater than or equal to the Obs SCF times alpha 
+                !AND the Observed SCF is less than beta, then REMOVE snow  
+                elseif(asnow_ensavg(n) .ge. Observations(ind_obs(1))%obs * alpha_threshold) .AND. &  !!Is the first part of this statement needed?
+                      (Observations(ind_obs(1))%obs .lt. beta_threshold) then 
+                  !if (logit) write (logunit, *) 'Remove snow: ', &
+                  !     'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n)
+                     areasc_minus  = min( (cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3))  / WEMIN, 1.0) 
+
+
+                     do isnow = 1,N_snow  
+                       !1. calculate increment to be added and update SWE
+                       cat_progn_incr(n,n_e)%wesn(isnow) = -wesn_min * &
+                                                            (1 - asnow_ensavg(n) /beta_threshold) !Check this equation!!!!
+                                                              
+                       !2. Update wesn   
+                       wesn_ratio(isnow) = (cat_progn(n,n_e)%wesn(isnow) + cat_progn_incr(n,n_e)%wesn(isnow) / cat_progn(n,n_e)%wesn(isnow)
+ 
+                       cat_progn(n,n_e)%wesn(isnow) =  cat_progn(n,n_e)%wesn(isnow) * wesn_ratio(isnow)                              
+
+                     end do
+                     
+                     !Calculate new snow cover area, this is different than add because there needs to be a protection against negative SWE(?)
+                     areasc_plus = max( ( cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3)/ WEMIN, 0.0) 
+                     
+                     !3. Update snow depth using rules to define density and heat content
+                     do isnow = 1, N_snow
+                      
+                        !Case 1: if the inital area is greater than zero and the updated area is zero, then depth and heat content are zero
+                        if ( (areasc_minus.gt.0.0) .and. (areasc_plus.eq.0.0) ) then !These can probably be simplified
+                           cat_progn(n,n_e)%sndz(isnow) =  0.0
+                           cat_progn(n,n_e)%htsn(isnow) =  0.0 ! heat content = ci * wesn * (Ti-Tm). If assume fresh snow is isothermal and @0*C 
+                        endif
+                        !Case 2: if the initial area is less than 1 and final area is less than or equal to 1
+                        ! then depth increases based on the wesn_ratio (?? check)
+                        if ( (areasc_minus.gt.0.0) .and. (areasc_plus.gt.0.0) ) then ! These can probably be simplified
+                           cat_progn(n, n_e)%sndz(isnow) = cat_progn(n,n_e)%sndz(isnow) * wesn_ratio(isnow)
+                           cat_progn(n, n_e)%htsn(isnow) = cat_progn(n,n_e%htsn(isnow)  * wesn_ratio(isnow)
+                        endif
+                     end do 
+                !*** No Add, No remove snow ***
+                !******************************
+                !If neither conditions is met then do nothing ( NO add No remove)
+                else 
+                  !if (logit) write (logunit, *) 'No add No remove: ', &
+                  !     'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n)
+                 cat_progn_incr(n,n_e)%wesn(isnow) = 0.0
+                
+               end if ! snow actions
+                 
+             end do   ! n_e=1,N_ens
+          end if      ! (N_selected_obs == 1)
+       end do         ! n=1,N_catd
+     
 
        ! ----------------------------------
        
