@@ -1301,6 +1301,8 @@ class LDASsetup:
                         fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
                     elif 'MY_LADAS_COUPLING' in line :
                         fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
+                    elif 'MY_ENSEMBLE_FORCING' in line :
+                        fout.write(line.replace('MY_ENSEMBLE_FORCING',self.rqdExeInp.get('ENSEMBLE_FORCING', 'NO').upper()))
                     elif 'MY_ADAS_EXPDIR' in line :
                         if self.ladas_coupling > 0:
                            fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
