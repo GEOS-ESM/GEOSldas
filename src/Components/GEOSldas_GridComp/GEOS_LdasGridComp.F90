@@ -27,7 +27,7 @@ module GEOS_LdasGridCompMod
   use LDAS_ensdrv_mpi, only: init_MPI_types,mpicomm,numprocs,myid 
   use LDAS_ensdrv_mpi, only: root_proc
   use LDAS_ensdrv_Globals, only: logunit,logit,root_logit,echo_clsm_ensdrv_glob_param
-  use lsm_routines,  only: lsmroutines_echo_constants  
+  use catch_constants, only: echo_catch_constants  
   use StieglitzSnow, only: StieglitzSnow_echo_constants
   use SurfParams,    only: SurfParams_init
 
@@ -757,7 +757,7 @@ contains
 
 
     if ( IamRoot) call echo_clsm_ensdrv_glob_param()
-    if ( IamRoot) call lsmroutines_echo_constants(logunit)
+    if ( IamRoot) call echo_catch_constants(logunit)
     if ( IamRoot) call StieglitzSnow_echo_constants(logunit)
 
 

@@ -7,9 +7,9 @@ module GEOS_EnsGridCompMod
   !! This grid comp behaves like a coupler. The set service, initialization are compliant with MAPL grid comp concept. 
   use ESMF
   use MAPL_Mod
-  use lsm_routines, only: DZGT
-  use catch_types,  only: cat_progn_type
-  use catch_types,  only: cat_param_type
+  use catch_constants, only: DZGT => CATCH_DZGT
+  use catch_types,     only: cat_progn_type
+  use catch_types,     only: cat_param_type
 
   use, intrinsic :: ieee_arithmetic
   
