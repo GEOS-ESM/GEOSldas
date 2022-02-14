@@ -19,7 +19,6 @@ deflate_level=3
 
 for file in $(find $1 -name "*.nc4" -type f); do
 	#echo "Processing $file..."
-	ncks -L $deflate_level -O $file $file.z
-        mv $file.z $file
+	ncks -L $deflate_level -O $file $file &
 done;
-
+wait
