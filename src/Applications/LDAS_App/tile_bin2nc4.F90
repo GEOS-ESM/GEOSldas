@@ -195,7 +195,8 @@ PROGRAM tile_bin2nc4
 
     ! For SM_L4 
     ! reichle, 20 May 2020: verified SHORT_NAME and corrected UNITS to match SMAP L4_SM Product Specs;  LONG_NAME (mostly) from GEOS_CatchGridComp.F90 
-
+    ! reichle, 14 Feb 2022: added "WATERTABLED" and "FSWCHANGE"
+       
     case ('sm_surface');                       LONG_NAME = 'water_surface_layer';                                              UNITS = 'm3 m-3'
     case ('sm_rootzone');                      LONG_NAME = 'water_root_zone';                                                  UNITS = 'm3 m-3'
     case ('sm_profile');                       LONG_NAME = 'water_ave_prof';                                                   UNITS = 'm3 m-3'
@@ -236,6 +237,8 @@ PROGRAM tile_bin2nc4
     case ('windspeed_lowatmmodlay');           LONG_NAME = 'wind_speed_at_RefH';                                               UNITS = 'm s-1'
     case ('vegetation_greenness_fraction');    LONG_NAME = 'greeness_fraction';                                                UNITS = '1' 
     case ('leaf_area_index');                  LONG_NAME = 'leaf_area_index';                                                  UNITS = 'm2 m-2' 
+    case ('depth_to_water_table_from_surface');LONG_NAME = 'depth_to_water_table_from_surface';                                UNITS = 'm'
+    case ('free_surface_water_on_peat_flux');  LONG_NAME = 'change_in_free_surface_water_reservoir_on_peat';                   UNITS = 'kg m-2 s-1'
 
     ! additional defintions for SMAP Nature Run - reichle, 20 May 2020
 
@@ -327,6 +330,8 @@ PROGRAM tile_bin2nc4
     case ('SPLAND');     LONG_NAME = 'rate_of_spurious_land_energy_source';                              UNITS = 'W m-2'
     case ('SPWATR');     LONG_NAME = 'rate_of_spurious_land_water_source';                               UNITS = 'kg m-2 s-1'
     case ('SPSNOW');     LONG_NAME = 'rate_of_spurious_snow_energy';                                     UNITS = 'W m-2'
+    case ('WATERTABLED');LONG_NAME = 'depth_to_water_table_from_surface';                                UNITS = 'm'
+    case ('FSWCHANGE');  LONG_NAME = 'change_in_free_surface_water_reservoir_on_peat';                   UNITS = 'kg m-2 s-1'
     case ('CNLAI');      LONG_NAME = 'CN_exposed_leaf-area_index';                                       UNITS = '1'
     case ('CNTLAI');     LONG_NAME = 'CN_total_leaf-area_index';                                         UNITS = '1'
     case ('CNSAI');      LONG_NAME = 'CN_exposed_stem-area_index';                                       UNITS = '1'
