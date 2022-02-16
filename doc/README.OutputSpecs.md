@@ -78,6 +78,17 @@ MAPL HISTORY can generally write gridded ("2d") output in binary or netcdf-4 (nc
 3. GEOSldas can bundle sub-daily nc4 output into daily nc4 files and write monthly-average output through the `POSTPROC_HIST` configuration option. 
 
 
+**Enhanced file compression and bit shaving**
+
+To save disk space, MAPL can facilitate enhanced file compression through the modification of scientifically meaningless information in the output files. The `\*.nbits` parameter specifies the number of bits retained: 
+```
+ tavg3_2d_lnd_Nx.nbits:        12,
+```
+Many MERRA-2 and FP products, for example, use `\*.nbits: 12` and `\*.nbits: 10`, respectively.  
+
+To realize the disk space savings, bit-shaved output **must be compressed separately** after the simulation has finished.   Binary files can be compressed with `gzip`; nc4 files can be compressed using the `compress_bit-shaved_nc4.sh` utility script. For reasons of efficiency, the compression is not included in GEOSldas `POSTPROC_HIST`.
+
+
 **Additional information**
 
 The output from the MERRA-2 and GEOS-FP products is also written with MAPL HISTORY.  The "File Specification" documents for these products, which are published as GMAO ["Office Notes"](https://gmao.gsfc.nasa.gov/pubs/), contain further documentation of many aspects of MAPL HISTORY.

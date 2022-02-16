@@ -1,10 +1,14 @@
 #!/usr/local/bin/bash
 #
-# compress bit-shaved nc output
+# lossless compression of (bit-shaved) nc4 output, operates recursively in <directory>
+#
+#    usage: compress_bit-shaved_nc4.sh <directory>
+#
+# ---------------------------------------------------------------
 
 usage(){
 	echo -e "\nUsage: $0 <directory>
-	<directory> = name of output directory with bit-shaved nc files
+	<directory> = name of output directory with bit-shaved nc4 files
 "
 	exit 1;
 }
@@ -17,8 +21,16 @@ fi
 # deflation_level 1-9; higher level (e.g. 9) takes longer; recommended: 3 (based on L4_SM) 
 deflate_level=3
 
+# By default, the ncks command is executed sequentially for each nc4 file
+# in <directory>.  Modify this script if multi-threading is needed to run
+# the script on a compute node. 
+
 for file in $(find $1 -name "*.nc4" -type f); do
-	#echo "Processing $file..."
-	ncks -L $deflate_level -O $file $file &
+        #echo "Processing $file..."
+        #                                               # For simple multi-threading:
+        ncks -L $deflate_level -O $file $file           #  <-- comment out this line
+###     ncks -L $deflate_level -O $file $file &         #  <-- uncomment this line
 done;
-wait
+###wait                                                 #  <-- uncomment this line
+
+# ===================== EOF =======================================================
