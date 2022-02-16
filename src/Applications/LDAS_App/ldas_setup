@@ -628,13 +628,25 @@ class LDASsetup:
         os.symlink(self.blddir, self.blddirLn)
 
         # met forcing dir
-        if 'MET_PATH' in self.rqdExeInp:
-            metpath = self.rqdExeInp['MET_PATH'].rstrip('/')
-            myMetDir = self.inpdir + '/met_forcing'
-            myMetPath = myMetDir + '/' + metpath.split('/')[-1]
-            os.symlink(metpath, myMetPath)
-            # update 'met_path' to use relative path from outdir
-            self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)
+        self.ensemble_forcing = True if self.rqdExeInp.get('ENSEMBLE_FORCING', 'NO').upper() == 'YES' else False
+
+        myMetPath =''
+        for _i in range(self.first_ens_id, _nens + self.first_ens_id) :
+           str_ens = ''
+           if ( _nens != 1 and self.ensemble_forcing):
+              str_ens = '%03d'%(_i)
+           metpath = self.rqdExeInp['MET_PATH'].rstrip('/')+str_ens
+           myMetDir = self.inpdir + '/met_forcing'
+           myMetPath = myMetDir + '/' + metpath.split('/')[-1]
+           os.symlink(metpath, myMetPath)
+           # update 'met_path' to use relative path from outdir
+           if ( not self.ensemble_forcing):
+              break
+        if ( _nens !=1 and self.ensemble_forcing) :
+           # replace last three character with '%s"
+           self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)[:-3]+'%s'
+        else:
+           self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)
 
         # update tile file
         tile= self.rqdExeInp['TILING_FILE']
@@ -1289,6 +1301,8 @@ class LDASsetup:
                         fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
                     elif 'MY_LADAS_COUPLING' in line :
                         fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
+                    elif 'MY_ENSEMBLE_FORCING' in line :
+                        fout.write(line.replace('MY_ENSEMBLE_FORCING',self.rqdExeInp.get('ENSEMBLE_FORCING', 'NO').upper()))
                     elif 'MY_ADAS_EXPDIR' in line :
                         if self.ladas_coupling > 0:
                            fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
