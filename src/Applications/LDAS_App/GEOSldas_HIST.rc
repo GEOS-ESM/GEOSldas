@@ -41,7 +41,11 @@ COLLECTIONS:
 # Bit shaving: Retain only scientifically meaningful precision and modify meaningless 
 #              bits to facilitate better compression in post-processing;
 #              *.nbits specifies the number of bits retained; 
-#              MERRA-2 uses nbits=12 and FP uses nbits=10 for many collections.
+#              For example, many MERRA-2 and FP products use nbits=12 and nbits=10, resp.
+#   IMPORTANT: To realize the disk space savings, bit-shaved output must be compressed 
+#              after the GEOSldas simulation has finished.  Binary files can be compressed 
+#              with "gzip"; nc4 files can be compressed using the "compress_bit-shaved_nc4.sh"
+#              utility script. 
 
   tavg24_1d_lfs_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
   tavg24_1d_lfs_Nt.nbits:       12,
