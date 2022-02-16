@@ -122,7 +122,9 @@ FIRST_ENS_ID: 0
 #  YES : Ensemble met forcing
 #        - Typically used in land-atmosphere data assimilation (LADAS) configuration. 
 #        - Must have forcing with matching ensemble ID for each land ensemble member.
-#        - MET_PATH and MET_TAG should not contain the ensemble IDs.
+#        - Forcing files must be stored in member-specific directories MET_PATH[NNN]/, 
+#            where NNN is the 3-digit ensemble ID.
+#        - User-specified MET_PATH and MET_TAG must not contain ensemble IDs.
 #        - FIRST_ENS_ID may be used to align ensemble IDs.    
 #
 ENSEMBLE_FORCING: NO
