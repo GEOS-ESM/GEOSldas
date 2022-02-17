@@ -116,6 +116,20 @@ PERTURBATIONS: 0
 FIRST_ENS_ID: 0
 
 
+# ---- Ensemble forcing
+#
+#  NO  : Deterministic met forcing  (default)
+#  YES : Ensemble met forcing
+#        - Typically used in land-atmosphere data assimilation (LADAS) configuration. 
+#        - Must have forcing with matching ensemble ID for each land ensemble member.
+#        - Forcing files must be stored in member-specific directories MET_PATH[NNN]/, 
+#            where NNN is the 3-digit ensemble ID.
+#        - User-specified MET_PATH and MET_TAG must not contain ensemble IDs.
+#        - FIRST_ENS_ID may be used to align ensemble IDs.    
+#
+ENSEMBLE_FORCING: NO
+
+
 # ---- Path to special namelist input files
 #
 #      Applies only for ensemble simulations. The variable values in the special 
@@ -219,3 +233,8 @@ MAPL_ENABLE_BOOTSTRAP: YES
 #----- Write restart or checkpoint by oserver
 #
 WRITE_RESTART_BY_OSERVER: NO
+
+#
+# =================================== EOF ==========================================
+
+
