@@ -40,7 +40,7 @@ module GEOS_LandAssimGridCompMod
   use GEOS_LandPertGridCompMod,  only: progn_pert_param
   use GEOS_LandPertGridCompMod,  only: force_pert_param
   
-  use lsm_routines,              only: DZGT
+  use catch_constants,           only: DZGT=>CATCH_DZGT
   use GEOS_EnsGridCompMod,       only: cat_progn=>catch_progn
   use GEOS_EnsGridCompMod,       only: cat_param=>catch_param
   use mwRTM_types,               only: mwRTM_param_type, mwRTM_param_nodata_check
@@ -992,13 +992,14 @@ contains
       DEFAULT     = nodata_generic              ,&
       RC=STATUS)
 
-!
-   if (land_assim) then
+   
+   if ( land_assim ) then
+
       call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
       _VERIFY(STATUS)
-      call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+      call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:",      DEFAULT=0, RC=STATUS)
       _VERIFY(STATUS)
-      call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+      call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0, RC=STATUS)
       VERIFY_(STATUS)
 
       write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"

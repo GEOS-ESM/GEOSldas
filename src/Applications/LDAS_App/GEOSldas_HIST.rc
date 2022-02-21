@@ -13,11 +13,6 @@
 #
 EXPID:  GEOSldas_expid
 
-# Experiment description and source code info are expected by MAPL but  
-#  not used (as of 13 Oct 2021).
-EXPDSC: GEOSldas_output
-EXPSRC: GEOSldas
-
 COLLECTIONS:
 #EASE            'tavg24_1d_lfs_Nt'
 #CUBE            'tavg24_2d_lfs_Nx'	
@@ -46,7 +41,11 @@ COLLECTIONS:
 # Bit shaving: Retain only scientifically meaningful precision and modify meaningless 
 #              bits to facilitate better compression in post-processing;
 #              *.nbits specifies the number of bits retained; 
-#              MERRA-2 uses nbits=12 and FP uses nbits=10 for many collections.
+#              For example, many MERRA-2 and FP products use nbits=12 and nbits=10, resp.
+#   IMPORTANT: To realize the disk space savings, bit-shaved output must be compressed 
+#              after the GEOSldas simulation has finished.  Binary files can be compressed 
+#              with "gzip"; nc4 files can be compressed using the "compress_bit-shaved_nc4.sh"
+#              utility script. 
 
   tavg24_1d_lfs_Nt.descr:       'Tile-space,Daily,Time-Averaged,Single-Level,Assimilation,Land Surface Forcings and States',
   tavg24_1d_lfs_Nt.nbits:       12,
@@ -163,6 +162,8 @@ COLLECTIONS:
                                'SPLAND'     , 'GridComp'  ,
                                'SPWATR'     , 'GridComp'  ,
                                'SPSNOW'     , 'GridComp'  ,
+                               'WATERTABLED', 'GridComp'  ,
+                               'FSWCHANGE'  , 'GridComp'  ,
 >>>HIST_AEROSOL<<<      'RMELTDU001'  , 'GridComp'  ,
 >>>HIST_AEROSOL<<<	  'RMELTDU002'  , 'GridComp'  ,
 >>>HIST_AEROSOL<<<	  'RMELTDU003'  , 'GridComp'  ,
@@ -263,6 +264,8 @@ COLLECTIONS:
                                'SPLAND'     , 'GridComp'  ,
                                'SPWATR'     , 'GridComp'  ,
                                'SPSNOW'     , 'GridComp'  ,
+                               'WATERTABLED', 'GridComp'  ,
+                               'FSWCHANGE'  , 'GridComp'  ,
 >>>HIST_AEROSOL<<<     'RMELTDU001'  , 'GridComp'  ,
 >>>HIST_AEROSOL<<<	  'RMELTDU002'  , 'GridComp'  ,
 >>>HIST_AEROSOL<<<	  'RMELTDU003'  , 'GridComp'  ,
@@ -348,6 +351,8 @@ COLLECTIONS:
                                'UU'         , 'ENSAVG'      , 'windspeed_lowatmmodlay'            ,
                                'GRN'        , 'VEGDYN'      , 'vegetation_greenness_fraction'     ,
                                'LAI'        , 'VEGDYN'      , 'leaf_area_index'                   ,
+                               'WATERTABLED', 'ENSAVG'      , 'depth_to_water_table_from_surface' , 
+                               'FSWCHANGE'  , 'ENSAVG'      , 'free_surface_water_on_peat_flux'   , 
                                ::
 
   inst1_1d_lnr_Nt.descr:        'Tile-space,1-Hourly,Instantaneous,Single-Level,Assimilation,Land Nature Run Diagnostics',
