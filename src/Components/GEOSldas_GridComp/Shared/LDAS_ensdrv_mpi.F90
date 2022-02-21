@@ -641,6 +641,7 @@ contains
     ! real    :: bh         
     ! real    :: bv         
     ! real    :: lewt       
+    ! real    :: vegopacity  
 
     icount = 2
     
@@ -652,7 +653,7 @@ contains
     itype(2)  = MPI_REAL
 
     iblock(1) = 2
-    iblock(2) = 16
+    iblock(2) = 17
         
     idisp(1)  = 0
     idisp(2)  = idisp(1) + iblock(1)*4

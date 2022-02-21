@@ -1810,6 +1810,7 @@ contains
        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bh,        mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bv,        mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%lewt,      mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%vegopacity,mask=mask, rc=status); _VERIFY(STATUS)   ! NOT constant in time!!!
        
        !unit = GETFILE( "landassim_catparam_inputs.bin", form="unformatted", RC=STATUS )
        !_VERIFY(STATUS)
@@ -2729,6 +2730,8 @@ contains
     
   end subroutine get_mwrtm_param
 
+  ! ******************************************************************************
+  
   subroutine get_vegopacity(MAPL, clock, N_catl, rc)
 
     type(MAPL_MetaComp), pointer,  intent(in)    :: MAPL
