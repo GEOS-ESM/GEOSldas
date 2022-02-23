@@ -1462,7 +1462,7 @@ contains
     LONG_NAME          = 'depth_to_water_table_from_surface',&
     UNITS              = 'm'                         ,&
     SHORT_NAME         = 'WATERTABLED'               ,&
-    DIMS               = MAPL_DimsHorzOnly           ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RC=STATUS  ) 
 
