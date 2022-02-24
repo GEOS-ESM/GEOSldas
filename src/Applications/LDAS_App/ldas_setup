@@ -45,7 +45,7 @@ class LDASsetup:
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','LNFM_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
-            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME',
+            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_PATH','GRIDNAME',
             'ADAS_EXPDIR' ]
 
 
@@ -101,6 +101,7 @@ class LDASsetup:
         self.islocal = False
         self.catch = ''
         self.has_mwrtm = False
+        self.has_vegopacity = False
         self.assim = False
         self.has_landassim_seed = False
         self.has_geos_pert = False
@@ -391,14 +392,18 @@ class LDASsetup:
         # DEAL WITH mwRTM input from exec
         self.assim = True if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
         # verify mwrtm file
-        if 'MWRTM_FILE' in self.rqdExeInp :
-           _tmpfile = self.rqdExeInp['MWRTM_FILE'].replace("'",'').replace('"','')
-           if os.path.isfile(_tmpfile) :
+        if 'MWRTM_PATH' in self.rqdExeInp :
+           param_file_      = self.rqdExeInp['MWRTM_PATH']+'/mwRTM_param.nc4'
+           vegopacity_file_ = self.rqdExeInp['MWRTM_PATH']+'/vegopacity.bin'
+           if os.path.isfile(param_file_) :
               self.has_mwrtm = True
-              self.rqdExeInp['MWRTM_FILE'] = _tmpfile 
+              self.mwrtm_file = param_file_
            else : 
-              assert not _tmpfile.strip(),  ' MWRTM_FILE: %s should point to mwrtm param file'% _tmpfile
-              del self.rqdExeInp['MWRTM_FILE']
+              assert not param_file_.strip(),  ' MWRTM_PATH: %s should contain mwRTM_param.nc4'% self.rqdExeInp['MWRTM_PATH'] 
+              del self.rqdExeInp['MWRTM_PATH']
+           if os.path.isfile(vegopacity_file_) :
+              self.has_vegopacity = True
+              self.rqdExeInp['VEGOPACITY_FILE'] = vegopacity_file_
  
         # DEAL WITH optional input from exec
              
@@ -723,6 +728,8 @@ class LDASsetup:
              self.rqdExeInp['VISDF_FILE'] ]
         if (self.rqdExeInp['LNFM_FILE'] != ''):
            bcs += [self.rqdExeInp['LNFM_FILE']]
+        if (self.has_vegopacity):
+           bcs += [self.rqdExeInp['VEGOPACITY_FILE']]
         bcstmp=[]
         for bcf in bcs :
             shutil.copy(bcf, self.bcsdir+'/')
@@ -745,6 +752,8 @@ class LDASsetup:
         bcnames=['green','lai','ndvi','nirdf','visdf']
         if (self.rqdExeInp['LNFM_FILE'] != ''):
            bcnames += ['lnfm']
+        if (self.has_vegopacity):
+           bcnames += ['vegopacity']
         for bcln,bc in zip(bcnames,bcs) :
            myBC=self.inpdir+'/'+bcln+'.data'
            os.symlink(bc,myBC)
@@ -906,19 +915,19 @@ class LDASsetup:
         assert os.path.isfile(catch_param_file), "need catch_param file %s" % catch_param_file
 
         if self.has_mwrtm :
-            mwRTMRstFile = self.rqdExeInp['MWRTM_FILE']
-            mwRTMLocal = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
-            if self.islocal :
-                print "Creating the local mwRTM restart file... \n"
-                cmd='./preprocess_ldas.x c_localmwrtmrst '+ mwRTMRstFile +' ' + mwRTMLocal 
-                print "cmd:   " + cmd
-                sp.call(shlex.split(cmd))
-            else :
-                shutil.copy(mwRTMRstFile,mwRTMLocal)
+           mwRTMRstFile = self.mwrtm_file
+           mwRTMLocal = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
+           if self.islocal :
+              print "Creating the local mwRTM restart file... \n"
+              cmd='./preprocess_ldas.x c_localmwrtmrst '+ mwRTMRstFile +' ' + mwRTMLocal 
+              print "cmd:   " + cmd
+              sp.call(shlex.split(cmd))
+           else :
+              shutil.copy(mwRTMRstFile,mwRTMLocal)
 
-            mwRTMRstFile = mwRTMLocal
-            mymwRTMRst = myRstDir+'/mwrtm_param_rst'
-            os.symlink(mwRTMRstFile,  mymwRTMRst)
+           mwRTMRstFile = mwRTMLocal
+           mymwRTMRst = myRstDir+'/mwrtm_param_rst'
+           os.symlink(mwRTMRstFile,  mymwRTMRst)
 
         # update 'restart_path' to use relative path from outdir
         print "Updating restart path..."
@@ -1106,6 +1115,10 @@ class LDASsetup:
                 if self.has_mwrtm : # and _assim ==1 :
                    keyn='LANDASSIM_INTERNAL_RESTART_FILE'
                    valn='../input/restart/mwrtm_param_rst'
+                   ldasrcInp[keyn]= valn
+                if self.has_vegopacity : # and _assim ==1 :
+                   keyn='VEGOPACITY_FILE'
+                   valn='../input/vegopacity.data'
                    ldasrcInp[keyn]= valn
 
                 if self.nens > 1 :

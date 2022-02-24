@@ -141,7 +141,9 @@ ENSEMBLE_FORCING: NO
 # NML_INPUT_PATH: ''
 
 
-# ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format)
+# ---- Path that contains
+#      1: mwrRTM_param.nc4 , a Microwave Radiative Transfer Model (mwRTM) parameter file
+#      2: vegopacity.bin   
 #
 #      Must be provided for
 #          - output of Tb through HISTORY or
@@ -151,7 +153,7 @@ ENSEMBLE_FORCING: NO
 #      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
 #      If empty or commented out, GEOSldas will search the restart directory.
 #
-# MWRTM_FILE: ''
+# MWRTM_PATH: ''
 
 
 # ---- Job segments: Length
