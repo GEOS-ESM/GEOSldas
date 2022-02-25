@@ -276,7 +276,8 @@ contains
     call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%lewt,       mask=mask, rc=status); VERIFY_(STATUS)                                                      
     call MAPL_VarWrite(unit, tilegrid,cat_param(:)%veghght,      mask=mask, rc=status); VERIFY_(STATUS)
 
-    ! Note: Since mwrtm_param%vegopacity is time-varying, it is excluded from lmc output and written into gph instead.
+    ! Note: Since mwrtm_param%vegopacity is time-varying, it is not included in lmc output and written
+    !       into gph instead.
     
     call FREE_FILE(unit, RC=STATUS); VERIFY_(STATUS)
                                           

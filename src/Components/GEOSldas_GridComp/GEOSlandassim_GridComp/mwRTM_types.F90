@@ -305,13 +305,13 @@ contains
     
     implicit none
     
-    type(mwRTM_param_type), intent(inout) :: mwp
+    type(mwRTM_param_type), intent(inout)           :: mwp
     
-    logical,                intent(  out) :: mwp_nodata
+    logical,                intent(  out), optional :: mwp_nodata
     
     ! local variables
     
-    logical            :: veg_LUT_params_nodata, veg_params_nodata, other_params_nodata
+    logical            :: veg_atten_static_params_nodata, veg_params_nodata, other_params_nodata
 
     real               :: realvegcls, realsoilcls
 
@@ -324,16 +324,16 @@ contains
     !
     ! need either (bh, bv, lewt) or (vegopacity)
     !
-    ! check if static look-up table (LUT) or calibrated parameters are available
-    
-    veg_LUT_params_nodata =                           &
+    ! check if static look-up table or calibrated parameters are available
+
+    veg_atten_static_params_nodata =                  &
          (                                            &
          LDAS_is_nodata( mwp%bh         ) .or.        &       
          LDAS_is_nodata( mwp%bv         ) .or.        &
          LDAS_is_nodata( mwp%lewt       )             &
          )
     
-    if ( (.not. veg_LUT_params_nodata) .and. (.not. LDAS_is_nodata( mwp%vegopacity )) ) then
+    if ( (.not. veg_atten_static_params_nodata) .and. (.not. LDAS_is_nodata( mwp%vegopacity )) ) then
        
        ! inconsistent mwRTM restart and vegopacity files: 
        ! for a given tile, (bh, bv, lewt) from mwRTM restart and (vegopacity) from file must
@@ -343,8 +343,16 @@ contains
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        
     end if
+
+    ! return if *only* interested in checking no-data consistency for veg attenuation params
     
-    if ( veg_LUT_params_nodata ) then  
+    if (.not. present(mwp_nodata)) return
+
+    ! - - - - - - - - - - - - - - - - - - - - - - 
+    !
+    ! rest of subroutine only needs to run once
+
+    if ( veg_atten_static_params_nodata ) then  
        
        ! make sure all related fields in this group are no-data if at least one is nodata
        
@@ -358,7 +366,7 @@ contains
     
     veg_params_nodata =                               &
          (                                            &
-         veg_LUT_params_nodata                        &
+         veg_atten_static_params_nodata               &
          .and.                                        &
          LDAS_is_nodata( mwp%vegopacity )             &  
          )

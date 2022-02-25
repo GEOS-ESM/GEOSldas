@@ -1112,11 +1112,11 @@ class LDASsetup:
                 rstkey=[catch_,'VEGDYN']
                 rstval=[self.catch,'vegdyn']
 
-                if self.has_mwrtm : # and _assim ==1 :
+                if self.has_mwrtm : 
                    keyn='LANDASSIM_INTERNAL_RESTART_FILE'
                    valn='../input/restart/mwrtm_param_rst'
                    ldasrcInp[keyn]= valn
-                if self.has_vegopacity : # and _assim ==1 :
+                if self.has_vegopacity : 
                    keyn='VEGOPACITY_FILE'
                    valn='../input/vegopacity.data'
                    ldasrcInp[keyn]= valn
