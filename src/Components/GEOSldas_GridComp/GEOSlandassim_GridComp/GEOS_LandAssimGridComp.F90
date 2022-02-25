@@ -1839,8 +1839,8 @@ contains
     ! Good values are allowed for either the relevant static parameters
     ! (bh, bv, lewt) or for the vegopacity values from the file, but not both.
 
-    do n=1,N_catl
-       call mwRTM_param_nodata_check( mwRTM_param(n) )
+    do ii=1,N_catl
+       call mwRTM_param_nodata_check( mwRTM_param(ii) )
     end do
     
     call get_enkf_increments(                                              &
