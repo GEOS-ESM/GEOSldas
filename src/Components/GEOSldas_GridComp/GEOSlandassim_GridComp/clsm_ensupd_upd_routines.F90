@@ -4096,14 +4096,17 @@ contains
        
     case (8,10) select_update_type   ! 3d soil moisture/Tskin/ght(1) analysis; Tb obs
 
-       ! update each tile separately using all observations within 
-       ! the customized halo around each tile
-
+       ! update each tile separately using all observations within customized halo around each tile
+       !
        ! state vector includes different subsets of Catchment model soil moisture prognostics:
        !
-       !  update_type =  8                -- state vector: srfexc, rzexc, catdef, tc1, tc2, tc4, ght1
-       !  update_type = 10, PEATCLSM tile -- state vector: srfexc, rzexc, catdef, tc1, tc2, tc4, ght1
-       !  update_type = 10, non-peat tile -- state vector: srfexc, rzexc,         tc1, tc2, tc4, ght1
+       !  update_type | subset of tiles | state vector
+       !  ===================================================================================================
+       !       8      | all             | srfexc, rzexc, catdef, tc1, tc2, tc4, ght1
+       !  ---------------------------------------------------------------------------------------------------
+       !      10      | PEATCLSM tiles  | srfexc, rzexc, catdef, tc1, tc2, tc4, ght1
+       !              | otherwise       | srfexc, rzexc,         tc1, tc2, tc4, ght1  (incl. NLv4 peat tiles)
+       !  ---------------------------------------------------------------------------------------------------
        !
        ! reichle, 27 Nov 2017
        ! reichle, 20 Feb 2022 - modified for PEATCLSM
