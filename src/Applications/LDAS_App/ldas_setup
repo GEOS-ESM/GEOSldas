@@ -35,9 +35,9 @@ class LDASsetup:
         # ------
         rqdExeInpKeys = ['EXP_ID', 'EXP_DOMAIN', 'NUM_LDAS_ENSEMBLE', 
             'BEG_DATE', 'END_DATE','RESTART_PATH',
-            'RESTART_DOMAIN','RESTART_ID','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
+            'RESTART_DOMAIN','RESTART_ID','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH', 'BCS_RESOLUTION']
         rqdExeInpKeys_rst = ['EXP_ID', 'EXP_DOMAIN', 'NUM_LDAS_ENSEMBLE', 
-            'BEG_DATE', 'END_DATE','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
+            'BEG_DATE', 'END_DATE','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH', 'BCS_RESOLUTION']
 
         # These keywords are excluded from LDAS.rc (i.e., only needed in pre- or post-processing)
         self.NoneLDASrcKeys=['EXP_ID', 'EXP_DOMAIN',
@@ -46,7 +46,7 @@ class LDASsetup:
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
             'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_PATH','GRIDNAME',
-            'ADAS_EXPDIR' ]
+            'ADAS_EXPDIR', 'BCS_RESOLUTION' ]
 
 
         # ------
@@ -238,6 +238,7 @@ class LDASsetup:
         # make sure path is path
         if self.rqdExeInp['BCS_PATH'][-1] != '/':
            self.rqdExeInp['BCS_PATH'] = self.rqdExeInp['BCS_PATH']+'/'
+        self.rqdExeInp['BCS_PATH'] = self.rqdExeInp['BCS_PATH']+self.rqdExeInp['BCS_RESOLUTION']+'/'    
         if self.rqdExeInp['MET_PATH'][-1] != '/':
            self.rqdExeInp['MET_PATH'] = self.rqdExeInp['MET_PATH']+'/'
         if self.rqdExeInp['RESTART_PATH'][-1] != '/':
@@ -393,8 +394,9 @@ class LDASsetup:
         self.assim = True if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
         # verify mwrtm file
         if 'MWRTM_PATH' in self.rqdExeInp :
-           param_file_      = self.rqdExeInp['MWRTM_PATH']+'/mwRTM_param.nc4'
-           vegopacity_file_ = self.rqdExeInp['MWRTM_PATH']+'/vegopacity.bin'
+           self.rqdExeInp['MWRTM_PATH'] = self.rqdExeInp['MWRTM_PATH']+'/'+ self.rqdExeInp['BCS_RESOLUTION']+'/'
+           param_file_      = self.rqdExeInp['MWRTM_PATH']+'mwRTM_param.nc4'
+           vegopacity_file_ = self.rqdExeInp['MWRTM_PATH']+'vegopacity.bin'
            if os.path.isfile(param_file_) :
               self.has_mwrtm = True
               self.mwrtm_file = param_file_
