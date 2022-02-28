@@ -395,13 +395,13 @@ class LDASsetup:
         # verify mwrtm file
         if 'MWRTM_PATH' in self.rqdExeInp :
            self.rqdExeInp['MWRTM_PATH'] = self.rqdExeInp['MWRTM_PATH']+'/'+ self.rqdExeInp['BCS_RESOLUTION']+'/'
-           param_file_      = self.rqdExeInp['MWRTM_PATH']+'mwRTM_param.nc4'
-           vegopacity_file_ = self.rqdExeInp['MWRTM_PATH']+'vegopacity.bin'
-           if os.path.isfile(param_file_) :
+           mwrtm_param_file_ = self.rqdExeInp['MWRTM_PATH']+'mwRTM_param.nc4'
+           vegopacity_file_  = self.rqdExeInp['MWRTM_PATH']+'vegopacity.bin'
+           if os.path.isfile(mwrtm_param_file_) :
               self.has_mwrtm = True
-              self.mwrtm_file = param_file_
+              self.mwrtm_file = mwrtm_param_file_
            else : 
-              assert not param_file_.strip(),  ' MWRTM_PATH: %s should contain mwRTM_param.nc4'% self.rqdExeInp['MWRTM_PATH'] 
+              assert not mwrtm_param_file_.strip(),  ' MWRTM_PATH: %s should contain mwRTM_param.nc4'% self.rqdExeInp['MWRTM_PATH'] 
               del self.rqdExeInp['MWRTM_PATH']
            if os.path.isfile(vegopacity_file_) :
               self.has_vegopacity = True
@@ -1444,9 +1444,10 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '#         SURFACE METEOROLOGICAL FORCING                   #'
     print '#                                                          #'
-    print '#  See README file in ./doc                                #'
-    print '#                                                          #'
     print '#  Surface meteorological forcing time step is in seconds. #'
+    print '#                                                          #'
+    print '#  For more information, see:                              #'
+    print '#    GEOSldas/doc/README.MetForcing_and_BCS.md             #'
     print '#                                                          #'     
     print '############################################################'
     print
@@ -1456,9 +1457,13 @@ def _printExeInputKeys(rqdExeInpKeys):
     print
     print '############################################################'
     print '#                                                          #'
-    print '#            LAND BOUNDARY CONDITIONS DIRECTORY            #'
+    print '#          LAND BOUNDARY CONDITIONS (BCS)                  #'
     print '#                                                          #'
-    print '#  See README file in ./doc                                #'
+    print '#  Path to and (atmospheric) resolution of BCS.            #'
+    print '#                                                          #'
+    print '#  For more information, see:                              #'
+    print '#    GEOSldas/doc/README.MetForcing_and_BCS.md             #'
+    print '#    [..]/GEOSsurface_GridComp/Utils/Raster/make_bcs       #'
     print '#                                                          #'
     print '############################################################'
     print

@@ -143,8 +143,8 @@ ENSEMBLE_FORCING: NO
 
 # ---- Path to (L-band) microwave radiative transfer model (mwRTM) parameter files:
 #
-#        [MWRTM_PATH]/mwRTM_param.nc4 - static (time-invariant) mwRTM parameters
-#        [MWRTM_PATH]/vegopacity.bin  - seaonally-varying climatology of vegetation opacity (OPTIONAL)
+#        [MWRTM_PATH]/[BCS_RESOLUTION]/mwRTM_param.nc4 - static (time-invariant) mwRTM parameters
+#        [MWRTM_PATH]/[BCS_RESOLUTION]/vegopacity.bin  - seaonally-varying clim of veg opacity (OPTIONAL)
 #
 #      Must be provided for
 #          - output of Tb through HISTORY or
@@ -152,6 +152,8 @@ ENSEMBLE_FORCING: NO
 #      Otherwise, leave unspecified (i.e., use default empty string).
 #
 #      If empty or commented out, GEOSldas will search the restart directory.
+#
+#      Must be tile-space data with resolution matching that of BCS (see BCS_RESOLUTION).
 #
 #      mwRTM_param.nc4 can be created from a binary file with the program mwrtm_bin2nc4.x. 
 #
