@@ -1463,6 +1463,7 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '############################################################'
     print
     print 'BCS_PATH:'
+    print 'BCS_RESOLUTION:'
     print
     print '############################################################'
     print '#                                                          #'
