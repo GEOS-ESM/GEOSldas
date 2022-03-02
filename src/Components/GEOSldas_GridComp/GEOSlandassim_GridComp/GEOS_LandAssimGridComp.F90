@@ -1942,18 +1942,16 @@ contains
        do ii=1,N_catl
           cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize
        end do
-       
-       if(associated(SFMC_ana))   SFMC_ana(:)   = cat_diagS_ensavg(:)%sfmc 
-       if(associated(RZMC_ana))   RZMC_ana(:)   = cat_diagS_ensavg(:)%rzmc  
-       if(associated(PRMC_ana))   PRMC_ana(:)   = cat_diagS_ensavg(:)%prmc 
-       if(associated(TPSURF_ana)) TPSURF_ana(:) = cat_diagS_ensavg(:)%tsurf
-       if(associated(TSOIL1_ana)) TSOIL1_ana(:) = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
 
-       if(associated(MWRTM_VEGOPACITY)) then
-          MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
-          ! make sure no-data-value matches that of other exports
-          where (LDAS_is_nodata(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY = nodata_generic
-       end if
+       ! set export variables
+       
+       if(associated(SFMC_ana))         SFMC_ana(:)         = cat_diagS_ensavg(:)%sfmc 
+       if(associated(RZMC_ana))         RZMC_ana(:)         = cat_diagS_ensavg(:)%rzmc  
+       if(associated(PRMC_ana))         PRMC_ana(:)         = cat_diagS_ensavg(:)%prmc 
+       if(associated(TPSURF_ana))       TPSURF_ana(:)       = cat_diagS_ensavg(:)%tsurf
+       if(associated(TSOIL1_ana))       TSOIL1_ana(:)       = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
+
+       if(associated(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
        
        deallocate(cat_progn_tmp)
        deallocate(cat_diagS)
@@ -2219,7 +2217,9 @@ contains
     _VERIFY(STATUS)
 
     !if HISTORY does not ask for these variables, no calculation necessary; return
-    if (.not. associated(TB_H_enavg) .or. .not. associated(TB_V_enavg)) then
+    if ( (.not. associated(TB_H_enavg)      )  .and.           &
+         (.not. associated(TB_V_enavg)      )  .and.           &
+         (.not. associated(MWRTM_VEGOPACITY))         ) then
        _RETURN(_SUCCESS)
     endif
     
@@ -2242,12 +2242,15 @@ contains
        _ASSERT(.false., "Tb output requested but all mwRTM parameters are nodata")
     endif
 
-    if(associated(MWRTM_VEGOPACITY)) then
-       MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
-       ! make sure no-data-value matches that of other exports
-       where (LDAS_is_nodata(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY = nodata_generic
-    end if
- 
+    ! set export variable    
+    if(associated(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
+
+    !if HISTORY does not ask for these variables, no calculation necessary; return
+    if ( (.not. associated(TB_H_enavg))        .and.           &
+         (.not. associated(TB_V_enavg))               ) then   
+       _RETURN(_SUCCESS)
+    endif
+    
     call MAPL_GetPointer(import, LAI,     'LAI'      ,rc=status)
     _VERIFY(status)
     call MAPL_GetPointer(import, TP1,     'TP1'      ,rc=status)         ! units now K, rreichle & borescan, 6 Nov 2020
