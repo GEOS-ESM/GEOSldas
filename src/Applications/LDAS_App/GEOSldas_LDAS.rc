@@ -141,17 +141,27 @@ ENSEMBLE_FORCING: NO
 # NML_INPUT_PATH: ''
 
 
-# ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format)
+# ---- Path to (L-band) microwave radiative transfer model (mwRTM) parameter files:
+#
+#        [MWRTM_PATH]/[BCS_RESOLUTION]/mwRTM_param.nc4 - static (time-invariant) mwRTM parameters
+#        [MWRTM_PATH]/[BCS_RESOLUTION]/vegopacity.bin  - seaonally-varying clim of veg opacity (OPTIONAL)
 #
 #      Must be provided for
 #          - output of Tb through HISTORY or
 #          - Tb assimilation.
 #      Otherwise, leave unspecified (i.e., use default empty string).
 #
-#      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
 #      If empty or commented out, GEOSldas will search the restart directory.
 #
-# MWRTM_FILE: ''
+#      Must be tile-space data with resolution matching that of BCS (see BCS_RESOLUTION).
+#
+#      mwRTM_param.nc4 can be created from a binary file with the program mwrtm_bin2nc4.x. 
+#
+#      Vegetation attenuation is *either* computed from static parameters (bh, bv, lewt) and LAI
+#      *or* prescribed from the vegopacity.bin file.  If the latter is used, (bh, bv, lewt) must
+#      be no-data values in mwRTM_param.nc4.
+#
+# MWRTM_PATH: ''
 
 
 # ---- Job segments: Length
