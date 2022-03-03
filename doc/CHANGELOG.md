@@ -32,6 +32,41 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 
 Overview of Git Releases:
 ============================
+[v17.11.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.11.0) - 2022-03-04
+------------------------------
+
+- Zero-diff vs. v17.10.0
+
+- Science changes:
+  - PEATCLSM included in Catchment model (GEOSgcm_GridComp v1.15.1):
+    - Revised hydrology for peat tiles with porosity>=0.9.
+    - "NLv5" boundary conditions assign porosity=0.93 to peat tiles identified in hybridization of PEATMAP and HWSD ancillary data.
+  - Modified EnKF update_type 10 (PEATCLSM peat tiles include "catdef" in EnKF State).
+  - New export variables (WATERTABLED, FSWCHANGE, MWRTM_VEGOPACITY).
+  - Option to use climatological L-band microwave radiative transfer model (mwRTM) parameters derived from the SMAP L2 passive soil moisture retrievals.
+  - Option to use ensemble surface meteorological forcing.
+
+- Interface change:
+  - Change in ldas_setup resource parameters:
+    - BCS_PATH   --> (BCS_PATH, BCS_RESOLUTION)
+    - MWRTM_FILE --> MWRTM_PATH
+    - Requires new or modified ldas_setup configuration (“exeinp”) files. 
+  - mwRTM parameter input file(s) must be provided in subdirectory “./[BCS_RESOLUTION]” and must be named "mwRTM_param.nc4" and (if present) "vegopacity.bin".
+
+- Infrastructure:
+  - ESMA_env v3.11.0
+  - ESMA_cmake v3.10.0
+  - ecbuild v1.2.0
+  - MAPL 2.18.0
+  - GMAO_Shared v1.5.1
+  - Removed EXPDSC and EXPSRC from GEOSldas_HIST.rc template.
+  - Set MAPL_ENABLE_BOOTSTRAP to YES by default.
+  - Circle CI updates.
+
+- Documentation:
+  - Updated README.md, doc/README.MetForcing_and_BCS.md, doc/README.OutputSpecs.md 
+
+------------------------------
 [v17.10.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.10.0) - 2021-12-21
 ------------------------------
 
