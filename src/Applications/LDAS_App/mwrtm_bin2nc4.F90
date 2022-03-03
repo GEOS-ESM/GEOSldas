@@ -2,6 +2,9 @@
 !The original mwrtm_param.bin is the same order as the tile file and encode with big endian 
 !for example /gpfsm/dnb31/gdelanno/input/RTM_parms/EASEv2/L4SM_v001_Lit4_CalD0/SMAP_EASEv2_M36/mwRTM_param.bin
 !
+! Note: "mwrtm_param" file only includes time-invariant mwRTM parameters (i.e., excl. vegopacity)
+!       -reichle, 21 Feb 2022
+!
 PROGRAM mwrtm_bin2nc4
   use mwRTM_types, only: mwRTM_param_type
   use mwRTM_types, only: mwRTM_param_nodata_check 
@@ -212,24 +215,24 @@ PROGRAM mwrtm_bin2nc4
     character(100)                     :: str_atr, LONG_NAME, UNITS
 
     SELECT case (trim(SHORT_NAME))
-    case('MWRTM_VEGCLS');    LONG_NAME = 'L-band MRT model: Vegetation class. Type is Unsigned32';             UNITS = '1'
-    case('MWRTM_SOILCLS');   LONG_NAME = 'L-band MRT model: Soil class. Type is Unsigned32';                   UNITS = '1'
-    case('MWRTM_SAND');      LONG_NAME = 'L-band MRT model: Sand fraction';                                    UNITS = '1'
-    case('MWRTM_CLAY');      LONG_NAME = 'L-band MRT model: Clay fraction';                                    UNITS = '1'
-    case('MWRTM_POROS');     LONG_NAME = 'L-band MRT model: Porosity';                                         UNITS = 'm3 m-3'
-    case('MWRTM_WANGWT');    LONG_NAME = 'L-band MRT model: Wang dielectric model transition soil moisture';   UNITS = 'm3 m-3'
-    case('MWRTM_WANGWP');    LONG_NAME = 'L-band MRT model: Wang dielectric model wilting point soil moisture';UNITS = 'm3 m-3'
-    case('MWRTM_RGHHMIN');   LONG_NAME = 'L-band MRT model: Minimum microwave roughness parameter'; UNITS = '1'
-    case('MWRTM_RGHHMAX');   LONG_NAME = 'L-band MRT model: Maximum microwave roughness parameter'; UNITS = '1'
-    case('MWRTM_RGHWMIN');   LONG_NAME = 'L-band MRT model: Soil moisture value below which maximum microwave roughness parameter is used'; UNITS = 'm3 m-3'
-    case('MWRTM_RGHWMAX');   LONG_NAME = 'L-band MRT model: Soil moisture value above which minimum microwave roughness parameter is used'; UNITS = 'm3 m-3'
-    case('MWRTM_RGHNRH');    LONG_NAME = 'L-band MRT model: H-pol. Exponent for rough reflectivity parameterization'; UNITS = '1'
-    case('MWRTM_RGHNRV');    LONG_NAME = 'L-band MRT model: V-pol. Exponent for rough reflectivity parameterization'; UNITS = '1'
-    case('MWRTM_RGHPOLMIX'); LONG_NAME = 'L-band MRT model: Polarization mixing parameter'; UNITS = '1'
-    case('MWRTM_OMEGA');     LONG_NAME = 'L-band MRT model: Scattering albedo';             UNITS = '1'
-    case('MWRTM_BH');        LONG_NAME = 'L-band MRT model: H-pol. Vegetation b parameter'; UNITS = '1'
-    case('MWRTM_BV');        LONG_NAME = 'L-band MRT model: V-pol. Vegetation b parameter'; UNITS = '1'
-    case('MWRTM_LEWT');      LONG_NAME = 'L-band MRT model: Parameter to transform leaf area index into vegetation water content'; UNITS = 'kg m-2'
+    case('MWRTM_VEGCLS');    LONG_NAME = 'L-band RTM model: Vegetation class. Type is Unsigned32';             UNITS = '1'
+    case('MWRTM_SOILCLS');   LONG_NAME = 'L-band RTM model: Soil class. Type is Unsigned32';                   UNITS = '1'
+    case('MWRTM_SAND');      LONG_NAME = 'L-band RTM model: Sand fraction';                                    UNITS = '1'
+    case('MWRTM_CLAY');      LONG_NAME = 'L-band RTM model: Clay fraction';                                    UNITS = '1'
+    case('MWRTM_POROS');     LONG_NAME = 'L-band RTM model: Porosity';                                         UNITS = 'm3 m-3'
+    case('MWRTM_WANGWT');    LONG_NAME = 'L-band RTM model: Wang dielectric model transition soil moisture';   UNITS = 'm3 m-3'
+    case('MWRTM_WANGWP');    LONG_NAME = 'L-band RTM model: Wang dielectric model wilting point soil moisture';UNITS = 'm3 m-3'
+    case('MWRTM_RGHHMIN');   LONG_NAME = 'L-band RTM model: Minimum microwave roughness parameter'; UNITS = '1'
+    case('MWRTM_RGHHMAX');   LONG_NAME = 'L-band RTM model: Maximum microwave roughness parameter'; UNITS = '1'
+    case('MWRTM_RGHWMIN');   LONG_NAME = 'L-band RTM model: Soil moisture value below which maximum microwave roughness parameter is used'; UNITS = 'm3 m-3'
+    case('MWRTM_RGHWMAX');   LONG_NAME = 'L-band RTM model: Soil moisture value above which minimum microwave roughness parameter is used'; UNITS = 'm3 m-3'
+    case('MWRTM_RGHNRH');    LONG_NAME = 'L-band RTM model: H-pol. Exponent for rough reflectivity parameterization'; UNITS = '1'
+    case('MWRTM_RGHNRV');    LONG_NAME = 'L-band RTM model: V-pol. Exponent for rough reflectivity parameterization'; UNITS = '1'
+    case('MWRTM_RGHPOLMIX'); LONG_NAME = 'L-band RTM model: Polarization mixing parameter'; UNITS = '1'
+    case('MWRTM_OMEGA');     LONG_NAME = 'L-band RTM model: Scattering albedo';             UNITS = '1'
+    case('MWRTM_BH');        LONG_NAME = 'L-band RTM model: H-pol. Vegetation b parameter'; UNITS = '1'
+    case('MWRTM_BV');        LONG_NAME = 'L-band RTM model: V-pol. Vegetation b parameter'; UNITS = '1'
+    case('MWRTM_LEWT');      LONG_NAME = 'L-band RTM model: Parameter to transform leaf area index into vegetation water content'; UNITS = 'kg m-2'
 
     case default;        LONG_NAME = 'Checck_GridComp';                                                  UNITS = 'Checck_GridComp';
     end select
