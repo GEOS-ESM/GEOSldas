@@ -52,5 +52,9 @@ set argv = "$origargv"
 
 if ( -d ${ESMADIR}/@env ) then
    ${ESMADIR}/@env/build.csh -esmadir $ESMADIR $argv
+else if ( -d ${ESMADIR}/env@ ) then
+   ${ESMADIR}/env@/build.csh -esmadir $ESMADIR $argv
+else if ( -d ${ESMADIR}/env ) then
+   ${ESMADIR}/env/build.csh -esmadir $ESMADIR $argv
 endif
 

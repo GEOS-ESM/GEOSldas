@@ -43,9 +43,9 @@
 
 module LDAS_ensdrv_mpi
 
-!  use catch_constants, only: N_gt => CATCH_N_GT
+  use catch_constants, only: N_gt => CATCH_N_GT
   
-  use catch_types,     only: N_gt, N_snow, N_cat_progn, N_cat_diagS, N_cat_diagF
+  use catch_types,     only: N_cat_progn, N_cat_diagS, N_cat_diagF
 
   use enkf_types,      only: N_obs_ang_max
   
@@ -641,6 +641,7 @@ contains
     ! real    :: bh         
     ! real    :: bv         
     ! real    :: lewt       
+    ! real    :: vegopacity  
 
     icount = 2
     
@@ -652,7 +653,7 @@ contains
     itype(2)  = MPI_REAL
 
     iblock(1) = 2
-    iblock(2) = 16
+    iblock(2) = 17
         
     idisp(1)  = 0
     idisp(2)  = idisp(1) + iblock(1)*4

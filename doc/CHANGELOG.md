@@ -32,6 +32,52 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 
 Overview of Git Releases:
 ============================
+[v17.11.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.11.0) - 2022-03-04
+------------------------------
+
+- Zero-diff vs. v17.10.0 (except for double vs. single precision differences of lat/lon coordinates and metadata in HISTORY output).
+
+- Science changes:
+  - Catchment model with revised hydrology for peatlands (PEATCLSM) ([PR #524](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/524), [PR #515](https://github.com/GEOS-ESM/GEOSldas/pull/515)):
+    - PEATCLSM hydrology is used for tiles with porosity>=PEATCLSM_POROS_THRESHOLD (default: 0.90 m3/m3) ([Bechtold et al. 2019, doi:10.1029/2018MS001574](https://doi.org/10.1029/2018MS001574)).  
+    - In "NLv5" boundary conditions (bcs), peat tiles are identified through hybridization of PEATMAP and HWSD ancillary data and have porosity=0.93 m3/m3. 
+    - Standard Catchment hydrology is used for all tiles when using earlier bcs versions, which have a maximum porosity of 0.80 m3/m3 ([De Lannoy et al. 2015, doi:10.1002/2014MS000330](https://doi.org/10.1002/2014MS000330)).
+  - Modified EnKF update_type 10: for PEATCLSM peat tiles, "catdef" is included in EnKF State ([PR #529](https://github.com/GEOS-ESM/GEOSldas/pull/529)).
+  - Option to use climatological L-band microwave radiative transfer model (mwRTM) parameters derived from the SMAP L2 passive soil moisture retrievals ([PR #521](https://github.com/GEOS-ESM/GEOSldas/pull/521)).
+  - Option to use ensemble of surface meteorological forcing data ([PR #453](https://github.com/GEOS-ESM/GEOSldas/pull/453)).
+  - New export variables (WATERTABLED, FSWCHANGE, MWRTM_VEGOPACITY).
+
+- Interface change ([PR #521](https://github.com/GEOS-ESM/GEOSldas/pull/521)):
+  - Change in ldas_setup resource parameters:
+    - BCS_PATH   --> (BCS_PATH, BCS_RESOLUTION)
+    - MWRTM_FILE --> MWRTM_PATH
+    - Requires new or modified ldas_setup configuration (“exeinp”) files. 
+  - mwRTM parameter input file(s) must be provided in subdirectory “./[BCS_RESOLUTION]” and must be named "mwRTM_param.nc4" and (if present) "vegopacity.bin".
+
+- Infrastructure:
+  - Updated environment, CMake, ecbuild, and MAPL ([PR #537](https://github.com/GEOS-ESM/GEOSldas/pull/537)):
+    - ESMA_env v3.11.0
+    - ESMA_cmake v3.10.0
+    - ecbuild v1.2.0
+    - MAPL 2.18.0
+  - GMAO_Shared v1.5.1
+  - GEOSgcm_GridComp v1.15.1
+  - Updated Circle-CI ([PR #503](https://github.com/GEOS-ESM/GEOSldas/pull/503)).
+  - Made GEOSldas infrastructure more similar to that of GEOSgcm ([PR #501](https://github.com/GEOS-ESM/GEOSldas/pull/501)).
+
+- Documentation:
+  - Updated README.md, README.MetForcing_and_BCS.md, README.OutputSpecs.md, GEOSldas_HIST.rc, GEOSldas_LDAS.rc. 
+  - Cleanup of Catchment model constants ([PR #525](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/525), [PR #517](https://github.com/GEOS-ESM/GEOSldas/pull/517)).
+
+- Bug fixes and other minor changes:
+  - Output L-band Tb in single-member simulation without perturbations and without data assimilation (SMAP Nature Run) ([PR #505](https://github.com/GEOS-ESM/GEOSldas/pull/505)).  
+  - Added utility script to compress bit-shaved nc4 output ([PR #526](https://github.com/GEOS-ESM/GEOSldas/pull/526)).
+  - Removed EXPDSC and EXPSRC from GEOSldas_HIST.rc template ([PR #506](https://github.com/GEOS-ESM/GEOSldas/pull/506)).
+  - Dummy GEOSldas version info in CMake ([PR #516](https://github.com/GEOS-ESM/GEOSldas/pull/516)).
+  - Set MAPL_ENABLE_BOOTSTRAP to YES by default ([PR #523](https://github.com/GEOS-ESM/GEOSldas/pull/523)).
+  - Avoid conflicts of ldas_setup with user environment ([PR #518](https://github.com/GEOS-ESM/GEOSldas/pull/518)).
+
+------------------------------
 [v17.10.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.10.0) - 2021-12-21
 ------------------------------
 

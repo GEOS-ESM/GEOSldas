@@ -55,7 +55,7 @@ a) Set up the job as follows:
 
 ```
 cd (build_path)/GEOSldas/install/bin
-source g5_modules
+source g5_modules                        [for bash or zsh: source g5_modules.[z]sh]
 ./ldas_setup setup [-v]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
 ```  
 
