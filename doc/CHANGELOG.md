@@ -38,13 +38,14 @@ Overview of Git Releases:
 - Zero-diff vs. v17.10.0
 
 - Science changes:
-  - PEATCLSM included in Catchment model (GEOSgcm_GridComp v1.15.1):
-    - Revised hydrology for peat tiles with porosity>=0.9.
-    - "NLv5" boundary conditions assign porosity=0.93 to peat tiles identified in hybridization of PEATMAP and HWSD ancillary data.
-  - Modified EnKF update_type 10 (PEATCLSM peat tiles include "catdef" in EnKF State).
-  - New export variables (WATERTABLED, FSWCHANGE, MWRTM_VEGOPACITY).
+  - Catchment model with revised hydrology for peatlands (PEATCLSM) ([Bechtold et al. 2019, doi:10.1029/2018MS001574](https://doi.org/10.1029/2018MS001574)):
+    - PEATCLSM hydrology is used for tiles with porosity>=PEATCLSM_POROS_THRESHOLD (default: 0.90 m3/m3).  
+    - In "NLv5" boundary conditions (bcs), peat tiles are identified through hybridization of PEATMAP and HWSD ancillary data and have porosity=0.93 m3/m3. 
+    - Standard Catchment hydrology is used for all tiles when using earlier bcs versions, which have a maximum porosity of 0.80 m3/m3 ([De Lannoy et al. 2015, doi:10.1002/2014MS000330](https://doi.org/10.1002/2014MS000330)).
+  - Modified EnKF update_type 10: for PEATCLSM peat tiles, "catdef" is included in EnKF State.
   - Option to use climatological L-band microwave radiative transfer model (mwRTM) parameters derived from the SMAP L2 passive soil moisture retrievals.
-  - Option to use ensemble surface meteorological forcing.
+  - Option to use ensemble of surface meteorological forcing data.
+  - New export variables (WATERTABLED, FSWCHANGE, MWRTM_VEGOPACITY).
 
 - Interface change:
   - Change in ldas_setup resource parameters:
@@ -59,12 +60,13 @@ Overview of Git Releases:
   - ecbuild v1.2.0
   - MAPL 2.18.0
   - GMAO_Shared v1.5.1
+  - GEOSgcm_GridComp v1.15.1
   - Removed EXPDSC and EXPSRC from GEOSldas_HIST.rc template.
   - Set MAPL_ENABLE_BOOTSTRAP to YES by default.
   - Circle CI updates.
 
 - Documentation:
-  - Updated README.md, doc/README.MetForcing_and_BCS.md, doc/README.OutputSpecs.md 
+  - Updated README.md, doc/README.MetForcing_and_BCS.md, and doc/README.OutputSpecs.md. 
 
 ------------------------------
 [v17.10.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.10.0) - 2021-12-21
