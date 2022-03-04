@@ -10,6 +10,7 @@ import argparse
 import fileinput
 import time
 import subprocess as sp
+import shlex
 from dateutil import rrule
 from datetime import datetime
 from datetime import timedelta
@@ -34,9 +35,9 @@ class LDASsetup:
         # ------
         rqdExeInpKeys = ['EXP_ID', 'EXP_DOMAIN', 'NUM_LDAS_ENSEMBLE', 
             'BEG_DATE', 'END_DATE','RESTART_PATH',
-            'RESTART_DOMAIN','RESTART_ID','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
+            'RESTART_DOMAIN','RESTART_ID','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH', 'BCS_RESOLUTION']
         rqdExeInpKeys_rst = ['EXP_ID', 'EXP_DOMAIN', 'NUM_LDAS_ENSEMBLE', 
-            'BEG_DATE', 'END_DATE','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH']
+            'BEG_DATE', 'END_DATE','MET_TAG','MET_PATH','FORCE_DTSTEP','BCS_PATH', 'BCS_RESOLUTION']
 
         # These keywords are excluded from LDAS.rc (i.e., only needed in pre- or post-processing)
         self.NoneLDASrcKeys=['EXP_ID', 'EXP_DOMAIN',
@@ -44,8 +45,8 @@ class LDASsetup:
             'RESTART_DOMAIN','RESTART_ID','BCS_PATH','TILING_FILE','GRN_FILE','LAI_FILE','LNFM_FILE','NIRDF_FILE',
             'VISDF_FILE','CATCH_DEF_FILE','NDVI_FILE',
             'NML_INPUT_PATH','HISTRC_FILE','RST_FROM_GLOBAL','JOB_SGMT','NUM_SGMT','POSTPROC_HIST',
-            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_FILE','GRIDNAME',
-            'ADAS_EXPDIR' ]
+            'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_PATH','GRIDNAME',
+            'ADAS_EXPDIR', 'BCS_RESOLUTION' ]
 
 
         # ------
@@ -100,6 +101,7 @@ class LDASsetup:
         self.islocal = False
         self.catch = ''
         self.has_mwrtm = False
+        self.has_vegopacity = False
         self.assim = False
         self.has_landassim_seed = False
         self.has_geos_pert = False
@@ -236,6 +238,7 @@ class LDASsetup:
         # make sure path is path
         if self.rqdExeInp['BCS_PATH'][-1] != '/':
            self.rqdExeInp['BCS_PATH'] = self.rqdExeInp['BCS_PATH']+'/'
+        self.rqdExeInp['BCS_PATH'] = self.rqdExeInp['BCS_PATH']+self.rqdExeInp['BCS_RESOLUTION']+'/'    
         if self.rqdExeInp['MET_PATH'][-1] != '/':
            self.rqdExeInp['MET_PATH'] = self.rqdExeInp['MET_PATH']+'/'
         if self.rqdExeInp['RESTART_PATH'][-1] != '/':
@@ -390,14 +393,19 @@ class LDASsetup:
         # DEAL WITH mwRTM input from exec
         self.assim = True if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
         # verify mwrtm file
-        if 'MWRTM_FILE' in self.rqdExeInp :
-           _tmpfile = self.rqdExeInp['MWRTM_FILE'].replace("'",'').replace('"','')
-           if os.path.isfile(_tmpfile) :
+        if 'MWRTM_PATH' in self.rqdExeInp :
+           self.rqdExeInp['MWRTM_PATH'] = self.rqdExeInp['MWRTM_PATH']+'/'+ self.rqdExeInp['BCS_RESOLUTION']+'/'
+           mwrtm_param_file_ = self.rqdExeInp['MWRTM_PATH']+'mwRTM_param.nc4'
+           vegopacity_file_  = self.rqdExeInp['MWRTM_PATH']+'vegopacity.bin'
+           if os.path.isfile(mwrtm_param_file_) :
               self.has_mwrtm = True
-              self.rqdExeInp['MWRTM_FILE'] = _tmpfile 
+              self.mwrtm_file = mwrtm_param_file_
            else : 
-              assert not _tmpfile.strip(),  ' MWRTM_FILE: %s should point to mwrtm param file'% _tmpfile
-              del self.rqdExeInp['MWRTM_FILE']
+              assert not mwrtm_param_file_.strip(),  ' MWRTM_PATH: %s should contain mwRTM_param.nc4'% self.rqdExeInp['MWRTM_PATH'] 
+              del self.rqdExeInp['MWRTM_PATH']
+           if os.path.isfile(vegopacity_file_) :
+              self.has_vegopacity = True
+              self.rqdExeInp['VEGOPACITY_FILE'] = vegopacity_file_
  
         # DEAL WITH optional input from exec
              
@@ -627,13 +635,25 @@ class LDASsetup:
         os.symlink(self.blddir, self.blddirLn)
 
         # met forcing dir
-        if 'MET_PATH' in self.rqdExeInp:
-            metpath = self.rqdExeInp['MET_PATH'].rstrip('/')
-            myMetDir = self.inpdir + '/met_forcing'
-            myMetPath = myMetDir + '/' + metpath.split('/')[-1]
-            os.symlink(metpath, myMetPath)
-            # update 'met_path' to use relative path from outdir
-            self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)
+        self.ensemble_forcing = True if self.rqdExeInp.get('ENSEMBLE_FORCING', 'NO').upper() == 'YES' else False
+
+        myMetPath =''
+        for _i in range(self.first_ens_id, _nens + self.first_ens_id) :
+           str_ens = ''
+           if ( _nens != 1 and self.ensemble_forcing):
+              str_ens = '%03d'%(_i)
+           metpath = self.rqdExeInp['MET_PATH'].rstrip('/')+str_ens
+           myMetDir = self.inpdir + '/met_forcing'
+           myMetPath = myMetDir + '/' + metpath.split('/')[-1]
+           os.symlink(metpath, myMetPath)
+           # update 'met_path' to use relative path from outdir
+           if ( not self.ensemble_forcing):
+              break
+        if ( _nens !=1 and self.ensemble_forcing) :
+           # replace last three character with '%s"
+           self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)[:-3]+'%s'
+        else:
+           self.rqdExeInp['MET_PATH'] = os.path.relpath(myMetPath, self.rundir)
 
         # update tile file
         tile= self.rqdExeInp['TILING_FILE']
@@ -647,7 +667,7 @@ class LDASsetup:
         EASEtile=self.bcsdir+'/MAPL_'+short_tile
         cmd = './preprocess_ldas.x correctease  '+ tile + ' '+ EASEtile  
         print "cmd:   " + cmd
-        sp.call(cmd,shell=True)
+        sp.call(shlex.split(cmd))
 
         if os.path.isfile(EASEtile) :
             #update tile file name
@@ -681,7 +701,7 @@ class LDASsetup:
 
         print 'Creating f2g.txt....\n'
         print "cmd:   " + cmd
-        sp.call(cmd,shell=True)
+        sp.call(shlex.split(cmd))
         # check if it is local or global
         with open('f2g.txt') as f2gfile :
             head=[next(f2gfile) for x in range(2)]
@@ -695,7 +715,7 @@ class LDASsetup:
             print "\n by excluding land type MAPL_Land_ExcludeFromDomain=1100...\n"
             cmd = './preprocess_ldas.x c_localtile ' + tile + ' ' + newlocalTile 
             print "cmd:   " + cmd
-            sp.call(cmd,shell=True)
+            sp.call(shlex.split(cmd))
             short_tile=short_tile +'.domain'
             tile = newlocalTile
    
@@ -710,6 +730,8 @@ class LDASsetup:
              self.rqdExeInp['VISDF_FILE'] ]
         if (self.rqdExeInp['LNFM_FILE'] != ''):
            bcs += [self.rqdExeInp['LNFM_FILE']]
+        if (self.has_vegopacity):
+           bcs += [self.rqdExeInp['VEGOPACITY_FILE']]
         bcstmp=[]
         for bcf in bcs :
             shutil.copy(bcf, self.bcsdir+'/')
@@ -722,7 +744,7 @@ class LDASsetup:
            for bcf in bcs :
                cmd = './preprocess_ldas.x c_localbc ' + bcf + ' '+ bcf+'.domain'
                print "cmd:   " + cmd
-               sp.call(cmd,shell=True)
+               sp.call(shlex.split(cmd))
                bcs_tmp=bcs_tmp+[bcf+'.domain']
            bcs=bcs_tmp
 
@@ -732,6 +754,8 @@ class LDASsetup:
         bcnames=['green','lai','ndvi','nirdf','visdf']
         if (self.rqdExeInp['LNFM_FILE'] != ''):
            bcnames += ['lnfm']
+        if (self.has_vegopacity):
+           bcnames += ['vegopacity']
         for bcln,bc in zip(bcnames,bcs) :
            myBC=self.inpdir+'/'+bcln+'.data'
            os.symlink(bc,myBC)
@@ -837,7 +861,7 @@ class LDASsetup:
                     print "Creating local catchment restart file... \n"
                     cmd='./preprocess_ldas.x c_localcatchrst '+ catchRstFile +' ' + catchLocal 
                     print "cmd:  "+cmd
-                    sp.call(cmd,shell=True)
+                    sp.call(shlex.split(cmd))
                 else :
                     shutil.copy(catchRstFile,catchLocal)
 
@@ -856,7 +880,7 @@ class LDASsetup:
                     print "Creating the local veg restart file... \n"
                     cmd='./preprocess_ldas.x c_localvegrst '+ vegdynRstFile +' ' + vegdynLocal  
                     print "cmd:   " + cmd
-                    sp.call(cmd,shell=True)
+                    sp.call(shlex.split(cmd))
                 else :
                     shutil.copy(vegdynRstFile,vegdynLocal)
 
@@ -878,7 +902,7 @@ class LDASsetup:
                 pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                 print "Convert LDASsa pert " + ensid + " rst to GEOSldas rst"
                 cmd = './preprocess_ldas.x c_convert_pert '+ pertRstFile + ' ' + pertLocal + ' ' + self.out_path + ' ' + self.rqdExeInp['EXP_ID'] 
-                sp.call(cmd,shell=True)
+                sp.call(shlex.split(cmd))
                 pertRstFile = pertLocal
 
             print 'catchRstFile: ' +  catchRstFile
@@ -893,19 +917,19 @@ class LDASsetup:
         assert os.path.isfile(catch_param_file), "need catch_param file %s" % catch_param_file
 
         if self.has_mwrtm :
-            mwRTMRstFile = self.rqdExeInp['MWRTM_FILE']
-            mwRTMLocal = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
-            if self.islocal :
-                print "Creating the local mwRTM restart file... \n"
-                cmd='./preprocess_ldas.x c_localmwrtmrst '+ mwRTMRstFile +' ' + mwRTMLocal 
-                print "cmd:   " + cmd
-                sp.call(cmd,shell=True)
-            else :
-                shutil.copy(mwRTMRstFile,mwRTMLocal)
+           mwRTMRstFile = self.mwrtm_file
+           mwRTMLocal = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
+           if self.islocal :
+              print "Creating the local mwRTM restart file... \n"
+              cmd='./preprocess_ldas.x c_localmwrtmrst '+ mwRTMRstFile +' ' + mwRTMLocal 
+              print "cmd:   " + cmd
+              sp.call(shlex.split(cmd))
+           else :
+              shutil.copy(mwRTMRstFile,mwRTMLocal)
 
-            mwRTMRstFile = mwRTMLocal
-            mymwRTMRst = myRstDir+'/mwrtm_param_rst'
-            os.symlink(mwRTMRstFile,  mymwRTMRst)
+           mwRTMRstFile = mwRTMLocal
+           mymwRTMRst = myRstDir+'/mwrtm_param_rst'
+           os.symlink(mwRTMRstFile,  mymwRTMRst)
 
         # update 'restart_path' to use relative path from outdir
         print "Updating restart path..."
@@ -972,7 +996,7 @@ class LDASsetup:
         print  "Optimizing... decomposition of processes.... \n"
         cmd = './preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model'])
         print "cmd:   " + cmd
-        sp.call(cmd,shell=True)
+        sp.call(shlex.split(cmd))
         optinxny=self._parseInputFile('optimized_distribution')
         if (int(optinxny['NX']) == 1):
             if int(optinxny['NY']) != int(self.rqdRmInp['ntasks_model']):
@@ -1017,8 +1041,8 @@ class LDASsetup:
                     cmd ='./process_hist.csh '+ str(self.rqdExeInp['LSM_CHOICE']) + ' ' + str(self.rqdExeInp['AEROSOL_DEPOSITION']) + \
                           ' ' + GRID + ' ' + str(self.rqdExeInp['RUN_IRRIG']) + ' ' + _assim + ' '+ str(self.nens)
                     print(cmd)
-                    os.system(cmd)
-                    #sp.call(cmd)       
+                    #os.system(cmd)
+                    sp.call(shlex.split(cmd)) 
                 for line in fileinput.input(tmprcfile,inplace=True):
                     print line.rstrip().replace('GEOSldas_expid',self.rqdExeInp['EXP_ID'])
             # just copy an empty ExtData.rc
@@ -1090,9 +1114,13 @@ class LDASsetup:
                 rstkey=[catch_,'VEGDYN']
                 rstval=[self.catch,'vegdyn']
 
-                if self.has_mwrtm : # and _assim ==1 :
+                if self.has_mwrtm : 
                    keyn='LANDASSIM_INTERNAL_RESTART_FILE'
                    valn='../input/restart/mwrtm_param_rst'
+                   ldasrcInp[keyn]= valn
+                if self.has_vegopacity : 
+                   keyn='VEGOPACITY_FILE'
+                   valn='../input/vegopacity.data'
                    ldasrcInp[keyn]= valn
 
                 if self.nens > 1 :
@@ -1288,6 +1316,8 @@ class LDASsetup:
                         fout.write(line.replace('MY_FIRST_ENS_ID',str(self.first_ens_id)))
                     elif 'MY_LADAS_COUPLING' in line :
                         fout.write(line.replace('MY_LADAS_COUPLING',str(self.ladas_coupling)))
+                    elif 'MY_ENSEMBLE_FORCING' in line :
+                        fout.write(line.replace('MY_ENSEMBLE_FORCING',self.rqdExeInp.get('ENSEMBLE_FORCING', 'NO').upper()))
                     elif 'MY_ADAS_EXPDIR' in line :
                         if self.ladas_coupling > 0:
                            fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
@@ -1414,9 +1444,10 @@ def _printExeInputKeys(rqdExeInpKeys):
     print '#                                                          #'
     print '#         SURFACE METEOROLOGICAL FORCING                   #'
     print '#                                                          #'
-    print '#  See README file in ./doc                                #'
-    print '#                                                          #'
     print '#  Surface meteorological forcing time step is in seconds. #'
+    print '#                                                          #'
+    print '#  For more information, see:                              #'
+    print '#    GEOSldas/doc/README.MetForcing_and_BCS.md             #'
     print '#                                                          #'     
     print '############################################################'
     print
@@ -1426,13 +1457,18 @@ def _printExeInputKeys(rqdExeInpKeys):
     print
     print '############################################################'
     print '#                                                          #'
-    print '#            LAND BOUNDARY CONDITIONS DIRECTORY            #'
+    print '#          LAND BOUNDARY CONDITIONS (BCS)                  #'
     print '#                                                          #'
-    print '#  See README file in ./doc                                #'
+    print '#  Path to and (atmospheric) resolution of BCS.            #'
+    print '#                                                          #'
+    print '#  For more information, see:                              #'
+    print '#    GEOSldas/doc/README.MetForcing_and_BCS.md             #'
+    print '#    [..]/GEOSsurface_GridComp/Utils/Raster/make_bcs       #'
     print '#                                                          #'
     print '############################################################'
     print
     print 'BCS_PATH:'
+    print 'BCS_RESOLUTION:'
     print
     print '############################################################'
     print '#                                                          #'

@@ -7,9 +7,9 @@ module GEOS_EnsGridCompMod
   !! This grid comp behaves like a coupler. The set service, initialization are compliant with MAPL grid comp concept. 
   use ESMF
   use MAPL_Mod
-  use lsm_routines, only: DZGT
-  use catch_types,  only: cat_progn_type
-  use catch_types,  only: cat_param_type
+  use catch_constants, only: DZGT => CATCH_DZGT
+  use catch_types,     only: cat_progn_type
+  use catch_types,     only: cat_param_type
 
   use, intrinsic :: ieee_arithmetic
   
@@ -1458,6 +1458,27 @@ contains
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'depth_to_water_table_from_surface',&
+    UNITS              = 'm'                         ,&
+    SHORT_NAME         = 'WATERTABLED'               ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RC=STATUS  ) 
+
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'FSWCHANGE'                 ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+    RC=STATUS  ) 
+  
+  VERIFY_(STATUS)
+  
+  
   ! !EXPORT FORCING STATE:
 
    call MAPL_AddExportSpec(                                                    &
@@ -2157,6 +2178,8 @@ contains
     real, dimension(:),pointer :: SPLAND,SPLAND_enavg
     real, dimension(:),pointer :: SPWATR,SPWATR_enavg
     real, dimension(:),pointer :: SPSNOW,SPSNOW_enavg
+    real, dimension(:),pointer :: WATERTABLED,WATERTABLED_enavg
+    real, dimension(:),pointer :: FSWCHANGE,FSWCHANGE_enavg
 
     ! Get my name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -2496,6 +2519,10 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(import, SPSNOW,  'SPSNOW' ,rc=status)
     VERIFY_(status)
+    call MAPL_GetPointer(import, WATERTABLED,'WATERTABLED' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(import, FSWCHANGE,  'FSWCHANGE'   ,rc=status)
+    VERIFY_(status)
     call MAPL_GetPointer(import, ITY,  'ITY' ,rc=status)
     VERIFY_(status)
 
@@ -2758,6 +2785,10 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(export, SPSNOW_enavg,  'SPSNOW' ,rc=status)
     VERIFY_(status)
+    call MAPL_GetPointer(export, WATERTABLED_enavg,'WATERTABLED' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, FSWCHANGE_enavg,  'FSWCHANGE'   ,rc=status)
+    VERIFY_(status)
     call MAPL_GetPointer(export, out_lai,  'LAI' , alloc=.true., rc=status)
     VERIFY_(status)
 
@@ -2893,6 +2924,8 @@ contains
         if(associated(SPLAND_enavg)) SPLAND_enavg =  0.0
         if(associated(SPWATR_enavg)) SPWATR_enavg =  0.0
         if(associated(SPSNOW_enavg)) SPSNOW_enavg =  0.0
+        if(associated(WATERTABLED_enavg)) WATERTABLED_enavg =  0.0
+        if(associated(FSWCHANGE_enavg))   FSWCHANGE_enavg   =  0.0
     endif
 
     if(associated(TC_enavg) .and. associated(TC))   & 
@@ -3153,6 +3186,10 @@ contains
         SPWATR_enavg = SPWATR_enavg + SPWATR
     if(associated(SPSNOW_enavg) .and. associated(SPSNOW))   & 
         SPSNOW_enavg = SPSNOW_enavg + SPSNOW
+    if(associated(WATERTABLED_enavg) .and. associated(WATERTABLED))   & 
+        WATERTABLED_enavg = WATERTABLED_enavg + WATERTABLED
+    if(associated(FSWCHANGE_enavg)   .and. associated(FSWCHANGE))     & 
+        FSWCHANGE_enavg   = FSWCHANGE_enavg   + FSWCHANGE
 
     ! This counter is relative to ens_id
     collect_land_counter = collect_land_counter + 1
@@ -3327,6 +3364,8 @@ contains
         if(associated(SPLAND_enavg)) SPLAND_enavg = SPLAND_enavg/NUM_ENSEMBLE
         if(associated(SPWATR_enavg)) SPWATR_enavg = SPWATR_enavg/NUM_ENSEMBLE
         if(associated(SPSNOW_enavg)) SPSNOW_enavg = SPSNOW_enavg/NUM_ENSEMBLE
+        if(associated(WATERTABLED_enavg)) WATERTABLED_enavg = WATERTABLED_enavg/NUM_ENSEMBLE
+        if(associated(FSWCHANGE_enavg))   FSWCHANGE_enavg   = FSWCHANGE_enavg  /NUM_ENSEMBLE
 
         ! Deal with no-data-values
         !

@@ -16,7 +16,7 @@ executors:
 
   ifort-large:
     docker:
-      - image: gmao/ubuntu20-geos-env:v6.2.8-intelmpi_2021.2.0-intel_2021.2.0
+      - image: gmao/ubuntu20-geos-env:v6.2.8-intelmpi_2021.3.0-intel_2021.3.0
         auth:
           username: $DOCKERHUB_USER
           password: $DOCKERHUB_AUTH_TOKEN
@@ -77,5 +77,9 @@ jobs:
             cd ${CIRCLE_WORKING_DIRECTORY}/workspace/build-GEOSldas
             make -j"$(nproc)" install |& tee /logfiles/make.log
             #MEDIUM# make -j4 install |& tee /logfiles/make.log
+      - run:
+          name: "Compress artifacts"
+          command: |
+            gzip -9 /logfiles/*
       - store_artifacts:
           path: /logfiles

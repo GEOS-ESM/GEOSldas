@@ -1340,25 +1340,27 @@ contains
 
     case (6,8,9,10) select_update_type    ! soil moisture and temperature update
 
+       ! for update_type 10, catdef increments may be zero by design       
+       
        if (logit) write (logunit,*) &
             'apply_enkf_increments(): applying soil moisture and Tskin/ght1 increments'
-
+       
        do n=1,N_catd
           do n_e=1,N_ens
-
+             
              cat_progn(n,n_e)%srfexc = &
                   cat_progn(n,n_e)%srfexc + cat_progn_incr(n,n_e)%srfexc
              cat_progn(n,n_e)%rzexc = &
                   cat_progn(n,n_e)%rzexc  + cat_progn_incr(n,n_e)%rzexc
              cat_progn(n,n_e)%catdef = &
                   cat_progn(n,n_e)%catdef + cat_progn_incr(n,n_e)%catdef
-
+             
              cat_progn(n,n_e)%tc1 = &
-                  cat_progn(n,n_e)%tc1 + cat_progn_incr(n,n_e)%tc1
+                  cat_progn(n,n_e)%tc1    + cat_progn_incr(n,n_e)%tc1
              cat_progn(n,n_e)%tc2 = &
-                  cat_progn(n,n_e)%tc2 + cat_progn_incr(n,n_e)%tc2
+                  cat_progn(n,n_e)%tc2    + cat_progn_incr(n,n_e)%tc2
              cat_progn(n,n_e)%tc4 = &
-                  cat_progn(n,n_e)%tc4 + cat_progn_incr(n,n_e)%tc4
+                  cat_progn(n,n_e)%tc4    + cat_progn_incr(n,n_e)%tc4
 
              cat_progn(n,n_e)%ght(1) = &
                   cat_progn(n,n_e)%ght(1) + cat_progn_incr(n,n_e)%ght(1)
@@ -2840,14 +2842,14 @@ contains
           catdef = cat_progn(:,n_e)%catdef
 
           call catch_calc_soil_moist(                                             &
-               N_catl,                                                            &
-               cat_param%vegcls, cat_param%dzsf,   cat_param%vgwmax,              &
+               N_catl,           cat_param%dzsf,   cat_param%vgwmax,              &
                cat_param%cdcr1,  cat_param%cdcr2,  cat_param%psis,                &
                cat_param%bee,    cat_param%poros,  cat_param%wpwet,               &
                cat_param%ars1,   cat_param%ars2,   cat_param%ars3,                &
                cat_param%ara1,   cat_param%ara2,   cat_param%ara3,                &
                cat_param%ara4,   cat_param%arw1,   cat_param%arw2,                &
                cat_param%arw3,   cat_param%arw4,                                  &
+               cat_param%bf1,    cat_param%bf2,                                   &
                srfexc,           rzexc,            catdef,                        &
                ar1,  ar2,  ar4, sfmc(:,n_e), rzmc(:,n_e), prmc(:,n_e) )
 
