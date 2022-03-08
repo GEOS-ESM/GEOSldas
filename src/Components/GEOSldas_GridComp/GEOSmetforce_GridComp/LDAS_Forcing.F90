@@ -62,7 +62,7 @@ module LDAS_ForceMod
 
   type(Hash_Table), public :: FileOpenedHash
 
-  real, parameter :: DEFAULT_REFH   = 10.   ! m
+  real, parameter :: DEFAULT_REFH   = 12.   ! m
   
   ! Jun 2021: Revised length of unformatted string from 10 to 100 (must be >= 12 for integer).
   character(100), private :: tmpstring100   
