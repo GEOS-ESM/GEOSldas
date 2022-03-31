@@ -196,6 +196,7 @@ PROGRAM tile_bin2nc4
     ! For SM_L4 
     ! reichle, 20 May 2020: verified SHORT_NAME and corrected UNITS to match SMAP L4_SM Product Specs;  LONG_NAME (mostly) from GEOS_CatchGridComp.F90 
     ! reichle, 14 Feb 2022: added "WATERTABLED" and "FSWCHANGE"
+    ! reichle, 21 Feb 2022: added "mwrtm_vegopacity"   
        
     case ('sm_surface');                       LONG_NAME = 'water_surface_layer';                                              UNITS = 'm3 m-3'
     case ('sm_rootzone');                      LONG_NAME = 'water_root_zone';                                                  UNITS = 'm3 m-3'
@@ -239,6 +240,7 @@ PROGRAM tile_bin2nc4
     case ('leaf_area_index');                  LONG_NAME = 'leaf_area_index';                                                  UNITS = 'm2 m-2' 
     case ('depth_to_water_table_from_surface');LONG_NAME = 'depth_to_water_table_from_surface';                                UNITS = 'm'
     case ('free_surface_water_on_peat_flux');  LONG_NAME = 'change_in_free_surface_water_reservoir_on_peat';                   UNITS = 'kg m-2 s-1'
+    case ('mwrtm_vegopacity');                 LONG_NAME = 'Lband_microwave_vegopacity_normalized_with_cos_inc_angle';         UNITS = '1'
 
     ! additional defintions for SMAP Nature Run - reichle, 20 May 2020
 
@@ -398,20 +400,24 @@ PROGRAM tile_bin2nc4
 
     ! land assimilation forecast and analysis for Catchment model diagnostics
 
-    case ('SFMC_FCST');    LONG_NAME = 'soil_moisture_surface_forecast';                                 UNITS = 'm3 m-3'
-    case ('RZMC_FCST');    LONG_NAME = 'soil_moisture_rootzone_forecast';                                UNITS = 'm3 m-3'
-    case ('PRMC_FCST');    LONG_NAME = 'soil_moisture_profile_forecast';                                 UNITS = 'm3 m-3'
-    case ('TSURF_FCST');   LONG_NAME = 'ave_catchment_temp_incl_snw_forecast';                           UNITS = 'K'
-    case ('TSOIL1_FCST');  LONG_NAME = 'soil_temperatures_layer_1_forecast';                             UNITS = 'K'
-    case ('SFMC_ANA');     LONG_NAME = 'soil_moisture_surface_analysis';                                 UNITS = 'm3 m-3'
-    case ('RZMC_ANA');     LONG_NAME = 'soil_moisture_rootzone_analysis';                                UNITS = 'm3 m-3'
-    case ('PRMC_ANA');     LONG_NAME = 'soil_moisture_profile_analysis';                                 UNITS = 'm3 m-3'
-    case ('TSURF_ANA');    LONG_NAME = 'ave_catchment_temp_incl_snw_analysis';                           UNITS = 'K'
-    case ('TSOIL1_ANA');   LONG_NAME = 'soil_temperatures_layer_1_analysis';                             UNITS = 'K'
+    case ('SFMC_FCST');        LONG_NAME = 'soil_moisture_surface_forecast';                             UNITS = 'm3 m-3'
+    case ('RZMC_FCST');        LONG_NAME = 'soil_moisture_rootzone_forecast';                            UNITS = 'm3 m-3'
+    case ('PRMC_FCST');        LONG_NAME = 'soil_moisture_profile_forecast';                             UNITS = 'm3 m-3'
+    case ('TSURF_FCST');       LONG_NAME = 'ave_catchment_temp_incl_snw_forecast';                       UNITS = 'K'
+    case ('TSOIL1_FCST');      LONG_NAME = 'soil_temperatures_layer_1_forecast';                         UNITS = 'K'
+    case ('SFMC_ANA');         LONG_NAME = 'soil_moisture_surface_analysis';                             UNITS = 'm3 m-3'
+    case ('RZMC_ANA');         LONG_NAME = 'soil_moisture_rootzone_analysis';                            UNITS = 'm3 m-3'
+    case ('PRMC_ANA');         LONG_NAME = 'soil_moisture_profile_analysis';                             UNITS = 'm3 m-3'
+    case ('TSURF_ANA');        LONG_NAME = 'ave_catchment_temp_incl_snw_analysis';                       UNITS = 'K'
+    case ('TSOIL1_ANA');       LONG_NAME = 'soil_temperatures_layer_1_analysis';                         UNITS = 'K'
 
+    ! other land assimilation fields
+       
+    case ('MWRTM_VEGOPACITY'); LONG_NAME = 'Lband_microwave_vegopacity_normalized_with_cos_inc_angle';   UNITS = '1'       
+       
     ! default LONG_NAME and UNITS for nc4 files created by tile_bin2nc4.F90 (used for any SHORT_NAME not listed above):
 
-    case default;          LONG_NAME = 'not defined in tile_bin2nc4.F90';                                UNITS = 'not defined in tile_bin2nc4.F90';
+    case default;              LONG_NAME = 'not defined in tile_bin2nc4.F90';                            UNITS = 'not defined in tile_bin2nc4.F90';
 
     end select
 

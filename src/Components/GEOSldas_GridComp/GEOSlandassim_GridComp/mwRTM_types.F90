@@ -70,12 +70,12 @@ module mwRTM_types
      
      real    :: omega       ! single scattering albedo                      [dim-less]
 
-     ! parameters relating to vegetation opacity (tau)
+     ! parameters relating to vegetation opacity 
      
      real    :: bh          ! veg b parameter (h-pol)  (tau = b*VWC)        [dim-less]
      real    :: bv          ! veg b parameter (v-pol)  (tau = b*VWC)        [dim-less]
      real    :: lewt        ! VWC = lewt*LAI                                [kg/m2]
-
+     real    :: vegopacity  ! veg opacity = tau/cos(inc_angle)              [dim-less]
      
   end type mwRTM_param_type
   
@@ -280,29 +280,107 @@ contains
     mwRTM_param%bh          = scalar
     mwRTM_param%bv          = scalar
     mwRTM_param%lewt        = scalar
+    mwRTM_param%vegopacity  = scalar
     
   end subroutine scalar2mwRTM_param
 
   ! ************************************************************
   
   subroutine mwRTM_param_nodata_check( mwp, mwp_nodata )
+
+    ! check microwave radiative transfer model parameters for no-data values
+    !
+    ! if there is a no-data value in any required field, set "all" fields
+    !   within the corresponding group of parameters to no-data 
+    !
+    ! vegetation attenuation parameters can come from either of two sources:
+    ! - static look-up table or calibrated parameters (bh, bv, lewt), to be combined
+    !   with time-varying LAI
+    ! - vegetation opacity (from file); varies with time
+    !
+    ! preprocessing of the mwRTM restart and vegopacity files must ensure that 
+    !   either (bh,bv,lewt) or (vegopacity) is no-data
+    !
+    ! - reichle, 13 July 2021  (revised for using vegopacity from file)
     
     implicit none
     
-    type(mwRTM_param_type), intent(inout) :: mwp
+    type(mwRTM_param_type), intent(inout)           :: mwp
     
-    logical,                intent(  out) :: mwp_nodata
+    logical,                intent(  out), optional :: mwp_nodata
     
     ! local variables
     
-    real :: realvegcls, realsoilcls
+    logical            :: veg_atten_static_params_nodata, veg_params_nodata, other_params_nodata
+
+    real               :: realvegcls, realsoilcls
+
+    character(len=*),   parameter :: Iam     = 'mwRTM_param_nodata_check'    
+    character(len=400)            :: err_msg
+
+    ! -----------------------------------------------------------------------------
+
+    ! Group 1: Parameters related to vegetation attenuation
+    !
+    ! need either (bh, bv, lewt) or (vegopacity)
+    !
+    ! check if static look-up table or calibrated parameters are available
+
+    veg_atten_static_params_nodata =                  &
+         (                                            &
+         LDAS_is_nodata( mwp%bh         ) .or.        &       
+         LDAS_is_nodata( mwp%bv         ) .or.        &
+         LDAS_is_nodata( mwp%lewt       )             &
+         )
     
-    ! ---------------------
+    if ( (.not. veg_atten_static_params_nodata) .and. (.not. LDAS_is_nodata( mwp%vegopacity )) ) then
+       
+       ! inconsistent mwRTM restart and vegopacity files: 
+       ! for a given tile, (bh, bv, lewt) from mwRTM restart and (vegopacity) from file must
+       ! not both have good values
+       
+       err_msg = 'inconsistent mwRTM restart and vegopacity files: found good values for (bh,bv,lewt) *and* (vegopacity)'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       
+    end if
+
+    ! return if *only* interested in checking no-data consistency for veg attenuation params
+    
+    if (.not. present(mwp_nodata)) return
+
+    ! - - - - - - - - - - - - - - - - - - - - - - 
+    !
+    ! rest of subroutine only needs to run once
+
+    if ( veg_atten_static_params_nodata ) then  
+       
+       ! make sure all related fields in this group are no-data if at least one is nodata
+       
+       mwp%bh   = nodata_generic
+       mwp%bv   = nodata_generic
+       mwp%lewt = nodata_generic
+       
+    end if
+         
+    ! veg_params_nodata = .true. if missing vegetation attenuation info altogether
+    
+    veg_params_nodata =                               &
+         (                                            &
+         veg_atten_static_params_nodata               &
+         .and.                                        &
+         LDAS_is_nodata( mwp%vegopacity )             &  
+         )
+
+    ! -----------------------------------------------------------------------------
+
+    ! Group 2: Parameters for the rest of the tau-omega equations
     
     realvegcls  = real(mwp%vegcls)
     realsoilcls = real(mwp%soilcls)
-    
-    if ( LDAS_is_nodata( realvegcls     ) .or.        &
+
+    other_params_nodata =                             &
+         (                                            &
+         LDAS_is_nodata( realvegcls     ) .or.        &
          LDAS_is_nodata( realsoilcls    ) .or.        &
          LDAS_is_nodata( mwp%sand       ) .or.        &
          LDAS_is_nodata( mwp%clay       ) .or.        &
@@ -316,15 +394,39 @@ contains
          LDAS_is_nodata( mwp%rgh_Nrh    ) .or.        &
          LDAS_is_nodata( mwp%rgh_Nrv    ) .or.        &
          LDAS_is_nodata( mwp%rgh_polmix ) .or.        &
-         LDAS_is_nodata( mwp%omega      ) .or.        &
-         LDAS_is_nodata( mwp%bh         ) .or.        &
-         LDAS_is_nodata( mwp%bv         ) .or.        &
-         LDAS_is_nodata( mwp%lewt       )      ) then
+         LDAS_is_nodata( mwp%omega      )             &
+         )                               
+
+    if ( other_params_nodata ) then
        
-       mwp        = nodata_generic
+       ! make sure all related fields in this group are no-data if at least one is nodata
+       
+       mwp%vegcls     = nint(nodata_generic)
+       mwp%soilcls    = nint(nodata_generic)
+       mwp%sand       = nodata_generic
+       mwp%clay       = nodata_generic
+       mwp%poros      = nodata_generic
+       mwp%wang_wt    = nodata_generic
+       mwp%wang_wp    = nodata_generic
+       mwp%rgh_hmin   = nodata_generic
+       mwp%rgh_hmax   = nodata_generic
+       mwp%rgh_wmin   = nodata_generic
+       mwp%rgh_wmax   = nodata_generic
+       mwp%rgh_Nrh    = nodata_generic
+       mwp%rgh_Nrv    = nodata_generic
+       mwp%rgh_polmix = nodata_generic
+       mwp%omega      = nodata_generic
+       
+    end if
+    
+    ! -----------------------------------------------------------------------------
+    
+    ! need both groups for full tau-omega calculations:
+    
+    if ( veg_params_nodata .or. other_params_nodata ) then
        
        mwp_nodata = .true.
-
+       
     else
        
        mwp_nodata = .false.
