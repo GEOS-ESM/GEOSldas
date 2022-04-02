@@ -1,0 +1,32 @@
+#
+# REQUIRED inputs
+#
+# NOTE:
+# - account          = computational project number
+#                      [At NCCS: Use command "getsponsor" to see available account number(s).]
+# - walltime         = walltime requested; format is HH:MM:SS (hours/minutes/seconds)
+# - ntasks_model     = number of processors requested for the model (typically 112; output server is not included)
+# - ntasks-per-node  = number of tasks per node (typically 46 for cascade lake*, 40 for skylake, and 28 for haswell nodes)
+#                      [If >40, cascade lake nodes will be allocated, if >28, cascade or skylake, else cascade, skylake or haswell.]
+#                      [*NCCS recommends <=46 cores per node on SCU16 (cascade lake) due to OS issues (as of 6 Oct 2021).]
+#
+account:  g0610
+walltime: 1:00:00
+ntasks_model: 112
+ntasks-per-node: 28
+
+#
+# OPTIONAL inputs
+#
+# NOTE:
+# - job_name   = name of experiment; default is "exp_id"
+# - qos        = quality-of-service; do not specify by default; specify "debug" for faster but limited service.
+# - oserver_nodes    = number of nodes for oserver ( default is 0 )
+# - writers-per-node = tasks per oserver_node for writing ( default is 5 ),
+#      IMPORTANT REQUIREMENT: total #writers = writers-per-node * oserver_nodes >= 2
+#      Jobs will hang when oserver_nodes = writers-per-node = 1.
+#
+#job_name:
+#qos:
+#oserver_nodes:
+#writers-per-node:
