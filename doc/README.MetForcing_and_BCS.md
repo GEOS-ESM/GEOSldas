@@ -298,17 +298,19 @@ Boundary Conditions
 ================================================================================
 
 Boundary conditions (bcs) are tile-space model parameters that are provided in a 
-  set of files located in the "BCS_DIRECTORY". 
+  set of files located in `BCS_PATH/BCS_RESOLUTION`. 
 
 For "land" tiles, the discretization (tile-space) is constructed in one of two
   different ways:
 
-  1. by intersecting watersheds with a regular grid (typically that used in
-      the atmospheric model), e.g., DC0576xPC0361, where "DC" indicates that
+  1. By intersecting watersheds with a regular grid (typically that used in
+      the atmospheric model), e.g., `DC0576xPC0361`, where "DC" indicates that
       the grid cells are centered on the date line and "PC" indicates that
-      the grid cells are centered on the poles.
+      the grid cells are centered on the poles.  Another example is the 
+	  0.5-degree ("c180") cube-sphere grid used by the atmospheric model in the 
+	  MERRA-2 reanalysis: `CF0180x6C_DE1440xPE0720`.
 
-  2. directly on a regular grid, e.g., SMAP_EASEv2_M09.
+  2. Directly on a regular grid, e.g., `SMAP_EASEv2_M09`.
 
 
 Note: GEOSldas can be run with older bcs.  Note, however, that GEOSldas requires some bcs 
@@ -322,7 +324,7 @@ COMMONLY USED boundary conditions (bcs):
 
 #### MERRA-Land (and MERRA)
 ```
-  BCS_PATH = /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/SiB2_V2_bad_lon_onDL/DC/
+  BCS_PATH : /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/SiB2_V2_bad_lon_onDL/DC/
 ```
 
 #### MERRA2
@@ -334,22 +336,22 @@ COMMONLY USED boundary conditions (bcs):
 
 #### SMAP Nature Run v03
 ```
-  BCS_PATH = /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_v15/
+  BCS_PATH : /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_v15/
 ```
 
 #### SMAP Nature Run v04, v04.1
 ```
-  BCS_PATH = /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v001/
+  BCS_PATH : /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v001/
 ```
 
 #### SMAP Nature Run v05
 ```
-  BCS_PATH = /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/
+  BCS_PATH : /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/
 ```
 
 #### Icarus-NL ("New Land"), SMAP_Nature_v7.2
 ```
-  BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NL/
+  BCS_PATH : /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_[XXXX]/
 ```
 
 Notes:
@@ -359,7 +361,7 @@ Notes:
 
 #### Icarus-NLv2, SMAP L4_SM Version 4
 ```
-  BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv2/
+  BCS_PATH : /discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_[XXXX]/
 ```
 
 Notes: 
@@ -368,7 +370,7 @@ Notes:
 	
 #### Icarus-NLv3, SMAP_Nature_v8.1
 ```
-  BCS_PATH = /discover/nobackup/ltakacs/bcs/Icarus-NLv3/
+  BCS_PATH : /discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_[XXXX]/
 ```
 
 Notes: 
@@ -380,10 +382,11 @@ Notes:
 
 - Generated with cvs tag Jason-3_0_LANDBCS
 - DEFAULT for GEOSldas AFTER v17.8.0
+- Used in GEOS FP 5.25, 5.27, 5.29 
 
 #### Icarus-NLv4, SMAP_Nature_v8.3, SMAP L4_SM Version 5, SMAP_Nature_v9.1, SMAP L4_SM Version 6
 ```
-  BCS_PATH = /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv4_EASE/
+  BCS_PATH : /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv4_EASE/
 ```
 
 Notes: 

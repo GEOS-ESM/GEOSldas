@@ -435,6 +435,11 @@ contains
        end if
        
     case (10)   
+
+       ! For PEATCLSM tiles, update_type 10 may have non-zero catdef increments,
+       ! but catdef increments still vanish for non-PEATCLSM tiles.
+       ! Leaving code here unchanged for now, that is, cannot request bias
+       ! corr for catdef. - reichle, 20 Feb 2022
        
        if (                                                        &
             !(cat_bias_param%Nparam%tc1>0)        .or.              &

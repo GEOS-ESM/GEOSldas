@@ -40,7 +40,7 @@ module GEOS_LandAssimGridCompMod
   use GEOS_LandPertGridCompMod,  only: progn_pert_param
   use GEOS_LandPertGridCompMod,  only: force_pert_param
   
-  use lsm_routines,              only: DZGT
+  use catch_constants,           only: DZGT=>CATCH_DZGT
   use GEOS_EnsGridCompMod,       only: cat_progn=>catch_progn
   use GEOS_EnsGridCompMod,       only: cat_param=>catch_param
   use mwRTM_types,               only: mwRTM_param_type, mwRTM_param_nodata_check
@@ -212,7 +212,7 @@ contains
     call MAPL_GridCompSetEntryPoint(                                            &
          gc,                                                                    &
          ESMF_METHOD_RUN,                                                       &
-         OUTPUT_SMAPL4SMLMC,                                                          &
+         OUTPUT_SMAPL4SMLMC,                                                    &
          rc=status                                                              &
          )
     _VERIFY(status)
@@ -814,10 +814,21 @@ contains
        RC=STATUS  ) 
   VERIFY_(STATUS) 
   
+  ! Exports for microwave radiative transfer model (mwRTM)
+
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'L-band Microwave RTM: Vegetation opacity (normalized with cosine of incidence angle)'   ,&
+       UNITS              = '1'                                                   ,&
+       SHORT_NAME         = 'MWRTM_VEGOPACITY'                                    ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  _VERIFY(STATUS)
+
   !
   ! INTERNAL STATE
   !
-  if (mwRTM) then
+  
   call MAPL_AddInternalSpec(GC                 ,&
       LONG_NAME   = 'L-band Microwave RTM: Vegetation class. Type is Unsigned32'   ,&
       UNITS       = '1'                         ,&
@@ -980,17 +991,15 @@ contains
       VLOCATION   = MAPL_VLocationNone          ,&
       DEFAULT     = nodata_generic              ,&
       RC=STATUS)
-   else
-     allocate(mwRTM_param(0))
-   endif ! mwRTM File
 
-!
+   
    if ( land_assim ) then
+
       call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1, RC=STATUS)
       _VERIFY(STATUS)
-      call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
+      call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:",      DEFAULT=0, RC=STATUS)
       _VERIFY(STATUS)
-      call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+      call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0, RC=STATUS)
       VERIFY_(STATUS)
 
       write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
@@ -1242,7 +1251,7 @@ contains
     if (root_proc) then
        call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
        _VERIFY(status)
-       call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:", &
+       call MAPL_GetResource( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:",    &
                              DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
 
@@ -1485,6 +1494,10 @@ contains
     real, dimension(:),pointer :: PRMC_ana=>null()     ! profile soil moisture
     real, dimension(:),pointer :: TPSURF_ana=>null()   ! tpsurf
     real, dimension(:),pointer :: TSOIL1_ana=>null()   ! tsoil1
+
+    !! export for microwave radiative transfer model (mwRTM)
+
+    real, dimension(:),pointer :: MWRTM_VEGOPACITY=>null()  ! vegetation opacity (time-varying)
     
     logical, save              :: firsttime=.true.
     type(cat_bias_param_type)  :: cat_bias_param
@@ -1636,20 +1649,25 @@ contains
     call MAPL_GetPointer(import, LAI,           'LAI',     rc=status)
     _VERIFY(status)
     
-
     ! exports for analysis model diagnostics
     
     call MAPL_GetPointer(export, TPSURF_ana,  'TPSURF_ANA' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, TSOIL1_ana,  'TSOIL1_ANA' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, SFMC_ana,    'WCSF_ANA' ,rc=status)
+    call MAPL_GetPointer(export, SFMC_ana,    'WCSF_ANA'  ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, RZMC_ana,    'WCRZ_ANA' ,rc=status)
+    call MAPL_GetPointer(export, RZMC_ana,    'WCRZ_ANA'  ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, PRMC_ana,    'WCPR_ANA' ,rc=status)
+    call MAPL_GetPointer(export, PRMC_ana,    'WCPR_ANA'  ,rc=status)
     VERIFY_(status)
 
+    ! exports for microwave radiative transfer model (mwRTM)
+    
+    call MAPL_GetPointer(export, MWRTM_VEGOPACITY,  'MWRTM_VEGOPACITY' ,rc=status)
+    VERIFY_(status)
+
+    
     allocate(met_force(N_catl))
     met_force(:)%Tair    = TA_enavg(:)
     met_force(:)%Qair    = QA_enavg(:)    
@@ -1792,6 +1810,7 @@ contains
        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bh,        mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bv,        mask=mask, rc=status); _VERIFY(STATUS)
        call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%lewt,      mask=mask, rc=status); _VERIFY(STATUS)
+       call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%vegopacity,mask=mask, rc=status); _VERIFY(STATUS)   ! NOT constant in time!!!
        
        !unit = GETFILE( "landassim_catparam_inputs.bin", form="unformatted", RC=STATUS )
        !_VERIFY(STATUS)
@@ -1810,7 +1829,20 @@ contains
          rc=status                                                              &
          )
     _VERIFY(status)   
-   
+
+    ! mwRTM_param already contains static parameters, only need vegopacity.
+
+    call get_vegopacity(MAPL, clock, N_catl, rc=status)
+    _VERIFY(STATUS)
+
+    ! Check no-data consistency of vegetation attenuation parameter values.
+    ! Good values are allowed for either the relevant static parameters
+    ! (bh, bv, lewt) or for the vegopacity values from the file, but not both.
+
+    do ii=1,N_catl
+       call mwRTM_param_nodata_check( mwRTM_param(ii) )
+    end do
+    
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
@@ -1910,17 +1942,20 @@ contains
        do ii=1,N_catl
           cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize
        end do
-       
-       if(associated(SFMC_ana))   SFMC_ana(:)   = cat_diagS_ensavg(:)%sfmc 
-       if(associated(RZMC_ana))   RZMC_ana(:)   = cat_diagS_ensavg(:)%rzmc  
-       if(associated(PRMC_ana))   PRMC_ana(:)   = cat_diagS_ensavg(:)%prmc 
-       if(associated(TPSURF_ana)) TPSURF_ana(:) = cat_diagS_ensavg(:)%tsurf
-       if(associated(TSOIL1_ana)) TSOIL1_ana(:) = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
 
+       ! set export variables
+       
+       if(associated(SFMC_ana))         SFMC_ana(:)         = cat_diagS_ensavg(:)%sfmc 
+       if(associated(RZMC_ana))         RZMC_ana(:)         = cat_diagS_ensavg(:)%rzmc  
+       if(associated(PRMC_ana))         PRMC_ana(:)         = cat_diagS_ensavg(:)%prmc 
+       if(associated(TPSURF_ana))       TPSURF_ana(:)       = cat_diagS_ensavg(:)%tsurf
+       if(associated(TSOIL1_ana))       TSOIL1_ana(:)       = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
+
+       if(associated(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
+       
        deallocate(cat_progn_tmp)
        deallocate(cat_diagS)
        deallocate(cat_diagS_ensavg) 
-
        
        ! write analysis fields into SMAP L4_SM aup file 
        ! whenever it was time for assimilation (regardless 
@@ -2109,6 +2144,7 @@ contains
   ! subroutine to calculate Tb for HISTORY output
   
   subroutine CALC_LAND_TB(gc, import, export, clock, rc)
+    
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
     type(ESMF_State),    intent(inout) :: import ! Import state
     ! this import is from land grid component
@@ -2153,10 +2189,11 @@ contains
     real, dimension(:), pointer :: BH
     real, dimension(:), pointer :: BV
     real, dimension(:), pointer :: LEWT
-    
+
     ! export
     real, dimension(:), pointer :: TB_H_enavg
     real, dimension(:), pointer :: TB_V_enavg
+    real, dimension(:), pointer :: MWRTM_VEGOPACITY 
 
     ! local
     real,    allocatable, dimension(:) :: sfmc_mwRTM, tsoil_mwRTM
@@ -2176,8 +2213,13 @@ contains
     call MAPL_GetPointer(export, TB_V_enavg,  'TB_LAND_1410MHZ_40DEG_VPOL' ,rc=status)
     _VERIFY(STATUS)
     
+    call MAPL_GetPointer(export, MWRTM_VEGOPACITY,  'MWRTM_VEGOPACITY' ,rc=status)
+    _VERIFY(STATUS)
+
     !if HISTORY does not ask for these variables, no calculation necessary; return
-    if (.not. associated(TB_H_enavg) .or. .not. associated(TB_V_enavg)) then
+    if ( (.not. associated(TB_H_enavg)      )  .and.           &
+         (.not. associated(TB_V_enavg)      )  .and.           &
+         (.not. associated(MWRTM_VEGOPACITY))         ) then
        _RETURN(_SUCCESS)
     endif
     
@@ -2193,15 +2235,22 @@ contains
     call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=INTERNAL, rc=status)
     _VERIFY(status)
    
-    if (mwRTM) then 
-       call get_mwrtm_param(INTERNAL, N_catl, rc=status)
-       _VERIFY(STATUS)
-       ! make sure that at least some mwRTM parameters are not nodata 
-       if (mwRTM_all_nodata) then
-          _ASSERT(.false., "Tb output requested but all mwRTM parameters are nodata")
-       endif
+    call get_mwrtm_param(MAPL, clock, N_catl, INTERNAL, rc=status)
+    _VERIFY(STATUS)
+    ! make sure that at least some mwRTM parameters are not nodata 
+    if (mwRTM_all_nodata) then
+       _ASSERT(.false., "Tb output requested but all mwRTM parameters are nodata")
     endif
 
+    ! set export variable    
+    if(associated(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
+
+    !if HISTORY does not ask for these variables, no calculation necessary; return
+    if ( (.not. associated(TB_H_enavg))        .and.           &
+         (.not. associated(TB_V_enavg))               ) then   
+       _RETURN(_SUCCESS)
+    endif
+    
     call MAPL_GetPointer(import, LAI,     'LAI'      ,rc=status)
     _VERIFY(status)
     call MAPL_GetPointer(import, TP1,     'TP1'      ,rc=status)         ! units now K, rreichle & borescan, 6 Nov 2020
@@ -2287,6 +2336,8 @@ contains
     RETURN_(_SUCCESS)
   end subroutine CALC_LAND_TB
 
+  ! ******************************************************************************
+  
   subroutine OUTPUT_SMAPL4SMLMC(gc, import, export, clock, rc)
      type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
      type(ESMF_State),    intent(inout) :: import ! Import state
@@ -2348,7 +2399,14 @@ contains
         call get_mwrtm_param(INTERNAL, N_catl, rc=status)
         _VERIFY(status)
 
+<<<<<<< HEAD
         call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
+=======
+     call get_mwrtm_param(MAPL, clock, N_catl, INTERNAL, rc=status)
+     _VERIFY(status)
+
+     call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
+>>>>>>> develop
             N_catl, tile_coord_l, cat_param, mwRTM_param )
         first_time = .false.
      endif
@@ -2357,6 +2415,8 @@ contains
 
   end subroutine OUTPUT_SMAPL4SMLMC 
 
+  ! ******************************************************************************
+  
   subroutine EXPORT_INCR( cat_progn_incr, export,rc)
     type(cat_progn_type), dimension(:),intent(in) :: cat_progn_incr
     type(ESMF_State), intent(inout) :: export
@@ -2577,11 +2637,16 @@ contains
   
   ! ******************************************************************************
   
-  subroutine get_mwrtm_param(internal,N_catl, rc)
-    type(ESMF_State),  intent(inout) :: INTERNAL
-    integer,           intent(in)    :: N_catl
-    integer, optional, intent(out)   :: rc
-    
+  subroutine get_mwrtm_param(MAPL, clock, N_catl, INTERNAL, rc)
+
+    type(MAPL_MetaComp), pointer,  intent(in)    :: MAPL
+    type(ESMF_Clock),              intent(in)    :: clock     ! the clock
+    integer,                       intent(in)    :: N_catl
+    type(ESMF_State),              intent(inout) :: INTERNAL
+    integer,             optional, intent(out)   :: rc
+
+    ! local variables
+
     real, dimension(:), pointer :: VEGCLS
     real, dimension(:), pointer :: SOILCLS
     real, dimension(:), pointer :: SAND
@@ -2603,70 +2668,80 @@ contains
     
     integer :: N_catl_tmp, n, mpierr, status
     logical :: mwp_nodata, all_nodata_l
+
+
+    if(.not. allocated(mwRTM_param)) then
+
+       ! get static mwRTM parameters from MWRTM_FILE
+
+       call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, SOILCLS  , 'MWRTM_SOILCLS'  ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, VEGCLS   , 'MWRTM_VEGCLS'   ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, CLAY     , 'MWRTM_CLAY'     ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS'    ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, WANGWT   , 'MWRTM_WANGWT'   ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, WANGWP   , 'MWRTM_WANGWP'   ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, RGHHMIN  , 'MWRTM_RGHHMIN'  ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, RGHHMAX  , 'MWRTM_RGHHMAX'  ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, RGHWMIN  , 'MWRTM_RGHWMIN'  ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, RGHWMAX  , 'MWRTM_RGHWMAX'  ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, RGHNRH   , 'MWRTM_RGHNRH'   ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, RGHNRV   , 'MWRTM_RGHNRV'   ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, RGHPOLMIX, 'MWRTM_RGHPOLMIX',    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, OMEGA    , 'MWRTM_OMEGA'    ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, BH       , 'MWRTM_BH'       ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, BV       , 'MWRTM_BV'       ,    RC=STATUS)
+       _VERIFY(STATUS)
+       call MAPL_GetPointer(INTERNAL, LEWT     , 'MWRTM_LEWT'     ,    RC=STATUS)
+       _VERIFY(STATUS) 
+       
+       N_catl_tmp = size(sand,1)
+       _ASSERT(N_catl_tmp == N_catl, "sanity check: N_catl should be consistent")
+       
+       allocate(mwRTM_param(N_catl))
+       mwRTM_param(:)%sand      = SAND(:)
+       mwRTM_param(:)%vegcls    = nint(VEGCLS(:))
+       mwRTM_param(:)%soilcls   = nint(SOILCLS(:))
+       mwRTM_param(:)%clay      = CLAY(:)
+       mwRTM_param(:)%poros     = mw_POROS(:)
+       mwRTM_param(:)%wang_wt   = WANGWT(:)
+       mwRTM_param(:)%wang_wp   = WANGWP(:)
+       mwRTM_param(:)%rgh_hmin  = RGHHMIN(:)
+       mwRTM_param(:)%rgh_hmax  = RGHHMAX(:)
+       mwRTM_param(:)%rgh_wmin  = RGHWMIN(:)
+       mwRTM_param(:)%rgh_wmax  = RGHWMAX(:)
+       mwRTM_param(:)%rgh_Nrh   = RGHNRH(:)
+       mwRTM_param(:)%rgh_Nrv   = RGHNRV(:)
+       mwRTM_param(:)%rgh_polmix= RGHPOLMIX(:)
+       mwRTM_param(:)%omega     = OMEGA(:)
+       mwRTM_param(:)%bh        = BH(:)
+       mwRTM_param(:)%bv        = bv(:)
+       mwRTM_param(:)%lewt      = LEWT(:)
+       
+    endif   ! if (.not. allocated(mwRTM_param))
     
-    if(allocated(mwRTM_param)) then
-       _RETURN(_SUCCESS)
-    endif
+    ! get current value of vegopacity
     
-    call MAPL_GetPointer(INTERNAL, SAND     , 'MWRTM_SAND'     ,    RC=STATUS)
+    call get_vegopacity(MAPL, clock, N_catl, rc=status)
     _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, SOILCLS  , 'MWRTM_SOILCLS'  ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, VEGCLS   , 'MWRTM_VEGCLS'   ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, CLAY     , 'MWRTM_CLAY'     ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, mw_POROS , 'MWRTM_POROS'    ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, WANGWT   , 'MWRTM_WANGWT'   ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, WANGWP   , 'MWRTM_WANGWP'   ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHHMIN  , 'MWRTM_RGHHMIN'  ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHHMAX  , 'MWRTM_RGHHMAX'  ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHWMIN  , 'MWRTM_RGHWMIN'  ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHWMAX  , 'MWRTM_RGHWMAX'  ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHNRH   , 'MWRTM_RGHNRH'   ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHNRV   , 'MWRTM_RGHNRV'   ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, RGHPOLMIX, 'MWRTM_RGHPOLMIX',    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, OMEGA    , 'MWRTM_OMEGA'    ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, BH       , 'MWRTM_BH'       ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, BV       , 'MWRTM_BV'       ,    RC=STATUS)
-    _VERIFY(STATUS)
-    call MAPL_GetPointer(INTERNAL, LEWT     , 'MWRTM_LEWT'     ,    RC=STATUS)
-    _VERIFY(STATUS) 
-    
-    N_catl_tmp = size(sand,1)
-    _ASSERT(N_catl_tmp == N_catl, "sanity check: N_catl should be consistent")
-    
-    allocate(mwRTM_param(N_catl))
-    mwRTM_param(:)%sand      = SAND(:)
-    mwRTM_param(:)%vegcls    = nint(VEGCLS(:))
-    mwRTM_param(:)%soilcls   = nint(SOILCLS(:))
-    mwRTM_param(:)%clay      = CLAY(:)
-    mwRTM_param(:)%poros     = mw_POROS(:)
-    mwRTM_param(:)%wang_wt   = WANGWT(:)
-    mwRTM_param(:)%wang_wp   = WANGWP(:)
-    mwRTM_param(:)%rgh_hmin  = RGHHMIN(:)
-    mwRTM_param(:)%rgh_hmax  = RGHHMAX(:)
-    mwRTM_param(:)%rgh_wmin  = RGHWMIN(:)
-    mwRTM_param(:)%rgh_wmax  = RGHWMAX(:)
-    mwRTM_param(:)%rgh_Nrh   = RGHNRH(:)
-    mwRTM_param(:)%rgh_Nrv   = RGHNRV(:)
-    mwRTM_param(:)%rgh_polmix= RGHPOLMIX(:)
-    mwRTM_param(:)%omega     = OMEGA(:)
-    mwRTM_param(:)%bh        = BH(:)
-    mwRTM_param(:)%bv        = bv(:)
-    mwRTM_param(:)%lewt      = LEWT(:)
+
+    ! no-data value check
     
     all_nodata_l = .true.
     do n=1,N_catl
@@ -2678,7 +2753,63 @@ contains
     call MPI_AllReduce(all_nodata_l, mwRTM_all_nodata, 1, MPI_LOGICAL, &
          MPI_LAND, mpicomm, mpierr)
     _RETURN(_SUCCESS)
+    
   end subroutine get_mwrtm_param
+
+  ! ******************************************************************************
+  
+  subroutine get_vegopacity(MAPL, clock, N_catl, rc)
+
+    ! read seasonally-varying veg opacity (climatology) from file
+    
+    type(MAPL_MetaComp), pointer,  intent(in)    :: MAPL
+    type(ESMF_Clock),              intent(in)    :: clock     ! the clock
+    integer,                       intent(in)    :: N_catl
+    integer,             optional, intent(out)   :: rc
+
+    ! local variables
+    real, dimension(:), pointer :: VEGOPACITY
+    
+    integer ::  status
+
+    character(len=ESMF_MAXSTR)  :: VEGOPACITYFile
+    type(ESMF_Time)             :: CURRENT_TIME
+
+    ! --------------------------------------------------
+
+    call ESMF_ClockGet( CLOCK, currTime=CURRENT_TIME, RC=STATUS )
+    _VERIFY(STATUS)
+
+    call MAPL_GetResource(MAPL, VEGOPACITYFile, label = 'VEGOPACITY_FILE:', &
+        default = '', RC=STATUS )
+    _VERIFY(STATUS)
+
+    allocate(VEGOPACITY(N_catl), source=MAPL_UNDEF)
+    
+    ! if a non-empty file name is provided in LDAS.rc, read vegetation opacity from this file
+
+    if (len(trim(VEGOPACITYFile))>0) then
+
+       ! for a given tile, vegetation opacity in the data file may contain a mix of "good" and no-data values;
+       ! the file must use MAPL_UNDEF (=1.e15) as the no-data value because MAPL_ReadForcing() only
+       ! recognized MAPL_UNDEF
+
+       call MAPL_ReadForcing(MAPL,'VEGOPACITY',VEGOPACITYFile,CURRENT_TIME,VEGOPACITY,ON_TILES=.true.,RC=STATUS)
+       _VERIFY(STATUS)
+
+       ! fix "bad" (-9999.) no-data-values in first edition of VEGOPACITY file
+       
+       where (VEGOPACITY<0.) VEGOPACITY=MAPL_UNDEF
+       
+    end if
+    
+    mwRTM_param(:)%vegopacity= VEGOPACITY(:)
+    deallocate(VEGOPACITY)              
+    _RETURN(_SUCCESS)
+ 
+  end subroutine get_vegopacity
+
+  ! ******************************************************************************
 
   subroutine get_id_string(id_string, id, ens_id_width)
      character(*), intent(inout) :: id_string
@@ -2691,6 +2822,7 @@ contains
      write (id_string, fmt_str) id
 
   end subroutine  
+
   ! ******************************************************************************
 
   !BOP

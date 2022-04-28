@@ -21,6 +21,9 @@ module clsm_ensdrv_out_routines
        operator (+),                              &
        operator (/)
 
+  use catch_constants,                  ONLY:     &
+       CATCH_DZTSURF
+  
   use LDAS_TileCoordType,               ONLY:     &
        tile_coord_type
 
@@ -216,7 +219,7 @@ contains
     !
     ! compute dztsurf
 
-    dztsurf = 0.05   ! now 0.05 m everywhere due to revised CSOIL_2 in subroutine catchment()
+    dztsurf = CATCH_DZTSURF  ! now 0.05 m everywhere due to revised CSOIL_2 in subroutine catchment()
 
     ! convert wilting point from wetness units to volumetric units
 
@@ -271,7 +274,10 @@ contains
     call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bh,         mask=mask, rc=status); VERIFY_(STATUS)
     call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%bv,         mask=mask, rc=status); VERIFY_(STATUS)
     call MAPL_VarWrite(unit, tilegrid,mwRTM_param(:)%lewt,       mask=mask, rc=status); VERIFY_(STATUS)                                                      
-    call MAPL_VarWrite(unit, tilegrid,cat_param(:)%veghght,       mask=mask, rc=status); VERIFY_(STATUS)
+    call MAPL_VarWrite(unit, tilegrid,cat_param(:)%veghght,      mask=mask, rc=status); VERIFY_(STATUS)
+
+    ! Note: Since mwrtm_param%vegopacity is time-varying, it is not included in lmc output and written
+    !       into gph instead.
     
     call FREE_FILE(unit, RC=STATUS); VERIFY_(STATUS)
                                           

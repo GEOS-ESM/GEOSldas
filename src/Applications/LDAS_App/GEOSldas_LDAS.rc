@@ -116,6 +116,20 @@ PERTURBATIONS: 0
 FIRST_ENS_ID: 0
 
 
+# ---- Ensemble forcing
+#
+#  NO  : Deterministic met forcing  (default)
+#  YES : Ensemble met forcing
+#        - Typically used in land-atmosphere data assimilation (LADAS) configuration. 
+#        - Must have forcing with matching ensemble ID for each land ensemble member.
+#        - Forcing files must be stored in member-specific directories MET_PATH[NNN]/, 
+#            where NNN is the 3-digit ensemble ID.
+#        - User-specified MET_PATH and MET_TAG must not contain ensemble IDs.
+#        - FIRST_ENS_ID may be used to align ensemble IDs.    
+#
+ENSEMBLE_FORCING: NO
+
+
 # ---- Path to special namelist input files
 #
 #      Applies only for ensemble simulations. The variable values in the special 
@@ -127,17 +141,27 @@ FIRST_ENS_ID: 0
 # NML_INPUT_PATH: ''
 
 
-# ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format)
+# ---- Path to (L-band) microwave radiative transfer model (mwRTM) parameter files:
+#
+#        [MWRTM_PATH]/[BCS_RESOLUTION]/mwRTM_param.nc4 - static (time-invariant) mwRTM parameters
+#        [MWRTM_PATH]/[BCS_RESOLUTION]/vegopacity.bin  - seaonally-varying clim of veg opacity (OPTIONAL)
 #
 #      Must be provided for
 #          - output of Tb through HISTORY or
 #          - Tb assimilation.
 #      Otherwise, leave unspecified (i.e., use default empty string).
 #
-#      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
 #      If empty or commented out, GEOSldas will search the restart directory.
 #
-# MWRTM_FILE: ''
+#      Must be tile-space data with resolution matching that of BCS (see BCS_RESOLUTION).
+#
+#      mwRTM_param.nc4 can be created from a binary file with the program mwrtm_bin2nc4.x. 
+#
+#      Vegetation attenuation is *either* computed from static parameters (bh, bv, lewt) and LAI
+#      *or* prescribed from the vegopacity.bin file.  If the latter is used, (bh, bv, lewt) must
+#      be no-data values in mwRTM_param.nc4.
+#
+# MWRTM_PATH: ''
 
 
 # ---- Job segments: Length
@@ -214,8 +238,13 @@ DYCORE: none
 
 # ---- For MAPL_RestartOptional
 #
-MAPL_ENABLE_BOOTSTRAP: NO
+MAPL_ENABLE_BOOTSTRAP: YES
 
 #----- Write restart or checkpoint by oserver
 #
 WRITE_RESTART_BY_OSERVER: NO
+
+#
+# =================================== EOF ==========================================
+
+
