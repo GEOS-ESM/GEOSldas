@@ -110,6 +110,8 @@ class LDASsetup:
         self.perturb = 0
         self.first_ens_id = 0
         self.ladas_coupling = 0
+        self.in_rstfile = None
+        self.in_tilefile = None
         # ------
         # Read exe input file which is required to set up the dir
         # ------
@@ -292,6 +294,15 @@ class LDASsetup:
                 ldas_domain = self.rqdExeInp['RESTART_PATH']+ \
                               self.rqdExeInp['RESTART_ID'] + \
                               '/output/'+self.rqdExeInp['RESTART_DOMAIN']+'/rc_out/'+self.rqdExeInp['RESTART_ID']+'.ldas_domain.txt'
+                inpdir=self.rqdExeInp['RESTART_PATH']+self.rqdExeInp['RESTART_ID']+'/input/'
+                in_tilefiles_ = glob.glob(inpdir+'*tile.data')
+                if len(in_tilefiles_) == 0 :
+                   inpdir=self.rqdExeInp['RESTART_PATH']+self.rqdExeInp['RESTART_ID']+'/output/'+self.rqdExeInp['RESTART_DOMAIN']+'/rc_out/'
+                   in_tilefiles_ = glob.glob(inpdir+'MAPL_*.til')
+                   if len(in_tilefiles_) == 0 :
+                      in_tilefiles_ = glob.glob(inpdir+'/*.til')
+                self.in_tilefile =os.path.realpath(in_tilefiles_[0])
+                   
                 if os.path.isfile(ldas_domain) :
                     _numd = int(linecache.getline(ldas_domain, 1).strip())
                     self.rqdExeInp['TILING_FILE'] =glob.glob(self.rqdExeInp['BCS_PATH']+'*.til')[0]
@@ -362,13 +373,9 @@ class LDASsetup:
                 tmpRstDir=self.rqdExeInp['RESTART_PATH']+'/'.join([self.rqdExeInp['RESTART_ID'],'output',
                                                                    self.rqdExeInp['RESTART_DOMAIN'],'rs',self.ensdirs[0],y4m2])
                 catchRstFile=tmpRstDir+'/'+tmpFile
-                ldassa_tmp=self.rqdExeInp['RESTART_ID']+'.ens0000.'+self.catch+'_ldas_rst.'+y4m2d2_h2m2+'z.bin'
-                ldassaCN_tmp=self.rqdExeInp['RESTART_ID']+'.ens0000.'+self.catch+'_ldas_rst.'+y4m2d2_h2m2+'z'
-                LDASsa_catchRstFile=tmpRstDir+'/'+ldassa_tmp
-                LDASsa_CNRstFile=tmpRstDir+'/'+ldassaCN_tmp
                 
-                assert os.path.isfile(catchRstFile) or os.path.isfile(LDASsa_catchRstFile) or os.path.isfile(LDASsa_CNRstFile), \
-                       self.catch+'_internal_rst file [%s] or [%s] does not exist!' %(catchRstFile, LDASsa_catchRstFile)
+                assert os.path.isfile(catchRstFile), self.catch+'_internal_rst file [%s] does not exist!' %(catchRstFile)
+                self.in_rstfile = catchRstFile
                 
                 if int(self.rqdExeInp['RESTART']) == 1 :
                     tmpFile=self.rqdExeInp['RESTART_ID']+'.vegdyn_internal_rst'
@@ -389,7 +396,21 @@ class LDASsetup:
                         LDASsa_pertRstFile=tmpRstDir+'/'+ldassa_tmp
                         if (os.path.isfile(LDASsa_pertRstFile)) :
                             self.has_ldassa_pert = True
-               
+            elif (int(self.rqdExeInp['RESTART']) == 0) : 
+              if (self.catch == 'catch'):
+                self.in_rstfile = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding' \
+                                  '/Catch/M09/20170101/catch_internal_rst'   
+                self.in_tilefile = '/discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params' \
+                                   '/mkCatchParam_SMAP_L4SM_v002/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'
+              elif (self.catch == 'catchcnclm40'):
+                self.in_rstfile  = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding' \
+                                  '/CatchCN/M09/20151231/catchcn_internal_rst' 
+                self.in_tilefile = '/discover/nobackup/ltakacs/bcs/Heracles-NL/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'
+              elif (self.catch == 'catchcnclm45'):
+                sys.exit('need to provide at least dummy files')
+                self.in_rstfile = None
+                self.in_tilefile = None
+                
         # DEAL WITH mwRTM input from exec
         self.assim = True if self.rqdExeInp.get('LAND_ASSIM', 'NO').upper() == 'YES' else False
         # verify mwrtm file
@@ -780,8 +801,8 @@ class LDASsetup:
         sponsorid = self.rqdRmInp['account']
         exp_id    = self.rqdExeInp['EXP_ID']
         exp_dir   = self.exphome
-        bcdir     = self.rqdExeInp['BCS_PATH']
-        tilefile  = os.path.basename(self.rqdExeInp['TILING_FILE'])
+        out_bcdir     = self.rqdExeInp['BCS_PATH']
+        out_tilefile  = self.rqdExeInp['TILING_FILE']
         have_rst  = str(self.rqdExeInp['RESTART'])
         YYYYMMDD  = '%4d%02d%02d' % (_start.year, _start.month,_start.day)
         YYYYMMDDHH= '%4d%02d%02d%02d' % (_start.year, _start.month,_start.day, _start.hour)
@@ -799,23 +820,23 @@ class LDASsetup:
                shutil.copy(landassim_seeds, _seeds)
                os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ _ensid +'_rst')
                self.has_landassim_seed = True
- 
-        cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, exp_dir,
-                        bcdir, tilefile, self.catch, have_rst, YYYYMMDDHH,
-                        rstid, rstdomain, rstpath0, str(self.nens), str(self.rqdExeInp['RUN_IRRIG']),
-                        dzsf, wemin_in, wemin_out])
-        print "cmd:   " + cmd
-        os.system(cmd)
+        mk_outdir = self.exphome+'/'+exp_id+'/mk_restarts/' 
+        cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, mk_outdir,
+                        out_bcdir, out_tilefile, self.catch, have_rst, YYYYMMDDHH,
+                        self.in_rstfile, self.in_tilefile, dzsf, wemin_in, wemin_out])
+        if (have_rst != '1'):
+           print "cmd:   " + cmd
+           os.system(cmd)
 
-        done_rst=self.exphome+'/'+exp_id+'/mk_restarts/done_rst_file'
-        print "Please hold on for a while until the restart file is created  ....."
-        _animation = "|/-\\"
-        _idx = 0
-        while not os.path.isfile(done_rst):
-            sys.stdout.write('\r'+_animation[_idx % len(_animation)])
-            sys.stdout.flush()
-            _idx += 1
-            time.sleep(1.)
+           done_rst=self.exphome+'/'+exp_id+'/mk_restarts/done_rst_file'
+           print "Please hold on for a while until the restart file is created  ....."
+           _animation = "|/-\\"
+           _idx = 0
+           while not os.path.isfile(done_rst):
+             sys.stdout.write('\r'+_animation[_idx % len(_animation)])
+             sys.stdout.flush()
+             _idx += 1
+             time.sleep(1.)
 
 
         #for ens in self.ensdirs :
