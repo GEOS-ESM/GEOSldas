@@ -111,7 +111,7 @@ class LDASsetup:
         self.first_ens_id = 0
         self.ladas_coupling = 0
         self.in_rstfile = None
-        self.in_tilefile = None
+        self.in_tilefile = 'None' # default string
         # ------
         # Read exe input file which is required to set up the dir
         # ------
