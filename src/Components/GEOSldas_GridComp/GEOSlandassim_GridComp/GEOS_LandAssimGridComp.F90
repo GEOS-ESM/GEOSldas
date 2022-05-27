@@ -2395,21 +2395,13 @@ contains
      call esmf2ldas(ModelTimeCur, start_time, rc=status)
      _VERIFY(status)
     
-     if (mwRTM) then
-        call get_mwrtm_param(INTERNAL, N_catl, rc=status)
-        _VERIFY(status)
-
-<<<<<<< HEAD
-        call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
-=======
      call get_mwrtm_param(MAPL, clock, N_catl, INTERNAL, rc=status)
      _VERIFY(status)
 
      call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
->>>>>>> develop
             N_catl, tile_coord_l, cat_param, mwRTM_param )
         first_time = .false.
-     endif
+
 
      _RETURN(_SUCCESS)
 

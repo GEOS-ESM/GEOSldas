@@ -104,9 +104,12 @@ module clsm_ensupd_upd_routines
        N_snow => CATCH_N_SNOW,                    &
        N_gt   => CATCH_N_GT,                      &
        PEATCLSM_POROS_THRESHOLD
+!       N_CONSTIT => CATCH_N_CONSTIT                 !LCA needed for relayer2
 
   use STIEGLITZSNOW, ONLY: &
-      StieglitzSnow_calc_asnow
+      StieglitzSnow_calc_asnow,                   &
+      relayer2,                                   &   !LCA needed for snow da
+      N_constit
 
   use LDAS_ensdrv_mpi,                  ONLY:     &
        numprocs,                                  &
@@ -3442,8 +3445,11 @@ contains
     ! -------------------------------------------------------------------
     
     USE SurfParams, ONLY: WEMIN
-    USE StieglitzSnow, ONLY: cpw_pub !Removed RHOMA_pub, unreferenced. LCA 1/28/22 
-    use Catch_Constants, ONLY: RHOFS => CATCH_SNWALB_RHOFS
+    !!USE StieglitzSnow, ONLY: cpw_pub !cpwpub causing error 6580:Name in only list does not exist or is not accessible 
+    use Catch_Constants,      ONLY:   &
+         RHOFS => CATCH_SNWALB_RHOFS
+        ! N_CONSTIT      => CATCH_N_CONSTIT  !!LCA added for test...
+     
     
     implicit none
  
@@ -3540,15 +3546,23 @@ contains
     type(obs_param_type)                  :: this_obs_param
    
     !jpark50
+    real                                  :: asnow_fcst, swe_fcst, swe_ana, asnow_ana, isnow, swe_ratio
+    real, dimension(N_catd, N_ens)        :: swe_incrm
     real, dimension(N_catd, N_ens)        :: wesn_sum_old
-    real, dimension(N_catd, N_ens)        :: areasc_old 
-    !real, parameter:: cpw   = 2065.22 !ice specific heat capacity @ 0C [J/kg/K]
-    real, parameter:: alpha_threshold = 0.20 !lca modified name and value 2/2/22
-    real, parameter:: beta_threshold  = 0.40 !lca modified name and value 2/2/22
-    real, parameter:: wesn_max = 5.0 ! kg m-2 from Toure et al. 2018, lca modified 2/3/22
-    real, parameter:: wesn_min = 13.0  ! kg m-2 from Toure et al. 2018, lca added 2/3/22
-    real, parameter:: eps = 1.e-4
-    real, parameter:: small = 1.e-20
+    real, dimension(N_catd, N_ens)        :: areasc_old
+    real, dimension(N_catd, N_ens, N_snow):: tmp_wesn, tmp_htsn, tmp_sndz
+    !integer, parameter:: N_constit           = 9
+    real, dimension(N_snow, N_constit)    :: rconstit
+    real, dimension(N_snow), parameter    :: DZMAX = (/0.08, 0.5, 0.5/) 
+    !type(cat_progn_type), intent(in), dimension(N_catd, N_ens):: tmp_progn
+    real, parameter:: cpw                 = 2065.22 !ice specific heat capacity @ 0C [J/kg/K]THIS seems like it shouldbe defined elsewhere!!! But, will check later lca 5/5/22
+    real, parameter:: alpha_threshold     = 0.20 !lca modified name and value 2/2/22
+    real, parameter:: beta_threshold      = 0.40 !lca modified name and value 2/2/22
+    real, parameter:: max_incr_swe        = 5.0 ! kg m-2 from Toure et al. 2018, lca modified 2/3/22
+    real, parameter:: wesn_min            = 13.0  ! kg m-2 from Toure et al. 2018, lca added 2/3/22
+    real, parameter:: eps                 = 1.e-4
+    real, parameter:: small               = 1.e-20
+
    ! real, parameter:: rhofs = 150. ! kg/m^3 density of fresh snow
    ! real, parameter:: rhoma = 500. ! kg/m^3 maximum snow density
    ! real, parameter:: wemin = 13. ! kg/m^3
@@ -4497,27 +4511,24 @@ contains
        if (logit) write (logunit, *) 'get 1d snow(asnow) increments; MODIS SCF'
        
        !identify the species ID number of interest       
-       N_select_varnames  = 1       select_varnames(1) = 'asnow'
+       N_select_varnames  = 1      
+       select_varnames(1) = 'asnow'
   
        call get_select_species(                                           &
             N_select_varnames, select_varnames(1:N_select_varnames),      &
             N_obs_param, obs_param, N_select_species, select_species )
        
+ 
        !if(logit) write(logunit,*) 'N_catd=', N_catd
        !if(logit) write(logunit,*) 'MET forcing length', size(met_force%Tair)
        !if(logit) write(logunit,*) 'metforce%Tair', met_force%Tair
        !if(logit) write(logunit,*) 'lat', tile_coord%com_lat
        !if(logit) write(logunit,*) 'lon', tile_coord%com_lon
        
-       !Rule-based snow SCF update
+       ! Rule-based asnow  update
        allocate(select_tilenum(1))
        allocate(deduction(N_catd))
-     
-       deduction = met_force%Tair-MAPL_TICE !this can be negative or positive lca 2/2/22, but still not sure what it is for and why it isnt calculated in the catchment for loop
-       !Print the value and length of 'deduction'
-       !if(logit) write(logunit,*) 'deduction: ', deduction
-       !if(logit) write(logunit,*) 'length of deduction:', size(deduction)
-             
+    
        do n=1,N_catd !for each catchment
 
           ! find observations for catchment n
@@ -4532,114 +4543,86 @@ contains
           
           if (N_selected_obs == 1) then
              
-             do n_e=1,N_ens ! for each ensemble member (1) determine action and 
+             do n_e=1,N_ens ! for each ensemble member (1) calculate the asnow update
+
+                ! 1. Calculate the model forecast snow area and swe for each ens
+                 asnow_fcst  = asnow(n, n_e)
+                 swe_fcst    = sum(cat_progn(n, n_e)%wesn(1:N_snow))
+      
+                ! 2. Calculate the SWE update increment based on Toure et al (2018) eq 1
+                 if(asnow_fcst .lt. Observations(ind_obs(1))%obs * alpha_threshold) then
+                 ! SCA of model is less than observed SCA, ****ADD SNOW****
+                    swe_incrm(n, n_e) = max_incr_swe * Observations(ind_obs(1))%obs &
+                                       - (asnow_fcst / alpha_threshold)
  
-                !*** Add snow ***
-                !****************
-                !if the model SCF is less than the Obs SCF times alpha then ADD snow
-                !alpha = alpha_threshold = 0.2 
-                if(asnow_ensavg(n) .lt. Observations(ind_obs(1))%obs * alpha_threshold) then
-                     !if(logit) write (logunit, *) 'Add snow: ' &
-                     !   'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n) 
-                     !tot_swe_init = cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3)                
-                
-                     areasc_minus  = min( (cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3))  / WEMIN, 1.0) 
+                 elseif (Observations(ind_obs(1))%obs .le. beta_threshold) then
+                  !IF SCA of model is greater than observed SCA, ****REMOVE SNOW****
+                    swe_incrm(n, n_e) = (-1) *  swe_fcst * (1 - Observations(ind_obs(1))%obs / beta_threshold)
+
+                 else 
+                  !If the thresholds are not met, make *****NO CHANGE TO SNOW****
+                    swe_incrm(n, n_e) = 0.0
+
+                 endif !Toure et al. Eq 1
+
+               ! 3. Calculate a temporary SWE and SCA for each ensemble members
+                 swe_ana  = min(swe_fcst + swe_incrm(n, n_e), 0.0)
+                 !call StieglitzSnow_calc_asnow(N_snow, N_catd, swe_ana, asnow_ana)
+                 asnow_ana = min(swe_ana/wemin, 1.) !This is from StieglitzSnow_calc_asnow
+
+               ! 4. Apply the corrected SWE to each layer and adjust the heat content and snow depth in tmp variable
+                 do isnow = 1, N_snow
+                    if (asnow_fcst .gt. 0.0 .and. asnow_ana .lt. 1.0) then 
+                       swe_ratio                       = swe_ana / swe_fcst 
+                       tmp_wesn(n, n_e, isnow)         = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
+                       tmp_htsn(n, n_e, isnow)         = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
+                       tmp_sndz(n, n_e, isnow)         = cat_progn(n, n_e)%sndz(isnow)
+
+                   elseif (asnow_fcst .gt. 0.0 .and. asnow_ana .eq. 1.0) then 
+                       tmp_wesn(n, n_e, isnow)   = swe_ana / swe_fcst
+                       tmp_htsn(n, n_e, isnow)   = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
+                       tmp_sndz(n, n_e, isnow)   = cat_progn(n, n_e)%sndz(isnow) * swe_ratio
+                   
+                   elseif (asnow_fcst .eq. 0.0 .and. asnow_ana .lt. 1.0) then
+                       tmp_wesn(n, n_e, isnow)   = swe_ana / N_snow
+                       tmp_htsn(n, n_e, isnow)   = 0.0 !This shuld be changed to use the air temperature if its below freezing
+                       tmp_sndz(n ,n_e, isnow)   = (WEMIN * RHOFS) / N_snow !This using the min swe and fresh snow density to calculate depth, then applies it equally over each snow layer
+
+                   elseif (asnow_fcst .eq. 0.0 .and. asnow_ana .eq. 1.0) then
+                       tmp_wesn(n, n_e, isnow)   = swe_ana / N_snow
+                       tmp_htsn(n, n_e, isnow)   = 0.0 !This should be changed to use the air temperature if below freezing
+                       tmp_sndz(n, n_e, isnow)   = (swe_ana * RHOFS) / N_snow !Same as above, but allows the depth to increase with SWE because the catchment is snow covered
+           
+                   else
+                       tmp_wesn(n, n_e, isnow)   = cat_progn(n, n_e)%wesn(isnow)
+                       tmp_htsn(n, n_e, isnow)   = cat_progn(n ,n_e)%htsn(isnow)
+                       tmp_sndz(n, n_e, isnow)   = cat_progn(n, n_e)%sndz(isnow)
+
+                   endif !(asnow_fcst .gt. ...)
+                 enddo !isnow = 1, N_snow
+
+           !5. call relayer2 to balance the snow column (check this...) Turned off because of variable definition....
+             call relayer2(N_snow, N_constit , DZMAX(1), DZMAX(2:N_snow),   &
+                          tmp_htsn(n,n_e,1:N_snow), tmp_wesn(n, n_e, 1:N_snow), tmp_sndz(n, n_e,1:N_snow), rconstit)
 
 
-                     do isnow = 1,N_snow  
-                       !1. calculate increment to be added and update SWE
-                       cat_progn_incr(n,n_e)%wesn(isnow) = (wesn_max / float(N_snow)) * &
-                                                            (observations(ind_obs(1)%obs - asnow_ensavg(n) /alpha_threshold)
-                                                              
-                       !2. Update wesn   
-                       wesn_ratio(isnow) = (cat_progn(n,n_e)%wesn(isnow) + cat_progn_incr(n,n_e)%wesn(isnow) / cat_progn(n,n_e)%wesn(isnow)
- 
-                       cat_progn(n,n_e)%wesn(isnow) =  cat_progn(n,n_e)%wesn(isnow) * wesn_ratio(isnow)                              
+           !6. Calculate useable increments from fcst and temporarily updated swe, htsn, sndz  !intent out... for cat_progn_incr
+           cat_progn_incr(n, n_e)%wesn(1:N_snow) = tmp_wesn(n, n_e, 1:N_snow) - cat_progn(n, n_e)%wesn(1:N_snow)
+           cat_progn_incr(n, n_e)%htsn(1:N_snow) = tmp_htsn(n, n_e, 1:N_snow) - cat_progn(n, n_e)%htsn(1:N_snow)
+           cat_progn_incr(n, n_e)%sndz(1:N_snow) = tmp_sndz(n, n_e, 1:N_snow) - cat_progn(n, n_e)%sndz(1:N_snow)
 
-                     end do
-                     
-                     !Calculate new snow cover area
-                     areasc_plus = min( ( cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3)/ WEMIN, 1.0) 
-                     
-                     !3. Update snow depth using rules to define density and heat content
-                     do isnow = 1, N_snow
-                      
-                        !Case 1: if the inital area is zero and snow is added then the depth is dependent on updated SWE and fresh density
-                        ! and the heat content is updated assuming the snow is at MAPL_TICE (273.16)
-                        if ( (areasc_minus.eq.0.0) .and. (areasc_plus.gt.0.0) ) then !These can probably be simplified
-                           cat_progn(n,n_e)%sndz(isnow) =  cat_progn(n,n_e)%wesn(isnow) /RHOFS
-                           cat_progn(n,n_e)%htsn(isnow) =  0.0 ! heat content = ci * wesn * (Ti-Tm). If assume fresh snow is isothermal and @0*C 
-                        endif
-                        !Case 2: if the initial area is less than 1 and final area is less than or equal to 1
-                        ! then depth increases based on the wesn_ratio (?? check)
-                        if ( (areasc_minus.le.1.0) .and. (areasc_plus.le.1.0) ) then ! These can probably be simplified
-                           cat_progn(n, n_e)%sndz(isnow) = cat_progn(n,n_e)%sndz(isnow) * wesn_ratio(isnow)
-                           cat_progn(n, n_e)%htsn(isnow) = cat_progn(n,n_e%htsn(isnow)  * wesn_ratio(isnow)
-                        endif
-                     end do 
-                 
-                !*** Remove snow ***
-                !*******************
-                !if the model SCF is greater than or equal to the Obs SCF times alpha 
-                !AND the Observed SCF is less than beta, then REMOVE snow  
-                elseif(asnow_ensavg(n) .ge. Observations(ind_obs(1))%obs * alpha_threshold) .AND. &  !!Is the first part of this statement needed?
-                      (Observations(ind_obs(1))%obs .lt. beta_threshold) then 
-                  !if (logit) write (logunit, *) 'Remove snow: ', &
-                  !     'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n)
-                     areasc_minus  = min( (cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3))  / WEMIN, 1.0) 
-
-
-                     do isnow = 1,N_snow  
-                       !1. calculate increment to be added and update SWE
-                       cat_progn_incr(n,n_e)%wesn(isnow) = -wesn_min * &
-                                                            (1 - asnow_ensavg(n) /beta_threshold) !Check this equation!!!!
-                                                              
-                       !2. Update wesn   
-                       wesn_ratio(isnow) = (cat_progn(n,n_e)%wesn(isnow) + cat_progn_incr(n,n_e)%wesn(isnow) / cat_progn(n,n_e)%wesn(isnow)
- 
-                       cat_progn(n,n_e)%wesn(isnow) =  cat_progn(n,n_e)%wesn(isnow) * wesn_ratio(isnow)                              
-
-                     end do
-                     
-                     !Calculate new snow cover area, this is different than add because there needs to be a protection against negative SWE(?)
-                     areasc_plus = max( ( cat_progn(n,n_e)%wesn(1) + cat_progn(n,n_e)%wesn(2) + cat_progn(n,n_e)%wesn(3)/ WEMIN, 0.0) 
-                     
-                     !3. Update snow depth using rules to define density and heat content
-                     do isnow = 1, N_snow
-                      
-                        !Case 1: if the inital area is greater than zero and the updated area is zero, then depth and heat content are zero
-                        if ( (areasc_minus.gt.0.0) .and. (areasc_plus.eq.0.0) ) then !These can probably be simplified
-                           cat_progn(n,n_e)%sndz(isnow) =  0.0
-                           cat_progn(n,n_e)%htsn(isnow) =  0.0 ! heat content = ci * wesn * (Ti-Tm). If assume fresh snow is isothermal and @0*C 
-                        endif
-                        !Case 2: if the initial area is less than 1 and final area is less than or equal to 1
-                        ! then depth increases based on the wesn_ratio (?? check)
-                        if ( (areasc_minus.gt.0.0) .and. (areasc_plus.gt.0.0) ) then ! These can probably be simplified
-                           cat_progn(n, n_e)%sndz(isnow) = cat_progn(n,n_e)%sndz(isnow) * wesn_ratio(isnow)
-                           cat_progn(n, n_e)%htsn(isnow) = cat_progn(n,n_e%htsn(isnow)  * wesn_ratio(isnow)
-                        endif
-                     end do 
-                !*** No Add, No remove snow ***
-                !******************************
-                !If neither conditions is met then do nothing ( NO add No remove)
-                else 
-                  !if (logit) write (logunit, *) 'No add No remove: ', &
-                  !     'MODIS_SCF =  ', Observations(ind_obs(1))%obs, 'model_SCF = ',asnow_ensavg(n)
-                 cat_progn_incr(n,n_e)%wesn(isnow) = 0.0
-                
-               end if ! snow actions
-                 
-             end do   ! n_e=1,N_ens
-          end if      ! (N_selected_obs == 1)
+          end do      ! n_e = 1, N_ens
+        end if        ! if (N_selected_obs == 1)
        end do         ! n=1,N_catd
-     
+
+
 
        ! ----------------------------------
-       
+
     case default
-       
+
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown update_type')
-       
+  
     end select select_update_type
     
     ! clean up
