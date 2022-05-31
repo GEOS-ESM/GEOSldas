@@ -30,6 +30,8 @@ jobs:
           compiler: << parameters.compiler >>
       - circleci-tools/mepoclone:
           repo: GEOSldas
+      - circleci-tools/checkout_mapl3_release_branch:
+          repo: GEOSldas
       - circleci-tools/checkout_if_exists:
           repo: GEOSldas
       - circleci-tools/cmake:
