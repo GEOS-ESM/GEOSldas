@@ -238,7 +238,7 @@ PROGRAM tile_bin2nc4
     case ('windspeed_lowatmmodlay');           LONG_NAME = 'wind_speed_at_RefH';                                               UNITS = 'm s-1'
     case ('vegetation_greenness_fraction');    LONG_NAME = 'greeness_fraction';                                                UNITS = '1' 
     case ('leaf_area_index');                  LONG_NAME = 'leaf_area_index';                                                  UNITS = 'm2 m-2' 
-    case ('depth_to_water_table_from_surface');LONG_NAME = 'depth_to_water_table_from_surface';                                UNITS = 'm'
+    case ('depth_to_water_table_from_surface_in_peat');  LONG_NAME = 'depth_to_water_table_from_surface_in_peat';              UNITS = 'm'
     case ('free_surface_water_on_peat_flux');  LONG_NAME = 'change_in_free_surface_water_reservoir_on_peat';                   UNITS = 'kg m-2 s-1'
     case ('mwrtm_vegopacity');                 LONG_NAME = 'Lband_microwave_vegopacity_normalized_with_cos_inc_angle';         UNITS = '1'
 
