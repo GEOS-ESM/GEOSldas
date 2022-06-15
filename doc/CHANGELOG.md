@@ -15,7 +15,7 @@ Summary and Objective:
 ----------------------
 The development of the off-line (land-only) GEOS LDAS land modeling and assimilation 
 system started with the "land EnKF driver" for the GEOS Catchment model in the early 
-2000s.  
+2000s.
 
 From the mid 2000s, development was formalized as the "LDASsa" project under CVS version 
 control.
@@ -32,6 +32,25 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 
 Overview of Git Releases:
 ============================
+
+[v17.11.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.11.1) - 2022-06-15
+------------------------------
+
+- Zero-diff vs. v17.11.0 (except revised exports PEATCLSM_WATERLEVEL, PEATCLSM_FSWCHANGE)
+  
+- Infrastructure:
+  - Updated environment, CMake, ecbuild, and MAPL ([PR #543](https://github.com/GEOS-ESM/GEOSldas/pull/543)):
+    - ESMA_env v3.13.0
+    - ESMA_cmake v3.12.0
+    - ecbuild v1.2.0
+    - MAPL 2.19.0
+  - GMAO_Shared v1.5.5
+  - GEOSgcm_GridComp v1.15.5 ([make_bcs and CatchCN cleanup PR #576](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/576)])
+  - Updated Circle-CI ([PR #543](https://github.com/GEOS-ESM/GEOSldas/pull/543)).
+
+- Bug fixes and other minor changes:
+  - Corrected export of water table depth and free-standing water change over peat ([PR #556]((https://github.com/GEOS-ESM/GEOSldas/pull/556), [GEOSgcm_GridComp PR #593](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/593)).
+ 
 [v17.11.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.11.0) - 2022-03-04
 ------------------------------
 
