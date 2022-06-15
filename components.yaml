@@ -20,7 +20,7 @@ GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
   sparse: ./config/GMAO_Shared.sparse
-  tag: v1.5.1
+  tag: v1.5.5
 
 MAPL:
   local: ./src/Shared/@MAPL
