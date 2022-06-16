@@ -10,7 +10,7 @@ workflows:
   build-test:
     jobs:
       - ci/build:
-          name: build-GEOSgcm-on-<< matrix.compiler >>
+          name: build-GEOSldas-on-<< matrix.compiler >>
           context:
             - docker-hub-creds
           matrix:
@@ -18,4 +18,5 @@ workflows:
               compiler: [ifort, gfortran]
           baselibs_version: *baselibs_version
           repo: GEOSldas
+          mapldevelop: false
           persist_workspace: false # Needs to be true to run fv3/gcm experiment, costs extra
