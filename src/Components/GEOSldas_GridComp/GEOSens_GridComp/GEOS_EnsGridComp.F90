@@ -1459,9 +1459,9 @@ contains
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
-    LONG_NAME          = 'depth_to_water_table_from_surface',&
+    LONG_NAME          = 'depth_to_water_table_from_surface_in_peat',&
     UNITS              = 'm'                         ,&
-    SHORT_NAME         = 'WATERTABLED'               ,&
+    SHORT_NAME         = 'PEATCLSM_WATERLEVEL'       ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RC=STATUS  ) 
@@ -1471,7 +1471,7 @@ contains
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'change_in_free_surface_water_reservoir_on_peat',&
     UNITS              = 'kg m-2 s-1'                ,&
-    SHORT_NAME         = 'FSWCHANGE'                 ,&
+    SHORT_NAME         = 'PEATCLSM_FSWCHANGE'        ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
     RC=STATUS  ) 
@@ -2178,8 +2178,8 @@ contains
     real, dimension(:),pointer :: SPLAND,SPLAND_enavg
     real, dimension(:),pointer :: SPWATR,SPWATR_enavg
     real, dimension(:),pointer :: SPSNOW,SPSNOW_enavg
-    real, dimension(:),pointer :: WATERTABLED,WATERTABLED_enavg
-    real, dimension(:),pointer :: FSWCHANGE,FSWCHANGE_enavg
+    real, dimension(:),pointer :: PEATCLSM_WATERLEVEL,PEATCLSM_WATERLEVEL_enavg
+    real, dimension(:),pointer :: PEATCLSM_FSWCHANGE, PEATCLSM_FSWCHANGE_enavg
 
     ! Get my name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -2519,9 +2519,9 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(import, SPSNOW,  'SPSNOW' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(import, WATERTABLED,'WATERTABLED' ,rc=status)
+    call MAPL_GetPointer(import, PEATCLSM_WATERLEVEL,'PEATCLSM_WATERLEVEL' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(import, FSWCHANGE,  'FSWCHANGE'   ,rc=status)
+    call MAPL_GetPointer(import, PEATCLSM_FSWCHANGE, 'PEATCLSM_FSWCHANGE'  ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(import, ITY,  'ITY' ,rc=status)
     VERIFY_(status)
@@ -2785,9 +2785,9 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(export, SPSNOW_enavg,  'SPSNOW' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, WATERTABLED_enavg,'WATERTABLED' ,rc=status)
+    call MAPL_GetPointer(export, PEATCLSM_WATERLEVEL_enavg,'PEATCLSM_WATERLEVEL' ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, FSWCHANGE_enavg,  'FSWCHANGE'   ,rc=status)
+    call MAPL_GetPointer(export, PEATCLSM_FSWCHANGE_enavg, 'PEATCLSM_FSWCHANGE'  ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, out_lai,  'LAI' , alloc=.true., rc=status)
     VERIFY_(status)
@@ -2924,8 +2924,8 @@ contains
         if(associated(SPLAND_enavg)) SPLAND_enavg =  0.0
         if(associated(SPWATR_enavg)) SPWATR_enavg =  0.0
         if(associated(SPSNOW_enavg)) SPSNOW_enavg =  0.0
-        if(associated(WATERTABLED_enavg)) WATERTABLED_enavg =  0.0
-        if(associated(FSWCHANGE_enavg))   FSWCHANGE_enavg   =  0.0
+        if(associated(PEATCLSM_WATERLEVEL_enavg)) PEATCLSM_WATERLEVEL_enavg =  0.0
+        if(associated(PEATCLSM_FSWCHANGE_enavg))  PEATCLSM_FSWCHANGE_enavg  =  0.0
     endif
 
     if(associated(TC_enavg) .and. associated(TC))   & 
@@ -3186,10 +3186,10 @@ contains
         SPWATR_enavg = SPWATR_enavg + SPWATR
     if(associated(SPSNOW_enavg) .and. associated(SPSNOW))   & 
         SPSNOW_enavg = SPSNOW_enavg + SPSNOW
-    if(associated(WATERTABLED_enavg) .and. associated(WATERTABLED))   & 
-        WATERTABLED_enavg = WATERTABLED_enavg + WATERTABLED
-    if(associated(FSWCHANGE_enavg)   .and. associated(FSWCHANGE))     & 
-        FSWCHANGE_enavg   = FSWCHANGE_enavg   + FSWCHANGE
+    if(associated(PEATCLSM_WATERLEVEL_enavg) .and. associated(PEATCLSM_WATERLEVEL))   & 
+        PEATCLSM_WATERLEVEL_enavg = PEATCLSM_WATERLEVEL_enavg + PEATCLSM_WATERLEVEL
+    if(associated(PEATCLSM_FSWCHANGE_enavg)  .and. associated(PEATCLSM_FSWCHANGE))    & 
+        PEATCLSM_FSWCHANGE_enavg  = PEATCLSM_FSWCHANGE_enavg  + PEATCLSM_FSWCHANGE
 
     ! This counter is relative to ens_id
     collect_land_counter = collect_land_counter + 1
@@ -3364,8 +3364,8 @@ contains
         if(associated(SPLAND_enavg)) SPLAND_enavg = SPLAND_enavg/NUM_ENSEMBLE
         if(associated(SPWATR_enavg)) SPWATR_enavg = SPWATR_enavg/NUM_ENSEMBLE
         if(associated(SPSNOW_enavg)) SPSNOW_enavg = SPSNOW_enavg/NUM_ENSEMBLE
-        if(associated(WATERTABLED_enavg)) WATERTABLED_enavg = WATERTABLED_enavg/NUM_ENSEMBLE
-        if(associated(FSWCHANGE_enavg))   FSWCHANGE_enavg   = FSWCHANGE_enavg  /NUM_ENSEMBLE
+        if(associated(PEATCLSM_WATERLEVEL_enavg)) PEATCLSM_WATERLEVEL_enavg = PEATCLSM_WATERLEVEL_enavg/NUM_ENSEMBLE
+        if(associated(PEATCLSM_FSWCHANGE_enavg))  PEATCLSM_FSWCHANGE_enavg  = PEATCLSM_FSWCHANGE_enavg /NUM_ENSEMBLE
 
         ! Deal with no-data-values
         !
@@ -3384,10 +3384,15 @@ contains
         !
         ! - reichle, 29 May 2020
                 
-        if(associated(TPSNOW_enavg))  where (TPSNOW_enavg > enavg_nodata_threshold)  TPSNOW_enavg = MAPL_UNDEF
-        if(associated(TPSAT_enavg ))  where (TPSAT_enavg  > enavg_nodata_threshold)  TPSAT_enavg  = MAPL_UNDEF
-        if(associated(TPWLT_enavg ))  where (TPWLT_enavg  > enavg_nodata_threshold)  TPWLT_enavg  = MAPL_UNDEF
-        if(associated(TPUNST_enavg))  where (TPUNST_enavg > enavg_nodata_threshold)  TPUNST_enavg = MAPL_UNDEF
+        if(associated(TPSNOW_enavg))              where (TPSNOW_enavg              > enavg_nodata_threshold)  TPSNOW_enavg              = MAPL_UNDEF
+        if(associated(TPSAT_enavg ))              where (TPSAT_enavg               > enavg_nodata_threshold)  TPSAT_enavg               = MAPL_UNDEF
+        if(associated(TPWLT_enavg ))              where (TPWLT_enavg               > enavg_nodata_threshold)  TPWLT_enavg               = MAPL_UNDEF
+        if(associated(TPUNST_enavg))              where (TPUNST_enavg              > enavg_nodata_threshold)  TPUNST_enavg              = MAPL_UNDEF
+
+        ! restore exact no-data-values for PEATCLSM diagnostics in mineral tiles
+
+        if(associated(PEATCLSM_WATERLEVEL_enavg)) where (PEATCLSM_WATERLEVEL_enavg > enavg_nodata_threshold)  PEATCLSM_WATERLEVEL_enavg = MAPL_UNDEF
+        if(associated(PEATCLSM_FSWCHANGE_enavg))  where (PEATCLSM_FSWCHANGE_enavg  > enavg_nodata_threshold)  PEATCLSM_FSWCHANGE_enavg  = MAPL_UNDEF
 
      end if     ! collect_land_counter==NUM_ENSEMBLE
 

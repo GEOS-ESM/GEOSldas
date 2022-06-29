@@ -41,7 +41,7 @@ To build the model in a single step, do the following:
 cd ./GEOSldas
 parallel_build.csh
 ``` 
-from a head node. Doing so will check out all the external repositories of the model (albeit only on the first run, see section on mepo below) and build the model. When done, the resulting model build will be found in `build/` and the installation will be found in `install/`, with setup scripts like `ldas_setup` in `install/bin`. 
+from a head node. Doing so will check out all the external repositories of the model (albeit only on the first run, [see subsection on mepo below](#mepo)!) and build the model. When done, the resulting model build will be found in `build/` and the installation will be found in `install/`, with setup scripts like `ldas_setup` in `install/bin`. 
 
 To obtain a build that is suitable for debugging, use `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.  There is also an option for aggressive  optimization.  For details, see [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
 
@@ -121,7 +121,7 @@ cd GEOSldas
 mepo init
 mepo clone
 ```
-External sub-repositories are stored in directories pre-faced with `@`. After `parallel_build.csh` has run once and created `./@env/`, `parallel_build.csh` skips `mepo clone` in subsequent runs. This means that the sub-repositories in your sandbox could get out of sync with the GEOSldas repository while you are working on your sandbox, which may result in a difficult-to-understand build error when `parallel_build.csh` is used. If this happens, try a fresh clone or use [mepo commands](https://github.com/GEOS-ESM/mepo/wiki) to update the sub-repositories manually.
+External sub-repositories are stored in directories pre-faced with `@`. After `parallel_build.csh` has run once and created `./@env/`, `parallel_build.csh` skips `mepo clone` in subsequent runs. This means that the sub-repositories in your sandbox could get out of sync with the GEOSldas repository while you are working on your sandbox, which may result in a difficult-to-understand build error when `parallel_build.csh` is used. If this happens, try a fresh clone, or use [mepo commands](https://github.com/GEOS-ESM/mepo/wiki) to update the sub-repositories manually.
 
 #### Load Compiler, MPI Stack, and Baselibs
 On tcsh:
