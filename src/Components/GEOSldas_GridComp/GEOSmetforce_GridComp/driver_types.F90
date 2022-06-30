@@ -1,5 +1,5 @@
 
-module LDAS_DriverTypes
+module driver_types
   
   ! definition of types and associated operators for Catchment Model driver
   !
@@ -21,17 +21,19 @@ module LDAS_DriverTypes
   !                        for MERRA-Land output specs
   ! reichle,  5 Apr 2013 - removed modis_alb_param_type fields "sc_albvr", "sc_albnr" 
   ! reichle, 23 Jul 2013 - renamed "modis_alb_param" --> "alb_param"
-  ! reichle, 23 Apr 2021 - removed "SWnet"
   !
   ! --------------------------------------------------------------------------
-
+  
   implicit none
   
   ! everything is private by default unless made public
   
   private
   
-  public :: met_force_type, veg_param_type, bal_diagn_type, global_force_type
+  public :: met_force_type, veg_param_type, bal_diagn_type
+  public :: out_dtstep_type
+  public :: out_select_type, out_select_sub_type
+  public :: out_choice_type, out_choice_time_type
   public :: alb_param_type
   public :: assignment (=), operator (/), operator (+), operator (*)
   
@@ -60,74 +62,11 @@ module LDAS_DriverTypes
      real :: Snowf                ! total snowfall                          [kg/m2/s]
      real :: LWdown               ! downward longwave radiation             [W/m2]
      real :: SWdown               ! downward shortwave radiation            [W/m2]
+     real :: SWnet                ! downward net shortwave radiation        [W/m2]
      real :: PARdrct              ! Photosynth. Active Radiation (direct)   [W/m2]
      real :: PARdffs              ! Photosynth. Active Radiation (diffuse)  [W/m2]
      real :: Wind                 ! wind speed at RefH                      [m/s]
      real :: RefH                 ! reference height for Tair, Qair, Wind   [m]
-     
-     ! GOSWIM aerosol forcing
-     !
-     real :: DUDP001              ! below all units are                     [kg/m2/s]
-     real :: DUDP002
-     real :: DUDP003
-     real :: DUDP004
-     real :: DUDP005
-     real :: DUSV001
-     real :: DUSV002
-     real :: DUSV003
-     real :: DUSV004
-     real :: DUSV005
-     real :: DUWT001
-     real :: DUWT002
-     real :: DUWT003
-     real :: DUWT004
-     real :: DUWT005
-     real :: DUSD001
-     real :: DUSD002
-     real :: DUSD003
-     real :: DUSD004
-     real :: DUSD005
-     real :: BCDP001
-     real :: BCDP002
-     real :: BCSV001
-     real :: BCSV002
-     real :: BCWT001
-     real :: BCWT002
-     real :: BCSD001
-     real :: BCSD002
-     real :: OCDP001
-     real :: OCDP002
-     real :: OCSV001
-     real :: OCSV002
-     real :: OCWT001
-     real :: OCWT002
-     real :: OCSD001
-     real :: OCSD002
-     real :: SUDP003
-     real :: SUSV003
-     real :: SUWT003
-     real :: SUSD003
-     real :: SSDP001
-     real :: SSDP002
-     real :: SSDP003
-     real :: SSDP004
-     real :: SSDP005
-     real :: SSSV001
-     real :: SSSV002
-     real :: SSSV003
-     real :: SSSV004
-     real :: SSSV005
-     real :: SSWT001
-     real :: SSWT002
-     real :: SSWT003
-     real :: SSWT004
-     real :: SSWT005
-     real :: SSSD001
-     real :: SSSD002
-     real :: SSSD003
-     real :: SSSD004
-     real :: SSSD005
-
   end type met_force_type
 
   ! ---------------------------------------------------------------------
@@ -166,6 +105,79 @@ module LDAS_DriverTypes
      real :: wincr                ! water analysis increment per unit time   [kg/m2/s]
   end type bal_diagn_type
   
+  ! ---------------------------------------------------------------
+  !
+  ! type output time steps
+
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! WARNING: When modifying this derived type make sure that the corresponding
+  !          MPI STRUCTURE in module CLSM_ENSDRV_MPI is also updated, as are
+  !          any subroutines or operators defined herein
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
+  type :: out_dtstep_type
+     integer :: rstrt
+     integer :: inst
+     integer :: xhourly
+  end type out_dtstep_type
+  
+  ! ---------------------------------------------------------------
+  !
+  ! type for reading in output choices from namelist file
+
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! WARNING: When modifying this derived type make sure that the corresponding
+  !          MPI STRUCTURE in module CLSM_ENSDRV_MPI is also updated, as are
+  !          any subroutines or operators defined herein
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  type :: out_select_sub_type
+     logical :: inst
+     logical :: xhourly
+     logical :: daily
+     logical :: pentad
+     logical :: monthly
+  end type out_select_sub_type
+  
+  type :: out_select_type
+     type(out_select_sub_type) :: tile
+     type(out_select_sub_type) :: grid
+  end type out_select_type
+
+  ! ---------------------------------------------------------------
+  !
+  ! type for output choices *after* processing in read_driver_inputs()
+
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! WARNING: When modifying this derived type make sure that the corresponding
+  !          MPI STRUCTURE in module CLSM_ENSDRV_MPI is also updated, as are
+  !          any subroutines or operators defined herein
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
+
+  type :: out_choice_space_type
+     logical :: tile
+     logical :: grid
+     logical :: any
+  end type out_choice_space_type
+  
+  type :: out_choice_type
+     type(out_choice_space_type) :: inst
+     type(out_choice_space_type) :: xhourly
+     type(out_choice_space_type) :: daily
+     type(out_choice_space_type) :: pentad
+     type(out_choice_space_type) :: monthly
+     type(out_choice_space_type) :: any
+  end type out_choice_type
+      
+  type :: out_choice_time_type
+     logical :: rstrt
+     logical :: inst
+     logical :: xhourly
+     logical :: daily
+     logical :: pentad
+     logical :: monthly
+     logical :: any_non_rstrt
+  end type out_choice_time_type
   
   ! ---------------------------------------------------------------
   !
@@ -182,25 +194,6 @@ module LDAS_DriverTypes
      real :: sc_albnf    ! Scaling factor for diffuse infrared or whitesky 0.7-5.0
   end type alb_param_type
 
-  ! --------------------------------------------------------------
-  ! type to hold the global forcing for point driver mode
-  ! trent robinett, June 22 2022
-
-  type :: global_force_type
-    real, allocatable, dimension(:,:) :: Tair
-    real, allocatable, dimension(:,:) :: Qair
-    real, allocatable, dimension(:,:) :: Psurf
-    real, allocatable, dimension(:,:) :: Rainf_C
-    real, allocatable, dimension(:,:) :: Rainf
-    real, allocatable, dimension(:,:) :: Snowf
-    real, allocatable, dimension(:,:) :: LWdown
-    real, allocatable, dimension(:,:) :: SWdown
-    real, allocatable, dimension(:,:) :: PARdrct
-    real, allocatable, dimension(:,:) :: PARdffs
-    real, allocatable, dimension(:,:) :: Wind
-    real, allocatable, dimension(:,:) :: RefH
-    double precision, allocatable, dimension(:,:) :: date_int
-  end type global_force_type
   ! --------------------------------------------------------------
   
   interface assignment (=)
@@ -248,71 +241,11 @@ contains
     met_force%Snowf    = scalar
     met_force%LWdown   = scalar
     met_force%SWdown   = scalar
+    met_force%SWnet    = scalar
     met_force%PARdrct  = scalar
     met_force%PARdffs  = scalar
     met_force%Wind     = scalar
     met_force%RefH     = scalar
-
-   met_force%DUDP001     = scalar
-   met_force%DUDP002     = scalar
-   met_force%DUDP003     = scalar
-   met_force%DUDP004     = scalar
-   met_force%DUDP005     = scalar
-   met_force%DUSV001     = scalar
-   met_force%DUSV002     = scalar
-   met_force%DUSV003     = scalar
-   met_force%DUSV004     = scalar
-   met_force%DUSV005     = scalar
-   met_force%DUWT001     = scalar
-   met_force%DUWT002     = scalar
-   met_force%DUWT003     = scalar
-   met_force%DUWT004     = scalar
-   met_force%DUWT005     = scalar
-   met_force%DUSD001     = scalar
-   met_force%DUSD002     = scalar
-   met_force%DUSD003     = scalar
-   met_force%DUSD004     = scalar
-   met_force%DUSD005     = scalar
-   met_force%BCDP001     = scalar
-   met_force%BCDP002     = scalar
-   met_force%BCSV001     = scalar
-   met_force%BCSV002     = scalar
-   met_force%BCWT001     = scalar
-   met_force%BCWT002     = scalar
-   met_force%BCSD001     = scalar
-   met_force%BCSD002     = scalar
-   met_force%OCDP001     = scalar
-   met_force%OCDP002     = scalar
-   met_force%OCSV001     = scalar
-   met_force%OCSV002     = scalar
-   met_force%OCWT001     = scalar
-   met_force%OCWT002     = scalar
-   met_force%OCSD001     = scalar
-   met_force%OCSD002     = scalar
-   met_force%SUDP003     = scalar
-   met_force%SUSV003     = scalar
-   met_force%SUWT003     = scalar
-   met_force%SUSD003     = scalar
-   met_force%SSDP001     = scalar
-   met_force%SSDP002     = scalar
-   met_force%SSDP003     = scalar
-   met_force%SSDP004     = scalar
-   met_force%SSDP005     = scalar
-   met_force%SSSV001     = scalar
-   met_force%SSSV002     = scalar
-   met_force%SSSV003     = scalar
-   met_force%SSSV004     = scalar
-   met_force%SSSV005     = scalar
-   met_force%SSWT001     = scalar
-   met_force%SSWT002     = scalar
-   met_force%SSWT003     = scalar
-   met_force%SSWT004     = scalar
-   met_force%SSWT005     = scalar
-   met_force%SSSD001     = scalar
-   met_force%SSSD002     = scalar
-   met_force%SSSD003     = scalar
-   met_force%SSSD004     = scalar
-   met_force%SSSD005     = scalar
 
   end subroutine scalar2met_force
   
@@ -335,71 +268,11 @@ contains
     met_force_div_scalar%Snowf    =     met_force%Snowf    / scalar
     met_force_div_scalar%LWdown   =     met_force%LWdown   / scalar
     met_force_div_scalar%SWdown   =     met_force%SWdown   / scalar
+    met_force_div_scalar%SWnet    =     met_force%SWnet    / scalar
     met_force_div_scalar%PARdrct  =     met_force%PARdrct  / scalar
     met_force_div_scalar%PARdffs  =     met_force%PARdffs  / scalar
     met_force_div_scalar%Wind     =     met_force%Wind     / scalar
     met_force_div_scalar%RefH     =     met_force%RefH     / scalar
-
-   met_force_div_scalar%DUDP001     =    met_force%DUDP001   / scalar
-   met_force_div_scalar%DUDP002     =    met_force%DUDP002   / scalar
-   met_force_div_scalar%DUDP003     =    met_force%DUDP003   / scalar
-   met_force_div_scalar%DUDP004     =    met_force%DUDP004   / scalar
-   met_force_div_scalar%DUDP005     =    met_force%DUDP005   / scalar
-   met_force_div_scalar%DUSV001     =    met_force%DUSV001   / scalar
-   met_force_div_scalar%DUSV002     =    met_force%DUSV002   / scalar
-   met_force_div_scalar%DUSV003     =    met_force%DUSV003   / scalar
-   met_force_div_scalar%DUSV004     =    met_force%DUSV004   / scalar
-   met_force_div_scalar%DUSV005     =    met_force%DUSV005   / scalar
-   met_force_div_scalar%DUWT001     =    met_force%DUWT001   / scalar
-   met_force_div_scalar%DUWT002     =    met_force%DUWT002   / scalar
-   met_force_div_scalar%DUWT003     =    met_force%DUWT003   / scalar
-   met_force_div_scalar%DUWT004     =    met_force%DUWT004   / scalar
-   met_force_div_scalar%DUWT005     =    met_force%DUWT005   / scalar
-   met_force_div_scalar%DUSD001     =    met_force%DUSD001   / scalar
-   met_force_div_scalar%DUSD002     =    met_force%DUSD002   / scalar
-   met_force_div_scalar%DUSD003     =    met_force%DUSD003   / scalar
-   met_force_div_scalar%DUSD004     =    met_force%DUSD004   / scalar
-   met_force_div_scalar%DUSD005     =    met_force%DUSD005   / scalar
-   met_force_div_scalar%BCDP001     =    met_force%BCDP001   / scalar
-   met_force_div_scalar%BCDP002     =    met_force%BCDP002   / scalar
-   met_force_div_scalar%BCSV001     =    met_force%BCSV001   / scalar
-   met_force_div_scalar%BCSV002     =    met_force%BCSV002   / scalar
-   met_force_div_scalar%BCWT001     =    met_force%BCWT001   / scalar
-   met_force_div_scalar%BCWT002     =    met_force%BCWT002   / scalar
-   met_force_div_scalar%BCSD001     =    met_force%BCSD001   / scalar
-   met_force_div_scalar%BCSD002     =    met_force%BCSD002   / scalar
-   met_force_div_scalar%OCDP001     =    met_force%OCDP001   / scalar
-   met_force_div_scalar%OCDP002     =    met_force%OCDP002   / scalar
-   met_force_div_scalar%OCSV001     =    met_force%OCSV001   / scalar
-   met_force_div_scalar%OCSV002     =    met_force%OCSV002   / scalar
-   met_force_div_scalar%OCWT001     =    met_force%OCWT001   / scalar
-   met_force_div_scalar%OCWT002     =    met_force%OCWT002   / scalar
-   met_force_div_scalar%OCSD001     =    met_force%OCSD001   / scalar
-   met_force_div_scalar%OCSD002     =    met_force%OCSD002   / scalar
-   met_force_div_scalar%SUDP003     =    met_force%SUDP003   / scalar
-   met_force_div_scalar%SUSV003     =    met_force%SUSV003   / scalar
-   met_force_div_scalar%SUWT003     =    met_force%SUWT003   / scalar
-   met_force_div_scalar%SUSD003     =    met_force%SUSD003   / scalar
-   met_force_div_scalar%SSDP001     =    met_force%SSDP001   / scalar
-   met_force_div_scalar%SSDP002     =    met_force%SSDP002   / scalar
-   met_force_div_scalar%SSDP003     =    met_force%SSDP003   / scalar
-   met_force_div_scalar%SSDP004     =    met_force%SSDP004   / scalar
-   met_force_div_scalar%SSDP005     =    met_force%SSDP005   / scalar
-   met_force_div_scalar%SSSV001     =    met_force%SSSV001   / scalar
-   met_force_div_scalar%SSSV002     =    met_force%SSSV002   / scalar
-   met_force_div_scalar%SSSV003     =    met_force%SSSV003   / scalar
-   met_force_div_scalar%SSSV004     =    met_force%SSSV004   / scalar
-   met_force_div_scalar%SSSV005     =    met_force%SSSV005   / scalar
-   met_force_div_scalar%SSWT001     =    met_force%SSWT001   / scalar
-   met_force_div_scalar%SSWT002     =    met_force%SSWT002   / scalar
-   met_force_div_scalar%SSWT003     =    met_force%SSWT003   / scalar
-   met_force_div_scalar%SSWT004     =    met_force%SSWT004   / scalar
-   met_force_div_scalar%SSWT005     =    met_force%SSWT005   / scalar
-   met_force_div_scalar%SSSD001     =    met_force%SSSD001   / scalar
-   met_force_div_scalar%SSSD002     =    met_force%SSSD002   / scalar
-   met_force_div_scalar%SSSD003     =    met_force%SSSD003   / scalar
-   met_force_div_scalar%SSSD004     =    met_force%SSSD004   / scalar
-   met_force_div_scalar%SSSD005     =    met_force%SSSD005   / scalar
         
   end function met_force_div_scalar
 
@@ -420,71 +293,11 @@ contains
     add_met_force%Snowf    = met_force_1%Snowf    + met_force_2%Snowf    
     add_met_force%LWdown   = met_force_1%LWdown   + met_force_2%LWdown   
     add_met_force%SWdown   = met_force_1%SWdown   + met_force_2%SWdown   
+    add_met_force%SWnet    = met_force_1%SWnet    + met_force_2%SWnet   
     add_met_force%PARdrct  = met_force_1%PARdrct  + met_force_2%PARdrct   
     add_met_force%PARdffs  = met_force_1%PARdffs  + met_force_2%PARdffs   
     add_met_force%Wind     = met_force_1%Wind     + met_force_2%Wind    
     add_met_force%RefH     = met_force_1%RefH     + met_force_2%RefH    
-
-   add_met_force%DUDP001     = met_force_1%DUDP001     + met_force_2%DUDP001
-   add_met_force%DUDP002     = met_force_1%DUDP002     + met_force_2%DUDP002
-   add_met_force%DUDP003     = met_force_1%DUDP003     + met_force_2%DUDP003
-   add_met_force%DUDP004     = met_force_1%DUDP004     + met_force_2%DUDP004
-   add_met_force%DUDP005     = met_force_1%DUDP005     + met_force_2%DUDP005
-   add_met_force%DUSV001     = met_force_1%DUSV001     + met_force_2%DUSV001
-   add_met_force%DUSV002     = met_force_1%DUSV002     + met_force_2%DUSV002
-   add_met_force%DUSV003     = met_force_1%DUSV003     + met_force_2%DUSV003
-   add_met_force%DUSV004     = met_force_1%DUSV004     + met_force_2%DUSV004
-   add_met_force%DUSV005     = met_force_1%DUSV005     + met_force_2%DUSV005
-   add_met_force%DUWT001     = met_force_1%DUWT001     + met_force_2%DUWT001
-   add_met_force%DUWT002     = met_force_1%DUWT002     + met_force_2%DUWT002
-   add_met_force%DUWT003     = met_force_1%DUWT003     + met_force_2%DUWT003
-   add_met_force%DUWT004     = met_force_1%DUWT004     + met_force_2%DUWT004
-   add_met_force%DUWT005     = met_force_1%DUWT005     + met_force_2%DUWT005
-   add_met_force%DUSD001     = met_force_1%DUSD001     + met_force_2%DUSD001
-   add_met_force%DUSD002     = met_force_1%DUSD002     + met_force_2%DUSD002
-   add_met_force%DUSD003     = met_force_1%DUSD003     + met_force_2%DUSD003
-   add_met_force%DUSD004     = met_force_1%DUSD004     + met_force_2%DUSD004
-   add_met_force%DUSD005     = met_force_1%DUSD005     + met_force_2%DUSD005
-   add_met_force%BCDP001     = met_force_1%BCDP001     + met_force_2%BCDP001
-   add_met_force%BCDP002     = met_force_1%BCDP002     + met_force_2%BCDP002
-   add_met_force%BCSV001     = met_force_1%BCSV001     + met_force_2%BCSV001
-   add_met_force%BCSV002     = met_force_1%BCSV002     + met_force_2%BCSV002
-   add_met_force%BCWT001     = met_force_1%BCWT001     + met_force_2%BCWT001
-   add_met_force%BCWT002     = met_force_1%BCWT002     + met_force_2%BCWT002
-   add_met_force%BCSD001     = met_force_1%BCSD001     + met_force_2%BCSD001
-   add_met_force%BCSD002     = met_force_1%BCSD002     + met_force_2%BCSD002
-   add_met_force%OCDP001     = met_force_1%OCDP001     + met_force_2%OCDP001
-   add_met_force%OCDP002     = met_force_1%OCDP002     + met_force_2%OCDP002
-   add_met_force%OCSV001     = met_force_1%OCSV001     + met_force_2%OCSV001
-   add_met_force%OCSV002     = met_force_1%OCSV002     + met_force_2%OCSV002
-   add_met_force%OCWT001     = met_force_1%OCWT001     + met_force_2%OCWT001
-   add_met_force%OCWT002     = met_force_1%OCWT002     + met_force_2%OCWT002
-   add_met_force%OCSD001     = met_force_1%OCSD001     + met_force_2%OCSD001
-   add_met_force%OCSD002     = met_force_1%OCSD002     + met_force_2%OCSD002
-   add_met_force%SUDP003     = met_force_1%SUDP003     + met_force_2%SUDP003
-   add_met_force%SUSV003     = met_force_1%SUSV003     + met_force_2%SUSV003
-   add_met_force%SUWT003     = met_force_1%SUWT003     + met_force_2%SUWT003
-   add_met_force%SUSD003     = met_force_1%SUSD003     + met_force_2%SUSD003
-   add_met_force%SSDP001     = met_force_1%SSDP001     + met_force_2%SSDP001
-   add_met_force%SSDP002     = met_force_1%SSDP002     + met_force_2%SSDP002
-   add_met_force%SSDP003     = met_force_1%SSDP003     + met_force_2%SSDP003
-   add_met_force%SSDP004     = met_force_1%SSDP004     + met_force_2%SSDP004
-   add_met_force%SSDP005     = met_force_1%SSDP005     + met_force_2%SSDP005
-   add_met_force%SSSV001     = met_force_1%SSSV001     + met_force_2%SSSV001
-   add_met_force%SSSV002     = met_force_1%SSSV002     + met_force_2%SSSV002
-   add_met_force%SSSV003     = met_force_1%SSSV003     + met_force_2%SSSV003
-   add_met_force%SSSV004     = met_force_1%SSSV004     + met_force_2%SSSV004
-   add_met_force%SSSV005     = met_force_1%SSSV005     + met_force_2%SSSV005
-   add_met_force%SSWT001     = met_force_1%SSWT001     + met_force_2%SSWT001
-   add_met_force%SSWT002     = met_force_1%SSWT002     + met_force_2%SSWT002
-   add_met_force%SSWT003     = met_force_1%SSWT003     + met_force_2%SSWT003
-   add_met_force%SSWT004     = met_force_1%SSWT004     + met_force_2%SSWT004
-   add_met_force%SSWT005     = met_force_1%SSWT005     + met_force_2%SSWT005
-   add_met_force%SSSD001     = met_force_1%SSSD001     + met_force_2%SSSD001
-   add_met_force%SSSD002     = met_force_1%SSSD002     + met_force_2%SSSD002
-   add_met_force%SSSD003     = met_force_1%SSSD003     + met_force_2%SSSD003
-   add_met_force%SSSD004     = met_force_1%SSSD004     + met_force_2%SSSD004
-   add_met_force%SSSD005     = met_force_1%SSSD005     + met_force_2%SSSD005
     
   end function add_met_force
 
@@ -653,7 +466,7 @@ contains
 
   ! -----------------------------------------------------------
   
-end module LDAS_DriverTypes
+end module driver_types
 
 
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

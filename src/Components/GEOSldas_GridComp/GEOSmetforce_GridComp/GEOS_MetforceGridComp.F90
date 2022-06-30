@@ -9,6 +9,9 @@ module GEOS_MetforceGridCompMod
   use ESMF
   use MAPL_Mod
 
+  use point_driver_functions
+  ! added by twr. Will use to generate metforce data for points of interest
+ 
   use LDAS_ensdrv_Globals, only: nodata_generic, nodata_tol_generic
   use LDAS_ensdrv_Globals, only: logunit,logit   !,root_logit
   use LDAS_DateTimeMod, only: date_time_type, date_time_print
@@ -21,6 +24,9 @@ module GEOS_MetforceGridCompMod
   use LDAS_DriverTypes, only: met_force_type, assignment(=)
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_InterpMod, only: LDAS_TInterpForcing=>metforcing_tinterp
+  use LDAS_Point_ForceMod 
+  use global_forcing_mod
+  !use LDAS_Point_ForceMod
   !use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
 
   use StieglitzSnow, only : NUM_DUDP, NUM_DUSV, NUM_DUWT, NUM_DUSD, &
@@ -571,9 +577,33 @@ contains
     character(len=ESMF_MAXSTR) :: gridname
     type(ESMF_Grid) :: agrid
     integer :: dims(ESMF_MAXDIM)
-    ! Begin...
+    integer :: point_forcing_write
+    integer :: point_forcing_read
+    character*4 :: YYYY
+    character*2 :: MM
+    character*2 :: DD
+    character*2 :: HH
+    character*2 :: SS
+    integer :: time_count
 
-    ! Get component's name and setup traceback handle
+    ! For testing outputs from MAPL_LocStreamGet
+    integer ::  nt_global
+    integer, pointer :: tiletype(:),tilekind(:), gridim(:), gridjm(:), local_id(:), local_i(:), local_j(:)
+    real, pointer    ::  tilelons(:), tilelats(:), tilearea(:)
+    character(len=20), pointer    ::  gridnames(:)
+    type(ESMF_Grid) ::  tilegrid, attachedgrid
+
+
+
+    ! Begin...
+    
+    write(*,*) 'started initialize'
+
+    ! Define whether this is point forcing case or normal
+    point_forcing_write = 0
+    point_forcing_read =  1
+
+    !Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
     VERIFY_(status)
     Iam = trim(comp_name) // "::Initialize"
@@ -604,11 +634,45 @@ contains
     call MAPL_Get(MAPL, LocStream=locstream)
     VERIFY_(status)
     call MAPL_LocStreamGet(                                                     &
-         locstream,                                                             &
+         LocStream=locstream,                                                   &
          NT_LOCAL=land_nt_local,                                                &
-         rc=status                                                              &
+         nt_global=nt_global,TILETYPE=tiletype,TILELONS=tilelons,       &
+         TILELATS=tilelats,TILEAREA=tilearea,TILEGRID=tilegrid,GRIDIM=gridim,   &
+         GRIDJM=gridjm,GRIDNAMES=gridnames,ATTACHEDGRID=attachedgrid,           &
+         LOCAL_ID=local_id,local_i=local_i,local_j=local_j,RC=status                            &
          )
     VERIFY_(status)
+    
+    !write (*,*) 'land_nt_local:' ! number of tiles running on this cpu
+    !write (*,*) land_nt_local
+    !write (*,*) 'nt_global:' ! number of tiles total, in whole simulation
+    !write (*,*) nt_global
+    !write (*,*) 'tiletype:' ! ??? (always matrix of values all == 100)
+    !write (*,*) tiletype
+    !write (*,*) 'tilelons:' ! lons of the tiles
+    !write (*,*) tilelons
+    !write (*,*) 'tilelat:' ! lats of the tiles
+    !write (*,*) tilelats
+    !write (*,*) 'griddim:' ! ignore this
+    !write (*,*) gridim
+    !write (*,*) 'tilegrid:' ! ???? always returns [27544240, 82949521]
+    !write (*,*) tilegrid
+    !write (*,*) 'tilearea:' ! area of each tile
+    !write (*,*) tilearea
+    !write (*,*) 'gridjm:' ! number of tiles in j component, overall (lons)
+    !write (*,*) gridjm
+    !write (*,*) 'gridim:' ! number of tiles in i component, overall (lats)
+    !write (*,*) gridim
+    !write (*,*) 'gridnames:' ! name of the grid being used (ie SMAP-EASEv2-M36)
+    !write (*,*) gridnames
+    !write (*,*) 'attachedgrid:' ! ??? always returns [27609584, 829499521]
+    !write (*,*) attachedgrid
+    !write (*,*) 'local_id:' ! overall index of each tile (integer)
+    !write (*,*) local_id
+    !write (*,*) 'local_i:' ! i index of each tile
+    !write (*,*) local_i
+    !write (*,*) 'local_j:' ! j index of each tile
+    !write (*,*) local_j
 
     call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", &
          DEFAULT=0, RC=STATUS)
@@ -705,28 +769,71 @@ contains
     ! -convert-mf%TimePrv-to-LDAS-datetime-
     call esmf2ldas(mf%TimePrv, force_time_prv, rc=status)
     VERIFY_(status)
+   
+    ! FOLLOWING IF STATEMENT MAKES IT SO THAT A NEW FILE IS ONLY CREATED AT THE BEGINNING OF EACH
+    ! YEAR WHEN WRITING OUT POINT FORCINGS
+    if (point_forcing_write == 1 .and. force_time_prv%month == 01 .and. force_time_prv%day == 01 &
+        .and. force_time_prv%hour == 00 .and. force_time_prv%min == 00                             &
+        .and. force_time_prv%sec == 00)then
+
+        write (YYYY,'(i4.4)') force_time_prv%year
+        !write (MM  ,'(i2.2)') force_time_prv%month
+        !write (DD  ,'(i2.2)') force_time_prv%day
+        !write (HH  ,'(i2.2)') force_time_prv%hour
+        !write (SS  ,'(i2.2)') force_time_prv%sec
+        
+        ! -now-get-the-initial-forcings-
+        call LDAS_GetForcing(                                                       &
+             force_time_prv,                                                        &
+             ForceDtStep,                                                           &
+             internal%mf%Path,                                                      &
+             internal%mf%Tag,                                                       &
+             land_nt_local,                                                         &
+             tile_coord,                                                            &
+             internal%mf%hinterp,                                                   &
+             AEROSOL_DEPOSITION,                                                    &
+             MERRA_file_specs,                                                      &
+             backward_looking_fluxes,                                               &
+             internal%mf%DataNxt,                                                   &
+             .true.                                                                 &      ! init
+             )
+        VERIFY_(status)
+        
+        if (backward_looking_fluxes)                                                &
+             call LDAS_move_new_force_to_old(                                       &
+             MERRA_file_specs, AEROSOL_DEPOSITION,                                  &
+             internal%mf%DataNxt, internal%mf%DataPrv )
+        
+        ! added by twr. Writes out monthly forcing data files for selected locations
+        ! write (6,*) 'date-time form:'
+        ! write (6,*) force_time_prv
     
-    ! -now-get-the-initial-forcings-
-    call LDAS_GetForcing(                                                       &
-         force_time_prv,                                                        &
-         ForceDtStep,                                                           &
-         internal%mf%Path,                                                      &
-         internal%mf%Tag,                                                       &
-         land_nt_local,                                                         &
-         tile_coord,                                                            &
-         internal%mf%hinterp,                                                   &
-         AEROSOL_DEPOSITION,                                                    &
-         MERRA_file_specs,                                                      &
-         backward_looking_fluxes,                                               &
-         internal%mf%DataNxt,                                                   &
-         .true.                                                                 &      ! init
-         )
-    VERIFY_(status)
+        call create_indata_files(nt_global, YYYY//'_point_forcing_data.nc4')
+    elseif (point_forcing_write == 0)then ! if not writing out point forcing files
+        
+        call LDAS_GetForcing(                                                       &
+             force_time_prv,                                                        &
+             ForceDtStep,                                                           &
+             internal%mf%Path,                                                      &
+             internal%mf%Tag,                                                       &
+             land_nt_local,                                                         &
+             tile_coord,                                                            &
+             internal%mf%hinterp,                                                   &
+             AEROSOL_DEPOSITION,                                                    &
+             MERRA_file_specs,                                                      &
+             backward_looking_fluxes,                                               &
+             internal%mf%DataNxt,                                                   &
+             .true.                                                                 &      ! init
+             )
+        VERIFY_(status)
+        
+        if (backward_looking_fluxes)                                                &
+             call LDAS_move_new_force_to_old(                                       &
+             MERRA_file_specs, AEROSOL_DEPOSITION,                                  &
+             internal%mf%DataNxt, internal%mf%DataPrv )
     
-    if (backward_looking_fluxes)                                                &
-         call LDAS_move_new_force_to_old(                                       &
-         MERRA_file_specs, AEROSOL_DEPOSITION,                                  &
-         internal%mf%DataNxt, internal%mf%DataPrv )
+    endif     
+    write(*,*) 'finished initialize'
 
     ! Turn timer off
     call MAPL_TimerOff(MAPL, "Initialize")
@@ -749,7 +856,7 @@ contains
   ! !INTERFACE:
 
   subroutine Run(gc, import, export, clock, rc)
-
+    
     ! !ARGUMENTS:
 
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
@@ -780,7 +887,7 @@ contains
     type(MAPL_SunOrbit) :: orbit
 
     ! LDAS variables
-    type(date_time_type) :: force_time_prv, force_time_nxt, model_time_nxt
+    type(date_time_type) :: force_time_prv, force_time_nxt, model_time_nxt, model_time_cur
 
     ! Private internal state variables
     type(T_METFORCE_STATE), pointer :: internal=>null()
@@ -794,6 +901,12 @@ contains
     logical :: IAmRoot
     integer :: fdtstep
     integer :: YEAR, DAY_OF_YEAR, SEC_OF_DAY,n
+    integer :: point_forcing_write ! decision whether or not to run point forcings
+    integer :: point_forcing_read
+    character (len=4) :: YYYY
+    character (len=2) :: MM,DD,hh,min,ss
+    character (len=14) :: model_time_str
+    double precision :: model_time_double
     real, pointer :: LandTileLats(:)
     real, pointer :: LandTileLons(:)
     real, allocatable :: zth(:), slr(:), zth_tmp(:)
@@ -801,6 +914,16 @@ contains
     type(met_force_type), pointer, contiguous :: DataTmp(:)=>null()
     real, allocatable :: tmpreal(:)
     type(met_force_type) :: mf_nodata
+    integer, pointer :: local_id(:)
+    double precision, allocatable, dimension(:) :: global_force_time
+    integer, dimension(1) :: time_ind
+    character (len=100) :: met_tag
+    real, allocatable, dimension(:,:) :: var_curr
+    real, allocatable, dimension(:) :: var_curr_cpu, Tair_new
+    integer, dimension(2) :: curr_shape
+    character (len=100) :: filename
+    integer :: ierr
+    
 
     logical :: MERRA_file_specs
     logical :: backward_looking_fluxes 
@@ -840,8 +963,15 @@ contains
     real,pointer :: SSSV(:,:)=>null()
     real,pointer :: SSWT(:,:)=>null()
     real,pointer :: SSSD(:,:)=>null()
+    
     ! Begin...
+    write(*,*) 'started run'
 
+    ! Set whether we are in point forcing mode
+    point_forcing_write = 0
+    point_forcing_read =  1
+
+    
     ! Get my name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
     VERIFY_(status)
@@ -866,6 +996,7 @@ contains
     call ESMF_ClockGet(clock, currTime=ModelTimeCur, rc=status)
     VERIFY_(status)
 
+
     ! Get component's internal private state
     call ESMF_UserCompGetInternalState(gc, 'METFORCE_state', wrap, status)
     VERIFY_(status)
@@ -881,6 +1012,7 @@ contains
          locstream,                                                             &
          NT_LOCAL=land_nt_local,                                                &
          TILELATS=LandTileLats,                                                 &
+         LOCAL_ID=local_id,                                                     &
          TILELONS=LandTileLons,                                                 &
          rc=status                                                              &
          )
@@ -916,293 +1048,616 @@ contains
     ! -time-stamp-
     ModelTimeNxt = ModelTimeCur + ModelTimeStep
 
-    ! Get forcing data if MetForcing alarm is ringing
-    if (ESMF_AlarmIsRinging(MetForcingAlarm)) then
+    ! Need the time step in year as an integer in order to write out files
+    ! curr_time_sec = ModelTimeCur%
+    
+    ! Change based off if this is in point driver mode or not
 
-       ! -update-forcing-times-
-       tmpTime = internal%mf%TimeNxt
-       internal%mf%TimePrv = tmpTime
-       internal%mf%TimeNxt = tmpTime + internal%mf%ntrvl
+    if (point_forcing_read == 0) then
+        ! Get forcing data if MetForcing alarm is ringing
+        if (ESMF_AlarmIsRinging(MetForcingAlarm)) then
+           ! -update-forcing-times-
+           tmpTime = internal%mf%TimeNxt
+           internal%mf%TimePrv = tmpTime
+           internal%mf%TimeNxt = tmpTime + internal%mf%ntrvl
 
-       ! -update-forcing-data-
-       ! -swap-DataPrv-and-DataNxt-
-       DataTmp => internal%mf%DataPrv
-       internal%mf%DataPrv => internal%mf%DataNxt
-       internal%mf%DataNxt => DataTmp
-       nullify(DataTmp)
+           ! -update-forcing-data-
+           ! -swap-DataPrv-and-DataNxt-
+           DataTmp => internal%mf%DataPrv
+           internal%mf%DataPrv => internal%mf%DataNxt
+           internal%mf%DataNxt => DataTmp
+           nullify(DataTmp)
 
-       ! -convert-mf%TimeNxt-to-LDAS-datetime-
-       call esmf2ldas(internal%mf%TimeNxt, force_time_nxt, rc=status)
-       VERIFY_(status)
+           ! -convert-mf%TimeNxt-to-LDAS-datetime-
+           call esmf2ldas(internal%mf%TimeNxt, force_time_nxt, rc=status)
+           VERIFY_(status)
+           !write (*,*) force_time_nxt%year
+           !write (*,*) force_time_nxt%month
+           !write (*,*) force_time_nxt%day
+           !write (*,*) force_time_nxt%hour
+           !write (*,*) force_time_nxt%min
+           !write (*,*) force_time_nxt%sec
 
-       call LDAS_GetForcing(                                                    &
-            force_time_nxt,                                                     &
-            fdtstep,                                                            &
-            internal%mf%Path,                                                   &
-            internal%mf%Tag,                                                    &
-            land_nt_local,                                                      &
-            tile_coord,                                                         &
-            internal%mf%hinterp,                                                &
-            AEROSOL_DEPOSITION,                                                 &
-            MERRA_file_specs,                                                   &
-            backward_looking_fluxes,                                            &
-            internal%mf%DataNxt,                                                &
-            .false.                                                             &      ! init
-            )
-       VERIFY_(status)
+
+
+
+
+
+
+
+           call LDAS_GetForcing(                                                    &
+                force_time_nxt,                                                     &
+                fdtstep,                                                            &
+                internal%mf%Path,                                                   &
+                internal%mf%Tag,                                                    &
+                land_nt_local,                                                      &
+                tile_coord,                                                         &
+                internal%mf%hinterp,                                                &
+                AEROSOL_DEPOSITION,                                                 &
+                MERRA_file_specs,                                                   &
+                backward_looking_fluxes,                                            &
+                internal%mf%DataNxt,                                                &
+                .false.                                                             &      ! init
+                )
+           VERIFY_(status)
+           
+           if (backward_looking_fluxes)                                             &
+                call LDAS_move_new_force_to_old(                                    &
+                MERRA_file_specs, AEROSOL_DEPOSITION,                               &
+                internal%mf%DataNxt, internal%mf%DataPrv )
+
+           ! -compute-average-zenith-angle-over-daylight-part-of-forcing-interval-
+           call MAPL_SunGetInsolation(                                              &
+                LandTileLons,                                                       &
+                LandTileLats,                                                       &
+                orbit,                                                              &
+                zth_tmp,                                                                &
+                slr,                                                                &
+                currTime=internal%mf%TimePrv,                                       &
+                INTV=internal%mf%ntrvl,                                             &
+                ZTHB=internal%mf%zenav,                                             &
+                STEPSIZE=150.0,                                                     &
+                rc=status                                                           &
+                )
+           VERIFY_(STATUS)  
+
+          ! call ESMF_TimeGet(internal%mf%TimePrv, YY=YEAR, S=SEC_OF_DAY, &
+          !          dayOfYear=DAY_OF_YEAR, RC=STATUS)
+          ! VERIFY_(STATUS)
+
+          ! call zenith(DAY_OF_YEAR,SEC_OF_DAY,fdtstep,ModelTimeStep,land_nt_local,tile_coord%com_lon,                                                    &
+          !         tile_coord%com_lat,internal%mf%zenav)
+
+
+           ! -checks-on-computed-zenith-angles-
+           if (any(internal%mf%zenav<0)) then
+              RETURN_(ESMF_FAILURE)
+           end if
+
+        end if
+
+        !if(root_logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
+        !if(logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
+
+        ! Compute zenith angle at the next time step
+        call MAPL_SunGetInsolation(                                                 &
+             LandTileLons,                                                          &
+             LandTileLats,                                                          &
+             orbit,                                                                 &
+             zth_tmp,                                                               &
+             slr,                                                                   &
+             INTV=ModelTimeStep,                                                    &
+             ZTHB=zth,                                                              &
+             currTime=ModelTimeCur,                                                 &
+             STEPSIZE=150.0,                                                        &
+             rc=status                                                              &
+             )
+        VERIFY_(status)
+
+        !call ESMF_TimeGet(ModelTimeNxt, YY=YEAR, S=SEC_OF_DAY, &
+        !          dayOfYear=DAY_OF_YEAR, RC=STATUS)
+        !VERIFY_(STATUS)
+        !do n=1, land_nt_local
+        !  call solar(tile_coord(n)%com_lon,tile_coord(n)%com_lat, DAY_OF_YEAR,SEC_OF_DAY,zth(n),slr(n))
+        !enddo
+
+        if (any(zth<0.)) then
+           RETURN_(ESMF_FAILURE)
+        end if
+
+        !if(root_logit) write(logunit,*)  trim(Iam)//'::zth max/min: ', maxval(zth), minval(zth)
+
+        ! -convert-mf%TimePrv-to-LDAS-datetime-
+        call esmf2ldas(internal%mf%TimePrv, force_time_prv, rc=status)
+        VERIFY_(status)
+
+        ! -convert-ModelTimeNxt-to-LDAS-datetime-
+        call esmf2ldas(ModelTimeNxt, model_time_nxt, rc=status)
+        !write (*,*) model_time_nxt%year
+        !write (*,*) model_time_nxt%month
+        !write (*,*) model_time_nxt%day
+        !write (*,*) model_time_nxt%hour
+        !write (*,*) model_time_nxt%min
+        !write (*,*) model_time_nxt%sec
+        
+        ! see if model_time_cur fixes our time problems
+        call esmf2ldas(ModelTimeCur, model_time_cur, rc=status)
+        write (*,*) model_time_cur%year
+        write (*,*) model_time_cur%month
+        write (*,*) model_time_cur%day
+        write (*,*) model_time_cur%hour
+        write (*,*) model_time_cur%min
+        write (*,*) model_time_cur%sec
+
+        !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_prv: ', date_time_print(force_time_prv)
+
+        !if(root_logit) write(logunit,*) trim(Iam)//'::model_time_nxt: ', date_time_print(model_time_nxt)
+
+        ! Allocate memory for interpolated MetForcing data
+        mf_nodata = nodata_generic
+        allocate(mfDataNtp(land_nt_local), source=mf_nodata, stat=status)
+        VERIFY_(status)
+
+        ! Interpolate MetForcing data to the end of model integration time step
+        call LDAS_TInterpForcing(                                                   &
+             tile_coord%com_lon,                                                    &
+             tile_coord%com_lat,                                                    &
+             zth,                                                                   &
+             internal%mf%zenav,                                                     &
+             force_time_prv,                                                        &
+             model_time_nxt,                                                        &
+             fdtstep,                                                               &
+             internal%mf%DataPrv,                                                   &
+             internal%mf%DataNxt,                                                   &
+             mfDataNtp,                                                             &
+             AEROSOL_DEPOSITION,                                                    &
+             rc=status                                                              &
+             )
+        VERIFY_(status)
+        !if(root_logit) write(logunit,*) trim(Iam)//'::mf_ntp%tair max/min: ', maxval(mfDataNtp%Tair), minval(mfDataNtp%Tair)
+
+        ! Pointers to exports (allocate memory)
+        call MAPL_GetPointer(export, Tair, 'Tair', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, Qair, 'Qair', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, Psurf, 'Psurf', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, Rainf_C, 'Rainf_C', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, Rainf, 'Rainf', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, Snowf, 'Snowf', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, RainfSnowf, 'RainfSnowf', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, LWdown, 'LWdown', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, SWdown, 'SWdown', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, PARdrct, 'PARdrct', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, PARdffs, 'PARdffs', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, Wind, 'Wind', alloc=.true., rc=status)
+        VERIFY_(status)
+        call MAPL_GetPointer(export, RefH, 'RefH', alloc=.true., rc=status)
+        VERIFY_(status)
+
+        if (AEROSOL_DEPOSITION /=0 ) then
+           call MAPL_GetPointer(export, DUDP, 'DUDP' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, DUSV, 'DUSV' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, DUWT, 'DUWT' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, DUSD, 'DUSD' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, BCDP, 'BCDP' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, BCSV, 'BCSV' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, BCWT, 'BCWT' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, BCSD, 'BCSD' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, OCDP, 'OCDP' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, OCSV, 'OCSV' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, OCWT, 'OCWT' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, OCSD, 'OCSD' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, SUDP, 'SUDP' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, SUSV, 'SUSV' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, SUWT, 'SUWT' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, SUSD, 'SUSD' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, SSDP, 'SSDP' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, SSSV, 'SSSV' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, SSWT, 'SSWT' , alloc=.true., rc=status)
+           VERIFY_(status)
+           call MAPL_GetPointer(export, SSSD, 'SSSD' , alloc=.true., rc=status)
+           VERIFY_(status)
+        endif ! AEROSOL_DEPOSITION /=0
+
+
+        ! Set exports
+        Tair = mfDataNtp%Tair
+        Qair = mfDataNtp%Qair
+        Psurf = mfDataNtp%Psurf
+        Rainf_C = mfDataNtp%Rainf_C
+        Rainf = mfDataNtp%Rainf
+        Snowf = mfDataNtp%Snowf
+        ! *daylen convert [kg/m2/s] into [kg/m2/day]
+        !RainfSnowf= (Rainf+Snowf)*daylen 
+        RainfSnowf= Rainf+Snowf 
+        LWdown = mfDataNtp%LWdown
+        SWdown = mfDataNtp%SWdown
+        PARdrct = mfDataNtp%PARdrct
+        PARdffs = mfDataNtp%PARdffs
+        Wind = mfDataNtp%Wind
+        RefH = mfDataNtp%RefH
+        
+        write(*,*) Tair(1)
+        ! twr INSERTS WRITING OUT MONTHLY FORCING FILES FOR POINTS OF INTEREST IF REQUESTED
+        
+        ! if point_forcings == 1, write out point forcing data. If point_forcings == 0, do not
+        !write (*,*) 'right before writing' 
+        if(point_forcing_write == 1) then
+          
+          call esmf2ldas(internal%mf%TimeNxt, force_time_nxt, rc=status)
+          write (YYYY,'(i4.4)') model_time_cur%year
+          !write (MM  ,'(i2.2)') model_time_nxt%month
+          !write (6,*) clock
+          !call write_time_varying (land_nt_local, 'Y'//YYYY//'/M'//MM//'point_forcing_data.nc4', &
+          !                        force_time_prv,mfDataNtp,internal%mf%zenav)
+        
+          !write (*,*) 'force_time_prv:'
+          !write (*,*) force_time_prv
+          !write (*,*) 'land_nt_local:'
+          !write (*,*) land_nt_local
+          filename = YYYY//'_point_forcing_data.nc4'
+          filename = trim(filename)
+          write(*,*) filename
+          call write_time_varying (local_id, filename, &
+                                  model_time_cur,mfDataNtp,internal%mf%zenav)
+        endif
+        !write (*,*) 'right after writing' 
+        if(AEROSOL_DEPOSITION /=0)then 
+          
+          DUDP(:, 1) = mfDataNtp%DUDP001
+          DUDP(:, 2) = mfDataNtp%DUDP002
+          DUDP(:, 3) = mfDataNtp%DUDP003
+          DUDP(:, 4) = mfDataNtp%DUDP004
+          DUDP(:, 5) = mfDataNtp%DUDP005
+          DUSV(:, 1) = mfDataNtp%DUSV001
+          DUSV(:, 2) = mfDataNtp%DUSV002
+          DUSV(:, 3) = mfDataNtp%DUSV003
+          DUSV(:, 4) = mfDataNtp%DUSV004
+          DUSV(:, 5) = mfDataNtp%DUSV005
+          DUWT(:, 1) = mfDataNtp%DUWT001
+          DUWT(:, 2) = mfDataNtp%DUWT002
+          DUWT(:, 3) = mfDataNtp%DUWT003
+          DUWT(:, 4) = mfDataNtp%DUWT004
+          DUWT(:, 5) = mfDataNtp%DUWT005
+          DUSD(:, 1) = mfDataNtp%DUSD001
+          DUSD(:, 2) = mfDataNtp%DUSD002
+          DUSD(:, 3) = mfDataNtp%DUSD003
+          DUSD(:, 4) = mfDataNtp%DUSD004
+          DUSD(:, 5) = mfDataNtp%DUSD005
+          BCDP(:, 1) = mfDataNtp%BCDP001
+          BCDP(:, 2) = mfDataNtp%BCDP002
+          BCSV(:, 1) = mfDataNtp%BCSV001
+          BCSV(:, 2) = mfDataNtp%BCSV002
+          BCWT(:, 1) = mfDataNtp%BCWT001
+          BCWT(:, 2) = mfDataNtp%BCWT002
+          BCSD(:, 1) = mfDataNtp%BCSD001
+          BCSD(:, 2) = mfDataNtp%BCSD002
+          OCDP(:, 1) = mfDataNtp%OCDP001
+          OCDP(:, 2) = mfDataNtp%OCDP002
+          OCSV(:, 1) = mfDataNtp%OCSV001
+          OCSV(:, 2) = mfDataNtp%OCSV002
+          OCWT(:, 1) = mfDataNtp%OCWT001
+          OCWT(:, 2) = mfDataNtp%OCWT002
+          OCSD(:, 1) = mfDataNtp%OCSD001
+          OCSD(:, 2) = mfDataNtp%OCSD002
+          SUDP(:, 1) = mfDataNtp%SUDP003
+          SUSV(:, 1) = mfDataNtp%SUSV003
+          SUWT(:, 1) = mfDataNtp%SUWT003
+          SUSD(:, 1) = mfDataNtp%SUSD003
+          SSDP(:, 1) = mfDataNtp%SSDP001
+          SSDP(:, 2) = mfDataNtp%SSDP002
+          SSDP(:, 3) = mfDataNtp%SSDP003
+          SSDP(:, 4) = mfDataNtp%SSDP004
+          SSDP(:, 5) = mfDataNtp%SSDP005
+          SSSV(:, 1) = mfDataNtp%SSSV001
+          SSSV(:, 2) = mfDataNtp%SSSV002
+          SSSV(:, 3) = mfDataNtp%SSSV003
+          SSSV(:, 4) = mfDataNtp%SSSV004
+          SSSV(:, 5) = mfDataNtp%SSSV005
+          SSWT(:, 1) = mfDataNtp%SSWT001
+          SSWT(:, 2) = mfDataNtp%SSWT002
+          SSWT(:, 3) = mfDataNtp%SSWT003
+          SSWT(:, 4) = mfDataNtp%SSWT004
+          SSWT(:, 5) = mfDataNtp%SSWT005
+          SSSD(:, 1) = mfDataNtp%SSSD001
+          SSSD(:, 2) = mfDataNtp%SSSD002
+          SSSD(:, 3) = mfDataNtp%SSSD003
+          SSSD(:, 4) = mfDataNtp%SSSD004
+          SSSD(:, 5) = mfDataNtp%SSSD005
+        endif ! AEROSOL_DEPOSITION /=0
+        write (*,*) 'right before read option'
+   elseif (point_forcing_read == 1) then ! If we want to read only point forcing data
+       ! point_forcing_read = 1
+       ! Get forcing data if MetForcing alarm is ringing
+       write(*,*) 'inside read option'
+       call esmf2ldas(ModelTimeCur, model_time_cur, rc=status)
+       write(*,*) model_time_cur%month
+       write(*,*) model_time_cur%day
+       write(*,*) model_time_cur%hour
+       write(*,*) model_time_cur%min
+       write(*,*) model_time_cur%sec
+
+
+       if (model_time_cur%month == 01 .and. model_time_cur%day == 01 &
+           .and. model_time_cur%hour == 00 .and. model_time_cur%min == 00                             &
+           .and. model_time_cur%sec == 00)then
+           
+           ! WE NEVER GET HERE!!!
+           ! I think that this is because we are using model_time_nxt, so technically the function never
+           !    reads the time as the beginning of the year, because it starts at n+1
+           ! So the next step is to change this to model_time_cur (ModelTimeCur)
+           ! But make sure to do this in writing out files in "initialize as well
+           !    May need to re-run "write" after doing this
+           !    Check with the .nc4 file currently written out in order to see
+           ! CONFIRMED, FIRST ELEMENT OF WRITTEN OUT FILES IS NOT 000000
+
+           write(*,*) 'inside first step of the year'
+           !this if statement and call to this function says:
+           !  if it is the beginning of the year, read in this year's forcing data to a global varaible
+           !  the global variable is met_force_new AND times
+           !  this contains all of the year's forcing data for the tiles that are being calculated on this node
+           !  this can then be used for the next year, so we won't have to open the netcdf and read
+            !
+           if (MAPL_am_I_root()) then !only need one CPU to read in the forcing data
+                ! MET TAG NEEDS TO BE UPDATED TO WORK WITH THE HISTORY.RC FILE
+                ! However, I am not sure how to do this so I will leave this for later discussion
+                write(*,*) 'root has been discovered'
+                met_tag = '/discover/nobackup/trobinet/point_forcing_metforce/1980_point_forcing_data.nc4'
+                write(*,*) 'before calling get_forcing_point'
+                call get_forcing_point(met_tag,model_time_cur,local_id)
+                write(*,*) 'after calling get_forcing_point'
+                !
+                !
+                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                !!                                                                                !
+                !!                                                                                !
+                !! make met_force_new a global variable that will stick around for the next year!!!
+                !!                                                                                !
+                !!                                                                                !
+                !!                                                                                !
+                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ !
+ !
+           else
+                call sleep(2)
+           endif
+       endif
        
-       if (backward_looking_fluxes)                                             &
-            call LDAS_move_new_force_to_old(                                    &
-            MERRA_file_specs, AEROSOL_DEPOSITION,                               &
-            internal%mf%DataNxt, internal%mf%DataPrv )
-
-       ! -compute-average-zenith-angle-over-daylight-part-of-forcing-interval-
-       call MAPL_SunGetInsolation(                                              &
-            LandTileLons,                                                       &
-            LandTileLats,                                                       &
-            orbit,                                                              &
-            zth_tmp,                                                                &
-            slr,                                                                &
-            currTime=internal%mf%TimePrv,                                       &
-            INTV=internal%mf%ntrvl,                                             &
-            ZTHB=internal%mf%zenav,                                             &
-            STEPSIZE=150.0,                                                     &
-            rc=status                                                           &
-            )
-       VERIFY_(STATUS) 
-
-      ! call ESMF_TimeGet(internal%mf%TimePrv, YY=YEAR, S=SEC_OF_DAY, &
-      !          dayOfYear=DAY_OF_YEAR, RC=STATUS)
-      ! VERIFY_(STATUS) 
-
-      ! call zenith(DAY_OF_YEAR,SEC_OF_DAY,fdtstep,ModelTimeStep,land_nt_local,tile_coord%com_lon,                                                    &
-      !         tile_coord%com_lat,internal%mf%zenav)
-
-
-       ! -checks-on-computed-zenith-angles-
-       if (any(internal%mf%zenav<0)) then
-          RETURN_(ESMF_FAILURE)
-       end if
-
-    end if
-
-    !if(root_logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
-    !if(logit) write(logunit,*) trim(Iam)//'::zenav max/min: ', maxval(internal%mf%zenav), minval(internal%mf%zenav)
-
-    ! Compute zenith angle at the next time step
-    call MAPL_SunGetInsolation(                                                 &
-         LandTileLons,                                                          &
-         LandTileLats,                                                          &
-         orbit,                                                                 &
-         zth_tmp,                                                               &
-         slr,                                                                   &
-         INTV=ModelTimeStep,                                                    &
-         ZTHB=zth,                                                              &
-         currTime=ModelTimeCur,                                                 &
-         STEPSIZE=150.0,                                                        &
-         rc=status                                                              &
-         )
-    VERIFY_(status)
-
-    !call ESMF_TimeGet(ModelTimeNxt, YY=YEAR, S=SEC_OF_DAY, &
-    !          dayOfYear=DAY_OF_YEAR, RC=STATUS)
-    !VERIFY_(STATUS)
-    !do n=1, land_nt_local
-    !  call solar(tile_coord(n)%com_lon,tile_coord(n)%com_lat, DAY_OF_YEAR,SEC_OF_DAY,zth(n),slr(n))
-    !enddo
-
-    if (any(zth<0.)) then
-       RETURN_(ESMF_FAILURE)
-    end if
-
-    !if(root_logit) write(logunit,*)  trim(Iam)//'::zth max/min: ', maxval(zth), minval(zth)
-
-    ! -convert-mf%TimePrv-to-LDAS-datetime-
-    call esmf2ldas(internal%mf%TimePrv, force_time_prv, rc=status)
-    VERIFY_(status)
-
-    ! -convert-ModelTimeNxt-to-LDAS-datetime-
-    call esmf2ldas(ModelTimeNxt, model_time_nxt, rc=status)
-
-    !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_prv: ', date_time_print(force_time_prv)
-
-    !if(root_logit) write(logunit,*) trim(Iam)//'::model_time_nxt: ', date_time_print(model_time_nxt)
-
-    ! Allocate memory for interpolated MetForcing data
-    mf_nodata = nodata_generic
-    allocate(mfDataNtp(land_nt_local), source=mf_nodata, stat=status)
-    VERIFY_(status)
-
-    ! Interpolate MetForcing data to the end of model integration time step
-    call LDAS_TInterpForcing(                                                   &
-         tile_coord%com_lon,                                                    &
-         tile_coord%com_lat,                                                    &
-         zth,                                                                   &
-         internal%mf%zenav,                                                     &
-         force_time_prv,                                                        &
-         model_time_nxt,                                                        &
-         fdtstep,                                                               &
-         internal%mf%DataPrv,                                                   &
-         internal%mf%DataNxt,                                                   &
-         mfDataNtp,                                                             &
-         AEROSOL_DEPOSITION,                                                    &
-         rc=status                                                              &
-         )
-    VERIFY_(status)
-    !if(root_logit) write(logunit,*) trim(Iam)//'::mf_ntp%tair max/min: ', maxval(mfDataNtp%Tair), minval(mfDataNtp%Tair)
-
-    ! Pointers to exports (allocate memory)
-    call MAPL_GetPointer(export, Tair, 'Tair', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, Qair, 'Qair', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, Psurf, 'Psurf', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, Rainf_C, 'Rainf_C', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, Rainf, 'Rainf', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, Snowf, 'Snowf', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, RainfSnowf, 'RainfSnowf', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, LWdown, 'LWdown', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, SWdown, 'SWdown', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, PARdrct, 'PARdrct', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, PARdffs, 'PARdffs', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, Wind, 'Wind', alloc=.true., rc=status)
-    VERIFY_(status)
-    call MAPL_GetPointer(export, RefH, 'RefH', alloc=.true., rc=status)
-    VERIFY_(status)
-
-    if (AEROSOL_DEPOSITION /=0 ) then
-       call MAPL_GetPointer(export, DUDP, 'DUDP' , alloc=.true., rc=status)
+       
+       !Pointers to exports (allocate memory)
+       call MAPL_GetPointer(export, Tair, 'Tair', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, DUSV, 'DUSV' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, Qair, 'Qair', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, DUWT, 'DUWT' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, Psurf, 'Psurf', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, DUSD, 'DUSD' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, Rainf_C, 'Rainf_C', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, BCDP, 'BCDP' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, Rainf, 'Rainf', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, BCSV, 'BCSV' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, Snowf, 'Snowf', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, BCWT, 'BCWT' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, RainfSnowf, 'RainfSnowf', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, BCSD, 'BCSD' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, LWdown, 'LWdown', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, OCDP, 'OCDP' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, SWdown, 'SWdown', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, OCSV, 'OCSV' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, PARdrct, 'PARdrct', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, OCWT, 'OCWT' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, PARdffs, 'PARdffs', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, OCSD, 'OCSD' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, Wind, 'Wind', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, SUDP, 'SUDP' , alloc=.true., rc=status)
+       call MAPL_GetPointer(export, RefH, 'RefH', alloc=.true., rc=status)
        VERIFY_(status)
-       call MAPL_GetPointer(export, SUSV, 'SUSV' , alloc=.true., rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(export, SUWT, 'SUWT' , alloc=.true., rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(export, SUSD, 'SUSD' , alloc=.true., rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(export, SSDP, 'SSDP' , alloc=.true., rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(export, SSSV, 'SSSV' , alloc=.true., rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(export, SSWT, 'SSWT' , alloc=.true., rc=status)
-       VERIFY_(status)
-       call MAPL_GetPointer(export, SSSD, 'SSSD' , alloc=.true., rc=status)
-       VERIFY_(status)
-    endif ! AEROSOL_DEPOSITION /=0
+          
+       ! we need something here that gets the metf data from met_force_new for the correct time
+       ! method:
+       !     concatenate the current time of the model
+       !     find the index at which this time equals the time in the times vector
+       !     this index will be the time index that we use to get data from the global varaible
+       ! use something like:
+       write(*,*) 'just before figuring out single forcing point'
+       
+       write(*,*) 'writing time strings'
+
+       write (YYYY,'(i4.4)') model_time_cur%year
+       write (MM  ,'(i2.2)') model_time_cur%month
+       write (DD  ,'(i2.2)') model_time_cur%day
+       write (hh  ,'(i2.2)') model_time_cur%hour
+       write (min ,'(i2.2)') model_time_cur%min
+       write (ss  ,'(i2.2)') model_time_cur%sec
+       write(*,*) 'concatenating long time string'
+       model_time_str = YYYY//MM//DD//hh//min//ss
+       write(*,*) model_time_str
+       write(*,*)'turning model time string into model time double'
+       read (model_time_str,fmt=*,iostat=ierr) model_time_double
+       write(*,*) 'getting curr shape'
+       curr_shape = SHAPE(met_force_new%Tair)
+       
+       write(*,*) 'allocating variables'
+       allocate(global_force_time(curr_shape(2)))
+       allocate(var_curr(curr_shape(1),1))
+       allocate(var_curr_cpu(land_nt_local))
+       allocate(Tair_new(land_nt_local))
+       write(*,*) 'assigning global force time'
+       global_force_time = met_force_new%date_int(1,:)
+       write(*,*) 'findloc'
+       write(*,*) global_force_time(1:5)
+       write(*,*) model_time_double
+       write(*,*) curr_shape(1)
+       write(*,*) curr_shape(2)
+       !rite(*,*) size(global_force_time)
+       time_ind = findloc(global_force_time,VALUE=model_time_double)
+       !ime_ind = FINDLOC(global_force_time,model_time_double,SIZE(global_force_time))
+       
+       write(*,*) 'figured out single forcing point and assigning exports'
+
+       var_curr = met_force_new%Tair(:,time_ind)
+       write(*,*) 'size var curr'
+       write(*,*) size(var_curr)
+       var_curr_cpu = var_curr(local_id,1)
+       write(*,*) 'size var curr cpu'
+       write(*,*) size(var_curr_cpu)
+       Tair_new = var_curr_cpu
+       write(*,*) 'size tair'
+       write (*,*) size(Tair_new)
+       write(*,*) 'Tair(1)'
+       write (*,*) Tair_new(100000)
+       write(*,*) 'size(clocal_id)'
+       write(*,*) size(local_id)
+       write(*,*) 'var_curr_cpu(1)'
+       write(*,*) var_curr_cpu(1)
+       write(*,*) 'var_curr(1,1)'
+       write(*,*) var_curr(1,1)
+       write(*,*) 'met_force_new%Tair(1,1)'
+       write(*,*) met_force_new%Tair(1,1)
+       write(*,*) 'global_force_time(1)'
+       write(*,*) global_force_time(1)
+       write(*,*) 'model_time_double'
+       write(*,*) model_time_double
+       write(*,*) 'time_ind'
+       write(*,*) time_ind
+
+       write(*,*) size(Tair)
+       write(*,*) size(Tair_new)
+       !write(*,*) Tair(1)
+       write(*,*) Tair_new(1)
+       
+       write(*,*)'Tair'
+       !write(*,*) count(Tair /= Tair_new)
+
+       Tair = Tair_new
+
+       var_curr = met_force_new%Qair(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       Qair = var_curr_cpu
+       write(*,*) 'Qair'
+       !write(*,*) count(Qair /= var_curr_cpu)
+
+       var_curr = met_force_new%Psurf(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       Psurf = var_curr_cpu
+       write(*,*) 'Psurf'
+       !write(*,*) count(Psurf /= var_curr_cpu)
+
+       var_curr = met_force_new%Rainf_C(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       Rainf_C = var_curr_cpu
+       write(*,*) 'Rainf_c'
+       !write(*,*) count(Rainf_c /= var_curr_cpu)
+
+       var_curr = met_force_new%Rainf(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       Rainf = var_curr_cpu
+       write(*,*) 'Rainf'
+       !write(*,*) count(Rainf /= var_curr_cpu)
+
+       var_curr = met_force_new%Snowf(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       Snowf = var_curr_cpu
+       write(*,*) 'Snowf'
+       !write(*,*) count(Snowf /= var_curr_cpu)
+
+       !RainfSnowf = Rainf+Snowf
+       
+       var_curr = met_force_new%LWdown(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       LWdown = var_curr_cpu
+       write(*,*) 'LWdown'
+       !write(*,*) count(LWdown /= var_curr_cpu)
+
+       var_curr = met_force_new%SWdown(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       SWdown = var_curr_cpu
+       write(*,*) 'SWdown'
+       !write(*,*) count(SWdown /= var_curr_cpu)
+
+       var_curr = met_force_new%PARdrct(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       PARdrct = var_curr_cpu
+       write(*,*) 'PARdrct'
+       !write(*,*) count(PARdrct /= var_curr_cpu)
+
+       var_curr = met_force_new%PARdffs(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       PARdffs = var_curr_cpu
+       write(*,*) 'PARdffs'
+       !write(*,*) count(PARdffs /= var_curr_cpu)
+
+       var_curr = met_force_new%Wind(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       Wind = var_curr_cpu
+       write(*,*) 'Wind'
+       !write(*,*) count(Wind /= var_curr_cpu)
+
+       var_curr = met_force_new%RefH(:,time_ind)
+       var_curr_cpu = var_curr(local_id,1)
+       RefH = var_curr_cpu
+       write(*,*) 'RefH'
+       !write(*,*) count(RefH /= var_curr_cpu)
+       
+       
+       
+       
+       write(*,*) 'finished assigning exports'
+       ! Set exports
+          !Tair = Tair_curr_cpu
+          !Qair = mfDataNtp%Qair
+          !Psurf = mfDataNtp%Psurf
+          !Rainf_C = mfDataNtp%Rainf_C
+          !Rainf = mfDataNtp%Rainf
+          !Snowf = mfDataNtp%Snowf
+          !! *daylen convert [kg/m2/s] into [kg/m2/day]
+          !!RainfSnowf= (Rainf+Snowf)*daylen 
+          !RainfSnowf= Rainf+Snowf 
+          !LWdown = mfDataNtp%LWdown
+          !SWdown = mfDataNtp%SWdown
+          !PARdrct = mfDataNtp%PARdrct
+          !PARdffs = mfDataNtp%PARdffs
+          !Wind = mfDataNtp%Wind
+          !RefH = mfDataNtp%RefH
+!
+!
+!
+!
+       !endif
 
 
-    ! Set exports
-    Tair = mfDataNtp%Tair
-    Qair = mfDataNtp%Qair
-    Psurf = mfDataNtp%Psurf
-    Rainf_C = mfDataNtp%Rainf_C
-    Rainf = mfDataNtp%Rainf
-    Snowf = mfDataNtp%Snowf
-    ! *daylen convert [kg/m2/s] into [kg/m2/day]
-    !RainfSnowf= (Rainf+Snowf)*daylen 
-    RainfSnowf= Rainf+Snowf 
-    LWdown = mfDataNtp%LWdown
-    SWdown = mfDataNtp%SWdown
-    PARdrct = mfDataNtp%PARdrct
-    PARdffs = mfDataNtp%PARdffs
-    Wind = mfDataNtp%Wind
-    RefH = mfDataNtp%RefH
 
 
-    if(AEROSOL_DEPOSITION /=0) then
-      DUDP(:, 1) = mfDataNtp%DUDP001
-      DUDP(:, 2) = mfDataNtp%DUDP002
-      DUDP(:, 3) = mfDataNtp%DUDP003
-      DUDP(:, 4) = mfDataNtp%DUDP004
-      DUDP(:, 5) = mfDataNtp%DUDP005
-      DUSV(:, 1) = mfDataNtp%DUSV001
-      DUSV(:, 2) = mfDataNtp%DUSV002
-      DUSV(:, 3) = mfDataNtp%DUSV003
-      DUSV(:, 4) = mfDataNtp%DUSV004
-      DUSV(:, 5) = mfDataNtp%DUSV005
-      DUWT(:, 1) = mfDataNtp%DUWT001
-      DUWT(:, 2) = mfDataNtp%DUWT002
-      DUWT(:, 3) = mfDataNtp%DUWT003
-      DUWT(:, 4) = mfDataNtp%DUWT004
-      DUWT(:, 5) = mfDataNtp%DUWT005
-      DUSD(:, 1) = mfDataNtp%DUSD001
-      DUSD(:, 2) = mfDataNtp%DUSD002
-      DUSD(:, 3) = mfDataNtp%DUSD003
-      DUSD(:, 4) = mfDataNtp%DUSD004
-      DUSD(:, 5) = mfDataNtp%DUSD005
-      BCDP(:, 1) = mfDataNtp%BCDP001
-      BCDP(:, 2) = mfDataNtp%BCDP002
-      BCSV(:, 1) = mfDataNtp%BCSV001
-      BCSV(:, 2) = mfDataNtp%BCSV002
-      BCWT(:, 1) = mfDataNtp%BCWT001
-      BCWT(:, 2) = mfDataNtp%BCWT002
-      BCSD(:, 1) = mfDataNtp%BCSD001
-      BCSD(:, 2) = mfDataNtp%BCSD002
-      OCDP(:, 1) = mfDataNtp%OCDP001
-      OCDP(:, 2) = mfDataNtp%OCDP002
-      OCSV(:, 1) = mfDataNtp%OCSV001
-      OCSV(:, 2) = mfDataNtp%OCSV002
-      OCWT(:, 1) = mfDataNtp%OCWT001
-      OCWT(:, 2) = mfDataNtp%OCWT002
-      OCSD(:, 1) = mfDataNtp%OCSD001
-      OCSD(:, 2) = mfDataNtp%OCSD002
-      SUDP(:, 1) = mfDataNtp%SUDP003
-      SUSV(:, 1) = mfDataNtp%SUSV003
-      SUWT(:, 1) = mfDataNtp%SUWT003
-      SUSD(:, 1) = mfDataNtp%SUSD003
-      SSDP(:, 1) = mfDataNtp%SSDP001
-      SSDP(:, 2) = mfDataNtp%SSDP002
-      SSDP(:, 3) = mfDataNtp%SSDP003
-      SSDP(:, 4) = mfDataNtp%SSDP004
-      SSDP(:, 5) = mfDataNtp%SSDP005
-      SSSV(:, 1) = mfDataNtp%SSSV001
-      SSSV(:, 2) = mfDataNtp%SSSV002
-      SSSV(:, 3) = mfDataNtp%SSSV003
-      SSSV(:, 4) = mfDataNtp%SSSV004
-      SSSV(:, 5) = mfDataNtp%SSSV005
-      SSWT(:, 1) = mfDataNtp%SSWT001
-      SSWT(:, 2) = mfDataNtp%SSWT002
-      SSWT(:, 3) = mfDataNtp%SSWT003
-      SSWT(:, 4) = mfDataNtp%SSWT004
-      SSWT(:, 5) = mfDataNtp%SSWT005
-      SSSD(:, 1) = mfDataNtp%SSSD001
-      SSSD(:, 2) = mfDataNtp%SSSD002
-      SSSD(:, 3) = mfDataNtp%SSSD003
-      SSSD(:, 4) = mfDataNtp%SSSD004
-      SSSD(:, 5) = mfDataNtp%SSSD005
-    endif ! AEROSOL_DEPOSITION /=0
+
+    endif
+    write (*,*) 'right after read option'
     ! Clean up
     if (allocated(mfDataNtp)) then
        deallocate(mfDataNtp, stat=status)
@@ -1216,7 +1671,7 @@ contains
        deallocate(slr, stat=status)
        VERIFY_(status)
     end if
-
+    write(*,*) 'finished run'
     ! Turn timers off
     call MAPL_TimerOff(MAPL, "Run_GetForcing")
     call MAPL_TimerOff(MAPL, "TOTAL")
@@ -1298,9 +1753,6 @@ contains
 
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
-    VERIFY_(status)
-
-    ! End
     RETURN_(ESMF_SUCCESS)
 
   end subroutine Finalize

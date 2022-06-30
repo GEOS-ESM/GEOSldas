@@ -1,7 +1,7 @@
 esma_set_this ()
 
 set (SRCS
-  LDAS_HashTable.F90 LDAS_Forcing.F90 LDAS_Interp.F90 GEOS_MetforceGridComp.F90
+  LDAS_HashTable.F90 LDAS_Forcing.F90 LDAS_Interp.F90 GEOS_MetforceGridComp.F90 point_driver_functions_oneCPU.F90 driver_types.F90 LDAS_forcing_point.F90
   )
 
 esma_add_library (${this}
