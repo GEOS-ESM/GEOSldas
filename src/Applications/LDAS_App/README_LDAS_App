@@ -1,0 +1,28 @@
+README_LDAS_App:         README file for GEOSldas/src/Applications/LDAS_App
+
+rreichle,  8 July 2022:  Initial version
+
+This directory contains a collection of programs, scripts, and config files, specifically:
+
+[..]/LDAS_App/
+
+- Config files and programs/scripts needed by ldas_setup or lenkf.j (GEOSldas job script).
+
+[..]/LDAS_App/ens_forcing/
+
+- Scripts needed by lenkf.j to process ensemble-based forcing (primarily for LADAS).
+
+[..]/LDAS_App/util/config/
+
+- Miscellaneous scripts to (manually) create/modify config files.
+
+[..]/LDAS_App/util/inputs/
+
+- Miscellaneous scripts to (manually) create/modify input files.
+
+[..]/LDAS_App/util/postproc/
+
+- Miscellaneous scripts for post-processing GEOSldas output. 
+
+
+=============== EOF ===============================================================
