@@ -16,11 +16,11 @@ ecbuild_add_executable (
 
 ecbuild_add_executable (
    TARGET mwrtm_bin2nc4.x
-   SOURCES mwrtm_bin2nc4.F90
+   SOURCES util/inputs/mwrtm_bin2nc4.F90
    LIBS GEOSlandassim_GridComp)
    
 install(
-   PROGRAMS ldas_setup process_hist.csh process_rst.csh util/average_ensemble_forcing.py
+   PROGRAMS ldas_setup process_hist.csh process_rst.csh ens_forcing/average_ensemble_forcing.py
    DESTINATION bin
    )
 
