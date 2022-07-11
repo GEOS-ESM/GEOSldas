@@ -13,8 +13,8 @@
 # Requires environment variables: 
 #   ADAS_EXPDIR - path the ADAS experiment directory (ensemble of lfo files)
 #   GRID        - target grid of forcing files (typically that of deterministic ADAS simulation)
-#   NENS        - number of ensemble members (ensemble size) 
-#   RUNDIR      - 
+#   NENS        - number of ensemble members (ensemble size, typically that of LDAS coupled to the deterministic ADAS) 
+#   GEOSBIN     - GEOSldas ROOTdir ( typically GEOSldas/install/bin ) 
 #
 # Input data sets:
 #   1. lfo files from coarse-resolution ADAS ensemble
@@ -32,9 +32,9 @@ set outgrid    = "${GRID}"
 
 mkdir   $force_rgd
 
-$RUNDIR/regrid_forc.csh  $force_orig $force_rgd $outgrid    
+$GEOSBIN/regrid_forc.csh  $force_orig $force_rgd $outgrid    
 
 rm -rf  $force_orig/tmp* 
 
-python  $RUNDIR/ensemble_forc.py $force_rgd $force_cntr $NENS 
+python  $GEOSBIN/ensemble_forc.py $force_rgd $force_cntr $NENS 
  

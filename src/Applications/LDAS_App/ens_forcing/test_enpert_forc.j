@@ -2,11 +2,18 @@
 #SBATCH --ntasks=1
 #SBATCH --time=1:00:00
 #SBATCH --job-name=regd
-#SBATCH --output=/discover/nobackup/qzhang/tmp/testregrid/regridUt.o%j.txt
+#SBATCH --output=/discover/nobackup/user/test/test.o%j.txt
 #SBATCH --export=NONE
 #SBATCH --qos=debug
 
-setenv  GEOSBIN /discover/nobackup/projects/c612/user/qzhang/git_check/ensforc/GEOSldas/install/bin  
+########################################################
+## user:   user
+## GEOSldas: GEOSldas ROOTdir 
+## testdir:  user testdir
+## GEOSadas: GEOSadas ROOTdir 
+########################################################
+
+setenv  GEOSBIN /discover/nobackup/user/GEOSldas/install/bin  
 source $GEOSBIN/g5_modules
 module load python/GEOSpyD/Ana2019.03_py3.7
 if ( -e /etc/os-release ) then
@@ -15,10 +22,10 @@ else
   module load other/nco-4.6.8-gcc-5.3-sp3
 endif
 
-setenv RUNDIR /discover/nobackup/qzhang/tmp/testregrid  
-setenv ADAS_EXPDIR /discover/nobackup/projects/c612/user/qzhang/LA5294tag 
+setenv RUNDIR /discover/nobackup/user/testdir/ 
+setenv ADAS_EXPDIR /discover/nobackup/user/GEOSadas 
 setenv NENS 24  
 setenv GRID PE180x1080-CF
 
-$RUNDIR/enpert_forc.csh 
+$GEOSBIN/enpert_forc.csh 
 

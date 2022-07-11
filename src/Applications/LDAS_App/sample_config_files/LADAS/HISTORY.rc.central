@@ -1,11 +1,14 @@
-# Sample HISTORY.rc file for GEOSldas in the application of LADAS 
-#
-# This file is for ldas coupled with adas central  
-# (1) the ens_avg progn increments
-# (2) the Analysis-minus-Forecast (from ens_avg )     
-#
-VERSION: 1
+# Sample HISTORY.rc file for GEOSldas coupled with Hy4dEnVar cantral  
+# 
+#  (1) "catch_progn_incr" is  ens_avg 
+#  (2) "catch_progn_incr" output is in tile space and its definition 
+#       is generic for any LADAS resolution
+#  (3)  "lndfcstana" resolution should be adjusted to be consistent 
+#       with that of the LADAS
+#  (4)  EXPID should be the GEOSldas exp coupled with Hy4dEnVar central    
+######################################################################
 
+VERSION: 1
 EXPID:  ldas1711_C180
 EXPDSC: GEOSldas_output
 EXPSRC: GEOSldas

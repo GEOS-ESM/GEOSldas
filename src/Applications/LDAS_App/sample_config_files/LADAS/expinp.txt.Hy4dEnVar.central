@@ -1,0 +1,108 @@
+#############################################################
+#                                                           #
+#   These inputs should be used in setup of ldas experiment # 
+#   coupled to Hy4dEnVar central                            #
+#   (edit my.expinp.txt after ldas_setup sample --expinp )  #
+#                                                           #
+#############################################################
+
+
+#  ---- Surface meteorological forcing
+#         user should provide                                      
+#         ADAS_EXPID                                       
+#         ADAS_EXPDIR = [full_path]/[ADAS_EXPID]           
+#
+MET_TAG:    ADAS_EXPID__Nx+- 
+MET_PATH:   ADAS_EXPDIR/lana/forc 
+
+############################################################
+#                                                          #
+#                 LADAS COUPLING                           #
+#                                                          #
+# Coupling of LDAS to ADAS ("LADAS"):                      #
+#                                                          #
+#   0 -- LDAS not coupled with ADAS (default)              #
+#   1 -- LDAS coupled with central member of ADAS          #
+#   2 -- LDAS coupled with ens component of ADAS           #
+#                                                          #
+#  Requirements for LADAS_COUPLING > 0:                    #
+#                                                          #
+#  (0) Specify ADAS_EXPDIR = [full_path]/[ADAS_EXPID]      #
+#                                                          #
+#  (1) BEG_DATE must be consistent with first cycle date   #
+#        and time of ADAS experiment (time is typically    #
+#        3z, 9z, 15z, or 21z)                              #
+#                                                          #
+#  (2) EXP_DOMAIN must be global CS grid as in ADAS exp    #
+#                                                          #
+#  (3) MET_TAG  must be set to [ADAS_EXPID]__Nx+-          #
+#      MET_PATH must be set as follows for                 #
+#        LADAS_COUPLING = 1:                               #
+#          [ADAS_EXPDIR]/lana/forc                         #
+#      After ldas exp setup, verify the following link:    #
+#        ../input/met_forcing/forc -> [MET_PATH]           #
+#                                                          #
+#  (4) BCS_PATH must be consistent with that of            #
+#        [ADAS_EXPDIR][/run/lnbcs                          #
+#                                                          #
+#  (5) JOB_SGMT must match ADAS analysis window            #
+#        (typically 6h)                                    #
+#                                                          #
+#  (6) NUM_SGMT must be set to 1                           #
+#                                                          #
+#  (7) HISTORY:                                            #
+#      - instantaneous "catch_progn_incr" must be in       #
+#          HISTORY collection                              #
+#      - time step must match that of LDAS analysis        #
+#                                                          #
+############################################################
+
+LADAS_COUPLING: 1 
+ADAS_EXPDIR: [full_path]/[ADAS_EXPDIR]
+
+#  ---- Catchment model 
+#
+LSM_CHOICE: 1
+
+# ---- Surface meteorological forcing: Horizonal interpolation 
+#   When forcing is on CS grid, must set MET_HINTERP: 0 
+#  
+MET_HINTERP: 0
+
+#   ---- land assimilation
+#
+LAND_ASSIM: YES
+
+# ---- Specify land assimilation times (when "LAND_ASSIM: YES")
+#
+LANDASSIM_DT: 10800
+LANDASSIM_T0: 013000   
+
+# ---- ID of first ensemble member
+#
+FIRST_ENS_ID: 1
+
+# ---- Ensemble forcing
+#  NO  : Deterministic met forcing  (default)
+#
+ENSEMBLE_FORCING: NO
+
+# ---- Path to special namelist input files
+#          LDASsa_SPECIAL_inputs_ensupd.nml 
+#          LDASsa_SPECIAL_inputs_ensprop.nml 
+#          LDASsa_SPECIAL_inputs_catbias.nml 
+#
+NML_INPUT_PATH:  /discover/nobackup/qzhang/LDAS_INPUTS/SPECnml
+
+# ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format)
+#
+MWRTM_PATH: /discover/nobackup/qzhang/LDAS_INPUTS/MWRTM/ 
+
+# ---- Job segments: Length
+#
+ JOB_SGMT: 00000000 060000 
+
+# ---- Job segments: Number
+#
+ NUM_SGMT: 1
+
