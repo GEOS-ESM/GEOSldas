@@ -1,14 +1,40 @@
 #!/usr/bin/csh -f 
 
-## env : ADAS_EXPDIR,  GRID,  NENS, RUNDIR
+# Script to create re-centered ensemble land forcing files (*inst1_2d_lfo*, *tavg1_2d_lfo*),
+# typically used in LADAS:
+#
+#   1. Regrid coarse-resolution lfo files from the ADAS atmospheric ensemble to the higher 
+#      resolution of the single-member central (or deterministic) simulation.
+#
+#   2. Compute perturbations from regridded lfo files.
+#
+#   3. Apply perturbations to lfo files from central simulation. 
+#
+# Requires environment variables: 
+#   ADAS_EXPDIR - path the ADAS experiment directory (ensemble of lfo files)
+#   GRID        - target grid of forcing files (typically that of deterministic ADAS simulation)
+#   NENS        - number of ensemble members (ensemble size) 
+#   RUNDIR      - 
+#
+# Input data sets:
+#   1. lfo files from coarse-resolution ADAS ensemble
+#   2. lfo files from higher-resolution deterministic ADAS simulation
+#
+# Output data set:
+#   1. ensemble of lfo files at resolution of deterministic ADAS simulation
+#
+# ------------------------------------------------------------------------------------
 
-set force_cntr =  "${ADAS_EXPDIR}/recycle/holdforc"
-set force_orig =  "${ADAS_EXPDIR}/atmens"   
-set force_rgd = "${ADAS_EXPDIR}/atmens/rgdlfo" 
-set outgrid =  "${GRID}"
-mkdir $force_rgd
+set force_cntr = "${ADAS_EXPDIR}/recycle/holdforc"
+set force_orig = "${ADAS_EXPDIR}/atmens"   
+set force_rgd  = "${ADAS_EXPDIR}/atmens/rgdlfo" 
+set outgrid    = "${GRID}"
+
+mkdir   $force_rgd
 
 $RUNDIR/regrid_forc.csh  $force_orig $force_rgd $outgrid    
+
 rm -rf  $force_orig/tmp* 
+
 python  $RUNDIR/ensemble_forc.py $force_rgd $force_cntr $NENS 
  
