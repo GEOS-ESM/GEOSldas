@@ -66,6 +66,22 @@ function [] = get_model_and_obs_clim_stats_GEOSldas( varname,              ...
 %                anymore with later LDASsa-tags. 
 %                => no need to pass on 'convert_grid' for tags later than
 %                the summer of 2013
+% reichle, qliu, 13 July 2022:
+%                "convert_grid" is still needed to limit the number of tiles
+%                in the scaling parameter file.  With "convert_grid" turned on, 
+%                only the M09 tile to the northeast of the M36 center point 
+%                is kept in the scaling parameter file, consistent with the 
+%                "tmp_shift_lat" and "tmp_shift_lon" operations in the SMOS
+%                and SMAP Fortran readers.  (It is not clear if this matlab 
+%                function works properly if there is no M09 [land] tile 
+%                immediately to the northeast of the M36 center point.  In 
+%                such a case, the Fortran reader assigns the nearest M09
+%                land tile as the tile that administers the obs.)
+%                Presumably, scaling parameters for all M09 tiles could be kept
+%                if they are stored in (compressed) nc4 format.  In this case,
+%                the NaN values for the scaling parameters of 15 out of each 16
+%                M09 tiles can be compressed to almost nothing.
+%
 % -------------------------------------------------------------------
 % begin user-defined inputs
 % -------------------------------------------------------------------
