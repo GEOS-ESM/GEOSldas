@@ -13,8 +13,8 @@
 # Requires environment variables: 
 #   ADAS_EXPDIR - path the ADAS experiment directory (ensemble of lfo files)
 #   GRID        - target grid of forcing files (typically that of deterministic ADAS simulation)
-#   NENS        - number of ensemble members (ensemble size, typically that of LDAS coupled to the deterministic ADAS) 
-#   GEOSBIN     - GEOSldas ROOTdir ( typically GEOSldas/install/bin ) 
+#   NENS        - number of (LDAS) ensemble members (<= number of ADAS ensemble members)
+#   GEOSBIN     - GEOSldas "ROOT" directory (typically GEOSldas/install/bin) 
 #
 # Input data sets:
 #   1. lfo files from coarse-resolution ADAS ensemble
