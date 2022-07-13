@@ -16,7 +16,7 @@
 # set environment variables needed by enpert_forc.csh
 
 setenv GEOSBIN     /discover/nobackup/[USER]/GEOSldas/install/bin  
-setenv ADAS_EXPDIR /discover/nobackup/[USER]/GEOSadas 
+setenv ADAS_EXPDIR /discover/nobackup/[USER]/[ADAS_EXPID]/
 setenv NENS        24  
 setenv GRID        PE180x1080-CF
 
