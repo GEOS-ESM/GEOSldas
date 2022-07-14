@@ -26,6 +26,7 @@ GMAO_Shared:
   sparse: ./config/GMAO_Shared.sparse
   develop: main
 
+# Point to temp branch
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
