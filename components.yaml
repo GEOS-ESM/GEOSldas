@@ -26,11 +26,10 @@ GMAO_Shared:
   sparse: ./config/GMAO_Shared.sparse
   develop: main
 
-# Point to temp branch
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  branch: hotfix/bmauer/fixes-ldas-pr-#568
+  tag: v2.23.1
   develop: develop
 
 GEOSgcm_GridComp:
