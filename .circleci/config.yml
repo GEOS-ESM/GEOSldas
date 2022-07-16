@@ -1,42 +1,22 @@
 version: 2.1
 
+# Anchor to prevent forgetting to update a version
+baselibs_version: &baselibs_version v7.5.0
+
 orbs:
-  circleci-tools: geos-esm/circleci-tools@0.13.0
+  ci: geos-esm/circleci-tools@1
 
 workflows:
   build-test:
     jobs:
-      - build-GEOSldas:
+      - ci/build:
           name: build-GEOSldas-on-<< matrix.compiler >>
-          matrix:
-            parameters:
-              compiler: [gfortran, ifort]
           context:
             - docker-hub-creds
-
-jobs:
-  build-GEOSldas:
-    parameters:
-      compiler:
-        type: string
-    executor:
-      name: circleci-tools/<< parameters.compiler >>
-      resource_class: large
-    working_directory: /root/project
-    steps:
-      - checkout:
-          path: GEOSldas
-      - circleci-tools/versions:
-          compiler: << parameters.compiler >>
-      - circleci-tools/mepoclone:
+          matrix:
+            parameters:
+              compiler: [ifort, gfortran]
+          baselibs_version: *baselibs_version
           repo: GEOSldas
-      - circleci-tools/checkout_if_exists:
-          repo: GEOSldas
-      - circleci-tools/cmake:
-          repo: GEOSldas
-          compiler: << parameters.compiler >>
-      - circleci-tools/buildinstall:
-          repo: GEOSldas
-      - circleci-tools/compress_artifacts
-      - store_artifacts:
-          path: /logfiles
+          mepodevelop: false
+          persist_workspace: false # Needs to be true to run fv3/gcm experiment, costs extra
