@@ -113,9 +113,20 @@ endif
 #    if $LADAS_COUPLING == 1 use $FVWORK and copy forcing to Scratch
 ########################################################################
 
-if ( $LADAS_COUPLING == 1 ) then
+if ( $LADAS_COUPLING == 1 && $ENSEMBLE_FORCING == "NO" ) then
    echo "copying lfo_Nx+- met forcing from $FVWORK to $SCRDIR"
    /bin/cp -f $FVWORK/*lfo_Nx+-*nc4  $SCRDIR/.
+endif
+
+####################################################################### 
+#  if LADAS_COUPLING==1, option to compute atmens ens perturbed forcing 
+#######################################################################
+
+if ( $LADAS_COUPLING == 1 && $ENSEMBLE_FORCING == "YES" ) then
+   module load python/GEOSpyD/Ana2019.03_py3.7
+   set forcgrid = `grep GEOSldas.GRIDNAME LDAS.rc | cut -d':' -f2 | awk '{print $1}'`
+   setenv GRID $forcgrid
+   $GEOSBIN/enpert_forc.csh
 endif
 
 #######################################################################
