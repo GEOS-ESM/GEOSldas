@@ -17,9 +17,8 @@ ADAS_EXPDIR:       [full_path]/[ADAS_EXPDIR]
 
 MET_TAG:           [ADAS_EXPID]__Nx+- 
 MET_PATH:          [ADAS_EXPDIR]/lana/forc 
-#### option to use  atmens ens perturbed forcing 
+# option to use perturbed forcing created from central simulation and atm ensemble
 # MET_PATH:          [ADAS_EXPDIR]/atmens/rgdlfo
-#######
 
 MET_HINTERP:       0
 
@@ -31,9 +30,8 @@ LANDASSIM_T0:      013000
 FIRST_ENS_ID:      1
 
 ENSEMBLE_FORCING:  NO
-#### option to use  atmens ens perturbed forcing 
+# option to use perturbed forcing created from central simulation and atm ensemble
 # ENSEMBLE_FORCING:  YES
-########
 
 JOB_SGMT:          00000000 060000 
 NUM_SGMT:          1
