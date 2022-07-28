@@ -210,8 +210,8 @@ end
 fname = [inpath, '/rc_out/', exp_run, '.ldas_tilecoord.bin'];
 fnameg= [inpath, '/rc_out/', exp_run, '.ldas_tilegrids.bin'];
 
-[ tile_coord ] = read_tilecoord_GEOS( fname );
-[ tile_grid ]  = read_tilegrids_GEOS( fnameg );
+[ tile_coord ] = read_tilecoord( fname );
+[ tile_grid ]  = read_tilegrids( fnameg );
 
 N_tile = length(tile_coord.tile_id);
 

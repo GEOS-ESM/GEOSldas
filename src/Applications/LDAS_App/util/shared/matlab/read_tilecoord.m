@@ -6,7 +6,7 @@ function [tile_coord ] = read_tilecoord( fname, bin2txt, isLDASsa )
 % reichle, 29 Jun 2005
 % GDL,     22 Jun 2010 - changed i_atm/j_atm/frac_atm to i_indg/j_indg/frac_cell
 % reichle, 31 May 2011 - accomodate new field "elev" (elevation)
-% reichle,  7 Jan 2014 - added capability to read binary "tilegrids" files
+% reichle,  7 Jan 2014 - added capability to read binary "tilecoord" files
 %                         and to convert a binary file into a txt file
 %                        file extension: ".txt" --> ASCII file
 %                                        ".bin" --> binary file
@@ -55,7 +55,7 @@ elseif strcmp(file_ext,'.bin')
 
 else
 
-  error('read_tilegrids.m: ERROR - unknown file extension')
+  error('read_tilecoord.m: ERROR - unknown file extension')
 
 end
 
