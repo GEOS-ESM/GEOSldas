@@ -13,7 +13,11 @@ function [tile_coord ] = read_tilecoord( fname, bin2txt, isLDASsa )
 %                        ASCII option maintains backward compatibility
 %
 % jperket,  1 Dec 2017 - added flag for LDASsa, big-endian format
+% reichle, 28 Jul 2022 - cleaned up LDASsa/GEOSldas switch for commit into GEOSldas repo
+%
 % -------------------------------------------------------------
+
+if ~exist('isLDASsa','var')  isLDASsa = 0; end  % default is GEOSldas output
 
 int_precision   = 'int32';      % precision of fortran tag
 float_precision = 'float32';    % precision of data in input file
@@ -26,7 +30,7 @@ if ~exist('bin2txt','var')
 
 end
 
-if exist('isLDASsa','var') && isLDASsa == 1
+if isLDASsa ~= 0
   machfmt = 'b'; % big-endian, LDASsa
 else
   machfmt = 'l'; % little-endian, GEOSldas
