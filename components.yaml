@@ -35,6 +35,6 @@ MAPL:
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: feature/rreichle/MODIS_snow_cover_fraction_assimilation 
+  branch: develop  
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
