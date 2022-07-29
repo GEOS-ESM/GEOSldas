@@ -1,7 +1,7 @@
 
-function [] = get_model_and_obs_clim_stats_GEOSldas( varname,              ...
+function [] = get_model_and_obs_clim_stats( varname,              ...
     run_months, exp_path, exp_run, domain, start_year, end_year,   ...
-    dt_assim, species, obs_param, ...
+    dt_assim, t0_assim, species, obs_param, ...
     hscale, inc_angle, int_Asc, w_days, Ndata_min, prefix, ...
     convert_grid , time_of_day_in_hours )
 
@@ -339,6 +339,10 @@ data_out   = NaN+zeros(N_out_fields,N_tile_obs,N_angle);
 
 % -------------------------------------------------------------		  
 
+% make sure t0_assim is *first* analysis time in a day
+
+t0_assim = mod( t0_assim, dt_assim );
+
 count = 0;
 
 for imonth = 1:length(run_months)
@@ -352,7 +356,7 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
         count = w_days;
     end
 
-  for seconds_in_day = 0:dt_assim:(86400-1)
+  for seconds_in_day = t0_assim:dt_assim:(86400-1)
 
     hour    = floor(seconds_in_day/3600);
 
@@ -411,7 +415,7 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
             obs_ana,                ...
             obs_anavar              ...
                  ] =                      ...
-                read_ObsFcstAna_GEOS( fname );
+                read_ObsFcstAna( fname );
             
           % remove tiles when there is no obs_fcst (obs_fcst == 0 in innov output when
           % missing)
