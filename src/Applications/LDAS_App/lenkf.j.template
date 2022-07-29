@@ -119,7 +119,8 @@ if ( $LADAS_COUPLING == 1 ) then
 
       # create perturbed forcing from central simulation and atm ensemble
 
-      module load python/GEOSpyD/Ana2019.03_py3.7
+      # python should come with ESMA_env g5_modules
+      #module load python/GEOSpyD/Ana2019.03_py3.7
       set forcgrid = `grep GEOSldas.GRIDNAME LDAS.rc | cut -d':' -f2 | awk '{print $1}'`
       setenv GRID $forcgrid
       $GEOSBIN/enpert_forc.csh

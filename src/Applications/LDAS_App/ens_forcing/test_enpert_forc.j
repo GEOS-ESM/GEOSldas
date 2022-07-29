@@ -24,7 +24,8 @@ setenv GRID        PE180x1080-CF
 
 source $GEOSBIN/g5_modules
 
-module load python/GEOSpyD/Ana2019.03_py3.7
+# python should come with ESMA_env g5_modules
+# module load python/GEOSpyD/Ana2019.03_py3.7
 
 if ( -e /etc/os-release ) then
   module load nco/4.8.1
