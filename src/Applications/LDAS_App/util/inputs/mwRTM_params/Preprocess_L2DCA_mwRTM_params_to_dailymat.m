@@ -5,7 +5,8 @@
  
 clear 
 
-addpath  Shared
+% add path to matlab functions in src/Applications/LDAS_App/util/shared/matlab/
+addpath('../../shared/matlab/');
 
 L2_Ascdes = {'_A_','_D_'}; 
 L2_qc_yes = 1;

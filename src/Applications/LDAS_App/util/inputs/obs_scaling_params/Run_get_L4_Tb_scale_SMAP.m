@@ -6,6 +6,9 @@
 
 clear
 
+% add path to matlab functions in src/Applications/LDAS_App/util/shared/matlab/
+addpath('../../shared/matlab/');
+
 %======
 
 run_months = [1:12 1:4]; %loop through 1:4 again to get complete pentads
@@ -83,7 +86,7 @@ end
 
 % ------------------------------------------------------------------------
 
-[N_obs_param, obs_param ] = read_obsparam_2018(obs_param_fname);
+[N_obs_param, obs_param ] = read_obsparam(obs_param_fname);
 
 species =[];
 

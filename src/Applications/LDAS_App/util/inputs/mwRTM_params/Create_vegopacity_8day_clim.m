@@ -1,15 +1,26 @@
+% script to create 8-day climatology of vegetation opacity for L-band microwave 
+%   radiative transfer model (mwRTM)
+%
+% requires pre-processing of SMAP L2 data into daily *.mat files using
+%   Preprocess_L2DCA_mwRTM_params_to_dailymat.m
+% 
+% output files written in MAPL_ReadForcing format
+%
+% qliu + rreichle, 29 Jul 2022
+%
+% -------------------------------------------------------------------------------------
 
 clear 
 
-addpath Shared
-addpath helper_functions
+% add path to matlab functions in src/Applications/LDAS_App/util/shared/matlab/
+addpath('../../shared/matlab/');
 
-L2_Ascdes_all = {'_A_','_D_'};
+L2_Ascdes_all  = {'_A_','_D_'};
 
-out_Para = 'VOD';
+out_Para       = 'VOD';
 
-L2_file_tag = 'L2_SM_P';
-L2_version = 'R18290';
+L2_file_tag    = 'L2_SM_P';
+L2_version     = 'R18290';
 
 if strcmp(L2_file_tag(end-1:end),'_E')
     resolution = 'M09';
@@ -21,7 +32,7 @@ out_path = '/discover/nobackup/qliu/matlab/SMAP/L2L4/VOD/QC_frozen_RFI/';
 
 fill_small_gaps =  1;
 
-% provide a GEOSldas with proper tile information
+% provide a GEOSldas simulation with matching tile information
 if strcmp(resolution,'M36')
     L4_path = '/gpfsm/dnb05/projects/p51/SMAP_Nature/SMAP_Nature_v9.x/';
     L4_version = 'SMAP_Nature_v9.1_M36';
@@ -68,22 +79,25 @@ for iAD = 1:2
     start_time.min   = 30;
     start_time.sec   = 0;
     
-    end_time.year  = 2022;
-    end_time.month = 4;
-    end_time.day   = 1;
-    end_time.hour  = start_time.hour;
-    end_time.min   = start_time.min;
-    end_time.sec   = start_time.sec;
+    end_time.year    = 2022;
+    end_time.month   = 4;
+    end_time.day     = 1;
+    end_time.hour    = start_time.hour;
+    end_time.min     = start_time.min;
+    end_time.sec     = start_time.sec;
     
-    start_time = get_dofyr_pentad(start_time);
-    end_time   = get_dofyr_pentad(end_time);
+    start_time       = get_dofyr_pentad(start_time);
+    end_time         = get_dofyr_pentad(end_time);
     
+    % lookup table of month and day of first day in 8-day average (non-leap year)
+
     clim_8d_m1 = [    1  1  1  1  2  2  2  2 ...
         3  3  3  3  4  4  4 ...
         5  5  5  5  6  6  6  6 ...
         7  7  7  7  8  8  8  8 ...
         9  9  9  9  10  10 10 ...
         11  11  11  11  12  12  12  12];
+
     clim_8d_d1 = [    1     9    17    25     2    10    18    26  ...
         6    14    22    30     7    15    23   ...
         1     9    17    25     2    10    18    26 ...
@@ -277,39 +291,51 @@ for iAD = 1:2
     fclose(ifp);
 end
 
-% fllValue =  1.e15
 data_clim_tile(data_clim_tile > 10.) = NaN;
-data_clim_tile(data_clim_tile < 0.) = 0.; %  set small negative values to 0
+data_clim_tile(data_clim_tile <  0.) = 0.;    %  set small negative values to 0
 
 % averaging  A, D values
 tile_data = nanmean(data_clim_tile,3);
 fname_out = strrep(fname, L2_Ascdes,'_AD_');
 if fill_small_gaps
-    tile_data = Fill_tile_gaps(tc,tg,tile_data,resolution);
     
-    if strcmp(resolution,'M09')
-        fname_out = [fname_out(1:end-4),'_5gx5gfilled_test.bin'];
+    if     strcmp(resolution,'M09')
+        N_cells = 5;
+        iscube  = 0;
     elseif strcmp(resolution,'M36')
-        fname_out = [fname_out(1:end-4),'_3gx3gfilled_test.bin'];
+        N_cells = 3;
+        iscube  = 0;
     else
         error('invalid resolution, use ''M09'' or ''M36'' only')
     end
+    
+    tmpstr  = num2str(N_cells);
+   
+    fname_out = [fname_out(1:end-4),'_',tmpstr,'gx',tmpstr,'gfilled_test.bin'];
+
+    tile_data = fill_gaps_in_tiledata(tc, tg, tile_data, N_cells, iscube );
+
 end
 
-tile_data(isnan(tile_data)) = 1.e15;
+tile_data(isnan(tile_data)) = 1.e15;   % fillValue =  1.e15
 
 disp(['write ',fname_out])
 
 ifp = fopen(fname_out,'w','l');
 for n = 1:48
-    fwrite( ifp, 14*4, int_precision );
-    fwrite( ifp, header(n,:), float_precision );
-    fwrite( ifp, 14*4, int_precision );
+
+    % write header
+
+    fwrite( ifp, 14*4,           int_precision );
+    fwrite( ifp, header(n,:),    float_precision );
+    fwrite( ifp, 14*4,           int_precision );
     
-    fwrite( ifp, tc.N_tile*4, int_precision );
+    % write science data
+
+    fwrite( ifp, tc.N_tile*4,    int_precision );
     fwrite( ifp, tile_data(n,:), float_precision );
-    fwrite( ifp, tc.N_tile*4, int_precision );
+    fwrite( ifp, tc.N_tile*4,    int_precision );
 end
 fclose(ifp);
 
-% ----------------------------EOF--------------------------------------
+% ============================ EOF ======================================

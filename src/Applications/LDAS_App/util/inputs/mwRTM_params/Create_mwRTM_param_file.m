@@ -5,11 +5,14 @@
 % Therefore, need to run Preprocess_L2DCA_mwRTM_into_dailymat.m before running 
 % this script. 
 
+% qliu + rreichle, 29 Jul 2022
+
 % ----------------------------------------------------------------------------
+
 clear 
 
-addpath Shared
-addpath helper_functions
+% add path to matlab functions in src/Applications/LDAS_App/util/shared/matlab/
+addpath('../../shared/matlab/');
 
 % option to fill small gaps based on neighboring grids, 1 is recommended.  
 fill_small_gaps = 1; 
@@ -26,13 +29,22 @@ fname_in = ['/home/qliu/smap/SMAP_Nature/bcs/RTM_params/RTMParam_SMAP_L4SM_v004/
 % target mwRTM_param file name
 fname_out = ['/home/qliu/smap/SMAP_Nature/bcs/RTM_params/RTMParam_L2_omega_H_tmp/SMAP_EASEv2_',EASEv2_grid,'/mwRTM_param_L2_omega_H_fillValue_bhbvlewt.nc4']; 
 
-% the method of fill missing  is hard-coded in Fill_tile_gaps.m
+% get inputs for fill_gaps_in_tiledata() below
 if fill_small_gaps
-   if strcmp(EASEv2_grid,'M36')
-      fname_out = strrep(fname_out,'.nc4','_3gx3gfilled.nc4');
-   else
-      fname_out = strrep(fname_out,'.nc4','_5gx5gfilled.nc4');
-   end
+
+    if     strcmp(EASEv2_grid,'M09')
+        N_cells = 5;
+        iscube  = 0;
+    elseif strcmp(EASEv2_grid,'M36')
+        N_cells = 3;
+        iscube  = 0;
+    else
+        error('invalid resolution, use ''M09'' or ''M36'' only')
+    end
+    
+    tmpstr  = num2str(N_cells);
+
+    fname_out = strrep(fname_out,'.nc4','_',tmpstr,'gx',tmpstr,'gfilled.nc4');
 end
 
 % Do not overwrite if file exists 
@@ -69,7 +81,7 @@ tc = read_tilecoord(fname_tc);
 
 % double check for tile order, may not work if exp_run uses older bcs
 % version
-if max(abs([1:tc.N_tile]'-tc.tile_id)) > 0
+if max(abs(transpose([1:tc.N_tile])-tc.tile_id)) > 0
    error('tile order is not strictly tile_id ascending, need to modify script to reorder')
    return
 end
@@ -160,14 +172,14 @@ for i=1: nvar_in_file
  
     if strcmp(data_name,'MWRTM_OMEGA')
         if fill_small_gaps
-            omega_filled = Fill_tile_gaps(tc,tg,omega',EASEv2_grid);
+            omega_filled = fill_gaps_in_tiledata(tc, tg, transpose(omega), N_cells, iscube );
             data = omega_filled;
         else
             data = omega;
         end
     elseif contains(data_name, 'MWRTM_RGHHM')
         if fill_small_gaps
-            hparam_filled = Fill_tile_gaps(tc,tg, hparam',EASEv2_grid);
+            hparam_filled = = fill_gaps_in_tiledata(tc, tg, transpose(hparam), N_cells, iscube );
             data = hparam_filled;
         else
             data = hparam;
@@ -209,7 +221,7 @@ for i=1: nvar_in_file
     end
 
     % earlier fillValue was -9999. replace with new fillValue (1.e15)
-    data(abs(data-(-9999.)) < 1e-4) = NaN;
+    data(abs(data-(-9999.)) < abs(-9999.*1e-4)) = NaN;
 
     data(isnan(data)) = fillValue;
 
