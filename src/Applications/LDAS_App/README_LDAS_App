@@ -28,5 +28,9 @@ This directory contains a collection of programs, scripts, and config files, spe
 
 - Miscellaneous scripts for post-processing GEOSldas output. 
 
+[..]/LDAS_App/util/shared/
+
+- Miscellaneous shared reader and helper scripts (primarily matlab).
+
 
 =============== EOF ===============================================================
