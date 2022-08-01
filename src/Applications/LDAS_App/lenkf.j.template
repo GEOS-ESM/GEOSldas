@@ -124,7 +124,7 @@ if ( $LADAS_COUPLING == 1 ) then
       set forcgrid = `grep GEOSldas.GRIDNAME LDAS.rc | cut -d':' -f2 | awk '{print $1}'`
       setenv GRID $forcgrid
       $GEOSBIN/enpert_forc.csh
-
+      cd $SCRDIR
    else
 
       # copy central-simulation forcing from $FVWORK to scratch dir
