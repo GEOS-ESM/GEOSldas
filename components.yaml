@@ -22,7 +22,7 @@ ecbuild:
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
-  branch: main
+  branch: feature/wjiang/improve_merra2 
   sparse: ./config/GMAO_Shared.sparse
   develop: main
 
