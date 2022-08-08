@@ -506,7 +506,7 @@ class LDASsetup:
         my_ntasks_per_node = int(self.rqdRmInp['ntasks-per-node'])
 
         # default number of nodes
-        my_nodes = self.rqdRmInp['ntasks_model'] / my_ntasks_per_node
+        my_nodes = self.rqdRmInp['ntasks_model'] // my_ntasks_per_node
         if self.rqdRmInp['ntasks_model'] % my_ntasks_per_node > 0 :
            my_nodes = my_nodes + 1
 
