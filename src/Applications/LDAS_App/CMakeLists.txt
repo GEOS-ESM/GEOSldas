@@ -20,7 +20,7 @@ ecbuild_add_executable (
    LIBS GEOSlandassim_GridComp)
    
 install(
-   PROGRAMS ldas_setup process_hist.csh process_rst.csh util/average_ensemble_forcing.py
+   PROGRAMS ldas_setup process_hist.csh process_rst.py util/average_ensemble_forcing.py
    DESTINATION bin
    )
 
