@@ -1290,7 +1290,7 @@ class LDASsetup:
         fout.write("\nsed -i 's/#if($capdate<$enddate) sbatch/if($capdate<$enddate) sbatch /g' lenkf.j")
         fout.close()
 
-        os.chmod(self.rundir+'/ldas_batchrun.j', 755) 
+        sp.call(['chmod', '755', self.rundir+'/ldas_batchrun.j']) 
         status = True
         return status
 
@@ -1386,7 +1386,7 @@ class LDASsetup:
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
                      
-        os.chmod('lenkf.j', 755) 
+        sp.call(['chmod', '755', 'lenkf.j']) 
 
         expdir = '/'.join(self.rundir.rstrip('/').split('/')[:-1])
         print ('\nExperiment directory: %s' % expdir)
