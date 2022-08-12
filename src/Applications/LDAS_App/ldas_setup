@@ -887,12 +887,14 @@ class LDASsetup:
                 else : # RESTART == 1
                     catchRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
                     vegdynRstFile= rstpath+ens +'/'+self.rqdExeInp['RESTART_ID']+ '.vegdyn_internal_rst'
+                    if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
+                       if not os.path.isfile(vegdynRstFile0):
+                         vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
             else :
                 vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
                 catchRstFile  = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+'_internal_rst.'+YYYYMMDD+'*')[0]
 
             # catchment restart file
-            print( 'catchRstFile: ' +  catchRstFile)
             if os.path.isfile(catchRstFile) :
                 catchLocal = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
                 if self.islocal :
@@ -912,7 +914,6 @@ class LDASsetup:
 
             # vegdyn restart file
             if os.path.isfile(vegdynRstFile) :
-
                 vegdynLocal = self.rstdir+ens +'/'+self.rqdExeInp['EXP_ID']+'.vegdyn_internal_rst'
                 if self.islocal :
                     print ("Creating the local veg restart file... \n")
@@ -936,7 +937,7 @@ class LDASsetup:
                 pertRstFile = pertLocal
 
             print ('catchRstFile: ' +  catchRstFile)
-
+            print ('vegdynRstFile: ' +  vegdynRstFile)
             os.symlink(catchRstFile, myCatchRst)
             os.symlink(vegdynRstFile,  myVegRst)
             if ( self.has_geos_pert and  self.perturb == 1 ):
