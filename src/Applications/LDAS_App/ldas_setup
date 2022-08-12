@@ -107,7 +107,6 @@ class LDASsetup:
         self.assim = False
         self.has_landassim_seed = False
         self.has_geos_pert = False
-        self.has_ldassa_pert = False
         self.nSegments = 1
         self.perturb = 0
         self.first_ens_id = 0
@@ -393,11 +392,7 @@ class LDASsetup:
                     landpertRstFile=tmpRstDir+'/'+tmpFile
                     if ( os.path.isfile(landpertRstFile)) :
                         self.has_geos_pert = True
-                    else :
-                        ldassa_tmp=self.rqdExeInp['RESTART_ID']+'.ens0000.pert_ldas_rst.'+y4m2d2_h2m2+'z.bin'
-                        LDASsa_pertRstFile=tmpRstDir+'/'+ldassa_tmp
-                        if (os.path.isfile(LDASsa_pertRstFile)) :
-                            self.has_ldassa_pert = True
+
             elif (int(self.rqdExeInp['RESTART']) == 0) : 
               if (self.catch == 'catch'):
                 self.in_rstfile = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding' \
@@ -883,39 +878,22 @@ class LDASsetup:
             vegdynRstFile = ''
             pertRstFile   = ''
             print ("restart: " + self.rqdExeInp['RESTART'])
+
             if self.rqdExeInp['RESTART'].isdigit() :
+
                 if int(self.rqdExeInp['RESTART']) == 0 or int(self.rqdExeInp['RESTART']) == 2 :
                     vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
                     catchRstFile  = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+'_internal_rst.'+YYYYMMDD+'*')[0]
-                else :
+                else : # RESTART == 1
                     catchRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
-                    _catchRstFile = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+ensid+'_internal_rst.'+YYYYMMDD+'*')
-                    if (len(_catchRstFile) == 1) : 
-                        _catchRstFile = _catchRstFile[0]
-                    else:
-                        _catchRstFile = 'None'
-
                     vegdynRstFile= rstpath+ens +'/'+self.rqdExeInp['RESTART_ID']+ '.vegdyn_internal_rst'
-                    if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
-                      if not os.path.isfile(vegdynRstFile0): 
-                        vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
-                    if (self.nens == 1) :
-                       _catchRstFile = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+'0000_internal_rst.'+YYYYMMDD+'*')
-                       if (len(_catchRstFile) == 1) : 
-                          _catchRstFile = _catchRstFile[0]
-                       else:
-                          _catchRstFile = 'None'
-                        
-                    if os.path.isfile(_catchRstFile): # from LDASsa restart
-                        catchRstFile = _catchRstFile
-                        assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'restart from LDASsa should be global'
             else :
                 vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
                 catchRstFile  = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+'_internal_rst.'+YYYYMMDD+'*')[0]
+
             # catchment restart file
             print( 'catchRstFile: ' +  catchRstFile)
             if os.path.isfile(catchRstFile) :
-
                 catchLocal = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
                 if self.islocal :
                     print( "Creating local catchment restart file... \n")
@@ -929,7 +907,7 @@ class LDASsetup:
 
                 if '0000' in ens :
                     catchRstFile0 = catchRstFile
-            else :    
+            else : # re use 0000 catch file    
                 catchRstFile = catchRstFile0
 
             # vegdyn restart file
@@ -957,19 +935,11 @@ class LDASsetup:
                 shutil.copy(pertRstFile,pertLocal)
                 pertRstFile = pertLocal
 
-            if (self.has_ldassa_pert and self.perturb == 1 ) :
-                pertRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+ens+'.pert_ldas_rst.'+y4m2d2_h2m2+'z.bin'
-                pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
-                print ("Convert LDASsa pert " + ensid + " rst to GEOSldas rst")
-                cmd = './preprocess_ldas.x c_convert_pert '+ pertRstFile + ' ' + pertLocal + ' ' + self.out_path + ' ' + self.rqdExeInp['EXP_ID'] 
-                sp.call(shlex.split(cmd))
-                pertRstFile = pertLocal
-
             print ('catchRstFile: ' +  catchRstFile)
 
             os.symlink(catchRstFile, myCatchRst)
             os.symlink(vegdynRstFile,  myVegRst)
-            if ( (self.has_geos_pert or self.has_ldassa_pert) and  self.perturb == 1 ):
+            if ( self.has_geos_pert and  self.perturb == 1 ):
                os.symlink(pertRstFile,  myPertRst)
 
         # catch_param restar file
@@ -1436,26 +1406,24 @@ def _printExeInputKeys(rqdExeInpKeys):
     print ('# (i) Select "RESTART" option:                             #')
     print ('#                                                          #')
     print ('# Use one of the following options if you *have* a         #')
-    print ('#   GEOSldas- or LDASsa-produced restart file:             #') 
+    print ('#   GEOSldas restart file:                                 #') 
     print ('#                                                          #')
     print ('# RESTART: 1                                               #')
-    print ('#   YES, have restart file from GEOSldas *or* LDASsa       #')
+    print ('#   YES, have restart file from GEOSldas                   #')
     print ('#        in SAME tile space (grid) with SAME boundary      #')
     print ('#        conditions and SAME snow model parameter (WEMIN). #')
-    print ('#   GEOSldas-produced restart can be for the same or       #')
-    print ('#        a larger domain.                                  #')    
-    print ('#   LDASsa-produced restart *must* be for the GLOBAL       #')
-    print ('#        domain.                                           #')    
+    print ('#        The restart domain can be for the same or         #')
+    print ('#        a larger one.                                     #')    
     print ('#                                                          #')
     print ('# RESTART: 2                                               #')
-    print ('#   YES, have restart file from GEOSldas *or* LDASsa but   #')
+    print ('#   YES, have restart file from GEOSldas but               #')
     print ('#        in a DIFFERENT tile space (grid) or with          #')
     print ('#        DIFFERENT boundary conditions or DIFFERENT snow   #')
     print ('#        model parameter (WEMIN).                          #')
-    print ('#   Restart *must* be for the GLOBAL domain.               #')
+    print ('#        Restart *must* be for the GLOBAL domain.          #')
     print ('#                                                          #')
     print ('# Use one of the following options if you DO NOT have a    #')
-    print ('#   GEOSldas- or LDASsa-produced restart file              #') 
+    print ('#   GEOSldas restart file                                  #') 
     print ('#   (works for global domain ONLY!):                       #')
     print ('#                                                          #')
     print ('# RESTART: 0                                               #')
