@@ -37,4 +37,19 @@ $GEOSBIN/regrid_forc.csh  $force_orig $force_rgd $outgrid
 rm -rf  $force_orig/tmp* 
 
 python  $GEOSBIN/ensemble_forc.py $force_rgd $force_cntr $NENS 
- 
+
+cd $force_rgd
+@ inens = 0
+while ($inens < $NENS)
+      @ inens ++
+      if ($inens <10) then
+          set ENSDIR = `echo mem00${inens}`
+      else if($inens<100) then
+          set ENSDIR=`echo mem0${inens}`
+      endif
+      cd ${ENSDIR}
+      /bin/rm -rf  *lfo*nc4
+      $GEOSBIN/stripname nc4.Cpert nc4
+      cd $force_rgd
+end
+
