@@ -1,0 +1,11 @@
+The scripts are for generating the soil wetness climatology input file of L4SM that is needed to compute the GPH variables "sm_rootzone_pctl"  and "sm_profile_pctl". 
+
+The process takes 2 steps: 
+
+1) Run "Run_get_model_clim_stats.m" to compute and create the pentad binary files separately for "sm_rootzone" and "sm_profile". 
+
+2) Run "Write_L4_sm_clim_stat_bin2nc4.m" to create the single L4 input netcdf file, *after* all binary pentad files (73 for "sm_rootzone" + 73 for "sm_profile") are completed. The .nc4 file is the only file needed in L4.
+
+Note the above jobs are memory intensive. It's necessary to use the computing nodes if run on Discover. 
+
+Q. Liu Aug. 29, 2022
