@@ -31,6 +31,8 @@ def remap_config_ldas(config, RESTART_str, RESTART_PATH, RESTART_ID):
      date_21 = 20180711 
      date_22 = 20190313
      date_25 = 20200130
+     date_27 = 20210225
+     date_29 = 20220228
      expdata = int(yyyymmddhh[0:8])
      if (expdate < date_16):
        print( "WARNING : FP restarts before $date_16 are not availale.")
@@ -60,9 +62,19 @@ def remap_config_ldas(config, RESTART_str, RESTART_PATH, RESTART_ID):
         fpver = 'GEOS-5.22/GEOSadas-5_22/'
         fplab = 'f522_fp'
 
-     if (date_25 <= expdate) :
+     if (date_25 <= expdate and expdate < date_27) :
         fpver = 'GEOS-5.25/GEOSadas-5_25/'
         fplab = 'f525land_fpp'
+        config['input']['surface']['wemin'] = 13
+
+     if (date_27 <= expdate and expdate < date_29) :
+        fpver = 'GEOS-5.27/GEOSadas-5_27/'
+        fplab = 'f5271_fpp'
+        config['input']['surface']['wemin'] = 13
+     
+     if (date_29 <= expdate ) :
+        fpver = 'GEOS-5.29/GEOSadas-5_29/'
+        fplab = 'f5293_fpp'
         config['input']['surface']['wemin'] = 13
 
 
