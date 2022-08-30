@@ -779,7 +779,7 @@ class LDASsetup:
            os.symlink(bc,myBC)
 
         # create and link restart 
-        print ("Creating and lining restart...")
+        print ("Creating and linking restart...")
         _start = self.begDates[0]
 
         y4m2='Y%4d/M%02d'%(_start.year, _start.month)
@@ -909,7 +909,7 @@ class LDASsetup:
 
                 if '0000' in ens :
                     catchRstFile0 = catchRstFile
-            else : # re use 0000 catch file    
+            else : # re-use 0000 catch file    
                 catchRstFile = catchRstFile0
 
             # vegdyn restart file
