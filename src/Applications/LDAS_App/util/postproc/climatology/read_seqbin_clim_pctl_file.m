@@ -24,9 +24,10 @@ if (strcmp(file_type,'cli'))
 
 N_f = N_field;
 
-fortran_tag  = fread( ifp, 1, int_precision );
+fortran_tag  = fread( ifp, 1,     int_precision );
 tmp_data_int = fread( ifp, [1 2], int_precision );
-fortran_tag  = fread( ifp, 1, int_precision );
+fortran_tag  = fread( ifp, 1,     int_precision );
+
 N_grid       = tmp_data_int(1);
 N_field      = tmp_data_int(2); 
 
@@ -42,85 +43,84 @@ end
 
 if (N_grid > 1)
 
-    if (strcmp(file_type,'cli'))
+  if (strcmp(file_type,'cli'))
 
-        %fortran_tag = fread( ifp, 1,    int_precision );
-        %fieldno   = fread( ifp, [1 N_field], float_precision );
-        %fortran_tag = fread( ifp, 1,    int_precision );
+    if (strcmp(read_ind_latlon,'ind'))
 
-        if (strcmp(read_ind_latlon,'ind'))
-
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
         col_ind     = fread( ifp, [1 N_grid], int_precision );
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
 
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
         row_ind     = fread( ifp, [1 N_grid], int_precision );
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
 
-        elseif (strcmp(read_ind_latlon,'latlon'))
+    elseif (strcmp(read_ind_latlon,'latlon'))
 
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
         col_ind     = fread( ifp, [1 N_grid], float_precision );
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
 
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
         row_ind     = fread( ifp, [1 N_grid], float_precision );
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
 
-        elseif (strcmp(read_ind_latlon,'latlon_id') )
+    elseif (strcmp(read_ind_latlon,'latlon_id') )
 
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
         col_ind     = fread( ifp, [1 N_grid], float_precision );
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
 
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
         row_ind     = fread( ifp, [1 N_grid], float_precision );
-        fortran_tag = fread( ifp, 1,    int_precision );
+        fortran_tag = fread( ifp, 1,          int_precision );
 
-        fortran_tag = fread( ifp, 1,    int_precision );
-        tile_id     = fread( ifp, [1 N_grid], int_precision );  %before 12aug13: tile_id = fread( ifp, [1 N_grid], int_precision );
-        fortran_tag = fread( ifp, 1,    int_precision );       
+        fortran_tag = fread( ifp, 1,          int_precision );
+        tile_id     = fread( ifp, [1 N_grid], int_precision );  
+        fortran_tag = fread( ifp, 1,          int_precision );       
 
+    else
 
-        else
-
-            error('not sure how the file looks like, based on the combination of input-specs')
-
-        end
+        error('not sure how the file looks like, based on the combination of input-specs')
 
     end
 
-    data = NaN*ones(N_field,N_grid,N_stat);
-    
-    for j=1:N_stat
+  end
 
-       for i=1:N_field 
+  data = NaN*ones(N_field,N_grid,N_stat);
+  
+  for j=1:N_stat
 
-         if (j == 5  && strcmp(file_type,'cli')) 
-          fortran_tag = fread( ifp, 1,    int_precision );
-          tmp_data    = fread( ifp, [1 N_grid], int_precision );
-          fortran_tag = fread( ifp, 1,    int_precision ); 
-         else        
-          fortran_tag = fread( ifp, 1, int_precision );
-          tmp_data    = fread( ifp, [1 N_grid], float_precision );
-          fortran_tag = fread( ifp, 1, int_precision );
-         end
+     for i=1:N_field 
+
+       if (j == 5  && strcmp(file_type,'cli')) 
          
-         data(i,1:N_grid,j) = tmp_data(1:N_grid);
-         
-      end
+         fortran_tag = fread( ifp, 1,          int_precision );
+         tmp_data    = fread( ifp, [1 N_grid], int_precision );
+         fortran_tag = fread( ifp, 1,          int_precision ); 
+       
+       else        
 
+         fortran_tag = fread( ifp, 1,          int_precision );
+         tmp_data    = fread( ifp, [1 N_grid], float_precision );
+         fortran_tag = fread( ifp, 1,          int_precision );
+       
+       end
+       
+       data(i,1:N_grid,j) = tmp_data(1:N_grid);
+       
     end
 
-    data = squeeze(data);
+  end
+
+  data = squeeze(data);
 
 else
     
-    data = NaN*ones(N_field,1);
-    col_ind   = NaN;
-    row_ind   = NaN;
-    fieldno   = NaN;
+  data      = NaN*ones(N_field,1);
+  col_ind   = NaN;
+  row_ind   = NaN;
+  fieldno   = NaN;
     
 end
 
