@@ -1,11 +1,11 @@
 The scripts in this directory are used to generate climatology data from GEOSldas output.
 
-Specifically, the current set of scripts post-processes GEOSldas output into a soil wetness 
+Specifically, the current set of scripts post-processes GEOSldas output into a soil moisture 
 climatology nc4 file.  This file is needed as input by the SMAP L4SM ops system to compute soil 
 moisture percentile output, i.e.,  "sm_rootzone_pctl"  and "sm_profile_pctl" for the L4SM 
 "Geophysical" (gph) file collection. 
 
-Generation of the soil wetness climatology nc4 file is done in two steps: 
+Generation of the soil moisture climatology nc4 file is done in two steps: 
 
 1) Execute "Run_get_model_clim_stats.m" to compute and create pentad binary climatology files.
    (Separate files for "sm_rootzone" and "sm_profile".) 

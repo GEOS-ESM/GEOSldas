@@ -1,4 +1,6 @@
-% Compute the statistics of soil wetness, which are needed in computing the L4 wetness percentile.
+% Compute statistics of root-zone and profile soil moisture, which are needed to compute
+% L4SM soil moisture percentile output.
+
 clear
 addpath ../../shared/matlab
 %-------------------------------------------------------------------------
@@ -20,7 +22,7 @@ out_collection_ID = [7];
 start_year(1:12) = [repmat(2001,12,1)]; %start year for each month,the short start year was due to CPCU data inconsistance 
 end_year(1:12)   = [repmat(2021,12,1)]; %end year for each month
 
-% only set 1 variable if run into memory issue 
+% only set 1 variable if running into memory issue 
 fieldnames = {'sm_rootzone','sm_profile'};   
   
 %linked to the output resolution

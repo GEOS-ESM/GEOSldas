@@ -2,7 +2,7 @@
 % script to convert SMAPL4 SM climatology statistic binary output to nc4
 % file. 
 %
-% The tile_ids are in the same order as come out of the ldas_tilecoord.txt 
+% The tile_ids are in the same order as in ldas_tilecoord.txt 
 %
 % Q. Liu       - Jun 20, 2016
 % G. De Lannoy - Apr 21, 2015
@@ -25,10 +25,10 @@ end
 
 fname_out  = [bin_fpath, file_out]; 
 
-% read a random  file to get header info
+% read an arbitrary file to get header info
 fname = [bin_fpath, 'cli_',time_stamp,specs_tag,'_sm_rootzone_wet_p06.bin'];
 
-N_stat = 99 + 5; %99 percentiles + 5 (mean, stdv,min, max, N_data) 
+N_stat = 99 + 5;   % 99 percentile values + 5 stats (mean, stdv,min, max, N_data) 
 
 [data_tmp, tile_id, lon, lat] = ...
     read_seqbin_clim_pctl_file(fname, 1, N_stat, 'latlon_id','cli');
