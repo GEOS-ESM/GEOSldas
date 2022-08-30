@@ -24,7 +24,7 @@ function [] = get_model_clim_stats( fieldname,              ...
 %
 % One file with statistics is generated for every pentad or month.
 %
-% fieldname:   model field to be processed simultaneously in one cli-file
+% fieldname:    model field to be processed simultaneously in one cli-file
 % start_year:   start year for each month (12 entries!)
 % end_year:     end year for each month (12 entries!)
 % start_HHSS:   hour, min, sec of first file (depends on output resolution)
@@ -136,16 +136,16 @@ end_time          = augment_date_time((365 + w_out_freq * n_days)*24*60*60, ...
 
 start_time_true       = start_time;
 start_time_true.year  = min(start_year);
-tmp = find(start_year==min(start_year));
+tmp                   = find(start_year==min(start_year));
 start_time_true.month = tmp(1);
 start_time_true       = get_dofyr_pentad( start_time_true );
 
-end_time_true        = end_time;
-end_time_true.year   = max(end_year);
-tmp = find(start_year==max(start_year));
-end_time_true.month  = tmp(end);
-end_time_true.day    = days_in_month( end_time_true.year, end_time_true.month);
-end_time_true        = get_dofyr_pentad( end_time_true );
+end_time_true         = end_time;
+end_time_true.year    = max(end_year);
+tmp                   = find(start_year==max(start_year));
+end_time_true.month   = tmp(end);
+end_time_true.day     = days_in_month( end_time_true.year, end_time_true.month);
+end_time_true         = get_dofyr_pentad( end_time_true );
 
 % assemble input and output paths
 
@@ -165,52 +165,71 @@ end
 
 convert_to_wetness = 0;
 
-    fname = [inpath, '/rc_out/', exp_run, '.ldas_tilecoord.bin'];
+fname = [inpath, '/rc_out/', exp_run, '.ldas_tilecoord.bin'];
 
-    [ tile_coord ] = read_tilecoord( fname );
+[ tile_coord ] = read_tilecoord( fname );
 
-    N_tile = tile_coord.N_tile;
+N_tile = tile_coord.N_tile;
 
-    lat_out        = tile_coord.com_lat;
-    lon_out        = tile_coord.com_lon;
-    tile_coord_tile_id = tile_coord.tile_id;
+lat_out        = tile_coord.com_lat;
+lon_out        = tile_coord.com_lon;
+tile_coord_tile_id = tile_coord.tile_id;
+
+if ~contains(field_tag,'wet')
+  
+  % If the input fieldname does not contain the string "wet",
+  % suggesting soil moisture in dimensionless wetness units,
+  % then turn on flag to convert inputs to wetness units.
+  %
+  % This seems to ASSUME that clim is computed for soil moisture only!!!
+  % (The conversion would not make sense for, say, soil temperature.)
+  % 
+  % The if condition above should probably be changed to something like 
+  %  if contains(field_tag,'sm_')
+  % to check more explicitly for field names indicating soil moisture in volumetric units.
+  %
+  % It is not clear why soil moisture is converted to wetness units
+  % here.  Why not read soil moisture in wetness units directly
+  % from the (L4SM gph) file? 
+  
+  field_tag          = [field_tag,'_wet'];
+  convert_to_wetness = 1;
+  
+  catfname = [exp_path,'/',exp_run,'/output/',domain,'/rc_out/','/Y2015/M01/',...
+      exp_run,'.ldas_catparam.','20150101_0000','z.bin'];
+
+  cat_param = read_catparam( catfname, N_tile );
+  
+  poros = cat_param.poros; clear cat_param
     
-    if ~contains(field_tag,'wet')
-        
-        field_tag          = [field_tag,'_wet'];
-        convert_to_wetness = 1;
-        
-        catfname = [exp_path,'/',exp_run,'/output/',domain,'/rc_out/','/Y2015/M01/',...
-            exp_run,'.ldas_catparam.','20150101_0000','z.bin'];
-
-        cat_param = read_catparam( catfname, N_tile );
-        
-        poros = cat_param.poros; clear cat_param
-        
-    end
+end
     
 % -------------------------------------------------------------
 
 % assemble output file name
 
 if strcmp(out_freq,'pentad')
-    fname_out_base = [ outpath, '/', 'cli_',      ...
-          num2str(start_time_true.year),  '_p',...
-          num2str(start_time_true.pentad),'_',...
-          num2str(end_time_true.year),    '_p',...
-          num2str(end_time_true.pentad),  '_',...
-          'W_', num2str(w_out_freq),'p_',...
-	      'Nmin_',   num2str(round(N_data_min),'%d'),...
+
+  fname_out_base = [ outpath, '/', 'cli_',             ...
+          num2str(start_time_true.year),  '_p',        ...
+          num2str(start_time_true.pentad),'_',         ...
+          num2str(end_time_true.year),    '_p',        ...
+          num2str(end_time_true.pentad),  '_',         ...
+          'W_', num2str(w_out_freq),'p_',              ...
+          'Nmin_',   num2str(round(N_data_min),'%d'),  ...
           field_tag];
+
 else strcmp(out_freq,'monthly')
-    fname_out_base = [ outpath, '/', 'cli_',      ...
-          num2str(start_time_true.year),  '_M',...
-          num2str(start_time_true.month),'_',...
-          num2str(end_time_true.year),    '_M',...
-          num2str(end_time_true.month),  '_',...
-          'W_', num2str(w_out_freq),'M_',...
-	      'Nmin_',   num2str(round(N_data_min),'%d'),...
+
+  fname_out_base = [ outpath, '/', 'cli_',             ...
+          num2str(start_time_true.year),  '_M',        ...
+          num2str(start_time_true.month),'_',          ...
+          num2str(end_time_true.year),    '_M',        ...
+          num2str(end_time_true.month),  '_',          ...
+          'W_', num2str(w_out_freq),'M_',              ...
+	  'Nmin_',   num2str(round(N_data_min),'%d'),  ...
           field_tag];
+
 end
 
 if exist( 'time_of_day_in_hours', 'var')
@@ -237,37 +256,37 @@ time_new = start_time;
 
 while 1
     
-    if (time_new.year == end_time.year  &...
-      time_new.month == end_time.month  &...
-      time_new.day   == end_time.day  &...
-      time_new.hour  == end_time.hour &...
-      time_new.min   == end_time.min  &...
+  if (time_new.year  == end_time.year  &...
+      time_new.month == end_time.month &...
+      time_new.day   == end_time.day   &...
+      time_new.hour  == end_time.hour  &...
+      time_new.min   == end_time.min   &...
       time_new.sec   == end_time.sec  )
-      break
-    end
+    break
+  end
 
-    % augment date_time
+  % augment date_time
 
-    time_old   = time_new;
-    pentad_old = time_new.pentad;
-    month_old  = time_new.month;
+  time_old   = time_new;
+  pentad_old = time_new.pentad;
+  month_old  = time_new.month;
 
-    time_new   = augment_date_time(dtstep, time_old);
-    pentad_new = time_new.pentad;
-    month_new  = time_new.month;
+  time_new   = augment_date_time(dtstep, time_old);
+  pentad_new = time_new.pentad;
+  month_new  = time_new.month;
 
-    % check if diurnal stats are needed
+  % check if diurnal stats are needed
 
-    if exist('time_of_day_in_hours','var')
-        tmp_hour = time_of_day_in_hours;
-    else
-        tmp_hour = time_old.hour;   % all hours of day will be included
-    end
+  if exist('time_of_day_in_hours','var')
+    tmp_hour = time_of_day_in_hours;
+  else
+    tmp_hour = time_old.hour;   % all hours of day will be included
+  end
 
-    if time_old.hour==tmp_hour
+  if time_old.hour==tmp_hour
 
-    minute  = time_old.min; %floor( (seconds_in_day-hour*3600)/60 );
-    seconds = time_old.sec; %seconds_in_day-hour*3600-minute*60;
+    minute  = time_old.min;  % floor( (seconds_in_day-hour*3600)/60 );
+    seconds = time_old.sec;  % seconds_in_day-hour*3600-minute*60;
 
     if (seconds~=0)
       input('something is wrong! Ctrl-c now')
@@ -277,146 +296,153 @@ while 1
 
       time_count =  time_count+1;
       
-      YYYYMMDD = [ num2str(year,       '%4.4d'),     ...
-               num2str(time_old.month, '%2.2d'),     ...
-               num2str(time_old.day,   '%2.2d')  ];    
+      YYYYMMDD = [ num2str(year,           '%4.4d'),    ...
+                   num2str(time_old.month, '%2.2d'),    ...
+                   num2str(time_old.day,   '%2.2d')  ];    
 
-      HHMM     = [ num2str(time_old.hour,   '%2.2d'),     ...
-               num2str(time_old.min, '%2.2d')  ]; 
+      HHMM     = [ num2str(time_old.hour,  '%2.2d'),    ...
+                   num2str(time_old.min,   '%2.2d')  ]; 
 
-        fname = [ inpath,         ...
-        '/cat/', ens_tag,                                ...
-        '/Y',   num2str(year, '%4.4d'),        ...
+      fname = [ inpath,                                 ...
+        '/cat/', ens_tag,                               ...
+        '/Y',   num2str(year, '%4.4d'),                 ...
         '/M',   num2str(time_old.month,'%2.2d'),        ...
-        '/', exp_run,                        ...
+        '/', exp_run,                                   ...
         '.', file_tag, '.', YYYYMMDD, '.nc4' ];
 
-        if ~exist(fname,'file')
-           fname = [ inpath,         ...
-        '/cat/', ens_tag,                                ...
-        '/Y',   num2str(year, '%4.4d'),        ...
+      if ~exist(fname,'file')
+        
+        % try again with "_[HHMM]z" inserted into file name
+        
+        fname = [ inpath,                               ...
+        '/cat/', ens_tag,                               ...
+        '/Y',   num2str(year, '%4.4d'),                 ...
         '/M',   num2str(time_old.month,'%2.2d'),        ...
-        '/', exp_run,                       ...
+        '/', exp_run,                                   ...
         '.', file_tag, '.', YYYYMMDD, '_', HHMM, 'z.nc4' ];
-        end
+      
+      end
 
-        disp(['reading ',fieldname,' from ',fname])
-        data_tmp = ncread(fname, fieldname);
+      disp(['reading ',fieldname,' from ',fname])
+      data_tmp = ncread(fname, fieldname);
 
-        if size(data_tmp,2) == 8
-           tile_data_tmp = data_tmp(:,ceil(time_old.hour/3.)); clear data_tmp
-        elseif size(data_tmp,2) == 1
-           tile_data_tmp = data_tmp; clear data_tmp
-        else
-           error(['data size is incorrect from ', fname])
-        end
+      if size(data_tmp,2) == 8   % hard-wired 3-hourly time step??
+         tile_data_tmp = data_tmp(:,ceil(time_old.hour/3.)); clear data_tmp
+      elseif size(data_tmp,2) == 1
+         tile_data_tmp = data_tmp; clear data_tmp
+      else
+         error(['data size is incorrect from ', fname])
+      end
 
       for s=1:N_fields
 
-            if ~convert_to_wetness
-                tile_data_tmp_1D = tile_data_tmp(:);
-            else
-                tile_data_tmp_1D = tile_data_tmp(:)./poros(:); 
-            end
-            
-            good_data        = find(~(abs(tile_data_tmp_1D - nodata) < nodata_tol));
-            tile_data_tmp_1D = tile_data_tmp_1D(good_data);
+        if ~convert_to_wetness
+          tile_data_tmp_1D = tile_data_tmp(:);
+        else
+          tile_data_tmp_1D = tile_data_tmp(:)./poros(:); 
+        end
+        
+        good_data        = find(~(abs(tile_data_tmp_1D - nodata) < nodata_tol));
 
-            %Keep a record of time series
-            
-            total_bin_good_ind = (time_count-1).*(N_fields*N_tile)+...
-                                (s-1)*N_tile+good_data';
-            
-            hist_data(total_bin_good_ind) = tile_data_tmp_1D;
+        tile_data_tmp_1D = tile_data_tmp_1D(good_data);
+
+        %Keep a record of time series
+        
+        total_bin_good_ind = (time_count-1).*(N_fields*N_tile) + ...
+                             (s-1)*N_tile+good_data';
+        
+        hist_data(total_bin_good_ind) = tile_data_tmp_1D;
             
       end
 
-    end %over all years
+    end % loop through years
 
-    end  % time_of_day_in_hours
+  end  % time_of_day_in_hours
  
-    % check if output needs to be written
+  % check if output needs to be written
     
-    if (time_count == n_time_count )
-        
-        % write output
+  if (time_count == n_time_count )
+    
+    % write output
    
-        for s=1:N_fields
+    for s=1:N_fields
 
-        %edges  = edge_min(s):edge_dx(s):edge_max(s);
-        
-            for tile=1:N_tile        
-
-                tmp = reshape(squeeze(hist_data(tile, s, :)),1,[]);
-                
-                data_out(s,tile,1) = nanmean(tmp); %mean
-                data_out(s,tile,2) = nanstd(tmp);  %stdv
-                data_out(s,tile,3) = min(tmp);     %min
-                data_out(s,tile,4) = max(tmp);     %max
-                data_out(s,tile,5) = sum(~isnan(tmp)); %N_data
-                
-                % determine the CDF-parameters, or the edges for each
-                % percentile
-                    
-                perc = round(percentiles./100*data_out(s,tile,5));
-
-                tmp  = sort(tmp);
-                data_out(s,tile,N_stat+1:N_stat+N_CDF) = tmp(perc);
-                    
-            end
-        
-        end  
-
-        bad_ind  = find(data_out(:,:,5)<N_data_min);
-        
-        for ff=1:N_stat_CDF
-            data_out(bad_ind,ff) = NaN;
-        end 
-        
-        % remove NaN before writing a file
-      
-        data_out(isnan(data_out)) = nodata;
-        data_out(isinf(data_out)) = nodata;
-        
-        date_time_tmp = augment_date_time( -floor(w_out_freq*n_days*(24*60*60)/2.0), time_old );
-        fname_out = [fname_out_base, '_p', num2str(date_time_tmp.pentad,'%2.2d'), '.bin'];
-
-        % check whether output file exists
-
-        if (exist(fname_out)==2 && overwrite) 
-
-          disp(['output file exists. overwriting', fname_out])
-
-        elseif (exist(fname_out)==2 && ~overwrite) 
-
-          disp(['output file exists. not overwriting. returning'])
-          return
-
-        else
-
-          disp(['creating ', fname_out])
-
-        end
-
-        write_seqbin_clim_pctl_file(fname_out, lon_out, lat_out, ...
-                data_out(:,:,:), fieldno(:,1), N_stat_CDF, ...  
-                overwrite, ...
-                write_ind_latlon, 'cli', tile_coord_tile_id)
-
-        % re-initialize
-        
-        data_out   = NaN+0*data_out;  
-        
-        % shift time window
-        shift      = n_days * (max(end_year-start_year)+1) *...
-                     ((24*60*60)./dtstep);
-                 
-        time_count                   = time_count-shift;
-        hist_data(:,:,1:time_count)  = hist_data(:,:,(1+shift):n_time_count);
-
-        
-    end
+      %edges  = edge_min(s):edge_dx(s):edge_max(s);
     
-end %time loop
+      for tile=1:N_tile        
+
+        tmp = reshape(squeeze(hist_data(tile, s, :)),1,[]);
+        
+        data_out(s,tile,1) = nanmean(tmp);     % mean
+        data_out(s,tile,2) = nanstd(tmp);      % stdv
+        data_out(s,tile,3) = min(tmp);         % min
+        data_out(s,tile,4) = max(tmp);         % max
+        data_out(s,tile,5) = sum(~isnan(tmp)); % N_data
+        
+        % determine the CDF-parameters, or the edges for each
+        % percentile
+            
+        perc = round(percentiles./100*data_out(s,tile,5));
+
+        tmp  = sort(tmp);
+
+        data_out(s,tile,N_stat+1:N_stat+N_CDF) = tmp(perc);
+              
+      end
+    
+    end  
+
+    bad_ind  = find(data_out(:,:,5)<N_data_min);
+    
+    for ff=1:N_stat_CDF
+        data_out(bad_ind,ff) = NaN;
+    end 
+    
+    % remove NaN before writing a file
+    
+    data_out(isnan(data_out)) = nodata;
+    data_out(isinf(data_out)) = nodata;
+    
+    date_time_tmp = augment_date_time( -floor(w_out_freq*n_days*(24*60*60)/2.0), time_old );
+
+    fname_out = [fname_out_base, '_p', num2str(date_time_tmp.pentad,'%2.2d'), '.bin'];
+
+    % check whether output file exists
+
+    if (exist(fname_out)==2 && overwrite) 
+
+      disp(['output file exists. overwriting', fname_out])
+
+    elseif (exist(fname_out)==2 && ~overwrite) 
+
+      disp(['output file exists. not overwriting. returning'])
+      return
+
+    else
+
+      disp(['creating ', fname_out])
+
+    end
+
+    write_seqbin_clim_pctl_file(fname_out, lon_out, lat_out, ...
+            data_out(:,:,:), fieldno(:,1), N_stat_CDF, ...  
+            overwrite, ...
+            write_ind_latlon, 'cli', tile_coord_tile_id)
+
+    % re-initialize
+    
+    data_out   = NaN+0*data_out;  
+    
+    % shift time window
+
+    shift      = n_days * (max(end_year-start_year)+1) *...
+                 ((24*60*60)./dtstep);
+             
+    time_count                   = time_count-shift;
+    hist_data(:,:,1:time_count)  = hist_data(:,:,(1+shift):n_time_count);
+      
+  end  % if (time_count == n_time_count )
+    
+end    % while 1 (time loop)
 
 % ==================== EOF ==============================================
