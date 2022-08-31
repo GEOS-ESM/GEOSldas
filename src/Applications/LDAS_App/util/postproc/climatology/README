@@ -1,22 +1,24 @@
+
 The scripts in this directory are used to generate climatology data from GEOSldas output.
 
-Specifically, the current set of scripts post-processes GEOSldas output into a soil moisture 
-climatology nc4 file.  This file is needed as input by the SMAP L4SM ops system to compute soil 
-moisture percentile output, i.e.,  "sm_rootzone_pctl"  and "sm_profile_pctl" for the L4SM 
-"Geophysical" (gph) file collection. 
+L4_SM Application:
+------------------
+Post-process GEOSldas output into the soil moisture climatology nc4 file needed by the 
+SMAP L4SM ops system's "prcntl.py" script, which generates the soil moisture percentile 
+output ("sm_rootzone_pctl", "sm_profile_pctl") in the L4SM "Geophysical" (gph) file 
+collection.  
+The soil moisture climatology file needed by "prcntl.py" is created in two steps: 
 
-Generation of the soil moisture climatology nc4 file is done in two steps: 
+1) Execute "Run_L4_sm_clim_stats.m" to create pentad binary climatology files 
+   (73 for "sm_rootzone" + 73 for "sm_profile").
 
-1) Execute "Run_get_model_clim_stats.m" to compute and create pentad binary climatology files.
-   (Separate files for "sm_rootzone" and "sm_profile".) 
+2) Execute "Write_L4_sm_clim_stat_bin2nc4.m" to create the single L4 input netcdf file
+   (*after* all binary pentad files are done). 
 
-2) Execute "Write_L4_sm_clim_stat_bin2nc4.m" to create the single L4 input netcdf file, *after* 
-   all binary pentad files (73 for "sm_rootzone" + 73 for "sm_profile") are completed. 
-   The .nc4 file is the only file needed in L4SM.
-
-Note that the above jobs are memory intensive and typically take hours to run.  On Discover, it 
-is necessary to use designated compute nodes. 
+These jobs are memory intensive and typically take hours to run.  On Discover, it is 
+necessary to use designated compute nodes.  Step 1 may need to be run separately for 
+root-zone and profile soil moisture.
 
 Q. Liu,     29 Aug 2022
 
-==================== EOF =====================================================
+=========================== EOF ========================================================

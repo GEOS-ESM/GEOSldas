@@ -67,7 +67,7 @@ nodata_tol = 1e-4;
 
 ens_tag = 'ens0000';
 
-dtstep  = 3*60*60; %hardwired 3hourly if x-hourly output is given
+dtstep  = 3*60*60; % hardwired 3-hourly if x-hourly output is given
 
 % when reading h5-data
 
@@ -107,7 +107,7 @@ end
 if strcmp(out_freq,'pentad')
     n_days = 5;  
 elseif strcmp(out_freq,'monthly')
-    n_days = 365/12.0; %could adjust this and work w/ min_days=28,max_days=31
+    n_days = 365/12.0; % could adjust this and work w/ min_days=28, max_days=31
 end
 
 disp(['smoothing window is ',num2str(n_days*w_out_freq),' days']);

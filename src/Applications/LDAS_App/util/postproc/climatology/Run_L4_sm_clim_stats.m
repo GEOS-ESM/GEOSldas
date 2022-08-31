@@ -22,8 +22,8 @@ field_names = {'sm_rootzone','sm_profile'};
 
 % convert soil moisture variables in "field_names" (if any) into
 % wetness units
-% (needed for L4SM because L4 ops script expects clim in wetness
-%  units but clim is computed from Nature Run, which only 
+% (needed for L4SM because L4 ops script "prcntl.py" expects clim in 
+%  wetness units, but clim is computed from Nature Run, which only 
 %  outputs volumetric soil moisture) 
 out_wetness = 1;
 
