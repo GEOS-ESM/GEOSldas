@@ -1,9 +1,8 @@
- 
 function [] = get_model_clim_stats( fieldname,              ...
-    exp_path, exp_run, domain, ...
-    start_year, end_year, start_HHSS,  ...
-    out_freq, w_out_freq, file_tag, ...
-    out_collection_ID, N_out_fields, out_wetness, is_tavg, ...
+    exp_path, exp_run, domain,                              ...
+    start_year, end_year, start_HHSS,                       ...
+    out_freq, w_out_freq, file_tag,                         ...
+    out_wetness,                                            ...
     N_data_min, time_of_day_in_hours )
 
 %=======================================================================
@@ -24,7 +23,7 @@ function [] = get_model_clim_stats( fieldname,              ...
 %
 % One file with statistics is generated for every pentad or month.
 %
-% fieldname:    model field to be processed simultaneously in one cli-file
+% fieldname:    (single) model field to be processed 
 % start_year:   start year for each month (12 entries!)
 % end_year:     end year for each month (12 entries!)
 % start_HHSS:   hour, min, sec of first file (depends on output resolution)
@@ -131,7 +130,6 @@ start_time        = get_dofyr_pentad(start_time); %ini correct pentad
 end_time          = augment_date_time((365 + w_out_freq * n_days)*24*60*60, ...
                                       start_time);
 
-
 % effective period used in climatology calculation
 
 start_time_true       = start_time;
@@ -160,10 +158,7 @@ end
 
 % -------------------------------------------------------------		  
 
-% load catchment coordinates; 
-% get cat_param if conversion to wetness is needed
-
-convert_to_wetness = 0;
+% load catchment coordinates
 
 fname = [inpath, '/rc_out/', exp_run, '.ldas_tilecoord.bin'];
 
@@ -171,26 +166,16 @@ fname = [inpath, '/rc_out/', exp_run, '.ldas_tilecoord.bin'];
 
 N_tile = tile_coord.N_tile;
 
-lat_out        = tile_coord.com_lat;
-lon_out        = tile_coord.com_lon;
+lat_out            = tile_coord.com_lat;
+lon_out            = tile_coord.com_lon;
 tile_coord_tile_id = tile_coord.tile_id;
 
-if ~contains(field_tag,'wet')
-  
-  % If the input fieldname does not contain the string "wet",
-  % suggesting soil moisture in dimensionless wetness units,
-  % then turn on flag to convert inputs to wetness units.
-  %
-  % This seems to ASSUME that clim is computed for soil moisture only!!!
-  % (The conversion would not make sense for, say, soil temperature.)
-  % 
-  % The if condition above should probably be changed to something like 
-  %  if contains(field_tag,'sm_')
-  % to check more explicitly for field names indicating soil moisture in volumetric units.
-  %
-  % It is not clear why soil moisture is converted to wetness units
-  % here.  Why not read soil moisture in wetness units directly
-  % from the (L4SM gph) file? 
+% determine if conversion of soil moisture variables to wetness is
+% needed;  if yes, get porosity from cat_param file
+
+convert_to_wetness = 0;
+
+if contains(field_tag,'sm_') & ~contains(field_tag,'wet') & out_wetness
   
   field_tag          = [field_tag,'_wet'];
   convert_to_wetness = 1;
@@ -289,7 +274,7 @@ while 1
     seconds = time_old.sec;  % seconds_in_day-hour*3600-minute*60;
 
     if (seconds~=0)
-      input('something is wrong! Ctrl-c now')
+      error('something is wrong! (seconds~=0)')
     end
 
     for year = start_year(time_old.month):end_year(time_old.month)
