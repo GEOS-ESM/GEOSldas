@@ -14,10 +14,8 @@ PROGRAM mwrtm_bin2nc4
 
   integer       :: i,k,  n, iargc, NTILES
   integer       :: NCFOutID, Vid, STATUS, CellID, TimID, nVars
-  character*256 :: Usage="mwrtm_bin2nc4.x mwrtm_BINFILE  mwRTM_param.nc4"
-  character*256 :: BINFILE, MWRTMNC4, arg(3)
-  character*100 :: MYNAME
-  character*100                       :: Str_Atr
+  character(512):: Usage="mwrtm_bin2nc4.x mwrtm_BINFILE  mwRTM_param.nc4"
+  character(512):: BINFILE, MWRTMNC4, arg(3)
   real, allocatable, dimension (:)    :: var
   integer, allocatable,dimension (:)  :: NT
   character(len=:),allocatable :: shnms(:)
@@ -60,11 +58,9 @@ PROGRAM mwrtm_bin2nc4
      call getarg(n,arg(n))
   enddo
 
-  call getenv ("MYNAME"        ,MYNAME        )
   read(arg(1),'(a)') BINFILE
   read(arg(2),'(a)') MWRTMNC4
 
-  print *,MYNAME
   print *,trim(BINFILE)
   print *,trim(MWRTMNC4)
 
@@ -212,7 +208,7 @@ PROGRAM mwrtm_bin2nc4
 
     character(*), intent(in)           :: SHORT_NAME
     integer, intent (in), optional     :: LNAME, UNT
-    character(100)                     :: str_atr, LONG_NAME, UNITS
+    character(128)                     :: str_atr, LONG_NAME, UNITS
 
     SELECT case (trim(SHORT_NAME))
     case('MWRTM_VEGCLS');    LONG_NAME = 'L-band RTM model: Vegetation class. Type is Unsigned32';             UNITS = '1'
