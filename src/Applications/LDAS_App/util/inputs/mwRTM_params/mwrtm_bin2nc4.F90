@@ -12,7 +12,7 @@ PROGRAM mwrtm_bin2nc4
   implicit none
   INCLUDE 'netcdf.inc'
 
-  integer       :: i,k,  n, iargc, NTILES
+  integer       :: i,k,  n, command_argument_count, NTILES
   integer       :: NCFOutID, Vid, STATUS, CellID, TimID, nVars
   character(512):: Usage="mwrtm_bin2nc4.x mwrtm_BINFILE  mwRTM_param.nc4"
   character(512):: BINFILE, MWRTMNC4, arg(3)
@@ -46,7 +46,7 @@ PROGRAM mwrtm_bin2nc4
        'MWRTM_LEWT     ']
   
   ! processing command line agruments
-  I = iargc()
+  I = command_argument_count()
   
   if( I /=2 ) then
      print *, "Wrong Number of arguments: ", i
@@ -55,7 +55,7 @@ PROGRAM mwrtm_bin2nc4
   end if
 
   do n=1,I
-     call getarg(n,arg(n))
+     call get_command_argument(n,arg(n))
   enddo
 
   read(arg(1),'(a)') BINFILE
