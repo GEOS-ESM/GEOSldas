@@ -69,7 +69,7 @@ contains
   ! Subroutine mwRTM_get_param() reads binary mwRTM files and is no longer used.
   !
   ! The subroutine has been replaced by:
-  ! - Applications/LDAS_App/mwrtm_bin2nc4.F90 converts mwRTM files from binary to nc4
+  ! - Applications/LDAS_App/[..]/mwrtm_bin2nc4.F90 converts mwRTM files from binary to nc4
   ! - get_mwrtm_param() in GEOS_LandAssimGridComp.F90 converts the internal state
   !    variables of the Land Assim GridComp into the mwRTM structure.
   !
