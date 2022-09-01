@@ -5,12 +5,11 @@ PROGRAM tile_bin2nc4
 
   integer       :: i,k,  n, NTILES
   integer       :: NCFOutID, Vid, STATUS, CellID, TimID, nVars
-  character*256 :: Usage="tile_bin2nc4.x BINFILE DESCRIPTOR TILECOORD"
-  character*256 :: BINFILE, TILECOORD, DESCRIPTOR, arg(3)
-  character*100 :: MYNAME, BUF
+  character(256) :: Usage="tile_bin2nc4.x BINFILE DESCRIPTOR TILECOORD"
+  character(512) :: BINFILE, TILECOORD, DESCRIPTOR, arg(3)
+  character(128) :: MYNAME, BUF
   integer, dimension(8)               :: date_time_values
   character (22)                      :: time_stamp
-  character*100                       :: Str_Atr
   real, allocatable, dimension (:)    :: lons, lats, var
   integer, allocatable, dimension (:) :: tileid, i_index, j_index 
   integer       :: myunit1, myunit2
@@ -189,7 +188,7 @@ PROGRAM tile_bin2nc4
 
     character(*), intent(in)           :: SHORT_NAME
     integer, intent (in), optional     :: LNAME, UNT
-    character(100)                     :: str_atr, LONG_NAME, UNITS
+    character(128)                     :: str_atr, LONG_NAME, UNITS
 
     SELECT case (trim(SHORT_NAME))
 

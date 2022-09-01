@@ -120,7 +120,8 @@ FIRST_ENS_ID: 0
 #
 #  NO  : Deterministic met forcing  (default)
 #  YES : Ensemble met forcing
-#        - Typically used in land-atmosphere data assimilation (LADAS) configuration. 
+#        - Typically used in land-atmosphere data assimilation (LADAS) configuration
+#            when coupled to 4dHybridEnVar ADAS.
 #        - Must have forcing with matching ensemble ID for each land ensemble member.
 #        - Forcing files must be stored in member-specific directories MET_PATH[NNN]/, 
 #            where NNN is the 3-digit ensemble ID.

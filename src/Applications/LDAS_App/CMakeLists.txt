@@ -16,16 +16,27 @@ ecbuild_add_executable (
 
 ecbuild_add_executable (
    TARGET mwrtm_bin2nc4.x
-   SOURCES mwrtm_bin2nc4.F90
+   SOURCES util/inputs/mwRTM_params/mwrtm_bin2nc4.F90
    LIBS GEOSlandassim_GridComp)
    
-install(
-   PROGRAMS ldas_setup process_hist.csh process_rst.csh util/average_ensemble_forcing.py
+set (scripts
+   ldas_setup 
+   process_hist.csh 
+   process_rst.csh 
+   ens_forcing/average_ensemble_forcing.py 
+   ens_forcing/ensemble_forc.py 
+   ens_forcing/regrid_forc.csh 
+   ens_forcing/enpert_forc.csh
+   )
+
+install (
+   PROGRAMS ${scripts}
    DESTINATION bin
    )
 
-file(GLOB rc_files GEOSldas_*rc)
+file(GLOB rc_files  GEOSldas_*rc)
 file(GLOB nml_files LDASsa_DEFAULT*nml)
+
 install(
    FILES ${rc_files} ${nml_files} lenkf.j.template
    DESTINATION etc

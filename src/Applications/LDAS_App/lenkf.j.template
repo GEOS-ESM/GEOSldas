@@ -66,9 +66,9 @@ setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 #                : 1 -- LDAS coupled to central (deterministic) component of ADAS
 #                : 2 -- LDAS coupled to atmospheric ensemble component of ADAS
 
-setenv    LADAS_COUPLING MY_LADAS_COUPLING
+setenv    LADAS_COUPLING   MY_LADAS_COUPLING
 setenv    ENSEMBLE_FORCING MY_ENSEMBLE_FORCING
-setenv    ADAS_EXPDIR    MY_ADAS_EXPDIR
+setenv    ADAS_EXPDIR      MY_ADAS_EXPDIR
 
 set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
 set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
@@ -109,13 +109,30 @@ if( ${LSMCHOICE} > 1 ) then # CatchCN Only
     ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/FPAR_CDF_Params-M09.nc4
 endif
 
-########################################################################
-#    if $LADAS_COUPLING == 1 use $FVWORK and copy forcing to Scratch
-########################################################################
+#######################################################################
+# if $LADAS_COUPLING == 1:  LDAS coupled to central ADAS simulation
+#######################################################################
 
 if ( $LADAS_COUPLING == 1 ) then
-   echo "copying lfo_Nx+- met forcing from $FVWORK to $SCRDIR"
-   /bin/cp -f $FVWORK/*lfo_Nx+-*nc4  $SCRDIR/.
+
+   if ( $ENSEMBLE_FORCING == "YES" ) then
+
+      # create perturbed forcing from central simulation and atm ensemble
+
+      # python should come with ESMA_env g5_modules
+      #module load python/GEOSpyD/Ana2019.03_py3.7
+      set forcgrid = `grep GEOSldas.GRIDNAME LDAS.rc | cut -d':' -f2 | awk '{print $1}'`
+      setenv GRID $forcgrid
+      $GEOSBIN/enpert_forc.csh
+      cd $SCRDIR
+   else
+
+      # copy central-simulation forcing from $FVWORK to scratch dir
+
+      echo "copying lfo_Nx+- met forcing from $FVWORK to $SCRDIR"
+      /bin/cp -f $FVWORK/*lfo_Nx+-*nc4  $SCRDIR/.
+
+   endif
 endif
 
 #######################################################################
