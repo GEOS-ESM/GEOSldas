@@ -401,9 +401,12 @@ class LDASsetup:
                                    '/mkCatchParam_SMAP_L4SM_v002/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'
               elif (self.catch == 'catchcnclm40'):
                 self.in_rstfile  = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding' \
-                                  '/CatchCN/M09/20151231/catchcn_internal_rst' 
-                self.in_tilefile = '/discover/nobackup/ltakacs/bcs/Heracles-NL/SMAP_EASEv2_M09/SMAP_EASEv2_M09_3856x1624.til'
+                                   '/CatchCN/M36/20150301_0000/catchcnclm40_internal_dummy' 
+                self.in_tilefile = '/discover/nobackup/ltakacs/bcs/Heracles-NL/SMAP_EASEv2_M36/SMAP_EASEv2_M36_964x406.til'
               elif (self.catch == 'catchcnclm45'):
+                self.in_rstfile  = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding' \
+                                   '/CatchCN/M36/19800101_0000/catchcnclm45_internal_dummy'
+                self.in_tilefile = '/discover/nobackup/ltakacs/bcs/Heracles-NL/SMAP_EASEv2_M36/SMAP_EASEv2_M36_964x406.til'
                 sys.exit('need to provide at least dummy files')
                 self.in_rstfile = None
                 self.in_tilefile = None
