@@ -407,7 +407,7 @@ class LDASsetup:
                 self.in_rstfile  = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding' \
                                    '/CatchCN/M36/19800101_0000/catchcnclm45_internal_dummy'
                 self.in_tilefile = '/discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_EASE/SMAP_EASEv2_M36/SMAP_EASEv2_M36_964x406.til'
-
+              else:
                 sys.exit('need to provide at least dummy files')
                 self.in_rstfile = None
                 self.in_tilefile = None
