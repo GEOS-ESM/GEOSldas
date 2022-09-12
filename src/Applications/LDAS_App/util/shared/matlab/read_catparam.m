@@ -8,6 +8,7 @@ function [ cat_param, cat_param_units ] = read_catparam( fname, N_tile, isLDASsa
 %                        structures" to "structure of vectors"
 % reichle,  1 Apr 2015 - added new soil parameter fields (file_format==3)
 %                      - added cat_param_units
+% reichle, 28 Jul 2022 - cleaned up LDASsa/GEOSldas switch for commit into GEOSldas repo
 
 % NOTE: For large files this reader is inefficient (slow execution,
 % excessive memory demand)  due to the use of a matlab structure
@@ -87,6 +88,8 @@ function [ cat_param, cat_param_units ] = read_catparam( fname, N_tile, isLDASsa
 %
 % ------------------------------------------------------------------
 
+if ~exist('isLDASsa','var')  isLDASsa = 0; end  % default is GEOSldas output
+
 % for backward compatibility, back out number of parameters in file
 % from file size:
 
@@ -94,7 +97,7 @@ function [ cat_param, cat_param_units ] = read_catparam( fname, N_tile, isLDASsa
 
 tmps = dir(fname);
 
-if exist('isLDASsa','var') && isLDASsa == 1
+if isLDASsa ~= 0
   machfmt = 'b'; % big-endian, LDASsa
 else
   machfmt = 'l'; % little-endian, GEOSldas
@@ -106,14 +109,22 @@ if     N_param==40
   
   file_format = 1;
 
-  int_columns = 18;
-  
+  if isLDASsa ~= 0
+     int_columns = 18;             % vegcls
+  else
+     int_columns = [];             % GEOSldas files contain only real*4 numbers 
+  end
+
 elseif N_param==42 | N_param==51 | N_param==52
   
   file_format = 2;
+ 
+  if isLDASsa ~= 0 
+     int_columns = [ 18 19 20 ];   % vegcls, soilcls30, soilcls100
+  else
+     int_columns = [];             % GEOSldas files contain only real*4 numbers
+  end
   
-  int_columns = [ 18 19 20 ];
-
 else
   
   error('read_catparam.m: something wrong with file size or format')
