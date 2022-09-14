@@ -30,6 +30,7 @@ module GEOS_LdasGridCompMod
   use catch_constants, only: echo_catch_constants  
   use StieglitzSnow, only: StieglitzSnow_echo_constants
   use SurfParams,    only: SurfParams_init
+  use pso_params_mod
 
   implicit none
 
@@ -395,6 +396,7 @@ contains
     type(ESMF_VM) :: vm
     integer :: mpierr
     logical :: IamRoot
+    integer :: pso_choice, num_params !things needed for PSO
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord_f => null()
     type(tile_coord_type), dimension(:), pointer :: tile_coord_l => null()
@@ -760,6 +762,16 @@ contains
     if ( IamRoot) call echo_catch_constants(logunit)
     if ( IamRoot) call StieglitzSnow_echo_constants(logunit)
 
+    ! are we running a PSO optimization?
+    !pso_choice = 1
+    !num_params = 5 ! this is true for my current case, may need to be updated to be automoated
+    !write(*,*) 'before pso_choice in initialize'
+    !if (pso_choice == 1) then
+    !    !write(*,*) 'inside pso_choice initialize'
+    !
+    !    allocate(pso_params%param_vals(NUM_ENSEMBLE,num_params))
+    !    write(*,*) 'pso_params has been allocated'
+    !endif
 
     ! Turn timer off
     call MAPL_TimerOff(MAPL, "Initialize")
@@ -776,9 +788,10 @@ contains
   ! !INTERFACE:
 
   subroutine Run(gc, import, export, clock, rc)
-
+    
+    use pso_params_mod
     ! !ARGUMENTS:
-
+    
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
     type(ESMF_State),    intent(inout) :: import ! Import state
     type(ESMF_State),    intent(inout) :: export ! Export state
@@ -811,6 +824,13 @@ contains
     logical :: IAmRoot
     integer :: mpierr
     integer :: LSM_CHOICE
+    integer :: pso_choice
+    integer :: line_no
+    integer :: reason
+    integer :: num_params
+    logical :: pso_alloc_stat
+    integer :: fake_num_ensemble
+    real, dimension(28,5) :: test_matrix
 
     ! Begin...
 
@@ -850,6 +870,7 @@ contains
     
     !phase2 initialization ( executed once)
     !adjust mean of perturbed forcing or Progn
+    
     do i  = 1,NUM_ENSEMBLE
        igc = LANDPERT(i)
        call MAPL_TimerOn(MAPL, gcnames(igc))
@@ -881,6 +902,14 @@ contains
 
 
     do i  = 1,NUM_ENSEMBLE
+       
+       !if (pso_choice == 1) then
+       !   pso_params%ens_num = i
+       !   write(*,*) 'i'
+       !   write(*,*) i
+       !   write(*,*) 'pso_params%ens_num'
+       !   write(*,*) pso_params%ens_num
+       !endif
 
        !ApplyForcePert
        igc = LANDPERT(i)
@@ -896,6 +925,7 @@ contains
           call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=1, userRC=status)
           VERIFY_(status)
        endif
+       
 
        ! Run the land model
        igc = LAND(i)

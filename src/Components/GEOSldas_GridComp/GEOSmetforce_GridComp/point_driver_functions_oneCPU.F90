@@ -105,29 +105,29 @@ MODULE point_driver_functions
         write (min,'(i2.2)') time%min
         write (ss,'(i2.2)') time%sec
         
-        write (*,*) time%year
-        write (*,*) time%month
-        write (*,*) time%day
-        write (*,*) time%hour
-        write (*,*) time%min
-        write (*,*) time%sec
+        !write (*,*) time%year
+        !write (*,*) time%month
+        !write (*,*) time%day
+        !write (*,*) time%hour
+        !write (*,*) time%min
+        !write (*,*) time%sec
 
-        write(*,*) YYYY
-        write(*,*)MM
-        write(*,*)DD
-        write(*,*)hh
-        write(*,*) min
-        write(*,*) ss
+        !write(*,*) YYYY
+        !write(*,*)MM
+        !write(*,*)DD
+        !write(*,*)hh
+        !write(*,*) min
+        !write(*,*) ss
 
         time_str = YYYY//MM//DD//hh//min//ss
         
-        write(*,*) time_str
+        !write(*,*) time_str
 
         read (time_str,*) time_double
         
-        write(*,*) time_double
+        !write(*,*) time_double
 
-        write(*,*) filename
+        !write(*,*) filename
 
         call check(nf90_open (trim(filename), nf90_write, ncid))
 
@@ -231,12 +231,12 @@ MODULE point_driver_functions
         call check(nf90_inq_varid(ncid, 'date_int', curr_varid))
         !var_val = time_double
         !write (*,*) var_val
-        write(*,*) time_double
+        !write(*,*) time_double
         !empty_var = time_double
         !empty_var(local_id) = var_val
         final_val_double(1,:) = time_double
         !write (*,*) final_val
-        write(*,*) count(final_val_double /= time_double)
+        !write(*,*) count(final_val_double /= time_double)
         call check(nf90_put_var(ncid, curr_varid, final_val_double, start = (/1,next_time/),count = (/len_tile,1/)))
         
         write(*,*) 'after adding time'

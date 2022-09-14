@@ -231,6 +231,9 @@ fclose(ifp);
 
 disp('done reading file')
 
+to_write = rmfield(tile_coord,'N_tile')
+writetable(struct2table(to_write),'tile_coord.csv')
+
 % =========== EOF ========================================
 
 

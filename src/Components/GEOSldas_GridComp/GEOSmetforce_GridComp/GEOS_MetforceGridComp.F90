@@ -26,6 +26,7 @@ module GEOS_MetforceGridCompMod
   use LDAS_InterpMod, only: LDAS_TInterpForcing=>metforcing_tinterp
   use LDAS_Point_ForceMod 
   use global_forcing_mod
+  use daily_forcing_mod
   !use LDAS_Point_ForceMod
   !use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
 
@@ -565,7 +566,7 @@ contains
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     ! Misc variables
-    integer :: land_nt_local, k, NUM_ENSEMBLE, ens_id_width
+    integer :: land_nt_local, k, NUM_ENSEMBLE, ens_id_width, total_tiles_running
     integer :: ForceDtStep
     type(met_force_type) :: mf_nodata
     logical :: MERRA_file_specs, ensemble_forcing
@@ -587,7 +588,7 @@ contains
     integer :: time_count
 
     ! For testing outputs from MAPL_LocStreamGet
-    integer ::  nt_global
+    integer ::  nt_global, total_tiles_36km, num_steps_day_75min
     integer, pointer :: tiletype(:),tilekind(:), gridim(:), gridjm(:), local_id(:), local_i(:), local_j(:)
     real, pointer    ::  tilelons(:), tilelats(:), tilearea(:)
     character(len=20), pointer    ::  gridnames(:)
@@ -597,11 +598,11 @@ contains
 
     ! Begin...
     
-    write(*,*) 'started initialize'
+    !write(*,*) 'started initialize'
 
     ! Define whether this is point forcing case or normal
-    point_forcing_write = 0
-    point_forcing_read =  1
+    point_forcing_write = 1 
+    point_forcing_read =  0
 
     !Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -807,8 +808,28 @@ contains
         ! added by twr. Writes out monthly forcing data files for selected locations
         ! write (6,*) 'date-time form:'
         ! write (6,*) force_time_prv
-    
-        call create_indata_files(nt_global, YYYY//'_point_forcing_data.nc4')
+        !write (*,*) 'before point forcing write'
+        !write (*,*) nt_global
+        !write(*,*) YYYY//'point_forcing_data.nc4'
+        total_tiles_36km = 112573
+        total_tiles_running = size(local_id)
+        num_steps_day_75min = 192
+        !call create_indata_files(total_tiles_36km, YYYY//'_point_forcing_data.nc4')
+
+        allocate(daily_force%Tair(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%Qair(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%Psurf(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%Rainf_C(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%Rainf(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%Snowf(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%LWdown(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%SWdown(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%PARdrct(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%PARdffs(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%Wind(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%RefH(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%date_int(num_steps_day_75min, total_tiles_running)) 
+
     elseif (point_forcing_write == 0)then ! if not writing out point forcing files
         
         call LDAS_GetForcing(                                                       &
@@ -833,7 +854,7 @@ contains
              internal%mf%DataNxt, internal%mf%DataPrv )
     
     endif     
-    write(*,*) 'finished initialize'
+    !write(*,*) 'finished initialize'
 
     ! Turn timer off
     call MAPL_TimerOff(MAPL, "Initialize")
@@ -900,13 +921,13 @@ contains
     integer :: comm
     logical :: IAmRoot
     integer :: fdtstep
-    integer :: YEAR, DAY_OF_YEAR, SEC_OF_DAY,n
+    integer :: YEAR, DAY_OF_YEAR, SEC_OF_DAY,n, total_tiles_36km, num_steps_day_75min, total_tiles_running
     integer :: point_forcing_write ! decision whether or not to run point forcings
     integer :: point_forcing_read
     character (len=4) :: YYYY
     character (len=2) :: MM,DD,hh,min,ss
-    character (len=14) :: model_time_str
-    double precision :: model_time_double
+    character (len=14) :: model_time_str, time_str
+    double precision :: model_time_double, time_con
     real, pointer :: LandTileLats(:)
     real, pointer :: LandTileLons(:)
     real, allocatable :: zth(:), slr(:), zth_tmp(:)
@@ -916,14 +937,14 @@ contains
     type(met_force_type) :: mf_nodata
     integer, pointer :: local_id(:)
     double precision, allocatable, dimension(:) :: global_force_time
-    integer, dimension(1) :: time_ind
+    integer, dimension(1) :: time_ind, time_idx
     character (len=100) :: met_tag
-    real, allocatable, dimension(:,:) :: var_curr
-    real, allocatable, dimension(:) :: var_curr_cpu, Tair_new
+    real, allocatable, dimension(:,:) :: var_curr, final_metf
+    real, allocatable, dimension(:) :: var_curr_cpu, Tair_new, curr_metf, local_metf
     integer, dimension(2) :: curr_shape
     character (len=100) :: filename
-    integer :: ierr
-    
+    integer :: ierr, num_processes, my_id, start_year
+    integer :: nt_global !global number of tiles running in simulation 
 
     logical :: MERRA_file_specs
     logical :: backward_looking_fluxes 
@@ -965,11 +986,11 @@ contains
     real,pointer :: SSSD(:,:)=>null()
     
     ! Begin...
-    write(*,*) 'started run'
+    !write(*,*) 'started run'
 
     ! Set whether we are in point forcing mode
-    point_forcing_write = 0
-    point_forcing_read =  1
+    point_forcing_write = 1
+    point_forcing_read =  0 
 
     
     ! Get my name and setup traceback handle
@@ -1014,6 +1035,7 @@ contains
          TILELATS=LandTileLats,                                                 &
          LOCAL_ID=local_id,                                                     &
          TILELONS=LandTileLons,                                                 &
+         nt_global=nt_global,                                                   &
          rc=status                                                              &
          )
     VERIFY_(status)
@@ -1055,6 +1077,7 @@ contains
 
     if (point_forcing_read == 0) then
         ! Get forcing data if MetForcing alarm is ringing
+        !write(*,*) 'read = 0'
         if (ESMF_AlarmIsRinging(MetForcingAlarm)) then
            ! -update-forcing-times-
            tmpTime = internal%mf%TimeNxt
@@ -1182,12 +1205,12 @@ contains
         
         ! see if model_time_cur fixes our time problems
         call esmf2ldas(ModelTimeCur, model_time_cur, rc=status)
-        write (*,*) model_time_cur%year
-        write (*,*) model_time_cur%month
-        write (*,*) model_time_cur%day
-        write (*,*) model_time_cur%hour
-        write (*,*) model_time_cur%min
-        write (*,*) model_time_cur%sec
+        !write (*,*) model_time_cur%year
+        !write (*,*) model_time_cur%month
+        !write (*,*) model_time_cur%day
+        !write (*,*) model_time_cur%hour
+        !write (*,*) model_time_cur%min
+        !write (*,*) model_time_cur%sec
 
         !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_prv: ', date_time_print(force_time_prv)
 
@@ -1305,16 +1328,17 @@ contains
         Wind = mfDataNtp%Wind
         RefH = mfDataNtp%RefH
         
-        write(*,*) Tair(1)
+        !write(*,*) Tair(1)
         ! twr INSERTS WRITING OUT MONTHLY FORCING FILES FOR POINTS OF INTEREST IF REQUESTED
         
         ! if point_forcings == 1, write out point forcing data. If point_forcings == 0, do not
         !write (*,*) 'right before writing' 
         if(point_forcing_write == 1) then
-          
+          ! write(*,*) 'write=1'
           call esmf2ldas(internal%mf%TimeNxt, force_time_nxt, rc=status)
           write (YYYY,'(i4.4)') model_time_cur%year
-          !write (MM  ,'(i2.2)') model_time_nxt%month
+          !write (MM  ,'(i2.2)') model_time_cur%month
+          !write (DD  ,'(i2.2)') 
           !write (6,*) clock
           !call write_time_varying (land_nt_local, 'Y'//YYYY//'/M'//MM//'point_forcing_data.nc4', &
           !                        force_time_prv,mfDataNtp,internal%mf%zenav)
@@ -1323,11 +1347,139 @@ contains
           !write (*,*) force_time_prv
           !write (*,*) 'land_nt_local:'
           !write (*,*) land_nt_local
-          filename = YYYY//'_point_forcing_data.nc4'
+          filename = '/discover/nobackup/projects/medComplex/point_forcing_data/'//YYYY//'_point_forcing_data.nc4'
           filename = trim(filename)
-          write(*,*) filename
-          call write_time_varying (local_id, filename, &
-                                  model_time_cur,mfDataNtp,internal%mf%zenav)
+          !write(*,*) filename
+          !write(*,*) local_id
+          start_year = 1980
+          total_tiles_36km = 112573
+          total_tiles_running  = size(local_id)
+          num_steps_day_75min = 192
+          
+          if (model_time_cur%month == 01 .and. model_time_cur%day == 01 &
+             .and. model_time_cur%hour == 00 .and. Model_time_cur%min == 00                             &
+             .and. model_time_cur%sec == 00)then
+             call create_indata_files(total_tiles_running, filename)
+             !write(*,*) 'just called create_indata'
+             !write(*,*) 'should be first time point of year'
+             daily_force%Tair = -9999
+             daily_force%Qair = -9999
+             daily_force%Psurf = -9999
+             daily_force%Rainf_C = -9999
+             daily_force%Snowf = -9999
+             daily_force%LWdown = -9999
+             daily_force%SWdown = -9999
+             daily_force%PARdrct = -9999
+             daily_force%PARdffs = -9999
+             daily_force%Wind = -9999
+             daily_force%RefH = -9999
+             daily_force%date_int = -9999
+          elseif (model_time_cur%hour == 00 .and. model_time_cur%min == 00                             &
+              .and. model_time_cur%sec == 00)then
+
+              !write(*,*) 'called write_time_varying' 
+              call write_time_varying (local_id, filename, &
+                                       model_time_cur,mfDataNtp,internal%mf%zenav,num_steps_day_75min)
+              !write(*,*) 'just called write time varying'
+              
+              !write(*,*) 'should be first timestep of day'
+              
+              daily_force%Tair = -9999 
+              daily_force%Qair = -9999
+              daily_force%Psurf = -9999
+              daily_force%Rainf_C = -9999
+              daily_force%Snowf = -9999
+              daily_force%LWdown = -9999
+              daily_force%SWdown = -9999
+              daily_force%PARdrct = -9999
+              daily_force%PARdffs = -9999
+              daily_force%Wind = -9999
+              daily_force%RefH = -9999
+              daily_force%date_int = -9999
+              ! do for other variables here
+
+          endif
+          
+          !write(*,*) 'writing to daily_force'
+          allocate(curr_metf(total_tiles_36km))
+          allocate(local_metf(land_nt_local))
+          allocate(final_metf(1,land_nt_local))          
+          local_metf = -9999
+          curr_metf = -9999
+          final_metf = -9999
+
+          time_idx = findloc(daily_force%Tair(:,1),-9999.)
+
+          ! concatenate the time and convert it to an integer
+          write (YYYY,'(i4.4)') model_time_cur%year
+          write (MM,'(i2.2)') model_time_cur%month
+          write (DD,'(i2.2)') model_time_cur%day
+          write (hh,'(i2.2)') model_time_cur%hour
+          write (min,'(i2.2)') model_time_cur%min
+          write (ss,'(i2.2)') model_time_cur%sec
+
+          time_str = YYYY//MM//DD//hh//min//ss
+          read (time_str,*) time_con
+          !write(*,*) 'time_str'
+          !write(*,*) time_con
+
+          local_metf = mfDataNtp%Tair
+          final_metf(1,:) = local_metf
+          daily_force%Tair(time_idx,:) = final_metf
+
+          local_metf = mfDataNtp%Qair
+          final_metf(1,:) = local_metf
+          daily_force%Qair(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%Psurf
+          final_metf(1,:) = local_metf
+          daily_force%Psurf(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%Rainf_C
+          final_metf(1,:) = local_metf
+          daily_force%Rainf_C(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%Rainf
+          final_metf(1,:) = local_metf
+          daily_force%Rainf(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%Snowf
+          final_metf(1,:) = local_metf
+          daily_force%Snowf(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%LWdown
+          final_metf(1,:) = local_metf
+          daily_force%LWdown(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%SWdown
+          final_metf(1,:) = local_metf
+          daily_force%SWdown(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%PARdrct
+          final_metf(1,:) = local_metf
+          daily_force%PARdrct(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%PARdffs
+          final_metf(1,:) = local_metf
+          daily_force%PARdffs(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%Wind
+          final_metf(1,:) = local_metf
+          daily_force%Wind(time_idx,:) = final_metf
+          
+          local_metf = mfDataNtp%RefH
+          final_metf(1,:) = local_metf
+          daily_force%RefH(time_idx,:) = final_metf
+          
+          local_metf = time_con
+          final_metf(1,:) = local_metf
+          daily_force%date_int(time_idx,:) = final_metf
+          
+          local_metf = time_con
+          final_metf(1,:) = local_metf
+          daily_force%date_int(time_idx,:) = final_metf
+
+          ! do for other variables here
         endif
         !write (*,*) 'right after writing' 
         if(AEROSOL_DEPOSITION /=0)then 
@@ -1393,17 +1545,17 @@ contains
           SSSD(:, 4) = mfDataNtp%SSSD004
           SSSD(:, 5) = mfDataNtp%SSSD005
         endif ! AEROSOL_DEPOSITION /=0
-        write (*,*) 'right before read option'
+        !write (*,*) 'right before read option'
    elseif (point_forcing_read == 1) then ! If we want to read only point forcing data
        ! point_forcing_read = 1
        ! Get forcing data if MetForcing alarm is ringing
-       write(*,*) 'inside read option'
+       !write(*,*) 'inside read option'
        call esmf2ldas(ModelTimeCur, model_time_cur, rc=status)
-       write(*,*) model_time_cur%month
-       write(*,*) model_time_cur%day
-       write(*,*) model_time_cur%hour
-       write(*,*) model_time_cur%min
-       write(*,*) model_time_cur%sec
+       !write(*,*) model_time_cur%month
+       !write(*,*) model_time_cur%day
+       !write(*,*) model_time_cur%hour
+       !write(*,*) model_time_cur%min
+       !write(*,*) model_time_cur%sec
 
 
        if (model_time_cur%month == 01 .and. model_time_cur%day == 01 &
@@ -1419,21 +1571,21 @@ contains
            !    Check with the .nc4 file currently written out in order to see
            ! CONFIRMED, FIRST ELEMENT OF WRITTEN OUT FILES IS NOT 000000
 
-           write(*,*) 'inside first step of the year'
+           !write(*,*) 'inside first step of the year'
            !this if statement and call to this function says:
            !  if it is the beginning of the year, read in this year's forcing data to a global varaible
            !  the global variable is met_force_new AND times
            !  this contains all of the year's forcing data for the tiles that are being calculated on this node
            !  this can then be used for the next year, so we won't have to open the netcdf and read
             !
-           if (MAPL_am_I_root()) then !only need one CPU to read in the forcing data
+           !if (MAPL_am_I_root()) then !only need one CPU to read in the forcing data
                 ! MET TAG NEEDS TO BE UPDATED TO WORK WITH THE HISTORY.RC FILE
                 ! However, I am not sure how to do this so I will leave this for later discussion
-                write(*,*) 'root has been discovered'
-                met_tag = '/discover/nobackup/trobinet/point_forcing_metforce/1980_point_forcing_data.nc4'
-                write(*,*) 'before calling get_forcing_point'
-                call get_forcing_point(met_tag,model_time_cur,local_id)
-                write(*,*) 'after calling get_forcing_point'
+           !     write(*,*) 'root has been discovered'
+           met_tag = '/discover/nobackup/projects/medComplex/point_forcing_data/1980_point_forcing_data.nc4'
+                !write(*,*) 'before calling get_forcing_point'
+           call get_forcing_point(met_tag,model_time_cur,local_id)
+                !write(*,*) 'after calling get_forcing_point'
                 !
                 !
                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1446,9 +1598,21 @@ contains
                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  !
  !
-           else
-                call sleep(2)
-           endif
+           !else
+           !     call sleep(5)
+           !     write(*,*) 'sleeping'
+           !else
+           !   sleep(2)
+           !   len_metforce = 13
+           !   call MPI_COMM_SIZE(MPI_COMM_WORLD, num_processes)
+           !   call MPI_COMM_RANK(MPI_COMM_WORLD, my_id)
+           !   call MPI
+              
+
+
+
+            !  call MPI_RECV(met_force_new)
+           !endif      
        endif
        
        
@@ -1486,9 +1650,9 @@ contains
        !     find the index at which this time equals the time in the times vector
        !     this index will be the time index that we use to get data from the global varaible
        ! use something like:
-       write(*,*) 'just before figuring out single forcing point'
+       !write(*,*) 'just before figuring out single forcing point'
        
-       write(*,*) 'writing time strings'
+       !write(*,*) 'writing time strings'
 
        write (YYYY,'(i4.4)') model_time_cur%year
        write (MM  ,'(i2.2)') model_time_cur%month
@@ -1496,64 +1660,64 @@ contains
        write (hh  ,'(i2.2)') model_time_cur%hour
        write (min ,'(i2.2)') model_time_cur%min
        write (ss  ,'(i2.2)') model_time_cur%sec
-       write(*,*) 'concatenating long time string'
+       !write(*,*) 'concatenating long time string'
        model_time_str = YYYY//MM//DD//hh//min//ss
-       write(*,*) model_time_str
-       write(*,*)'turning model time string into model time double'
+       !write(*,*) model_time_str
+       !write(*,*)'turning model time string into model time double'
        read (model_time_str,fmt=*,iostat=ierr) model_time_double
-       write(*,*) 'getting curr shape'
+       !write(*,*) 'getting curr shape'
        curr_shape = SHAPE(met_force_new%Tair)
        
-       write(*,*) 'allocating variables'
+       !write(*,*) 'allocating variables'
        allocate(global_force_time(curr_shape(2)))
        allocate(var_curr(curr_shape(1),1))
        allocate(var_curr_cpu(land_nt_local))
        allocate(Tair_new(land_nt_local))
-       write(*,*) 'assigning global force time'
+       !write(*,*) 'assigning global force time'
        global_force_time = met_force_new%date_int(1,:)
-       write(*,*) 'findloc'
-       write(*,*) global_force_time(1:5)
-       write(*,*) model_time_double
-       write(*,*) curr_shape(1)
-       write(*,*) curr_shape(2)
-       !rite(*,*) size(global_force_time)
+       !write(*,*) 'findloc'
+       !write(*,*) global_force_time(1:5)
+       !write(*,*) model_time_double
+       !write(*,*) curr_shape(1)
+       !write(*,*) curr_shape(2)
+       !write(*,*) size(global_force_time)
        time_ind = findloc(global_force_time,VALUE=model_time_double)
        !ime_ind = FINDLOC(global_force_time,model_time_double,SIZE(global_force_time))
        
-       write(*,*) 'figured out single forcing point and assigning exports'
+       !write(*,*) 'figured out single forcing point and assigning exports'
 
        var_curr = met_force_new%Tair(:,time_ind)
-       write(*,*) 'size var curr'
-       write(*,*) size(var_curr)
+       !write(*,*) 'size var curr'
+       !write(*,*) size(var_curr)
        var_curr_cpu = var_curr(local_id,1)
-       write(*,*) 'size var curr cpu'
-       write(*,*) size(var_curr_cpu)
+       !write(*,*) 'size var curr cpu'
+       !write(*,*) size(var_curr_cpu)
        Tair_new = var_curr_cpu
-       write(*,*) 'size tair'
-       write (*,*) size(Tair_new)
-       write(*,*) 'Tair(1)'
-       write (*,*) Tair_new(100000)
-       write(*,*) 'size(clocal_id)'
-       write(*,*) size(local_id)
-       write(*,*) 'var_curr_cpu(1)'
-       write(*,*) var_curr_cpu(1)
-       write(*,*) 'var_curr(1,1)'
-       write(*,*) var_curr(1,1)
-       write(*,*) 'met_force_new%Tair(1,1)'
-       write(*,*) met_force_new%Tair(1,1)
-       write(*,*) 'global_force_time(1)'
-       write(*,*) global_force_time(1)
-       write(*,*) 'model_time_double'
-       write(*,*) model_time_double
-       write(*,*) 'time_ind'
-       write(*,*) time_ind
+       !write(*,*) 'size tair'
+       !write (*,*) size(Tair_new)
+       !write(*,*) 'Tair(1)'
+       !write (*,*) Tair_new(100000)
+       !write(*,*) 'size(clocal_id)'
+       !write(*,*) size(local_id)
+       !write(*,*) 'var_curr_cpu(1)'
+       !write(*,*) var_curr_cpu(1)
+       !write(*,*) 'var_curr(1,1)'
+       !write(*,*) var_curr(1,1)
+       !write(*,*) 'met_force_new%Tair(1,1)'
+       !write(*,*) met_force_new%Tair(1,1)
+       !write(*,*) 'global_force_time(1)'
+       !write(*,*) global_force_time(1)
+       !write(*,*) 'model_time_double'
+       !write(*,*) model_time_double
+       !write(*,*) 'time_ind'
+       !write(*,*) time_ind
 
-       write(*,*) size(Tair)
-       write(*,*) size(Tair_new)
+       !write(*,*) size(Tair)
+       !write(*,*) size(Tair_new)
        !write(*,*) Tair(1)
-       write(*,*) Tair_new(1)
+       !write(*,*) Tair_new(1)
        
-       write(*,*)'Tair'
+       !write(*,*)'Tair'
        !write(*,*) count(Tair /= Tair_new)
 
        Tair = Tair_new
@@ -1561,31 +1725,31 @@ contains
        var_curr = met_force_new%Qair(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        Qair = var_curr_cpu
-       write(*,*) 'Qair'
+       !write(*,*) 'Qair'
        !write(*,*) count(Qair /= var_curr_cpu)
 
        var_curr = met_force_new%Psurf(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        Psurf = var_curr_cpu
-       write(*,*) 'Psurf'
+       !write(*,*) 'Psurf'
        !write(*,*) count(Psurf /= var_curr_cpu)
 
        var_curr = met_force_new%Rainf_C(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        Rainf_C = var_curr_cpu
-       write(*,*) 'Rainf_c'
+       !write(*,*) 'Rainf_c'
        !write(*,*) count(Rainf_c /= var_curr_cpu)
 
        var_curr = met_force_new%Rainf(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        Rainf = var_curr_cpu
-       write(*,*) 'Rainf'
+       !write(*,*) 'Rainf'
        !write(*,*) count(Rainf /= var_curr_cpu)
 
        var_curr = met_force_new%Snowf(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        Snowf = var_curr_cpu
-       write(*,*) 'Snowf'
+       !write(*,*) 'Snowf'
        !write(*,*) count(Snowf /= var_curr_cpu)
 
        !RainfSnowf = Rainf+Snowf
@@ -1593,43 +1757,43 @@ contains
        var_curr = met_force_new%LWdown(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        LWdown = var_curr_cpu
-       write(*,*) 'LWdown'
+       !write(*,*) 'LWdown'
        !write(*,*) count(LWdown /= var_curr_cpu)
 
        var_curr = met_force_new%SWdown(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        SWdown = var_curr_cpu
-       write(*,*) 'SWdown'
+       !write(*,*) 'SWdown'
        !write(*,*) count(SWdown /= var_curr_cpu)
 
        var_curr = met_force_new%PARdrct(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        PARdrct = var_curr_cpu
-       write(*,*) 'PARdrct'
+       !write(*,*) 'PARdrct'
        !write(*,*) count(PARdrct /= var_curr_cpu)
 
        var_curr = met_force_new%PARdffs(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        PARdffs = var_curr_cpu
-       write(*,*) 'PARdffs'
+       !write(*,*) 'PARdffs'
        !write(*,*) count(PARdffs /= var_curr_cpu)
 
        var_curr = met_force_new%Wind(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        Wind = var_curr_cpu
-       write(*,*) 'Wind'
+       !write(*,*) 'Wind'
        !write(*,*) count(Wind /= var_curr_cpu)
 
        var_curr = met_force_new%RefH(:,time_ind)
        var_curr_cpu = var_curr(local_id,1)
        RefH = var_curr_cpu
-       write(*,*) 'RefH'
+       !write(*,*) 'RefH'
        !write(*,*) count(RefH /= var_curr_cpu)
        
        
        
        
-       write(*,*) 'finished assigning exports'
+       !write(*,*) 'finished assigning exports'
        ! Set exports
           !Tair = Tair_curr_cpu
           !Qair = mfDataNtp%Qair
@@ -1657,7 +1821,7 @@ contains
 
 
     endif
-    write (*,*) 'right after read option'
+    !write (*,*) 'right after read option'
     ! Clean up
     if (allocated(mfDataNtp)) then
        deallocate(mfDataNtp, stat=status)
@@ -1671,7 +1835,7 @@ contains
        deallocate(slr, stat=status)
        VERIFY_(status)
     end if
-    write(*,*) 'finished run'
+    !write(*,*) 'finished run'
     ! Turn timers off
     call MAPL_TimerOff(MAPL, "Run_GetForcing")
     call MAPL_TimerOff(MAPL, "TOTAL")

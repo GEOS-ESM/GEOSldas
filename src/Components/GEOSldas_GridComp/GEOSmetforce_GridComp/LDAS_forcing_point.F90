@@ -6,6 +6,16 @@ module global_forcing_mod
     type(global_force_type) :: met_force_new
 end module global_forcing_mod
 
+!module daily_forcing_mod
+!    use LDAS_DriverTypes, only: global_force_type
+!    type(global_force_type) :: daily_force
+!end module daily_forcing_mod
+
+!module pso_params_mod
+!    use LDAS_DriverTypes, only: pso_params_type
+!    type(pso_params_type) :: pso_params
+!end module pso_params_mod
+
 module LDAS_Point_ForceMod
   
   use netcdf
@@ -87,14 +97,14 @@ contains
 
     ! check to make sure that you are reading in the correct file
     ! THIS MAY NEED TO BE CHANGED BASED OFF OF HOW I DECIDE TO INDEX TIME
-    write(*,*) 'before abort call'
+    !write(*,*) 'before abort call'
     if ( (date_time%min/=0) .or. (date_time%sec/=0) .or.       &
         (date_time%hour/=0)) then
 
         call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'input file incorrect!!')
 
     endif
-    write(*,*) 'after abort call'
+    !write(*,*) 'after abort call'
 
     !write (YYYY, '(i4.4)') date_time%year
 
@@ -129,17 +139,17 @@ contains
         ! A netcdf file with all necessary variables
         ! each timestep is one model timestep
         ! index of the tilespace dimension is the tilespace value 
-    write(*,*) 'nf90 open'
+    !write(*,*) 'nf90 open'
     call check(nf90_open(met_path, nf90_nowrite, ncid)) !now we have the ncid
-    write(*,*) 'nf90 inquire'
+    !write(*,*) 'nf90 inquire'
     call check(nf90_inquire(ncid, ndim, nvar, natt, unlid))
     ! do varid = 1,nvar ! A good idea, but this won't work with how met_force_type works. must be done manually
     ! will set this up to work with Tair, then go from there
-    write(*,*) 'inq dimension 1'
+    !write(*,*) 'inq dimension 1'
     call check(nf90_inquire_dimension(ncid,1,len=len1))
-    write(*,*) 'inq dimension 2'
+    !write(*,*) 'inq dimension 2'
     call check(nf90_inquire_dimension(ncid,2,len=len2))
-    write(*,*) 'allocate statements'
+    !write(*,*) 'allocate statements'
     allocate(met_force_new%Tair(len1,len2))
     allocate(met_force_new%Qair(len1,len2)) 
     allocate(met_force_new%Psurf(len1,len2))
@@ -154,69 +164,69 @@ contains
     allocate(met_force_new%RefH(len1,len2))
     allocate(met_force_new%date_int(len1,len2))
     allocate(values(len1,len2))
-    write(*,*) 'assigning values'
-    write(*,*) 'finding varid'
+    !write(*,*) 'assigning values'
+    !write(*,*) 'finding varid'
     call check(nf90_inq_varid(ncid,'Tair',varid))
-    write(*,*) 'getting values'
+    !write(*,*) 'getting values'
     call check(nf90_get_var(ncid, varid, values))
-    write(*,*) 'putting in met_force_new'
+    !write(*,*) 'putting in met_force_new'
     met_force_new%Tair = values
-    write(*,*) 'done for Tair'
+    !write(*,*) 'done for Tair'
      
     call check(nf90_inq_varid(ncid,'Qair',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%Qair = values
-    write(*,*) 'Qair' 
+    !write(*,*) 'Qair' 
     call check(nf90_inq_varid(ncid,'Psurf',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%Psurf = values
-    write(*,*) 'Psurf' 
+    !write(*,*) 'Psurf' 
     
     call check(nf90_inq_varid(ncid,'Rainf_C',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%Rainf_C = values
-    write(*,*) 'Rainf_C'
+    !write(*,*) 'Rainf_C'
     call check(nf90_inq_varid(ncid,'Rainf',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%Rainf = values
-    write(*,*) 'Rainf'
+    !write(*,*) 'Rainf'
     call check(nf90_inq_varid(ncid,'Snowf',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%Snowf = values
-    write(*,*) 'Snowf'
+    !write(*,*) 'Snowf'
     call check(nf90_inq_varid(ncid,'LWdown',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%LWdown = values
-    write(*,*) 'LWdown'
+    !write(*,*) 'LWdown'
     call check(nf90_inq_varid(ncid,'SWdown',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%SWdown = values
-    write(*,*) 'SWdown'
+    !write(*,*) 'SWdown'
     call check(nf90_inq_varid(ncid,'PARdrct',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%PARdrct = values
-    write(*,*) 'PARdrct'
+    !write(*,*) 'PARdrct'
     call check(nf90_inq_varid(ncid,'PARdffs',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%PARdffs = values
-    write(*,*) 'PARdffs'
+    !write(*,*) 'PARdffs'
     call check(nf90_inq_varid(ncid,'Wind',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%Wind = values
-    write(*,*) 'Wind'
+    !write(*,*) 'Wind'
     call check(nf90_inq_varid(ncid,'RefH',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%RefH = values
-    write(*,*) 'RefH'
+    !write(*,*) 'RefH'
     call check(nf90_inq_varid(ncid,'date_int',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%date_int = values
-    write(*,*) 'tim_int'
-    write(*,*) values(1,1)
-    write(*,*) met_force_new%date_int(1,1)
+    !write(*,*) 'tim_int'
+    !write(*,*) values(1,1)
+    !write(*,*) met_force_new%date_int(1,1)
     ! Once debugged, implement this same procedure for all variables
     !   in met_force_new
-    write(*,*) 'closing'
+    !write(*,*) 'closing'
     call check(nf90_close(ncid))
     
     

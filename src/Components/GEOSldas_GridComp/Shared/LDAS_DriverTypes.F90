@@ -31,7 +31,7 @@ module LDAS_DriverTypes
   
   private
   
-  public :: met_force_type, veg_param_type, bal_diagn_type, global_force_type
+  public :: met_force_type, veg_param_type, bal_diagn_type, global_force_type, pso_params_type
   public :: alb_param_type
   public :: assignment (=), operator (/), operator (+), operator (*)
   
@@ -201,6 +201,11 @@ module LDAS_DriverTypes
     real, allocatable, dimension(:,:) :: RefH
     double precision, allocatable, dimension(:,:) :: date_int
   end type global_force_type
+
+  type :: pso_params_type
+    real, allocatable, dimension(:,:) :: param_vals
+    integer                           :: ens_num
+  end type pso_params_type
   ! --------------------------------------------------------------
   
   interface assignment (=)
@@ -654,6 +659,11 @@ contains
   ! -----------------------------------------------------------
   
 end module LDAS_DriverTypes
+
+module pso_params_mod
+    use LDAS_DriverTypes, only: pso_params_type
+    type(pso_params_type) :: pso_params
+end module pso_params_mod
 
 
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
