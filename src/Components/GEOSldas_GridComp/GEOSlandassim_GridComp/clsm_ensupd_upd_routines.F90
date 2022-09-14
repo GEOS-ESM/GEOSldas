@@ -248,6 +248,7 @@ contains
     logical :: smap_species, smos_species
 
     type(obs_param_type), dimension(N_obs_species_nml) :: obs_param_nml
+    type(obs_param_type) :: obs_param_default
 
     character(len=*), parameter :: Iam = 'read_ens_upd_inputs'
     character(len=400) :: err_msg
@@ -268,7 +269,40 @@ contains
     ! ------------------------------------------------------------------
     !
     ! Set default file name for EnKF inputs namelist file
-    
+    obs_param_default%descr          = 'UNDEF'
+    obs_param_default%orbit          = 1
+    obs_param_default%pol            = 1
+    obs_param_default%N_ang          = 1
+    obs_param_default%ang(1)         = 40.
+    obs_param_default%freq           = 1.41e9
+    obs_param_default%FOV            = 20.
+    obs_param_default%FOV_units      = 'km'
+    obs_param_default%assim          = .false.
+    obs_param_default%scale          = .false.
+    obs_param_default%getinnov       = .false.
+    obs_param_default%RTM_ID         = 2
+    obs_param_default%bias_Npar      = 0
+    obs_param_default%bias_trel      = 864000
+    obs_param_default%bias_tcut      = 432000
+    obs_param_default%nodata         = -9999.
+    obs_param_default%varname        = 'NO'
+    obs_param_default%units          = 'K'
+    obs_param_default%path           = 'NO'
+    obs_param_default%name           = 'NO'
+    obs_param_default%scalepath      = 'NO'
+    obs_param_default%scalename      = 'NO'
+    obs_param_default%flistpath      = 'NO'
+    obs_param_default%flistname      = 'NO'
+    obs_param_default%errstd         = 4.
+    obs_param_default%std_normal_max = 2.5
+    obs_param_default%zeromean       = .true.
+    obs_param_default%coarsen_pert   = .true.
+    obs_param_default%xcorr          = 0.25
+    obs_param_default%ycorr          = 0.25
+    obs_param_default%adapt          = 0
+
+    obs_param_nml(:) = obs_param_default
+
     ens_upd_inputs_path = '.'                                       ! set default 
     ens_upd_inputs_file = 'LDASsa_DEFAULT_inputs_ensupd.nml'
     
