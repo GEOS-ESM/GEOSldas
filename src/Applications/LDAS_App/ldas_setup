@@ -1245,6 +1245,12 @@ class LDASsetup:
         lenkf=self.blddir+'/etc/lenkf.j.template'
         shutil.copy(lenkf,'lenkf.j')
 
+        pso=self.blddir+'/etc/PSO_v2_objective.py'
+        shutil.copy(pso,'PSO_v2_objctive.py')
+
+        obj=self.blddir+'/etc/compute_objective_v2.py'
+        shutil.copy(obj,'compute_objective_v2.py')
+
         my_qos='allnccs'
         if 'qos' in self.optRmInp :
             my_qos = self.optRmInp['qos']
