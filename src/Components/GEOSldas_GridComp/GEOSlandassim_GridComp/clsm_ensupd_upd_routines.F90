@@ -3546,7 +3546,7 @@ contains
     type(obs_param_type)                  :: this_obs_param
    
     !jpark50
-    real                                  :: asnow_fcst, swe_fcst, swe_ana, asnow_ana, isnow, swe_ratio
+    real                                  :: asnow_fcst, swe_fcst, swe_ana, asnow_ana, isnow, swe_ratio, tmp_swe
     real, dimension(N_catd, N_ens)        :: swe_incrm
     real, dimension(N_catd, N_ens)        :: wesn_sum_old
     real, dimension(N_catd, N_ens)        :: areasc_old
@@ -4555,9 +4555,9 @@ contains
                     swe_incrm(n, n_e) = max_incr_swe * Observations(ind_obs(1))%obs &
                                        - (asnow_fcst / alpha_threshold)
  
-                 elseif (Observations(ind_obs(1))%obs .le. beta_threshold) then
+                 elseif (Observations(ind_obs(1))%obs .lt. beta_threshold .AND. asnow_fcst .ge. Observations(ind_obs(1))%obs *alpha_threshold ) then
                   !IF SCA of model is greater than observed SCA, ****REMOVE SNOW****
-                    swe_incrm(n, n_e) = (-1) *  swe_fcst * (1 - Observations(ind_obs(1))%obs / beta_threshold)
+                    swe_incrm(n, n_e) = (-1) *  max_incr_swe * (1 - Observations(ind_obs(1))%obs / beta_threshold)
 
                  else 
                   !If the thresholds are not met, make *****NO CHANGE TO SNOW****
@@ -4566,50 +4566,84 @@ contains
                  endif !Toure et al. Eq 1
 
                ! 3. Calculate a temporary SWE and SCA for each ensemble members
-                 swe_ana  = min(swe_fcst + swe_incrm(n, n_e), 0.0)
+                    swe_ana = max(swe_fcst + swe_incrm(n, n_e), 0.0)
+
                  !call StieglitzSnow_calc_asnow(N_snow, N_catd, swe_ana, asnow_ana)
                  asnow_ana = min(swe_ana/wemin, 1.) !This is from StieglitzSnow_calc_asnow
 
+                   if (logit) write (logunit, *) 'asnow_fcst = ', asnow_fcst, & 
+                         'swe_incrm =  ', swe_incrm(n, n_e), &
+                         'swe_ana = ', swe_ana, &
+                         'asnow_ana = ', asnow_ana, & 
+                         '-----------'
+
                ! 4. Apply the corrected SWE to each layer and adjust the heat content and snow depth in tmp variable
                  do isnow = 1, N_snow
-                    if (asnow_fcst .gt. 0.0 .and. asnow_ana .lt. 1.0) then 
+                   if (asnow_fcst .ge. 0.0 .and. asnow_ana .eq. 0.0) then
+                       tmp_wesn(n, n_e, isnow)         = 0.0
+                       tmp_htsn(n, n_e, isnow)         = 0.0
+                       tmp_sndz(n, n_e, isnow)         = 0.0 
+                       if (logit) write (logunit, *) '%%%%%% asnow_ana = 0.0' 
+
+                   elseif (asnow_fcst .gt. 0.0 .and. asnow_ana .lt. 1.0) then 
                        swe_ratio                       = swe_ana / swe_fcst 
                        tmp_wesn(n, n_e, isnow)         = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
                        tmp_htsn(n, n_e, isnow)         = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
-                       tmp_sndz(n, n_e, isnow)         = cat_progn(n, n_e)%sndz(isnow)
+                       tmp_sndz(n, n_e, isnow)         = cat_progn(n, n_e)%sndz(isnow) !In this case, snow depth remains constant and only extent/hc change.
+                       if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana < 1.0'
 
                    elseif (asnow_fcst .gt. 0.0 .and. asnow_ana .eq. 1.0) then 
-                       tmp_wesn(n, n_e, isnow)   = swe_ana / swe_fcst
+                       swe_ratio                 = swe_ana / swe_fcst
+                       tmp_wesn(n, n_e, isnow)   = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
                        tmp_htsn(n, n_e, isnow)   = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
                        tmp_sndz(n, n_e, isnow)   = cat_progn(n, n_e)%sndz(isnow) * swe_ratio
-                   
+                       if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana = 1.0'
+
                    elseif (asnow_fcst .eq. 0.0 .and. asnow_ana .lt. 1.0) then
                        tmp_wesn(n, n_e, isnow)   = swe_ana / N_snow
-                       tmp_htsn(n, n_e, isnow)   = 0.0 !This shuld be changed to use the air temperature if its below freezing
-                       tmp_sndz(n ,n_e, isnow)   = (WEMIN * RHOFS) / N_snow !This using the min swe and fresh snow density to calculate depth, then applies it equally over each snow layer
-
+                       tmp_htsn(n, n_e, isnow)   = (0.0 - MAPL_ALHF)*tmp_wesn(n,n_e,isnow) !This is temporary. Zero should be changed to use the air temperature if its below freezing
+                       tmp_sndz(n ,n_e, isnow)   = (WEMIN / RHOFS) / N_snow 
+                       if (logit) write (logunit, *) '%%%%%%  asnow_fcst = 0 ; asnow_ana < 1.0'
+ 
                    elseif (asnow_fcst .eq. 0.0 .and. asnow_ana .eq. 1.0) then
                        tmp_wesn(n, n_e, isnow)   = swe_ana / N_snow
-                       tmp_htsn(n, n_e, isnow)   = 0.0 !This should be changed to use the air temperature if below freezing
-                       tmp_sndz(n, n_e, isnow)   = (swe_ana * RHOFS) / N_snow !Same as above, but allows the depth to increase with SWE because the catchment is snow covered
-           
+                       tmp_htsn(n, n_e, isnow)   = (0.0 - MAPL_ALHF)*tmp_wesn(n,n_e,isnow) !This assumes that the snow temperature is zero. See above
+                       tmp_sndz(n, n_e, isnow)   = (swe_ana / RHOFS) / N_snow !Same as above, but allows the depth to increase with SWE because the catchment is snow covered
+                       if (logit) write (logunit, *) '%%%%%%  asnow_fcst = 0 ; asnow_ana = 1.0'
+
                    else
                        tmp_wesn(n, n_e, isnow)   = cat_progn(n, n_e)%wesn(isnow)
                        tmp_htsn(n, n_e, isnow)   = cat_progn(n ,n_e)%htsn(isnow)
                        tmp_sndz(n, n_e, isnow)   = cat_progn(n, n_e)%sndz(isnow)
+                       if (logit) write (logunit, *) '%%%%%%  else' 
 
                    endif !(asnow_fcst .gt. ...)
                  enddo !isnow = 1, N_snow
 
-           !5. call relayer2 to balance the snow column (check this...) Turned off because of variable definition....
-             call relayer2(N_snow, N_constit , DZMAX(1), DZMAX(2:N_snow),   &
-                          tmp_htsn(n,n_e,1:N_snow), tmp_wesn(n, n_e, 1:N_snow), tmp_sndz(n, n_e,1:N_snow), rconstit)
+           !5. call relayer2 to balance the snow column (check this...) Turned off for simplicity
+             !call relayer2(N_snow, N_constit , DZMAX(1), DZMAX(2:N_snow),   &
+             !             tmp_htsn(n,n_e,1:N_snow), tmp_wesn(n, n_e, 1:N_snow), tmp_sndz(n, n_e,1:N_snow), rconstit)
 
-
+            !print the old and new swe, heat content and snow density
+             if (logit) write (logunit, *) &
+             'fcst_wesn = ', cat_progn(n, n_e)%wesn(1:N_snow), &
+             'tmp_wesn = ', tmp_wesn(n,n_e, 1:N_snow), &
+             'fcst_htsn = ', cat_progn(n, n_e)%htsn(1:N_snow),&
+             'tmp_htsn = ', tmp_htsn(n, n_e, 1:N_snow), &
+             'fcst_sndz = ', cat_progn(n, n_e)%sndz(1:N_snow), &
+             'tmp_sndz = ', tmp_sndz(n ,n_e,1:N_snow), & 
+             '--------------------------------------'
            !6. Calculate useable increments from fcst and temporarily updated swe, htsn, sndz  !intent out... for cat_progn_incr
            cat_progn_incr(n, n_e)%wesn(1:N_snow) = tmp_wesn(n, n_e, 1:N_snow) - cat_progn(n, n_e)%wesn(1:N_snow)
            cat_progn_incr(n, n_e)%htsn(1:N_snow) = tmp_htsn(n, n_e, 1:N_snow) - cat_progn(n, n_e)%htsn(1:N_snow)
            cat_progn_incr(n, n_e)%sndz(1:N_snow) = tmp_sndz(n, n_e, 1:N_snow) - cat_progn(n, n_e)%sndz(1:N_snow)
+
+           if (logit) write (logunit, *) &
+           'cat_progn_incr WESN = ' ,cat_progn_incr(n, n_e)%wesn(1:N_snow), &
+           'cat_progn_incr htsn = ' ,cat_progn_incr(n, n_e)%htsn(1:N_snow), &
+           'cat_progn_incr sndz = ' ,cat_progn_incr(n, n_e)%sndz(1:N_snow),&
+           '******************************'
+
 
           end do      ! n_e = 1, N_ens
         end if        ! if (N_selected_obs == 1)
