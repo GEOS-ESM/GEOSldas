@@ -4518,13 +4518,6 @@ contains
             N_select_varnames, select_varnames(1:N_select_varnames),      &
             N_obs_param, obs_param, N_select_species, select_species )
        
- 
-       !if(logit) write(logunit,*) 'N_catd=', N_catd
-       !if(logit) write(logunit,*) 'MET forcing length', size(met_force%Tair)
-       !if(logit) write(logunit,*) 'metforce%Tair', met_force%Tair
-       !if(logit) write(logunit,*) 'lat', tile_coord%com_lat
-       !if(logit) write(logunit,*) 'lon', tile_coord%com_lon
-       
        ! Rule-based asnow  update
        allocate(select_tilenum(1))
        allocate(deduction(N_catd))
@@ -4571,11 +4564,6 @@ contains
                  !call StieglitzSnow_calc_asnow(N_snow, N_catd, swe_ana, asnow_ana)
                  asnow_ana = min(swe_ana/wemin, 1.) !This is from StieglitzSnow_calc_asnow
 
-                   if (logit) write (logunit, *) 'asnow_fcst = ', asnow_fcst, & 
-                         'swe_incrm =  ', swe_incrm(n, n_e), &
-                         'swe_ana = ', swe_ana, &
-                         'asnow_ana = ', asnow_ana, & 
-                         '-----------'
 
                ! 4. Apply the corrected SWE to each layer and adjust the heat content and snow depth in tmp variable
                  do isnow = 1, N_snow
@@ -4585,14 +4573,16 @@ contains
                        tmp_sndz(n, n_e, isnow)         = 0.0 
                        if (logit) write (logunit, *) '%%%%%% asnow_ana = 0.0' 
 
-                   elseif (asnow_fcst .gt. 0.0 .and. asnow_ana .lt. 1.0) then 
-                       swe_ratio                       = swe_ana / swe_fcst 
-                       tmp_wesn(n, n_e, isnow)         = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
-                       tmp_htsn(n, n_e, isnow)         = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
-                       tmp_sndz(n, n_e, isnow)         = cat_progn(n, n_e)%sndz(isnow) !In this case, snow depth remains constant and only extent/hc change.
-                       if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana < 1.0'
 
-                   elseif (asnow_fcst .gt. 0.0 .and. asnow_ana .eq. 1.0) then 
+                 !Commented out because not updating the snow depth causes the model to fail after the first assimilation step
+                   !elseif (asnow_fcst .gt. 0.0 .and. asnow_ana .lt. 1.0) then 
+                  !     swe_ratio                       = swe_ana / swe_fcst 
+                  !     tmp_wesn(n, n_e, isnow)         = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
+                  !     tmp_htsn(n, n_e, isnow)         = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
+                  !     tmp_sndz(n, n_e, isnow)         = cat_progn(n, n_e)%sndz(isnow) !In this case, snow depth remains constant and only extent/hc change.
+                  !     if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana < 1.0'
+
+                   elseif (asnow_fcst .gt. 0.0 .and. asnow_ana .le. 1.0) then !Changed this statement from asnow_ana .lt. 1.0 to ansow_ana .le. 1.0 to cover the commented statement above (where analyzed snow fraction is 1.0)
                        swe_ratio                 = swe_ana / swe_fcst
                        tmp_wesn(n, n_e, isnow)   = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
                        tmp_htsn(n, n_e, isnow)   = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
@@ -4621,8 +4611,8 @@ contains
                  enddo !isnow = 1, N_snow
 
            !5. call relayer2 to balance the snow column (check this...) Turned off for simplicity
-             !call relayer2(N_snow, N_constit , DZMAX(1), DZMAX(2:N_snow),   &
-             !             tmp_htsn(n,n_e,1:N_snow), tmp_wesn(n, n_e, 1:N_snow), tmp_sndz(n, n_e,1:N_snow), rconstit)
+             call relayer2(N_snow, N_constit , DZMAX(1), DZMAX(2:N_snow),   &
+                          tmp_htsn(n,n_e,1:N_snow), tmp_wesn(n, n_e, 1:N_snow), tmp_sndz(n, n_e,1:N_snow), rconstit)
 
             !print the old and new swe, heat content and snow density
              if (logit) write (logunit, *) &
@@ -4637,13 +4627,6 @@ contains
            cat_progn_incr(n, n_e)%wesn(1:N_snow) = tmp_wesn(n, n_e, 1:N_snow) - cat_progn(n, n_e)%wesn(1:N_snow)
            cat_progn_incr(n, n_e)%htsn(1:N_snow) = tmp_htsn(n, n_e, 1:N_snow) - cat_progn(n, n_e)%htsn(1:N_snow)
            cat_progn_incr(n, n_e)%sndz(1:N_snow) = tmp_sndz(n, n_e, 1:N_snow) - cat_progn(n, n_e)%sndz(1:N_snow)
-
-           if (logit) write (logunit, *) &
-           'cat_progn_incr WESN = ' ,cat_progn_incr(n, n_e)%wesn(1:N_snow), &
-           'cat_progn_incr htsn = ' ,cat_progn_incr(n, n_e)%htsn(1:N_snow), &
-           'cat_progn_incr sndz = ' ,cat_progn_incr(n, n_e)%sndz(1:N_snow),&
-           '******************************'
-
 
           end do      ! n_e = 1, N_ens
         end if        ! if (N_selected_obs == 1)
