@@ -1478,7 +1478,194 @@ contains
   
   VERIFY_(STATUS)
   
-  
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_exposed_leaf-area_index',&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'CNLAI'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_total_leaf-area_index'  ,&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'CNTLAI'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_exposed_stem-area_index',&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'CNSAI'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_total_carbon'           ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CNTOTC'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_total_vegetation_carbon',&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CNVEGC'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+ call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_net_primary_production' ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'CNNPP'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_gross_primary_production',&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'CNGPP'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_total_soil_respiration' ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'CNSR'                      ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_net_ecosystem_exchange' ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'CNNEE'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'abstract_C_pool_to_meet_excess_MR_demand' ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CNXSMR'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_added_to_maintain_positive_C' ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'CNADD'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_carbon_loss_to_fire'    ,&
+    UNITS              = 'kg m-2 s-1'                ,&
+    SHORT_NAME         = 'CNLOSS'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_fractional_area_burn_rate' ,&
+    UNITS              = 's-1'                       ,&
+    SHORT_NAME         = 'CNBURN'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+ call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_total_root_C'           ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CNROOT'                   ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+
+   call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'fire season length'        ,&
+    UNITS              = 'days'                      ,&
+    SHORT_NAME         = 'CNFSEL'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'absorbed_PAR'              ,&
+    UNITS              = 'W m-2'                     ,&
+    SHORT_NAME         = 'PARABS'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'incident_PAR'              ,&
+    UNITS              = 'W m-2'                     ,&
+    SHORT_NAME         = 'PARINC'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+ call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'saturated_stomatal_conductance' ,&
+    UNITS              = 'm s-1'                     ,&
+    SHORT_NAME         = 'SCSAT'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'unstressed_stomatal_conductance' ,&
+    UNITS              = 'm s-1'                     ,&
+    SHORT_NAME         = 'SCUNS'                     ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'transpiration coefficient' ,&
+    UNITS              = '1'                         ,&
+    SHORT_NAME         = 'BTRANT'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'solar induced fluorescence',&
+    UNITS              = 'umol m-2 sm s-1'           ,&
+    SHORT_NAME         = 'SIF'                       ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+
   ! !EXPORT FORCING STATE:
 
    call MAPL_AddExportSpec(                                                    &
@@ -1827,6 +2014,7 @@ contains
     real, pointer :: LWDNSRF_enavg(:)=>null()
     real, pointer :: DZ_enavg(:)=>null()
     real, pointer :: RainfSnowf(:)=>null()
+
 
    ! Get my name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -2181,6 +2369,28 @@ contains
     real, dimension(:),pointer :: PEATCLSM_WATERLEVEL,PEATCLSM_WATERLEVEL_enavg
     real, dimension(:),pointer :: PEATCLSM_FSWCHANGE, PEATCLSM_FSWCHANGE_enavg
 
+    real, dimension(:), pointer :: CNLAI,    CNLAI_enavg 
+    real, dimension(:), pointer :: CNTLAI,  CNTLAI_enavg
+    real, dimension(:), pointer :: CNSAI,    CNSAI_enavg
+    real, dimension(:), pointer :: CNTOTC,  CNTOTC_enavg 
+    real, dimension(:), pointer :: CNVEGC,  CNVEGC_enavg
+    real, dimension(:), pointer :: CNROOT,  CNROOT_enavg
+    real, dimension(:), pointer :: CNNPP,    CNNPP_enavg
+    real, dimension(:), pointer :: CNGPP,    CNGPP_enavg
+    real, dimension(:), pointer :: CNSR,      CNSR_enavg
+    real, dimension(:), pointer :: CNNEE,    CNNEE_enavg
+    real, dimension(:), pointer :: CNXSMR,  CNXSMR_enavg
+    real, dimension(:), pointer :: CNADD,    CNADD_enavg
+    real, dimension(:), pointer :: PARABS,  PARABS_enavg
+    real, dimension(:), pointer :: PARINC,  PARINC_enavg
+    real, dimension(:), pointer :: SCSAT,    SCSAT_enavg
+    real, dimension(:), pointer :: SCUNS,    SCUNS_enavg
+    real, dimension(:), pointer :: BTRANT,  BTRANT_enavg
+    real, dimension(:), pointer :: SIF,        SIF_enavg
+    real, dimension(:), pointer :: CNLOSS,  CNLOSS_enavg
+    real, dimension(:), pointer :: CNBURN,  CNBURN_enavg
+    real, dimension(:), pointer :: CNFSEL,  CNFSEL_enavg
+
     ! Get my name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
     VERIFY_(status)
@@ -2527,6 +2737,30 @@ contains
     VERIFY_(status)
 
 
+    call MAPL_GetPointer(import, CNLAI  ,   'CNLAI' , _RC)   
+    call MAPL_GetPointer(import, CNTLAI ,   'CNTLAI', _RC)
+    call MAPL_GetPointer(import, CNSAI  ,   'CNSAI' , _RC)
+    call MAPL_GetPointer(import, CNTOTC ,   'CNTOTC', _RC) 
+    call MAPL_GetPointer(import, CNVEGC ,   'CNVEGC', _RC)
+    call MAPL_GetPointer(import, CNROOT ,   'CNROOT', _RC)
+    call MAPL_GetPointer(import, CNNPP  ,   'CNNPP' , _RC)
+    call MAPL_GetPointer(import, CNGPP  ,   'CNGPP' , _RC)
+    call MAPL_GetPointer(import, CNSR   ,   'CNSR'  , _RC)
+    call MAPL_GetPointer(import, CNNEE  ,   'CNNEE' , _RC)
+    call MAPL_GetPointer(import, CNXSMR ,   'CNXSMR', _RC)
+    call MAPL_GetPointer(import, CNADD  ,   'CNADD' , _RC)
+    call MAPL_GetPointer(import, PARABS ,   'PARABS', _RC)
+    call MAPL_GetPointer(import, PARINC ,   'PARINC', _RC)
+    call MAPL_GetPointer(import, SCSAT  ,   'SCSAT' , _RC)
+    call MAPL_GetPointer(import, SCUNS  ,   'SCUNS' , _RC)
+    call MAPL_GetPointer(import, BTRANT ,   'BTRANT', _RC)
+    call MAPL_GetPointer(import, SIF    ,   'SIF'   , _RC)
+    call MAPL_GetPointer(import, CNLOSS ,   'CNLOSS', _RC)
+    call MAPL_GetPointer(import, CNBURN ,   'CNBURN', _RC)
+    call MAPL_GetPointer(import, CNFSEL ,   'CNFSEL', _RC)
+
+
+
     call MAPL_GetPointer(export, TC_enavg,  'TC' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, QC_enavg,  'QC' ,rc=status)
@@ -2792,6 +3026,28 @@ contains
     call MAPL_GetPointer(export, out_lai,  'LAI' , alloc=.true., rc=status)
     VERIFY_(status)
 
+    call MAPL_GetPointer(export,   CNLAI_enavg  ,   'CNLAI' , _RC)   
+    call MAPL_GetPointer(export,  CNTLAI_enavg  ,   'CNTLAI', _RC)
+    call MAPL_GetPointer(export,   CNSAI_enavg  ,   'CNSAI' , _RC)
+    call MAPL_GetPointer(export,  CNTOTC_enavg  ,   'CNTOTC', _RC) 
+    call MAPL_GetPointer(export,  CNVEGC_enavg  ,   'CNVEGC', _RC)
+    call MAPL_GetPointer(export,  CNROOT_enavg  ,   'CNROOT', _RC)
+    call MAPL_GetPointer(export,   CNNPP_enavg  ,   'CNNPP' , _RC)
+    call MAPL_GetPointer(export,   CNGPP_enavg  ,   'CNGPP' , _RC)
+    call MAPL_GetPointer(export,    CNSR_enavg  ,   'CNSR'  , _RC)
+    call MAPL_GetPointer(export,   CNNEE_enavg  ,   'CNNEE' , _RC)
+    call MAPL_GetPointer(export,   CNXSMR_enavg ,   'CNXSMR', _RC)
+    call MAPL_GetPointer(export,   CNADD_enavg  ,   'CNADD' , _RC)
+    call MAPL_GetPointer(export,  PARABS_enavg  ,   'PARABS', _RC)
+    call MAPL_GetPointer(export,  PARINC_enavg  ,   'PARINC', _RC)
+    call MAPL_GetPointer(export,   SCSAT_enavg  ,   'SCSAT' , _RC)
+    call MAPL_GetPointer(export,   SCUNS_enavg  ,   'SCUNS' , _RC)
+    call MAPL_GetPointer(export,  BTRANT_enavg  ,   'BTRANT', _RC)
+    call MAPL_GetPointer(export,     SIF_enavg  ,   'SIF'   , _RC)
+    call MAPL_GetPointer(export,  CNLOSS_enavg  ,   'CNLOSS', _RC)
+    call MAPL_GetPointer(export,  CNBURN_enavg  ,   'CNBURN', _RC)
+    call MAPL_GetPointer(export,  CNFSEL_enavg  ,   'CNFSEL', _RC)
+
     out_lai = in_lai
     if (collect_land_counter == 0) then
 
@@ -2926,6 +3182,28 @@ contains
         if(associated(SPSNOW_enavg)) SPSNOW_enavg =  0.0
         if(associated(PEATCLSM_WATERLEVEL_enavg)) PEATCLSM_WATERLEVEL_enavg =  0.0
         if(associated(PEATCLSM_FSWCHANGE_enavg))  PEATCLSM_FSWCHANGE_enavg  =  0.0
+
+        if(associated(    CNLAI_enavg))      CNLAI_enavg = 0.0 
+        if(associated(   CNTLAI_enavg))     CNTLAI_enavg = 0.0
+        if(associated(    CNSAI_enavg))      CNSAI_enavg = 0.0
+        if(associated(   CNTOTC_enavg))     CNTOTC_enavg = 0.0
+        if(associated(   CNVEGC_enavg))     CNVEGC_enavg = 0.0
+        if(associated(   CNROOT_enavg))     CNROOT_enavg = 0.0
+        if(associated(    CNNPP_enavg))      CNNPP_enavg = 0.0
+        if(associated(    CNGPP_enavg))      CNGPP_enavg = 0.0
+        if(associated(     CNSR_enavg))       CNSR_enavg = 0.0
+        if(associated(    CNNEE_enavg))      CNNEE_enavg = 0.0
+        if(associated(    CNXSMR_enavg))    CNXSMR_enavg = 0.0
+        if(associated(    CNADD_enavg))      CNADD_enavg = 0.0
+        if(associated(   PARABS_enavg))     PARABS_enavg = 0.0
+        if(associated(   PARINC_enavg))     PARINC_enavg = 0.0
+        if(associated(    SCSAT_enavg))      SCSAT_enavg = 0.0
+        if(associated(    SCUNS_enavg))      SCUNS_enavg = 0.0
+        if(associated(   BTRANT_enavg))     BTRANT_enavg = 0.0
+        if(associated(      SIF_enavg))        SIF_enavg = 0.0
+        if(associated(   CNLOSS_enavg))     CNLOSS_enavg = 0.0
+        if(associated(   CNBURN_enavg))     CNBURN_enavg = 0.0
+        if(associated(   CNFSEL_enavg))     CNFSEL_enavg = 0.0
     endif
 
     if(associated(TC_enavg) .and. associated(TC))   & 
@@ -3191,6 +3469,28 @@ contains
     if(associated(PEATCLSM_FSWCHANGE_enavg)  .and. associated(PEATCLSM_FSWCHANGE))    & 
         PEATCLSM_FSWCHANGE_enavg  = PEATCLSM_FSWCHANGE_enavg  + PEATCLSM_FSWCHANGE
 
+    if(associated(  CNLAI_enavg) .and. associated( CNLAI))  CNLAI_enavg =  CNLAI_enavg +  CNLAI
+    if(associated( CNTLAI_enavg) .and. associated(CNTLAI)) CNTLAI_enavg = CNTLAI_enavg + CNTLAI
+    if(associated(  CNSAI_enavg) .and. associated( CNSAI))  CNSAI_enavg =  CNSAI_enavg +  CNSAI
+    if(associated( CNTOTC_enavg) .and. associated(CNTOTC)) CNTOTC_enavg = CNTOTC_enavg + CNTOTC
+    if(associated( CNVEGC_enavg) .and. associated(CNVEGC)) CNVEGC_enavg = CNVEGC_enavg + CNVEGC
+    if(associated( CNROOT_enavg) .and. associated(CNROOT)) CNROOT_enavg = CNROOT_enavg + CNROOT
+    if(associated(  CNNPP_enavg) .and. associated( CNNPP))  CNNPP_enavg =  CNNPP_enavg +  CNNPP
+    if(associated(  CNGPP_enavg) .and. associated( CNGPP))  CNGPP_enavg =  CNGPP_enavg +  CNGPP
+    if(associated(   CNSR_enavg) .and. associated(  CNSR))   CNSR_enavg =   CNSR_enavg +   CNSR
+    if(associated(  CNNEE_enavg) .and. associated( CNNEE))  CNNEE_enavg =  CNNEE_enavg +  CNNEE
+    if(associated(  CNXSMR_enavg).and. associated( CNXSMR))CNXSMR_enavg =  CNXSMR_enavg+ CNXSMR
+    if(associated(  CNADD_enavg) .and. associated( CNADD))  CNADD_enavg =  CNADD_enavg +  CNADD
+    if(associated( PARABS_enavg) .and. associated(PARABS)) PARABS_enavg = PARABS_enavg + PARABS
+    if(associated( PARINC_enavg) .and. associated(PARINC)) PARINC_enavg = PARINC_enavg + PARINC
+    if(associated(  SCSAT_enavg) .and. associated( SCSAT))  SCSAT_enavg =  SCSAT_enavg +  SCSAT
+    if(associated(  SCUNS_enavg) .and. associated( SCUNS))  SCUNS_enavg =  SCUNS_enavg +  SCUNS
+    if(associated( BTRANT_enavg) .and. associated(BTRANT)) BTRANT_enavg = BTRANT_enavg + BTRANT
+    if(associated(    SIF_enavg) .and. associated(   SIF))    SIF_enavg =    SIF_enavg +    SIF
+    if(associated( CNLOSS_enavg) .and. associated(CNLOSS)) CNLOSS_enavg = CNLOSS_enavg + CNLOSS
+    if(associated( CNBURN_enavg) .and. associated(CNBURN)) CNBURN_enavg = CNBURN_enavg + CNBURN
+    if(associated( CNFSEL_enavg) .and. associated(CNFSEL)) CNFSEL_enavg = CNFSEL_enavg + CNFSEL
+
     ! This counter is relative to ens_id
     collect_land_counter = collect_land_counter + 1
     !collect catch_progn
@@ -3367,6 +3667,28 @@ contains
         if(associated(PEATCLSM_WATERLEVEL_enavg)) PEATCLSM_WATERLEVEL_enavg = PEATCLSM_WATERLEVEL_enavg/NUM_ENSEMBLE
         if(associated(PEATCLSM_FSWCHANGE_enavg))  PEATCLSM_FSWCHANGE_enavg  = PEATCLSM_FSWCHANGE_enavg /NUM_ENSEMBLE
 
+        if(associated(   CNLAI_enavg))     CNLAI_enavg =    CNLAI_enavg/NUM_ENSEMBLE 
+        if(associated(  CNTLAI_enavg))    CNTLAI_enavg =   CNTLAI_enavg/NUM_ENSEMBLE
+        if(associated(   CNSAI_enavg))     CNSAI_enavg =    CNSAI_enavg/NUM_ENSEMBLE
+        if(associated(  CNTOTC_enavg))    CNTOTC_enavg =   CNTOTC_enavg/NUM_ENSEMBLE
+        if(associated(  CNVEGC_enavg))    CNVEGC_enavg =   CNVEGC_enavg/NUM_ENSEMBLE
+        if(associated(  CNROOT_enavg))    CNROOT_enavg =   CNROOT_enavg/NUM_ENSEMBLE
+        if(associated(   CNNPP_enavg))     CNNPP_enavg =    CNNPP_enavg/NUM_ENSEMBLE
+        if(associated(   CNGPP_enavg))     CNGPP_enavg =    CNGPP_enavg/NUM_ENSEMBLE
+        if(associated(    CNSR_enavg))      CNSR_enavg =     CNSR_enavg/NUM_ENSEMBLE
+        if(associated(   CNNEE_enavg))     CNNEE_enavg =    CNNEE_enavg/NUM_ENSEMBLE
+        if(associated(   CNXSMR_enavg))   CNXSMR_enavg =   CNXSMR_enavg/NUM_ENSEMBLE
+        if(associated(   CNADD_enavg))     CNADD_enavg =    CNADD_enavg/NUM_ENSEMBLE
+        if(associated(  PARABS_enavg))    PARABS_enavg =   PARABS_enavg/NUM_ENSEMBLE
+        if(associated(  PARINC_enavg))    PARINC_enavg =   PARINC_enavg/NUM_ENSEMBLE
+        if(associated(   SCSAT_enavg))     SCSAT_enavg =    SCSAT_enavg/NUM_ENSEMBLE
+        if(associated(   SCUNS_enavg))     SCUNS_enavg =    SCUNS_enavg/NUM_ENSEMBLE
+        if(associated(  BTRANT_enavg))    BTRANT_enavg =   BTRANT_enavg/NUM_ENSEMBLE
+        if(associated(     SIF_enavg))       SIF_enavg =      SIF_enavg/NUM_ENSEMBLE
+        if(associated(  CNLOSS_enavg))    CNLOSS_enavg =   CNLOSS_enavg/NUM_ENSEMBLE
+        if(associated(  CNBURN_enavg))    CNBURN_enavg =   CNBURN_enavg/NUM_ENSEMBLE
+        if(associated(  CNFSEL_enavg))    CNFSEL_enavg =   CNFSEL_enavg/NUM_ENSEMBLE
+
         ! Deal with no-data-values
         !
         ! Surface temperature components may be nodata in some but not all ensemble members.
@@ -3384,10 +3706,10 @@ contains
         !
         ! - reichle, 29 May 2020
                 
-        if(associated(TPSNOW_enavg))              where (TPSNOW_enavg              > enavg_nodata_threshold)  TPSNOW_enavg              = MAPL_UNDEF
-        if(associated(TPSAT_enavg ))              where (TPSAT_enavg               > enavg_nodata_threshold)  TPSAT_enavg               = MAPL_UNDEF
-        if(associated(TPWLT_enavg ))              where (TPWLT_enavg               > enavg_nodata_threshold)  TPWLT_enavg               = MAPL_UNDEF
-        if(associated(TPUNST_enavg))              where (TPUNST_enavg              > enavg_nodata_threshold)  TPUNST_enavg              = MAPL_UNDEF
+        if(associated(TPSNOW_enavg))  where (TPSNOW_enavg   > enavg_nodata_threshold)  TPSNOW_enavg              = MAPL_UNDEF
+        if(associated(TPSAT_enavg ))  where (TPSAT_enavg    > enavg_nodata_threshold)  TPSAT_enavg               = MAPL_UNDEF
+        if(associated(TPWLT_enavg ))  where (TPWLT_enavg    > enavg_nodata_threshold)  TPWLT_enavg               = MAPL_UNDEF
+        if(associated(TPUNST_enavg))  where (TPUNST_enavg   > enavg_nodata_threshold)  TPUNST_enavg              = MAPL_UNDEF
 
         ! restore exact no-data-values for PEATCLSM diagnostics in mineral tiles
 

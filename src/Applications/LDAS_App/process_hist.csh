@@ -54,6 +54,13 @@ endif
 if($NENS > 1) then
    set GridComp = ENSAVG
    sed -i 's|VEGDYN|'VEGDYN0000'|g' $HISTRC
+   sed -i 's|CATCHCNCLM45|'CATCHCNCLM450000'|g' $HISTRC
+   sed -i 's|TP1|'TSOIL1TILE'|g' $HISTRC
+   sed -i 's|TP2|'TSOIL2TILE'|g' $HISTRC
+   sed -i 's|TP3|'TSOIL3TILE'|g' $HISTRC
+   sed -i 's|TP4|'TSOIL4TILE'|g' $HISTRC
+   sed -i 's|TP5|'TSOIL5TILE'|g' $HISTRC
+   sed -i 's|TP6|'TSOIL6TILE'|g' $HISTRC
 #   sed -i 's|DATAATM|'DATAATM0000'|g' $HISTRC
 endif
 
