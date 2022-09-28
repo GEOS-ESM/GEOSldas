@@ -666,6 +666,7 @@ EOF
           set ENSDIR = `echo ens${inens}`
        endif
        set ENSID = `echo $ENSDIR | cut -c4-7`
+       set ENSID = _e${ENSID}
        if ( $NENS == 1) set ENSID =''
        set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/
        if (! -e $THISDIR            ) mkdir -p $THISDIR
