@@ -1594,13 +1594,22 @@ contains
                                            RC=STATUS  )
   VERIFY_(STATUS)
 
- call MAPL_AddExportSpec(GC                         ,&
+  call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'CN_total_root_C'           ,&
     UNITS              = 'kg m-2'                    ,&
     SHORT_NAME         = 'CNROOT'                   ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
+
+  call MAPL_AddExportSpec(GC                         ,&
+    LONG_NAME          = 'CN_fine_root_carbon'       ,&
+    UNITS              = 'kg m-2'                    ,&
+    SHORT_NAME         = 'CNFROOTC'                  ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
 
    call MAPL_AddExportSpec(GC                         ,&
     LONG_NAME          = 'fire season length'        ,&
@@ -2375,6 +2384,7 @@ contains
     real, dimension(:), pointer :: CNTOTC,  CNTOTC_enavg 
     real, dimension(:), pointer :: CNVEGC,  CNVEGC_enavg
     real, dimension(:), pointer :: CNROOT,  CNROOT_enavg
+    real, dimension(:), pointer :: CNFROOTC,  CNFROOTC_enavg
     real, dimension(:), pointer :: CNNPP,    CNNPP_enavg
     real, dimension(:), pointer :: CNGPP,    CNGPP_enavg
     real, dimension(:), pointer :: CNSR,      CNSR_enavg
@@ -2743,6 +2753,7 @@ contains
     call MAPL_GetPointer(import, CNTOTC ,   'CNTOTC', _RC) 
     call MAPL_GetPointer(import, CNVEGC ,   'CNVEGC', _RC)
     call MAPL_GetPointer(import, CNROOT ,   'CNROOT', _RC)
+    call MAPL_GetPointer(import, CNFROOTC ,   'CNFROOTC', _RC)
     call MAPL_GetPointer(import, CNNPP  ,   'CNNPP' , _RC)
     call MAPL_GetPointer(import, CNGPP  ,   'CNGPP' , _RC)
     call MAPL_GetPointer(import, CNSR   ,   'CNSR'  , _RC)
@@ -3032,6 +3043,7 @@ contains
     call MAPL_GetPointer(export,  CNTOTC_enavg  ,   'CNTOTC', _RC) 
     call MAPL_GetPointer(export,  CNVEGC_enavg  ,   'CNVEGC', _RC)
     call MAPL_GetPointer(export,  CNROOT_enavg  ,   'CNROOT', _RC)
+    call MAPL_GetPointer(export,  CNFROOTC_enavg,   'CNFROOTC', _RC)
     call MAPL_GetPointer(export,   CNNPP_enavg  ,   'CNNPP' , _RC)
     call MAPL_GetPointer(export,   CNGPP_enavg  ,   'CNGPP' , _RC)
     call MAPL_GetPointer(export,    CNSR_enavg  ,   'CNSR'  , _RC)
@@ -3189,6 +3201,7 @@ contains
         if(associated(   CNTOTC_enavg))     CNTOTC_enavg = 0.0
         if(associated(   CNVEGC_enavg))     CNVEGC_enavg = 0.0
         if(associated(   CNROOT_enavg))     CNROOT_enavg = 0.0
+        if(associated(   CNFROOTC_enavg))     CNFROOTC_enavg = 0.0
         if(associated(    CNNPP_enavg))      CNNPP_enavg = 0.0
         if(associated(    CNGPP_enavg))      CNGPP_enavg = 0.0
         if(associated(     CNSR_enavg))       CNSR_enavg = 0.0
@@ -3475,6 +3488,7 @@ contains
     if(associated( CNTOTC_enavg) .and. associated(CNTOTC)) CNTOTC_enavg = CNTOTC_enavg + CNTOTC
     if(associated( CNVEGC_enavg) .and. associated(CNVEGC)) CNVEGC_enavg = CNVEGC_enavg + CNVEGC
     if(associated( CNROOT_enavg) .and. associated(CNROOT)) CNROOT_enavg = CNROOT_enavg + CNROOT
+    if(associated( CNFROOTC_enavg) .and. associated(CNFROOTC)) CNFROOTC_enavg = CNFROOTC_enavg + CNFROOTC
     if(associated(  CNNPP_enavg) .and. associated( CNNPP))  CNNPP_enavg =  CNNPP_enavg +  CNNPP
     if(associated(  CNGPP_enavg) .and. associated( CNGPP))  CNGPP_enavg =  CNGPP_enavg +  CNGPP
     if(associated(   CNSR_enavg) .and. associated(  CNSR))   CNSR_enavg =   CNSR_enavg +   CNSR
@@ -3673,6 +3687,7 @@ contains
         if(associated(  CNTOTC_enavg))    CNTOTC_enavg =   CNTOTC_enavg/NUM_ENSEMBLE
         if(associated(  CNVEGC_enavg))    CNVEGC_enavg =   CNVEGC_enavg/NUM_ENSEMBLE
         if(associated(  CNROOT_enavg))    CNROOT_enavg =   CNROOT_enavg/NUM_ENSEMBLE
+        if(associated(  CNFROOTC_enavg))    CNFROOTC_enavg =   CNFROOTC_enavg/NUM_ENSEMBLE
         if(associated(   CNNPP_enavg))     CNNPP_enavg =    CNNPP_enavg/NUM_ENSEMBLE
         if(associated(   CNGPP_enavg))     CNGPP_enavg =    CNGPP_enavg/NUM_ENSEMBLE
         if(associated(    CNSR_enavg))      CNSR_enavg =     CNSR_enavg/NUM_ENSEMBLE
