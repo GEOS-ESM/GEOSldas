@@ -123,7 +123,7 @@ module LDAS_TileCoordType
      !          any subroutines or operators defined herein
      ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      
-     character(40) :: gridtype ! type of grid, eg. "LatLon", "EASE_M36", "EASEv2_M09", ...
+     character(40) :: gridtype ! type of grid, eg. "LatLon", "EASEv1_M36", "EASEv2_M09", ...
      integer       :: ind_base ! 0=zero-based indices (EASE), 1=one-based indices (LatLon)
      integer       :: i_dir    ! direction of indices (+1=W-to-E, -1=E-to-W)
      integer       :: j_dir    ! direction of indices (+1=S-to-N, -1=N-to-S)
