@@ -73,7 +73,7 @@ module clsm_ensupd_enkf_update
   use nr_ran2_gasdev,                   ONLY:     &
        NRANDSEED
 
-  use ease_conv,                   ONLY:     &
+  use ease_conv,                        ONLY:     &
        ease_convert
 
   use my_matrix_functions,              ONLY:     &
@@ -2107,7 +2107,7 @@ contains
 
     if ( (trim(tile_grid_g%gridtype)/='EASEv1_M09'  )  .and.                  &
          (trim(tile_grid_g%gridtype)/='EASEv2_M09')         )               then
-       err_msg = 'out_smapL4SMaup requires tile-space for 9 km EASE[v2] grid'
+       err_msg = 'out_smapL4SMaup requires tile-space for 9 km EASEv1 or EASEv2 grid'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
 
