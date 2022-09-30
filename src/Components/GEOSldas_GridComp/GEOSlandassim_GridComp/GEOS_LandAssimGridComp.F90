@@ -146,7 +146,7 @@ contains
     character(len=ESMF_MAXSTR)   :: LAND_ASSIM_STR, mwRTM_file
     character(len=ESMF_MAXSTR)   :: id_string,childname, fmt_str
     integer                      :: i, ens_id_width, FIRST_ENS_ID, NUM_ENSEMBLE
-    integer, allocatable, dimension(:) :: ens_id, export_id
+    integer                      :: ens_id, export_id
 
     ! Begin...
     ! --------
@@ -1002,20 +1002,14 @@ contains
       call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0, RC=STATUS)
       VERIFY_(STATUS)
 
-      write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
-      allocate(ens_id(NUM_ENSEMBLE), export_id(NUM_ENSEMBLE))
       do i=1,NUM_ENSEMBLE
-         ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
-         if (NUM_ENSEMBLE == 1 ) then
-            id_string=''
-         else
-            write(id_string, fmt_str) ens_id(i)
-         endif
 
-         id_string=trim(id_string)
+         ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+
+         call get_ensid_string(id_string, ens_id, ens_id_width, NUM_ENSEMBLE)
 
          childname='CATCHINCR'//trim(id_string)
-         export_id(i) = MAPL_AddChild(gc, name=childname, ss=ExportCatchIncrSetServices, rc=status)
+         export_id = MAPL_AddChild(gc, name=childname, ss=ExportCatchIncrSetServices, rc=status)
          VERIFY_(status)
       enddo
    endif
@@ -1249,10 +1243,10 @@ contains
     allocate(Pert_rseed_r8(NRANDSEED, NUM_ENSEMBLE), source = 0.0d0)
     
     if (root_proc) then
-       call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+       call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=6, RC=STATUS)
        _VERIFY(status)
        call MAPL_GetResource( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_RESTART_FILE:",    &
-                             DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
+                              DEFAULT="../input/restart/landassim_obspertrseed%s_rst", RC=STATUS)
        _VERIFY(STATUS)
 
        ! It is consistent with the default that psert seed time is one LandAssim_DT behind assim time
@@ -1271,7 +1265,7 @@ contains
        nhms = h *10000 + m*100  + s
 
        do ens = 0, NUM_ENSEMBLE-1
-          call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
+          call get_ensid_string(id_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE ) ! xxxx not _exxxx
           seed_fname = ""
           call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(id_string), nymd=nymd,nhms=nhms,stat=status)
           call read_pert_rseed(trim(id_string),seed_fname,Pert_rseed_r8(:,ens+1))
@@ -1583,7 +1577,7 @@ contains
     if (MAPL_RecordAlarmIsRinging(MAPL)) then
        if (root_proc) then
           Pert_rseed_r8 = Pert_rseed
-          call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+          call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=6, RC=STATUS)
           _VERIFY(status)
           call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
           _VERIFY(STATUS)
@@ -1594,7 +1588,7 @@ contains
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
-             call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
+             call get_ensid_string(id_string, ens + FIRST_ENS_ID, ens_id_width) !xxxx, not _exxxx
              seed_fname = ""
              call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(id_string),nymd=nymd,nhms=nhms,stat=status)
              _VERIFY(STATUS)
@@ -2802,20 +2796,6 @@ contains
 
   ! ******************************************************************************
 
-  subroutine get_id_string(id_string, id, ens_id_width)
-     character(*), intent(inout) :: id_string
-     integer, intent(in) :: id
-     integer, intent(in) :: ens_id_width
-
-     character(len=ESMF_MAXSTR) :: fmt_str
-
-     write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
-     write (id_string, fmt_str) id
-
-  end subroutine  
-
-  ! ******************************************************************************
-
   !BOP
   ! !IROTUINE: Finalize -- finalize method for LDAS GC
   ! !INTERFACE:
@@ -2861,7 +2841,7 @@ contains
        if (root_proc) then
           if (out_obslog) call finalize_obslog()
           Pert_rseed_r8 = Pert_rseed
-          call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
+          call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=6, RC=STATUS)
           _VERIFY(status)
           call MAPL_GetResource ( MAPL, fname_tpl, Label="LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE:", &
                DEFAULT="landassim_obspertrseed%s_checkpoint", RC=STATUS)
@@ -2873,7 +2853,7 @@ contains
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
-             call get_id_string(id_string, ens + FIRST_ENS_ID, ens_id_width)
+             call get_ensid_string(id_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE )
              seed_fname = ""
              call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(id_string),nymd=nymd,nhms=nhms,stat=status)
              _VERIFY(STATUS)

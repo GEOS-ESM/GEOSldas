@@ -1126,7 +1126,7 @@ class LDASsetup:
                 # create BC in rc file
                 tmpl_ = ''
                 if self.nens >1 :
-                   tmpl_='_e%s' 
+                   tmpl_='%s' 
                 if self.perturb == 1:
                    ldasrcInp['PERTURBATIONS'] ='1'
                 bcval=['../input/green','../input/lai','../input/lnfm','../input/ndvi','../input/nirdf','../input/visdf']

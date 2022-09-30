@@ -78,7 +78,7 @@ contains
     ! ensemble set up:
 
     integer :: i, k
-    integer,allocatable :: ens_id(:)
+    integer :: ens_id
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     type(ESMF_GridComp), pointer :: gcs(:)=>null() ! Children gridcomps
     character(len=ESMF_MAXSTR), pointer :: gcnames(:)=>null() ! Children's names
@@ -86,7 +86,7 @@ contains
     integer :: status
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
-    character(len=ESMF_MAXSTR) :: id_string,childname, fmt_str
+    character(len=ESMF_MAXSTR) :: id_string,childname
     character(len=ESMF_MAXSTR) :: LAND_ASSIM_STR, mwRTM_file, ENS_FORCING_STR
     integer                    :: ens_id_width
     ! Local variables
@@ -173,19 +173,15 @@ contains
        allocate(METFORCE(1))
     endif
 
-    allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
-    _ASSERT( ens_id_width < 10, "need 1 billion ensemble members? increase ens_id_width first")
-    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")" 
+    allocate(LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
+    _ASSERT( ens_id_width < 12, "need 1 billion ensemble members? increase ens_id_width first")
 
     do i=1,NUM_ENSEMBLE
-       ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
-       if(NUM_ENSEMBLE == 1 .or. .not. ensemble_forcing) then
-          id_string=''
-       else
-          write(id_string, fmt_str) ens_id(i)
-       endif
+       ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+       ! _exxxx
+       call get_ensid_string(id_string, ens_id, ens_id_width, NUM_ENSEMBLE)
 
-       id_string=trim(id_string)
+       if (.not. ensemble_forcing ) id_string = ''
 
        childname='METFORCE'//trim(id_string)
        METFORCE(i) = MAPL_AddChild(gc, name=trim(childname), ss=MetforceSetServices, rc=status)
@@ -195,14 +191,9 @@ contains
     enddo
 
     do i=1,NUM_ENSEMBLE
-       ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
-       if(NUM_ENSEMBLE == 1 ) then
-          id_string=''
-       else
-          write(id_string, fmt_str) ens_id(i)
-       endif
+       ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
 
-       id_string=trim(id_string)
+       call get_ensid_string(id_string, ens_id, ens_id_width, NUM_ENSEMBLE)
 
        childname='LANDPERT'//trim(id_string)
        LANDPERT(i) = MAPL_AddChild(gc, name=childname, ss=LandPertSetServices, rc=status)
