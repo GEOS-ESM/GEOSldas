@@ -281,7 +281,7 @@ contains
     ! 
     ! outputs:
     !  offsets
-    !  cell_area  (optional, for EASE  grids only)
+    !  cell_area  [m^2]   (optional, for EASE  grids only)
     
     implicit none
     
@@ -382,7 +382,7 @@ contains
        
        call ease_extent (                   &
             gridname, cols, rows,           &
-            cell_area = ease_cell_area,     &
+            cell_area = ease_cell_area,     &             ! [m^2]
             ll_lon    = tile_grid%ll_lon,   &
             ll_lat    = tile_grid%ll_lat,   &
             ur_lon    = tile_grid%ur_lon,   &

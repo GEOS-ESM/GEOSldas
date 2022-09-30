@@ -80,19 +80,19 @@ module LDAS_TileCoordType
   ! Possible grid types (structure field "gridtype"):
   !
   !   - "LatLon"     : regular lat/lon grid    (constant dlon, dlat)
-  !   - "EASE_Mxx"   : cylindrical EASE grid   (constant dlon, variable dlat)
+  !   - "EASEv1_Mxx" : cylindrical EASEv1 grid (constant dlon, variable dlat)
   !   - "EASEv2_Mxx" : cylindrical EASEv2 grid (constant dlon, variable dlat)
   !
   ! Grid orientation (convention):
   !
   !  "LatLon"     : 1-based indexing, SouthWest to NorthEast
-  !  "EASE_Mxx"   : 0-based indexing, NorthWest to SouthEast
+  !  "EASEv1_Mxx" : 0-based indexing, NorthWest to SouthEast
   !  "EASEv2_Mxx" : 0-based indexing, NorthWest to SouthEast
   !
   ! Grids are defined by the following fields:
   !    
   !  ---------------------------------------------------------
-  !  |           ||     "LatLon"       |    "EASE_Mxx"       |
+  !  |           ||     "LatLon"       |    "EASEv1_Mxx"     |
   !  |           ||                    |    "EASEv2_Mxx"     |
   !  ---------------------------------------------------------
   !  | indexing  ||  ind_base          |  ind_base           |
@@ -133,7 +133,7 @@ module LDAS_TileCoordType
      integer       :: j_offg   ! minimum lat index (offset from *global* grid)
      !                         !  "LatLon"    : i_offg -> westernmost longitude
      !                         !                j_offg -> southernmost latitude
-     !                         !  "EASE_Mxx"  : i_offg -> westernmost longitude
+     !                         !  "EASEv1_Mxx": i_offg -> westernmost longitude
      !                         !                j_offg -> northernmost latitude
      !                         !  "EASEv2_Mxx": i_offg -> westernmost longitude
      !                         !                j_offg -> northernmost latitude
@@ -144,7 +144,7 @@ module LDAS_TileCoordType
      real          :: dlon     ! longitude grid spacing [deg]
      real          :: dlat     ! latitude grid spacing [deg]
      !                         !  "LatLon"    : constant
-     !                         !  "EASE_Mxx"  : *average* dlat over grid extent
+     !                         !  "EASEv1_Mxx": *average* dlat over grid extent
      !                         !  "EASEv2_Mxx": *average* dlat over grid extent
 
      !CLSM_ENSDRV_MPI is NOT updated. will not be saved and bcasted
