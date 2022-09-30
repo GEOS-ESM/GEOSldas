@@ -678,7 +678,7 @@ contains
     VERIFY_(STATUS)
     ensemble_forcing = (trim(ENS_FORCING_STR) == 'YES') 
     if (ensemble_forcing .and. NUM_ENSEMBLE > 1) then
-      ! comp_name ends in "_eXXXX", hard coded 3-digit ens id for forcing from GEOS ADAS:
+      ! note: comp_name ends in "_eXXXX"; for GEOS ADAS forcing, extract hard-coded 3-digit ens id string
       k = len(trim(comp_name))
       ensid_string3 = comp_name(k-2:k)
       call ESMF_CFIOStrTemplate(ens_forcing_path, trim(adjustl(mf%Path)),'GRADS', xid = ensid_string3, stat=status)
