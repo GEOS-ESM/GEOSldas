@@ -26,8 +26,10 @@ module LDAS_TileCoordRoutines
   use MAPL_ConstantsMod,                ONLY:     &
        MAPL_RADIUS                                    ! Earth radius
   
-  use EASE_conv,                   ONLY:     &
-      ease_convert, ease_inverse, ease_extent
+  use EASE_conv,                        ONLY:     &
+       ease_convert,                              &
+       ease_inverse,                              &
+       ease_extent
 
   use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
@@ -291,7 +293,7 @@ contains
     
     ! locals
 
-    real    :: ease_cell_area, tmplon
+    real    :: ease_cell_area
     logical :: date_line_on_center, pole_on_center
     logical :: ease_grid, c3_grid, latlon_grid
     logical :: file_exist
@@ -330,7 +332,7 @@ contains
        pole_on_center      = .true.
     endif
     
-    if (index(gridname,"EASE") /=0) then
+    if (index(gridname,"EASEv") /=0) then
        ease_grid      = .true.
        latlon_grid    = .false.
     endif
@@ -360,31 +362,33 @@ contains
     
     if (ease_grid) then
        
+       ! gridname may be EASEv2-M36 or EASEv2_M36 (to be cleaned up later)
+
+       k = index(gridname, 'EASEv')
+       
+       if (k == 0) then   
+          err_msg = 'unknown EASE grid tile defs, gridname = ' // trim( gridname)
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       end if
+       
+       tile_grid%gridtype = trim(gridname(k:))
+       
        tile_grid%ind_base = 0
        
        ! global cylindrical EASE grid 
        
-       tile_grid%ll_lon = -180.
-       tile_grid%ur_lon =  180.
-       
        tile_grid%i_dir  = +1
        tile_grid%j_dir  = -1
        
-       ! It is sloppy that the name may be EASEv2-M36 or EASEv2_M36
+       call ease_extent (                   &
+            gridname, cols, rows,           &
+            cell_area = ease_cell_area,     &
+            ll_lon    = tile_grid%ll_lon,   &
+            ll_lat    = tile_grid%ll_lat,   &
+            ur_lon    = tile_grid%ur_lon,   &
+            ur_lat    = tile_grid%ur_lat    &
+            )
 
-       k = index(gridname, 'EASEv')
-
-       if (k == 0) then   
-          err_msg = 'unknown EASE grid tile defs, grid name = ' // trim( gridname)
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       end if
-
-       tile_grid%gridtype = trim(gridname(k:))
-       call ease_extent (gridname, cols, rows, CELL_area=ease_cell_area)
-       call ease_inverse(gridname, 0.0, -0.5,     tile_grid%ur_lat, tmplon)     
-       call ease_inverse(gridname, 0.0, rows-0.5, tile_grid%ll_lat, tmplon)     
- 
-       
        tile_grid%dlon   = 360./real(tile_grid%N_lon) 
        tile_grid%dlat   = (tile_grid%ur_lat-tile_grid%ll_lat)/real(tile_grid%N_lat) ! *avg* dlat!
 
@@ -857,7 +861,7 @@ contains
           
           if   ( index(tile_grid%gridtype, 'EASEv')  /=0 ) then
              
-             ! ASSUMPTION: tiles match EASE or EASEv2 grid cells exactly
+             ! ASSUMPTION: tiles match EASE grid cells exactly
              !             (unless "outside" the domain, eg. water surface)
              
              if     (N_tile_in_cell_ij(i_ind,j_ind)==1) then
@@ -869,7 +873,7 @@ contains
                 
              elseif (N_tile_in_cell_ij(i_ind,j_ind)==0) then
                 
-                ! Do nothing.  If given EASE or EASEv2 grid cell is not land, 
+                ! Do nothing.  If given EASE grid cell is not land, 
                 ! tile_num will not change from its initialized value.
                 
              else
@@ -878,7 +882,6 @@ contains
                 call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
                 
              end if
-             
              
           elseif (index(tile_grid%gridtype, 'LatLon')/=0) then
              
