@@ -68,11 +68,12 @@ setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 
 setenv    LADAS_COUPLING MY_LADAS_COUPLING
 setenv    ENSEMBLE_FORCING MY_ENSEMBLE_FORCING
-setenv    ADAS_EXPDIR    MY_ADAS_EXPDIR
+setenv    ADAS_EXPDIR   MY_ADAS_EXPDIR
 
 set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
 set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
 set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
+set BEG_DATE  = `grep     BEG_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
 
 ####################################################################### 
 #  if LADAS_COUPLING==2, compute ens avg of atmens forcing 
@@ -373,7 +374,7 @@ while ( $counter <= ${NUM_SGMT} )
    endif
    
    @ oserver_nodes = MY_OSERVER_NODES
-   @ writers = MY_WRITERS_NPES
+   @ writers = MY_WRIITERS_NPES
 
    set total_npes = $SLURM_NTASKS
 
@@ -753,6 +754,7 @@ EOF
    set endhour = `echo  $END_DATE | cut -c10-11`
    set capdate = `cat cap_restart | cut -c1-8`
    set caphour = `cat cap_restart | cut -c10-11`
+   set caphhmmss = `cat cap_restart | cut -c10-15`
 
    if ( $capdate < $enddate ) then
      @ counter = $counter + 1
@@ -772,40 +774,83 @@ end
 set logfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${logYEAR}/M${logMON}/${EXPID}.ldas_log.${logYEAR}${logMON}${logDAY}_${logHour}${logMin}z.txt
 set errfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${logYEAR}/M${logMON}/${EXPID}.ldas_err.${logYEAR}${logMON}${logDAY}_${logHour}${logMin}z.txt
 
-if (-f GEOSldas_log_txt) then
-   /bin/cp GEOSldas_log_txt $logfile
-   /bin/rm -f GEOSldas_log_txt 
-endif
+#if (-f GEOSldas_log_txt) then
+#   /bin/cp GEOSldas_log_txt $logfile
+#   /bin/rm -f GEOSldas_log_txt 
+#endif
 
-if(-f GEOSldas_err_txt) then
-  /bin/cp GEOSldas_err_txt $errfile
-  /bin/rm -f GEOSldas_err_txt 
-endif
+#if(-f GEOSldas_err_txt) then
+#  /bin/cp GEOSldas_err_txt $errfile
+#  /bin/rm -f GEOSldas_err_txt 
+#endif
 
 #######################################################################
 #                 Re-Submit Job
 #######################################################################
 
-if ( $LADAS_COUPLING > 0 ) then
-   if ( $rc == 0 ) then
-      echo 'SUCCEEDED' > $HOMDIR/lenkf_job_completed.txt
-   endif
-else
-   if ( $rc == 0 ) then
-   cd   $HOMDIR
-   #don't change below line(not even extra space)
-   if($capdate<$enddate) sbatch $HOMDIR/lenkf.j
-  endif
-endif
+#if ( $LADAS_COUPLING > 0 ) then
+#   if ( $rc == 0 ) then
+#      echo 'SUCCEEDED' > $HOMDIR/lenkf_job_completed.txt
+#   endif
+#else
+#   if ( $rc == 0 ) then
+#   cd   $HOMDIR
+#   #don't change below line(not even extra space)
+#   if($capdate<$enddate) sbatch $HOMDIR/lenkf.j
+#  endif
+#endif
 
-set convergence=`./PSO.py $EXPDIR`
+#echo $MYNAME >> $HOMDIR/PSO_iterations.txt
+#echo $USER >> $HOMDIR/PSO_iterations.txt
+
+#source /home/$USER/.bashrc
+#source activate hydraulic_disc
+
+#echo 'before activating' >> $HOMDIR/PSO_iterations.txt
+#eval "$(conda shell.bash hook)"
+#conda activate /home/trobinet/.conda/envs/hydraulic_disc
+#echo 'activated' >> $HOMDIR/PSO_iterations.txt
+
+#echo $SHELL >> $HOMDIR/PSO_iterations.txt
+echo 'before conda init' >> $HOMDIR/PSO_iterations.txt
+
+#source /home/trobinet/.bashrc
+#source activate /home/trobinet/.conda/envs/hydraulic_disc/bin/activate
+#echo 'before source activate' >> $HOMDIR/PSO_iterations.txt
+#conda init bash
+#conda activate /home/trobinet/.conda/envs/hydraulic_disc
+#module load python/3.7 source /home/trobinet/.conda/envs/hydraulic_disc/bin/activate
+
+module load python/GEOSpyD/Min4.11.0_py3.9
+conda activate /home/trobinet/.conda/envs/hydraulic_disc
+
+echo 'after conda init' >> $HOMDIR/PSO_iterations.txt
+
+echo 'before calling python script' >> $HOMDIR/PSO_iterations.txt
+echo $EXPDIR >> $HOMDIR/PSO_iterations.txt
+echo $HOMDIR >> $HOMDIR/PSO_iterations.txt
+set convergence = `python3 $HOMDIR/PSO_v2_objective.py $EXPDIR`
+#set convergence = 1
+echo 'after calling python script' >> $HOMDIR/PSO_iterations.txt
+echo 'convergence' >> $HOMDIR/PSO_iterations.txt
+echo $convergence >> $HOMDIR/PSO_iterations.txt
 
 if ($convergence == 0) then
-   echo 'CONVERGED'
+   echo 'CONVERGED, convergence=0' >> $HOMDIR/PSO_iterations.txt
 else if ($convergence == 1) then
-   ./lenkf.j
+   set fulltime="${capdate} ${caphhmmss}"
+   echo $fulltime >> $HOMDIR/PSO_iterations.txt
+   sed -i "s/$fulltime/$BEG_DATE/" $HOMDIR/cap_restart
+   echo $capdate >>$HOMDIR/PSO_iterations.txt
+   echo $caphhmmss >>$HOMDIR/PSO_iterations.txt
+   echo $BEG_DATE >>$HOMDIR/PSO_iterations.txt
+   echo $capdate $caphhmmss >> $HOMDIR/PSO_iterations.txt
+   cat cap_restart >> $HOMDIR/PSO_iterations.txt
+   echo 'resubmitted on same job, convergence=1' >> $HOMDIR/PSO_iterations.txt
+   $HOMDIR/lenkf.j 
 else if ($convergence == 2) then
+   echo 'resubmitted on new job, convergence=2' >> $HOMDIR/PSO_iterations.txt
    sbatch lenkf.j
 else if ($convergence == 3) then
-   echo 'MAX_ITER REACHED WITHOUT PSO CONVERGENCE'
+   echo 'MAX_ITER REACHED WITHOUT PSO CONVERGENCE, convergence=3' >> $HOMDIR/PSO_iterations.txt
 endif

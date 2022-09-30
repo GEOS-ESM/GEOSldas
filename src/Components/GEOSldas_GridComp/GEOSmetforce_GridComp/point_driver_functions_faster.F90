@@ -100,7 +100,7 @@ MODULE point_driver_functions
         character(len=99) :: char_a,char_b,char_c, dim_name
         real, allocatable                       :: var_val(:), empty_var(:), return_val(:)
         real, dimension(:,:), allocatable       :: pull_val, final_val, final_val_trans
-        double precision, dimension(:,:), allocatable       :: final_val_double
+        double precision, dimension(:,:), allocatable       :: final_val_double, final_val_trans_double
 
         character(len=4) :: YYYY
         character(len=2) :: MM,DD,hh,min,ss
@@ -126,8 +126,12 @@ MODULE point_driver_functions
         
         allocate(final_val(num_steps_day_75min,len_tile))
         allocate(final_val_trans(len_tile,num_steps_day_75min))
+        allocate(final_val_double(num_steps_day_75min,len_tile))
+        allocate(final_val_trans_double(len_tile,num_steps_day_75min))
         final_val = -9999
         final_val_trans = -9999
+        final_val_double = -9999
+        final_val_trans_double = -9999
         
         call check(nf90_inq_varid(ncid, 'Tair', curr_varid))
         final_val = daily_force%Tair
@@ -217,11 +221,11 @@ MODULE point_driver_functions
 
         !write(*,*) 'adding date_int'
         call check(nf90_inq_varid(ncid, 'date_int', curr_varid))
-        final_val = daily_force%date_int
-        final_val_trans = transpose(final_val)
-        call check(nf90_put_var(ncid, curr_varid, final_val_trans, start = (/1,next_time/),count = (/len_tile,num_steps_day_75min/)))
-        !write(*,*) 'added date_int'
-        
+        final_val_double = daily_force%date_int
+        final_val_trans_double = transpose(final_val_double)
+        call check(nf90_put_var(ncid, curr_varid, final_val_trans_double, start = (/1,next_time/),count = (/len_tile,num_steps_day_75min/)))
+        !write(*,*) 'final_val_trans_double(1,1)'
+        !write(*,*) final_val_trans_double(1,1)
         
         
         ! ADD SOMETHING TO KEEP TRACK OF TIME IN A MEANINGFUL WAY!!!  

@@ -1246,7 +1246,7 @@ class LDASsetup:
         shutil.copy(lenkf,'lenkf.j')
 
         pso=self.blddir+'/etc/PSO_v2_objective.py'
-        shutil.copy(pso,'PSO_v2_objctive.py')
+        shutil.copy(pso,'PSO_v2_objective.py')
 
         obj=self.blddir+'/etc/compute_objective_v2.py'
         shutil.copy(obj,'compute_objective_v2.py')

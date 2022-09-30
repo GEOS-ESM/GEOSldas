@@ -601,8 +601,8 @@ contains
     !write(*,*) 'started initialize'
 
     ! Define whether this is point forcing case or normal
-    point_forcing_write = 1 
-    point_forcing_read =  0
+    point_forcing_write = 0 
+    point_forcing_read =  1
 
     !Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -741,6 +741,8 @@ contains
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1,       RC=STATUS)
     VERIFY_(STATUS)
     ensemble_forcing = (trim(ENS_FORCING_STR) == 'YES') 
+    write(*,*) ensemble_forcing
+    write(*,*) 'ensemble_forcing'
     if (ensemble_forcing .and. NUM_ENSEMBLE > 1) then
       id_string = ""
       call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
@@ -751,6 +753,8 @@ contains
       call ESMF_CFIOStrTemplate(ens_forcing_path, trim(adjustl(mf%Path)),'GRADS', xid = trim(id_string(k-2:k)), stat=status)
       mf%Path = ens_forcing_path
     endif
+    write(*,*) ens_forcing_path
+    write(*,*) 'ens_forcing_path'
     ! Put MetForcing in Ldas' pvt internal state
     internal%mf = mf
     ! Create alarm for MetForcing
@@ -941,6 +945,8 @@ contains
     character (len=100) :: met_tag
     real, allocatable, dimension(:,:) :: var_curr, final_metf
     real, allocatable, dimension(:) :: var_curr_cpu, Tair_new, curr_metf, local_metf
+    double precision, allocatable, dimension(:,:) :: final_metf_time
+    double precision, allocatable, dimension(:) :: local_metf_time
     integer, dimension(2) :: curr_shape
     character (len=100) :: filename
     integer :: ierr, num_processes, my_id, start_year
@@ -989,8 +995,8 @@ contains
     !write(*,*) 'started run'
 
     ! Set whether we are in point forcing mode
-    point_forcing_write = 1
-    point_forcing_read =  0 
+    point_forcing_write = 0
+    point_forcing_read =  1 
 
     
     ! Get my name and setup traceback handle
@@ -1349,7 +1355,7 @@ contains
           !write (*,*) land_nt_local
           filename = '/discover/nobackup/projects/medComplex/point_forcing_data/'//YYYY//'_point_forcing_data.nc4'
           filename = trim(filename)
-          !write(*,*) filename
+          write(*,*) filename
           !write(*,*) local_id
           start_year = 1980
           total_tiles_36km = 112573
@@ -1403,10 +1409,14 @@ contains
           !write(*,*) 'writing to daily_force'
           allocate(curr_metf(total_tiles_36km))
           allocate(local_metf(land_nt_local))
-          allocate(final_metf(1,land_nt_local))          
+          allocate(final_metf(1,land_nt_local))
+          allocate(local_metf_time(land_nt_local))
+          allocate(final_metf_time(1,land_nt_local))
           local_metf = -9999
           curr_metf = -9999
           final_metf = -9999
+          local_metf_time = -9999
+          final_metf_time = -9999
 
           time_idx = findloc(daily_force%Tair(:,1),-9999.)
 
@@ -1471,13 +1481,10 @@ contains
           final_metf(1,:) = local_metf
           daily_force%RefH(time_idx,:) = final_metf
           
-          local_metf = time_con
-          final_metf(1,:) = local_metf
-          daily_force%date_int(time_idx,:) = final_metf
-          
-          local_metf = time_con
-          final_metf(1,:) = local_metf
-          daily_force%date_int(time_idx,:) = final_metf
+          local_metf_time = time_con
+          final_metf_time(1,:) = local_metf_time
+          daily_force%date_int(time_idx,:) = final_metf_time
+
 
           ! do for other variables here
         endif
@@ -1582,10 +1589,10 @@ contains
                 ! MET TAG NEEDS TO BE UPDATED TO WORK WITH THE HISTORY.RC FILE
                 ! However, I am not sure how to do this so I will leave this for later discussion
            !     write(*,*) 'root has been discovered'
-           met_tag = '/discover/nobackup/projects/medComplex/point_forcing_data/1980_point_forcing_data.nc4'
-                !write(*,*) 'before calling get_forcing_point'
+           met_tag = '/discover/nobackup/trobinet/point_forcing_metforce/1980_point_forcing_data.nc4'
+           !write(*,*) 'before calling get_forcing_point'
            call get_forcing_point(met_tag,model_time_cur,local_id)
-                !write(*,*) 'after calling get_forcing_point'
+           !write(*,*) 'after calling get_forcing_point'
                 !
                 !
                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1669,127 +1676,117 @@ contains
        curr_shape = SHAPE(met_force_new%Tair)
        
        !write(*,*) 'allocating variables'
-       allocate(global_force_time(curr_shape(2)))
-       allocate(var_curr(curr_shape(1),1))
-       allocate(var_curr_cpu(land_nt_local))
-       allocate(Tair_new(land_nt_local))
+       if (.not. allocated(global_force_time)) then
+           allocate(global_force_time(curr_shape(2)))
+           allocate(var_curr(curr_shape(1),1))
+           allocate(var_curr_cpu(land_nt_local))
+           allocate(Tair_new(land_nt_local))
+       endif
        !write(*,*) 'assigning global force time'
        global_force_time = met_force_new%date_int(1,:)
        !write(*,*) 'findloc'
-       !write(*,*) global_force_time(1:5)
-       !write(*,*) model_time_double
-       !write(*,*) curr_shape(1)
-       !write(*,*) curr_shape(2)
-       !write(*,*) size(global_force_time)
        time_ind = findloc(global_force_time,VALUE=model_time_double)
        !ime_ind = FINDLOC(global_force_time,model_time_double,SIZE(global_force_time))
        
        !write(*,*) 'figured out single forcing point and assigning exports'
 
-       var_curr = met_force_new%Tair(:,time_ind)
-       !write(*,*) 'size var curr'
-       !write(*,*) size(var_curr)
-       var_curr_cpu = var_curr(local_id,1)
-       !write(*,*) 'size var curr cpu'
-       !write(*,*) size(var_curr_cpu)
-       Tair_new = var_curr_cpu
-       !write(*,*) 'size tair'
-       !write (*,*) size(Tair_new)
-       !write(*,*) 'Tair(1)'
-       !write (*,*) Tair_new(100000)
-       !write(*,*) 'size(clocal_id)'
-       !write(*,*) size(local_id)
-       !write(*,*) 'var_curr_cpu(1)'
-       !write(*,*) var_curr_cpu(1)
-       !write(*,*) 'var_curr(1,1)'
-       !write(*,*) var_curr(1,1)
-       !write(*,*) 'met_force_new%Tair(1,1)'
-       !write(*,*) met_force_new%Tair(1,1)
-       !write(*,*) 'global_force_time(1)'
-       !write(*,*) global_force_time(1)
+       !var_curr = met_force_new%Tair(:,time_ind)
+       !var_curr_cpu = var_curr(local_id,1)
+       !Tair_new = var_curr_cpu
+       !Tair = Tair_new
+       
+       !write(*,*) 'curr_shape'
+       !write(*,*) curr_shape
+       !write(*,*) 'global_force_time'
+       !write(*,*) global_force_time
        !write(*,*) 'model_time_double'
        !write(*,*) model_time_double
+
        !write(*,*) 'time_ind'
        !write(*,*) time_ind
+       !write(*,*) 'shape(met_force_new%Tair(:,time_ind))'
+       !write(*,*) shape(met_force_new%Tair(:,time_ind))
+       !write(*,*) 'met_force_new%Tair'
+       !write(*,*) met_force_new%Tair
+       !write(*,*) 'shape(Tair)'
+       !write(*,*) shape(Tair)
+       !write(*,*) 'Tair'
+       !write(*,*) Tair
+       !write(*,*) 'met_force_new%Tair(:,time_ind)'
+       !write(*,*) met_force_new%Tair(:,time_ind)
+       !write(*,*) 'shape(met_force_new%Tair(:,time_ind))'
+       !write(*,*) shape(met_force_new%Tair(:,time_ind))
 
-       !write(*,*) size(Tair)
-       !write(*,*) size(Tair_new)
-       !write(*,*) Tair(1)
-       !write(*,*) Tair_new(1)
+       !Tair = met_force_new%Tair(:,time_ind)
+       !write(*,*) 'met_force_new%Tair(:,time_ind)'
+       !write(*,*) met_force_new%Tair(:,time_ind)
+       !write(*,*) 'Tair'
+       !write(*,*) Tair
        
-       !write(*,*)'Tair'
+       var_curr = met_force_new%Tair(:,time_ind)
+       Tair = var_curr(:,1)
+       
+       !write(*,*) 'Tair'
+       !write(*,*) Tair
+
        !write(*,*) count(Tair /= Tair_new)
 
-       Tair = Tair_new
-
        var_curr = met_force_new%Qair(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       Qair = var_curr_cpu
+       Qair = var_curr(:,1)
        !write(*,*) 'Qair'
        !write(*,*) count(Qair /= var_curr_cpu)
 
        var_curr = met_force_new%Psurf(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       Psurf = var_curr_cpu
+       Psurf = var_curr(:,1)
        !write(*,*) 'Psurf'
        !write(*,*) count(Psurf /= var_curr_cpu)
 
        var_curr = met_force_new%Rainf_C(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       Rainf_C = var_curr_cpu
+       Rainf_C = var_curr(:,1)
        !write(*,*) 'Rainf_c'
        !write(*,*) count(Rainf_c /= var_curr_cpu)
 
        var_curr = met_force_new%Rainf(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       Rainf = var_curr_cpu
+       Rainf = var_curr(:,1)
        !write(*,*) 'Rainf'
        !write(*,*) count(Rainf /= var_curr_cpu)
 
        var_curr = met_force_new%Snowf(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       Snowf = var_curr_cpu
+       Snowf = var_curr(:,1)
        !write(*,*) 'Snowf'
        !write(*,*) count(Snowf /= var_curr_cpu)
 
        !RainfSnowf = Rainf+Snowf
        
        var_curr = met_force_new%LWdown(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       LWdown = var_curr_cpu
+       LWdown = var_curr(:,1)
        !write(*,*) 'LWdown'
        !write(*,*) count(LWdown /= var_curr_cpu)
 
        var_curr = met_force_new%SWdown(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       SWdown = var_curr_cpu
+       SWdown = var_curr(:,1)
        !write(*,*) 'SWdown'
        !write(*,*) count(SWdown /= var_curr_cpu)
 
        var_curr = met_force_new%PARdrct(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       PARdrct = var_curr_cpu
+       PARdrct = var_curr(:,1)
        !write(*,*) 'PARdrct'
        !write(*,*) count(PARdrct /= var_curr_cpu)
 
        var_curr = met_force_new%PARdffs(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       PARdffs = var_curr_cpu
+       PARdffs = var_curr(:,1)
        !write(*,*) 'PARdffs'
        !write(*,*) count(PARdffs /= var_curr_cpu)
 
        var_curr = met_force_new%Wind(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       Wind = var_curr_cpu
+       Wind = var_curr(:,1)
        !write(*,*) 'Wind'
        !write(*,*) count(Wind /= var_curr_cpu)
 
        var_curr = met_force_new%RefH(:,time_ind)
-       var_curr_cpu = var_curr(local_id,1)
-       RefH = var_curr_cpu
+       RefH = var_curr(:,1)
        !write(*,*) 'RefH'
        !write(*,*) count(RefH /= var_curr_cpu)
-       
        
        
        

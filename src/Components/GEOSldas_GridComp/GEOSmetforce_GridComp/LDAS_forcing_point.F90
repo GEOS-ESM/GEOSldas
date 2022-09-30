@@ -6,16 +6,6 @@ module global_forcing_mod
     type(global_force_type) :: met_force_new
 end module global_forcing_mod
 
-!module daily_forcing_mod
-!    use LDAS_DriverTypes, only: global_force_type
-!    type(global_force_type) :: daily_force
-!end module daily_forcing_mod
-
-!module pso_params_mod
-!    use LDAS_DriverTypes, only: pso_params_type
-!    type(pso_params_type) :: pso_params
-!end module pso_params_mod
-
 module LDAS_Point_ForceMod
   
   use netcdf
@@ -150,20 +140,22 @@ contains
     !write(*,*) 'inq dimension 2'
     call check(nf90_inquire_dimension(ncid,2,len=len2))
     !write(*,*) 'allocate statements'
-    allocate(met_force_new%Tair(len1,len2))
-    allocate(met_force_new%Qair(len1,len2)) 
-    allocate(met_force_new%Psurf(len1,len2))
-    allocate(met_force_new%Rainf_C(len1,len2))
-    allocate(met_force_new%Rainf(len1,len2))
-    allocate(met_force_new%Snowf(len1,len2))
-    allocate(met_force_new%LWdown(len1,len2))
-    allocate(met_force_new%SWdown(len1,len2))  
-    allocate(met_force_new%PARdrct(len1,len2))
-    allocate(met_force_new%PARdffs(len1,len2))
-    allocate(met_force_new%Wind(len1,len2))
-    allocate(met_force_new%RefH(len1,len2))
-    allocate(met_force_new%date_int(len1,len2))
-    allocate(values(len1,len2))
+    if (.not. allocated(met_force_new%Tair)) then 
+        allocate(met_force_new%Tair(len1,len2))
+        allocate(met_force_new%Qair(len1,len2)) 
+        allocate(met_force_new%Psurf(len1,len2))
+        allocate(met_force_new%Rainf_C(len1,len2))
+        allocate(met_force_new%Rainf(len1,len2))
+        allocate(met_force_new%Snowf(len1,len2))
+        allocate(met_force_new%LWdown(len1,len2))
+        allocate(met_force_new%SWdown(len1,len2))  
+        allocate(met_force_new%PARdrct(len1,len2))
+        allocate(met_force_new%PARdffs(len1,len2))
+        allocate(met_force_new%Wind(len1,len2))
+        allocate(met_force_new%RefH(len1,len2))
+        allocate(met_force_new%date_int(len1,len2))
+        allocate(values(len1,len2))
+    endif
     !write(*,*) 'assigning values'
     !write(*,*) 'finding varid'
     call check(nf90_inq_varid(ncid,'Tair',varid))
