@@ -144,7 +144,7 @@ contains
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     type(ESMF_Config)            :: CF
     character(len=ESMF_MAXSTR)   :: LAND_ASSIM_STR, mwRTM_file
-    character(len=ESMF_MAXSTR)   :: id_string,childname, fmt_str
+    character(len=ESMF_MAXSTR)   :: ensid_string,childname, fmt_str
     integer                      :: i, ens_id_width, FIRST_ENS_ID, NUM_ENSEMBLE
     integer                      :: ens_id, export_id
 
@@ -1006,9 +1006,9 @@ contains
 
          ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
 
-         call get_ensid_string(id_string, ens_id, ens_id_width, NUM_ENSEMBLE)
+         call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)
 
-         childname='CATCHINCR'//trim(id_string)
+         childname='CATCHINCR'//trim(ensid_string)
          export_id = MAPL_AddChild(gc, name=childname, ss=ExportCatchIncrSetServices, rc=status)
          VERIFY_(status)
       enddo
@@ -1083,7 +1083,7 @@ contains
     character(len=300)   :: seed_fname
     character(len=300)   :: fname_tpl
     character(len=14)    :: datestamp
-    character(len=ESMF_MAXSTR) :: id_string 
+    character(len=ESMF_MAXSTR) :: ensid_string 
     integer              :: nymd, nhms, yy, mm, dd, h, m, s
 
     !! from LDASsa
@@ -1265,10 +1265,10 @@ contains
        nhms = h *10000 + m*100  + s
 
        do ens = 0, NUM_ENSEMBLE-1
-          call get_ensid_string(id_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE ) ! xxxx not _exxxx
+          call get_ensid_string(ensid_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE ) ! xxxx not _exxxx
           seed_fname = ""
-          call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(id_string), nymd=nymd,nhms=nhms,stat=status)
-          call read_pert_rseed(trim(id_string),seed_fname,Pert_rseed_r8(:,ens+1))
+          call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(ensid_string), nymd=nymd,nhms=nhms,stat=status)
+          call read_pert_rseed(trim(ensid_string),seed_fname,Pert_rseed_r8(:,ens+1))
           
           Pert_rseed(:,ens+1) = nint(Pert_rseed_r8(:,ens+1))
           if (all(Pert_rseed(:,ens+1) == 0)) then
@@ -1498,7 +1498,7 @@ contains
     integer                    :: N_catbias
     character(len=300)         :: seed_fname
     character(len=300)         :: fname_tpl
-    character(len=ESMF_MAXSTR) :: id_string
+    character(len=ESMF_MAXSTR) :: ensid_string
     integer                    :: ens, nymd, nhms, ens_id_width
     integer                    :: LandassimDTstep
 #ifdef DBG_LANDASSIM_INPUTS
@@ -1588,9 +1588,9 @@ contains
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
-             call get_ensid_string(id_string, ens + FIRST_ENS_ID, ens_id_width) !xxxx, not _exxxx
+             call get_ensid_string(ensid_string, ens + FIRST_ENS_ID, ens_id_width) !xxxx, not _exxxx
              seed_fname = ""
-             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(id_string),nymd=nymd,nhms=nhms,stat=status)
+             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(ensid_string),nymd=nymd,nhms=nhms,stat=status)
              _VERIFY(STATUS)
              call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
           enddo
@@ -2526,9 +2526,9 @@ contains
 
   ! ******************************************************************************
   
-  subroutine read_pert_rseed(id_string,seed_fname,pert_rseed_r8)
+  subroutine read_pert_rseed(ensid_string,seed_fname,pert_rseed_r8)
     use netcdf
-    character(len=*),intent(in)           :: id_string
+    character(len=*),intent(in)           :: ensid_string
     character(len=*),intent(in)           :: seed_fname
     real(kind=ESMF_KIND_R8),intent(inout) :: pert_rseed_r8(:)
     
@@ -2539,7 +2539,7 @@ contains
     
     inquire (file = trim(seed_fname), exist=file_exist)
     if ( .not. file_exist) then
-       tmpstr = 'Cold-starting OBSPERTRSEED for ens member ' // trim(id_string) // '.'
+       tmpstr = 'Cold-starting OBSPERTRSEED for ens member ' // trim(ensid_string) // '.'
        if (len_trim(seed_fname)>0) then
           print *, trim(tmpstr), 'File not found: ', trim(seed_fname)
        else
@@ -2548,7 +2548,7 @@ contains
        pert_rseed_r8 = 0
        return
     else
-       tmpstr = 'Reading OBSPERTRSEED for ens member ' // trim(id_string) // ' from '
+       tmpstr = 'Reading OBSPERTRSEED for ens member ' // trim(ensid_string) // ' from '
        print *, trim(tmpstr), trim(seed_fname)
     endif
     
@@ -2820,7 +2820,7 @@ contains
     character(len=300)           :: fname_tpl
     character(len=300)           :: out_path
     character(len=ESMF_MAXSTR)   :: exp_id
-    character(len=ESMF_MAXSTR)   :: id_string
+    character(len=ESMF_MAXSTR)   :: ensid_string
     character(len=14)            :: datestamp
     integer                      :: ens, nymd, nhms, ens_id_width
     
@@ -2853,9 +2853,9 @@ contains
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
-             call get_ensid_string(id_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE )
+             call get_ensid_string(ensid_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE )
              seed_fname = ""
-             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(id_string),nymd=nymd,nhms=nhms,stat=status)
+             call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(ensid_string),nymd=nymd,nhms=nhms,stat=status)
              _VERIFY(STATUS)
              call write_pert_rseed(trim(seed_fname), Pert_rseed_r8(:,ens+1))
           enddo

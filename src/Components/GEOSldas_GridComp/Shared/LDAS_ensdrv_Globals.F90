@@ -142,26 +142,29 @@ contains
   end function LDAS_is_nodata
 
   ! *************************************************************
-  ! the subroutine return id_string _exxxx
-  subroutine get_ensid_string(id_string, id, ens_id_width, num_ensemble)
-     character(*), intent(inout) :: id_string
-     integer, intent(in) :: id
-     integer, intent(in) :: ens_id_width
-     integer, intent(in) :: num_ensemble
+  !
+  ! return ensemble id string "_eXXXX"
 
-     character(len=ESMF_MAXSTR) :: fmt_str
+  subroutine get_ensid_string(ensid_string, id, ens_id_width, num_ensemble)
+
+     character(*), intent(inout) :: ensid_string
+     integer,      intent(in)    :: id
+     integer,      intent(in)    :: ens_id_width
+     integer,      intent(in)    :: num_ensemble
+
+     character(len=ESMF_MAXSTR)  :: fmt_str
 
      if (num_ensemble == 1) then
-        id_string = ''
+        ensid_string = ''
         return
      endif
 
-     write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_widthi-2,".",ens_id_width-2,")"
-     write (id_string, fmt_str) id
-     id_string = '_e'//trim(id_string)
+     write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width-2,".",ens_id_width-2,")"
+     write (ensid_string, fmt_str) id
+     ensid_string = '_e'//trim(ensid_string)
 
-  end subroutine get_ensid_string
-
+   end subroutine get_ensid_string
+   
 end module LDAS_ensdrv_Globals
 
 

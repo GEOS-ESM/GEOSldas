@@ -86,7 +86,7 @@ contains
     integer :: status
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
-    character(len=ESMF_MAXSTR) :: id_string,childname
+    character(len=ESMF_MAXSTR) :: ensid_string,childname
     character(len=ESMF_MAXSTR) :: LAND_ASSIM_STR, mwRTM_file, ENS_FORCING_STR
     integer                    :: ens_id_width
     ! Local variables
@@ -178,12 +178,13 @@ contains
 
     do i=1,NUM_ENSEMBLE
        ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
-       ! _exxxx
-       call get_ensid_string(id_string, ens_id, ens_id_width, NUM_ENSEMBLE)
+       
+       call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)   ! "_eXXXX"
 
-       if (.not. ensemble_forcing ) id_string = ''
+       ! allow for Catchment ensemble simulation to be forced with single-member met inputs
+       if (.not. ensemble_forcing ) ensid_string = ''    
 
-       childname='METFORCE'//trim(id_string)
+       childname='METFORCE'//trim(ensid_string)
        METFORCE(i) = MAPL_AddChild(gc, name=trim(childname), ss=MetforceSetServices, rc=status)
        VERIFY_(status)
        ! exit after i=1 if using deterministic forcing
@@ -193,13 +194,13 @@ contains
     do i=1,NUM_ENSEMBLE
        ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
 
-       call get_ensid_string(id_string, ens_id, ens_id_width, NUM_ENSEMBLE)
+       call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)
 
-       childname='LANDPERT'//trim(id_string)
+       childname='LANDPERT'//trim(ensid_string)
        LANDPERT(i) = MAPL_AddChild(gc, name=childname, ss=LandPertSetServices, rc=status)
        VERIFY_(status)
 
-       childname='LAND'//trim(id_string)
+       childname='LAND'//trim(ensid_string)
        LAND(i) = MAPL_AddChild(gc, name=childname, ss=LandSetServices, rc=status)
        VERIFY_(status)
     enddo
