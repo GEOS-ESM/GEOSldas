@@ -3559,6 +3559,7 @@ contains
     real, parameter:: alpha_threshold     = 0.20 !lca modified name and value 2/2/22
     real, parameter:: beta_threshold      = 0.40 !lca modified name and value 2/2/22
     real, parameter:: max_incr_swe        = 5.0 ! kg m-2 from Toure et al. 2018, lca modified 2/3/22
+    real, parameter:: smallfcstswe        = 0.01 !This keeps the swe_ratio used in data assmilation reasonably small
     real, parameter:: wesn_min            = 13.0  ! kg m-2 from Toure et al. 2018, lca added 2/3/22
     real, parameter:: eps                 = 1.e-4
     real, parameter:: small               = 1.e-20
@@ -4562,8 +4563,10 @@ contains
                     swe_ana = max(swe_fcst + swe_incrm(n, n_e), 0.0)
 
                  !call StieglitzSnow_calc_asnow(N_snow, N_catd, swe_ana, asnow_ana)
-                 asnow_ana = min(swe_ana/wemin, 1.) !This is from StieglitzSnow_calc_asnow
+                 !asnow_ana = min(swe_ana/wemin, 1.) !This is from StieglitzSnow_calc_asnow
 
+                swe_ratio = swe_ana / swe_fcst
+                if (logit) write (logunit, *) '!!!!   swe_ratio = ' , swe_ana, swe_fcst, '!!!!'
 
                ! 4. Apply the corrected SWE to each layer and adjust the heat content and snow depth in tmp variable
                  do isnow = 1, N_snow
@@ -4573,33 +4576,29 @@ contains
                        tmp_sndz(n, n_e, isnow)         = 0.0 
                        if (logit) write (logunit, *) '%%%%%% asnow_ana = 0.0' 
 
-
-                 !Commented out because not updating the snow depth causes the model to fail after the first assimilation step
-                   !elseif (asnow_fcst .gt. 0.0 .and. asnow_ana .lt. 1.0) then 
-                  !     swe_ratio                       = swe_ana / swe_fcst 
-                  !     tmp_wesn(n, n_e, isnow)         = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
-                  !     tmp_htsn(n, n_e, isnow)         = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
-                  !     tmp_sndz(n, n_e, isnow)         = cat_progn(n, n_e)%sndz(isnow) !In this case, snow depth remains constant and only extent/hc change.
-                  !     if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana < 1.0'
-
-                   elseif (asnow_fcst .gt. 0.0 .and. asnow_ana .le. 1.0) then !Changed this statement from asnow_ana .lt. 1.0 to ansow_ana .le. 1.0 to cover the commented statement above (where analyzed snow fraction is 1.0)
-                       swe_ratio                 = swe_ana / swe_fcst
-                       tmp_wesn(n, n_e, isnow)   = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
-                       tmp_htsn(n, n_e, isnow)   = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
-                       tmp_sndz(n, n_e, isnow)   = cat_progn(n, n_e)%sndz(isnow) * swe_ratio
-                       if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana = 1.0'
-
                    elseif (asnow_fcst .eq. 0.0 .and. asnow_ana .lt. 1.0) then
                        tmp_wesn(n, n_e, isnow)   = swe_ana / N_snow
-                       tmp_htsn(n, n_e, isnow)   = (0.0 - MAPL_ALHF)*tmp_wesn(n,n_e,isnow) !This is temporary. Zero should be changed to use the air temperature if its below freezing
+                       tmp_htsn(n, n_e, isnow)   = (0.0 - MAPL_ALHF)*tmp_wesn(n,n_e,isnow)
                        tmp_sndz(n ,n_e, isnow)   = (WEMIN / RHOFS) / N_snow 
                        if (logit) write (logunit, *) '%%%%%%  asnow_fcst = 0 ; asnow_ana < 1.0'
  
                    elseif (asnow_fcst .eq. 0.0 .and. asnow_ana .eq. 1.0) then
                        tmp_wesn(n, n_e, isnow)   = swe_ana / N_snow
-                       tmp_htsn(n, n_e, isnow)   = (0.0 - MAPL_ALHF)*tmp_wesn(n,n_e,isnow) !This assumes that the snow temperature is zero. See above
+                       tmp_htsn(n, n_e, isnow)   = (0.0 - MAPL_ALHF)*tmp_wesn(n,n_e,isnow) !This assumes that the snow temperature is zero.
                        tmp_sndz(n, n_e, isnow)   = (swe_ana / RHOFS) / N_snow !Same as above, but allows the depth to increase with SWE because the catchment is snow covered
                        if (logit) write (logunit, *) '%%%%%%  asnow_fcst = 0 ; asnow_ana = 1.0'
+
+                   elseif (asnow_fcst .gt. smallfcstswe .and. asnow_ana .lt. 1.0) then 
+                       tmp_wesn(n, n_e, isnow)         = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
+                       tmp_htsn(n, n_e, isnow)         = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
+                       tmp_sndz(n, n_e, isnow)         = cat_progn(n, n_e)%sndz(isnow) !In this case, snow depth remains constant and only extent/hc change.
+                       if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana < 1.0'
+
+                   elseif (asnow_fcst .gt.smallfcstswe .and. asnow_ana .eq. 1.0) then
+                       tmp_wesn(n, n_e, isnow)   = cat_progn(n, n_e)%wesn(isnow) * swe_ratio
+                       tmp_htsn(n, n_e, isnow)   = cat_progn(n, n_e)%htsn(isnow) * swe_ratio
+                       tmp_sndz(n, n_e, isnow)   = cat_progn(n, n_e)%sndz(isnow) + tmp_wesn(n, n_e, isnow) / (cat_progn(n, n_e)%wesn(isnow) / cat_progn(n, n_e)%sndz(isnow))
+                       if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana = 1.0'
 
                    else
                        tmp_wesn(n, n_e, isnow)   = cat_progn(n, n_e)%wesn(isnow)
