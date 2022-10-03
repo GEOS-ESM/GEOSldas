@@ -53,7 +53,7 @@ endif
 
 if($NENS > 1) then
    set GridComp = ENSAVG
-   sed -i 's|VEGDYN|'VEGDYN0000'|g' $HISTRC
+   sed -i 's|VEGDYN|'VEGDYN_e0000'|g' $HISTRC
    sed -i 's|TP1|'TSOIL1TILE'|g' $HISTRC
    sed -i 's|TP2|'TSOIL2TILE'|g' $HISTRC
    sed -i 's|TP3|'TSOIL3TILE'|g' $HISTRC

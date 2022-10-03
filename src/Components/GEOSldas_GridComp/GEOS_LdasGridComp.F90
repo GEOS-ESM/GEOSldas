@@ -174,7 +174,7 @@ contains
     endif
 
     allocate(LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
-    _ASSERT( ens_id_width < 12, "need 1 billion ensemble members? increase ens_id_width first")
+    _ASSERT( ens_id_width < 10, "need 1 billion ensemble members? increase ens_id_width first")
 
     do i=1,NUM_ENSEMBLE
        ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
