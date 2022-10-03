@@ -153,7 +153,7 @@ contains
      integer,      intent(in)    :: ens_id_width
      integer,      intent(in)    :: num_ensemble
 
-     character(len=ESMF_MAXSTR)  :: fmt_str
+     character(len=100)  :: fmt_str
 
      if (num_ensemble == 1) then
         ensid_string = ''
