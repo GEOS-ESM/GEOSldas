@@ -2105,8 +2105,7 @@ contains
     !
     ! smapL4SMaup output only works for 9 km EASE grids
 
-    if ( (trim(tile_grid_g%gridtype)/='EASEv1_M09'  )  .and.                  &
-         (trim(tile_grid_g%gridtype)/='EASEv2_M09')         )               then
+    if ( index(tile_grid_g%gridtype, 'M09') == 0  ) then
        err_msg = 'out_smapL4SMaup requires tile-space for 9 km EASEv1 or EASEv2 grid'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
