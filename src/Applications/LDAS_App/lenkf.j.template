@@ -34,7 +34,7 @@ unsetenv LD_LIBRARY_PATH
 if ( "$1" == "-debug" ) then
   set debug_flag = 1
 endif
-unsetenv argv
+unset argv
 setenv argv
 
 source $GEOSBIN/g5_modules
