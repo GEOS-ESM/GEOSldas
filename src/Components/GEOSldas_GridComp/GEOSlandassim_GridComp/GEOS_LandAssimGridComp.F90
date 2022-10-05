@@ -1265,7 +1265,7 @@ contains
        nhms = h *10000 + m*100  + s
 
        do ens = 0, NUM_ENSEMBLE-1
-          call get_ensid_string(ensid_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE ) ! xxxx not _exxxx
+          call get_ensid_string(ensid_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE ) !  _exxxx
           seed_fname = ""
           call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(ensid_string), nymd=nymd,nhms=nhms,stat=status)
           call read_pert_rseed(trim(ensid_string),seed_fname,Pert_rseed_r8(:,ens+1))
@@ -1588,7 +1588,7 @@ contains
           read(datestamp(10:13),*) nhms
           nhms = nhms*100
           do ens = 0, NUM_ENSEMBLE-1
-             call get_ensid_string(ensid_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE) !xxxx, not _exxxx
+             call get_ensid_string(ensid_string, ens + FIRST_ENS_ID, ens_id_width, NUM_ENSEMBLE) ! _exxxx
              seed_fname = ""
              call ESMF_CFIOStrTemplate(seed_fname,fname_tpl,'GRADS', xid=trim(ensid_string),nymd=nymd,nhms=nhms,stat=status)
              _VERIFY(STATUS)
