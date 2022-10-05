@@ -16,7 +16,7 @@ module GEOS_LandPertGridCompMod
 
   use nr_ran2_gasdev, only: NRANDSEED, init_randseed
   use LDAS_ConvertMod, only: esmf2ldas
-  use LDAS_ensdrv_Globals, only: nodata_generic, nodata_tol_generic
+  use LDAS_ensdrv_Globals, only: nodata_generic, nodata_tol_generic, get_ensid_string
   use LDAS_DriverTypes, only: met_force_type
   use LDAS_DateTimeMod, only: date_time_type, date_time_print
   use RepairForcingMod, only: repair_forcing
@@ -185,8 +185,8 @@ contains
     FIRST_ENS_ID = GEOSldas_FIRST_ENS_ID
     ens_id = FIRST_ENS_ID
     if ( internal%NUM_ENSEMBLE > 1) then
-       !landpertxxxx
-       read(comp_name(9:12),*) ens_id
+       !landpert_exxxx
+       read(comp_name(11:),*) ens_id
     endif
     internal%ens_id= ens_id
 
@@ -956,12 +956,8 @@ contains
        call MAPL_GetResource(MAPL, rst_fname_tmp, 'LANDPERT_INTERNAL_RESTART_FILE:',DEFAULT='NONE', rc=status)
        VERIFY_(status)
 
-       id_string=""
-       if (internal%NUM_ENSEMBLE > 1) then
-         n = len(trim(COMP_NAME))
-         id_string = COMP_NAME(n-ens_id_width+1:n)
-       endif
-
+       call get_ensid_string(id_string,internal%ens_id, ens_id_width, internal%NUM_ENSEMBLE)
+ 
        call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_fname_tmp)),'GRADS', xid = trim(id_string), stat=status)
 
        if (index(rst_fname, 'NONE') == 0 ) then
@@ -1673,11 +1669,7 @@ contains
           call MAPL_DateStampGet(clock, datestamp, rc=status)
           VERIFY_(STATUS)
 
-          id_string=''
-          if (internal%NUM_ENSEMBLE > 1) then
-            m = len(trim(COMP_NAME))
-            id_string = COMP_NAME(m-ens_id_width+1:m)
-          endif
+          call get_ensid_string(id_string,internal%ens_id, ens_id_width, internal%NUM_ENSEMBLE)
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp//'.nc4'
 
@@ -2754,11 +2746,8 @@ contains
           enddo
 
         ! 4) writing
-          id_string=''
-          if (internal%NUM_ENSEMBLE > 1) then
-            m = len(trim(COMP_NAME))
-            id_string = COMP_NAME(m-ens_id_width+1:m)
-          endif
+
+          call get_ensid_string(id_string,internal%ens_id, ens_id_width, internal%NUM_ENSEMBLE)
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint'
           call write_pert_checkpoint(trim(chk_fname),internal%fpert_ntrmdt, internal%ppert_ntrmdt, internal%pert_rseed_r8)
