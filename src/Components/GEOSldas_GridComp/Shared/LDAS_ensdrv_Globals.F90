@@ -160,11 +160,11 @@ contains
         return
      endif
      
-     if (ens_id_width <=0) then
+     if (ens_id_width < 5) then
        call ldas_abort(LDAS_GENERIC_ERROR, 'get_ensid_string', 'ens_id_width should be greater than 1')
      endif
 
-     write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")"
+     write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width-2,".",ens_id_width-2,")"
      write (ensid_string, fmt_str) id
      ensid_string = '_e'//trim(ensid_string)
 

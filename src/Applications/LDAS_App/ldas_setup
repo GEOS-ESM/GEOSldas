@@ -113,7 +113,7 @@ class LDASsetup:
         self.ladas_coupling = 0
         self.in_rstfile = None
         self.in_tilefile = 'None' # default string
-        self.ens_id_width = 4  # _exxxx
+        self.ens_id_width = 6  # _exxxx
         # ------
         # Read exe input file which is required to set up the dir
         # ------
@@ -161,7 +161,7 @@ class LDASsetup:
            self.perturb = 1
         self.ensdirs  = ['ens%04d'%iens for iens in range(self.first_ens_id, self.nens  + self.first_ens_id)]
         # if self.ens_id_width = 4, _width = '_e%04d'
-        _width = '_e%0{}d'.format(self.ens_id_width)
+        _width = '_e%0{}d'.format(self.ens_id_width-2)
         # self.ensids will be a list of [_e0000, _e0001, ...] 
         self.ensids   = [ _width%iens for iens in range(self.first_ens_id, self.nens  + self.first_ens_id)]
         if (self.nens == 1) :

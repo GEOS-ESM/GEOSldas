@@ -176,8 +176,8 @@ contains
     allocate(LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
 
     if (NUM_ENSEMBLE > 1) then
-       _ASSERT( ens_id_width < 10, "need 1 billion ensemble members? increase ens_id_width first")
-       _ASSERT( ens_id_width >= 3, "need at least 3 for hard coded ensemble forcing")
+       _ASSERT( ens_id_width < 12, "need 1 billion ensemble members? increase ens_id_width first")
+       _ASSERT( ens_id_width >= 5, "need at least 5 (_exxx) for hard coded ensemble forcing ( 3, xxx)")
     endif
 
     do i=1,NUM_ENSEMBLE
