@@ -67,6 +67,10 @@ if exists(exp_dir+'/run/position_vals.csv') == False:
         f.write('\n')
         f.write(str(num_iterations))
         f.write('\n')
+        f.write('iterations_without_change')
+        f.write('\n')
+        f.write(str(iterations_without_change))
+        f.write('\n')
         f.write('positions')
         f.write('\n')
         f.write(str(positions))
@@ -95,15 +99,6 @@ elif ((exists(exp_dir+'/run/position_vals.csv') == True) and (exists(exp_dir+'/r
     #print(global_best_positions)
     global_best_objective = objective_result[global_best_idx]
     #print(global_best_objective)
-
-    with open(exp_dir+'/run/output.txt','a') as f:
-        f.write(str(objective_result))
-        f.write('\n')
-        f.write(str(global_best_idx))
-        f.write('\n')
-        f.write(str(global_best_objective))
-        f.write('\n')
-
 
     #update velocity
     velocity_next = (w*velocities + c1*r2*(best_position - positions) + 
@@ -135,6 +130,10 @@ elif ((exists(exp_dir+'/run/position_vals.csv') == True) and (exists(exp_dir+'/r
         f.write('\n')
         f.write(str(num_iterations))
         f.write('\n')
+        f.write('iterations_without_change')
+        f.write('\n')
+        f.write(str(iterations_without_change))
+        f.write('\n')
         f.write('positions_next')
         f.write('\n')
         f.write(str(positions_next))
@@ -143,21 +142,14 @@ elif ((exists(exp_dir+'/run/position_vals.csv') == True) and (exists(exp_dir+'/r
         f.write('\n')
         f.write(str(velocity_next))
         f.write('\n')
-        f.write('best_position')
-        f.write('\n')
-        f.write(str(best_position))
-        f.write('\n')
-        f.write('best_position_objective')
-        f.write('\n')
-        f.write(str(best_position_objective))
-        f.write('\n')
         f.write('global_best_positions')
         f.write('\n')
         f.write(str(global_best_positions))
         f.write('\n')
-        f.write('global_best_objective')
+        f.write('objective_result')
         f.write('\n')
-        f.write(str(global_best_objective))
+        f.write(str(objective_result))
+        f.write('\n')
     print(convergence)
 
 else:
@@ -177,15 +169,6 @@ else:
 
     #objective function
     objective_result = compute_objective(exp_dir,nparticles) #objective function to be filled in
-
-    with open(exp_dir+'/run/output.txt','a') as f:
-        f.write('global_best_objective_last')
-        f.write(str(global_best_objective_last))
-        f.write('\n')
-        f.write(str(np.shape(global_best_objective_last)))
-        f.write(str(type(global_best_objective_last)))
-        f.write('\n')
-        f.write(str(objective_result))
 
     #best global position
     #update global best position
@@ -303,6 +286,10 @@ else:
         f.write('\n')
         f.write(str(num_iterations))
         f.write('\n')
+        f.write('iterations_without_change')
+        f.write('\n')
+        f.write(str(iterations_without_change))
+        f.write('\n')
         f.write('positions_next')
         f.write('\n')
         f.write(str(positions_next))
@@ -311,20 +298,17 @@ else:
         f.write('\n')
         f.write(str(velocity_next))
         f.write('\n')
-        f.write('best_position')
-        f.write('\n')
-        f.write(str(best_position))
-        f.write('\n')
-        f.write('best_position_objective')
-        f.write('\n')
-        f.write(str(best_position_objective))
-        f.write('\n')
         f.write('global_best_positions')
         f.write('\n')
         f.write(str(global_best_positions))
         f.write('\n')
-        f.write('global_best_objective')
+        f.write('objective_result')
         f.write('\n')
-        f.write(str(global_best_objective))
-
+        f.write(str(objective_result))
+        f.write('\n')
+        f.write('\n')
+        f.write('\n')
+        f.write('\n')
+        f.write('\n')
+        f.write('\n')
     print(convergence)
