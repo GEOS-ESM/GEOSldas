@@ -175,9 +175,16 @@ contains
 
     allocate(LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
 
+    ! ens_id_with = 2 + number of digits = total number of chars in ensid_string ("_eXXXX")
+    !
+    ! Assert ens_id_width<=2+9 so number of digits remains single-digit and "I1" can be
+    !   hardwired when assembling a format string.
+    ! Assert ens_id_width>=2+3 to avoid user configuration errors when LDAS is coupled into ADAS.
+    !   (Met forcing from the atm ensemble uses hardwired, 3-character ensemble IDs.) 
+
     if (NUM_ENSEMBLE > 1) then
-       _ASSERT( ens_id_width < 12, "need 1 billion ensemble members? increase ens_id_width first")
-       _ASSERT( ens_id_width >= 5, "need at least 5 (_exxx) for hard coded ensemble forcing ( 3, xxx)")
+       _ASSERT( ens_id_width < 12, "Must use ens_id_width <= 11  (2 for '_e' + 9 digits max)")
+       _ASSERT( ens_id_width >= 5, "Must use ens_id_width >=  5  (2 for '_e' + 3 digits min)")
     endif
 
     do i=1,NUM_ENSEMBLE

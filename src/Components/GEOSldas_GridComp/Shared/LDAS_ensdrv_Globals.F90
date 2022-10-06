@@ -145,9 +145,11 @@ contains
   ! *************************************************************
   !
   ! return ensemble id string "_eXXXX"
-
+  
   subroutine get_ensid_string(ensid_string, id, ens_id_width, num_ensemble)
 
+    ! ens_id_with = 2 + number of digits = total number of chars in ensid_string ("_eXXXX")
+    
      character(*), intent(inout) :: ensid_string
      integer,      intent(in)    :: id
      integer,      intent(in)    :: ens_id_width
@@ -160,10 +162,8 @@ contains
         return
      endif
      
-     if (ens_id_width < 5) then
-       call ldas_abort(LDAS_GENERIC_ERROR, 'get_ensid_string', 'ens_id_width should be greater than 1')
-     endif
-
+     ! the following format string works only if ens_id_width<=2+9 (see _ASSERT in GEOS_LdasGridcomp.F90)
+     
      write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width-2,".",ens_id_width-2,")"
      write (ensid_string, fmt_str) id
      ensid_string = '_e'//trim(ensid_string)

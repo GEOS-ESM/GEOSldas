@@ -185,7 +185,7 @@ contains
     FIRST_ENS_ID = GEOSldas_FIRST_ENS_ID
     ens_id = FIRST_ENS_ID
     if ( internal%NUM_ENSEMBLE > 1) then
-       !landpert_exxxx
+       !landpert_eXXXX
        read(comp_name(11:),*) ens_id
     endif
     internal%ens_id= ens_id
