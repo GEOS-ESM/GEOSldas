@@ -4497,7 +4497,7 @@ contains
        
        ! make sure maximum SWE increment is less than WEMIN (adding more snow than WEMIN makes no sense)
 
-       if (max_swe_incr>WEMIN)  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'must use max_swe_incr<=WEMIN')
+       if (max_incr_swe>WEMIN)  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'must use max_incr_swe<=WEMIN')
        
        !identify the species ID number of interest       
        N_select_varnames  = 1      
@@ -4567,7 +4567,7 @@ contains
                    swe_ratio = 1.  ! set to neutral just in case, but should not be used if swe_fcst<smallfcstswe
                 end if
                 
-                if (logit) write (logunit, *) '!!!!   swe_ratio = ' , swe_ana, swe_fcst, swe_ratio '!!!!'
+                if (logit) write (logunit, *) '!!!!   swe_ratio = ' , swe_ana, swe_fcst, swe_ratio, '!!!!'
                 
                 ! loop through snow layers and compute SWE, snow heat content, and snow depth analysis for each layer
                 
