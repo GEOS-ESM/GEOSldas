@@ -30,6 +30,14 @@ setenv ESMADIR    $EXPDIR/build/
 setenv GEOSBIN    $ESMADIR/bin/
 # need to unsetenv LD_LIBRARY_PATH for execution of LDAS within the coupled land-atm DAS
 unsetenv LD_LIBRARY_PATH
+
+set debug_flag = 0
+if ( "$1" == "-debug" ) then
+  set debug_flag = 1
+endif
+unset argv
+setenv argv
+
 source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
@@ -371,7 +379,7 @@ while ( $counter <= ${NUM_SGMT} )
 
    # Debugging
    # ---------
-   if ( "$1" == "-debug" ) then
+   if ( $debug_flag == 1 ) then
       echo ""
       echo "------------------------------------------------------------------"
       echo ""
