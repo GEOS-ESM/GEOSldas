@@ -6118,7 +6118,7 @@ contains
              
              ! shift M36 obs lat/lon for proper assignment of M09 tile?
              
-             if ( L1C_files .and. (index(tile_grid_d%gridtype, 'EASEv2_M09')  /=0) ) then
+             if ( L1C_files .and. (index(tile_grid_d%gridtype, 'EASEv2_M09')  /=0 .or. index(tile_grid_d%gridtype, 'EASEv2-M09')  /=0 )) then
                 
                 ! temporarily shift lat/lon of obs for computation of nearest tile to
                 ! avoid ambiguous assignment of M09 model tile within M36 obs grid cell
