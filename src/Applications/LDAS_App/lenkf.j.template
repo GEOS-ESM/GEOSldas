@@ -38,7 +38,9 @@ endif
 unset argv
 setenv argv
 
-source $GEOSBIN/g5_modules
+if ( $debug_flag == 0 ) then
+  source $GEOSBIN/g5_modules
+endif
 
 setenv I_MPI_DAPL_UD enable
 
@@ -383,7 +385,17 @@ while ( $counter <= ${NUM_SGMT} )
       echo ""
       echo "------------------------------------------------------------------"
       echo ""
-      echo "lenkf.j -debug"
+      echo "lenkf.j -debug:"
+      echo ""
+      echo "To start debugging, you must now manually source g5_modules and launch"
+      echo "your debugging tool with GEOSldas.x from here, e.g.,"
+      echo ""           
+      echo "   source    $GEOSBIN/g5_modules                        [for bash or zsh: source g5_modules.[z]sh]"           
+      echo "   totalview $GEOSBIN/GEOSldas.x"           
+      echo ""
+      echo "Availability of tools depends on the computing system and may require"
+      echo "loading modules.  For more information, check with your computing center."
+      echo "See also GEOSldas Wiki at https://github.com/GEOS-ESM/GEOSldas/wiki"
       echo ""
       echo ""
       module load tview
