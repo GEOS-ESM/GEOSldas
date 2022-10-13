@@ -397,9 +397,6 @@ while ( $counter <= ${NUM_SGMT} )
       echo "loading modules.  For more information, check with your computing center."
       echo "See also GEOSldas Wiki at https://github.com/GEOS-ESM/GEOSldas/wiki"
       echo ""
-      echo ""
-      module load tview
-      totalview &
       exit
    endif
    
