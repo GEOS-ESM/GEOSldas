@@ -2746,13 +2746,14 @@ contains
     call MAPL_GetPointer(import, ITY,  'ITY' ,rc=status)
     VERIFY_(status)
 
-
+    ! CatchCN-specific variables (not available in standard Catch)
+    
     call MAPL_GetPointer(import, CNLAI  ,   'CNLAI' ,   notFoundOK=.true.,  _RC)   
     call MAPL_GetPointer(import, CNTLAI ,   'CNTLAI',   notFoundOK=.true.,  _RC)
     call MAPL_GetPointer(import, CNSAI  ,   'CNSAI' ,   notFoundOK=.true.,  _RC)
     call MAPL_GetPointer(import, CNTOTC ,   'CNTOTC',   notFoundOK=.true.,  _RC) 
     call MAPL_GetPointer(import, CNVEGC ,   'CNVEGC',   notFoundOK=.true.,  _RC)
-    call MAPL_GetPointer(import, CNROOT ,   'CNROOT',   notFoundOK=.true.,  _RC)
+    call MAPL_GetPointer(import, CNROOT ,   'CNROOT',   notFoundOK=.true.,  _RC)    ! CatchCNCLM45 only
     call MAPL_GetPointer(import, CNFROOTC , 'CNFROOTC', notFoundOK=.true.,  _RC)
     call MAPL_GetPointer(import, CNNPP  ,   'CNNPP' ,   notFoundOK=.true.,  _RC)
     call MAPL_GetPointer(import, CNGPP  ,   'CNGPP' ,   notFoundOK=.true.,  _RC)
