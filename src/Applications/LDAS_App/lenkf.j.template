@@ -383,17 +383,11 @@ while ( $counter <= ${NUM_SGMT} )
       echo ""
       echo "------------------------------------------------------------------"
       echo ""
-      echo "lenkf.j -debug:"
+      echo "lenkf.j -debug"
       echo ""
-      echo "To start debugging, you must now manually launch your debugging tool"
-      echo "with GEOSldas.x from here, e.g.,"
-      echo ""           
-      echo "   totalview $GEOSBIN/GEOSldas.x"           
       echo ""
-      echo "Availability of tools depends on the computing system and may require"
-      echo "loading modules.  For more information, check with your computing center."
-      echo "See also GEOSldas Wiki at https://github.com/GEOS-ESM/GEOSldas/wiki"
-      echo ""
+      module load tview
+      totalview &
       exit
    endif
    
