@@ -38,9 +38,7 @@ endif
 unset argv
 setenv argv
 
-if ( $debug_flag == 0 ) then
-  source $GEOSBIN/g5_modules
-endif
+source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
 
