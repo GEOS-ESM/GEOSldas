@@ -4560,14 +4560,17 @@ contains
                 ! 3. Derive SWE, snow heat content, and snow depth increments for each layer from total SWE increment 
                 
                 swe_ana   = max(swe_fcst + swe_incr(kk, n_e), 0.0)    ! total SWE after analysis
-                
+                 
+                asnow_ana = min(swe_ana/wemin, 1.) ! calculate the snow area
+                if (logit) write (logunit, *) '!!!!   asnow_ana = ', asnow_ana,  '!!!!'
+ 
                 if (swe_fcst>=smallfcstswe) then
                    swe_ratio = swe_ana / swe_fcst 
                 else
                    swe_ratio = 1.  ! set to neutral just in case, but should not be used if swe_fcst<smallfcstswe
                 end if
                 
-                if (logit) write (logunit, *) '!!!!   swe_ratio = ' , swe_ana, swe_fcst, swe_ratio, '!!!!'
+!                if (logit) write (logunit, *) '!!!!   swe_ratio = ' , swe_ana, swe_fcst, swe_ratio, '!!!!'
                 
                 ! loop through snow layers and compute SWE, snow heat content, and snow depth analysis for each layer
                 
