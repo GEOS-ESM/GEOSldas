@@ -10,11 +10,11 @@
 
 #SBATCH --output=../scratch/GEOSldas_log_txt
 #SBATCH --error=../scratch/GEOSldas_err_txt
-#SBATCH --account=s2641
-#SBATCH --time=01:00:00
-#SBATCH --nodes=1 --ntasks-per-node=28
-#SBATCH --job-name=GEOSldas_CN45_PSO_v2
-#SBATCH --qos=debug
+#SBATCH --account=MY_ACCOUNT
+#SBATCH --time=MY_WALLTIME
+#SBATCH --nodes=MY_NODES --ntasks-per-node=MY_NTASKS_PER_NODE
+#SBATCH --job-name=MY_JOB
+#SBATCH --qos=MY_QOS
 
 #######################################################################
 #    System Settings and Architecture Specific Environment Variables
@@ -23,9 +23,9 @@ umask 022
 limit stacksize unlimited
 setenv ARCH `uname`
 
-setenv EXPID      GEOSldas_CN45_PSO_v2
-setenv EXPDOMAIN  SMAP_EASEv2_M36
-setenv EXPDIR     /discover/nobackup/trobinet/exps/$EXPID
+setenv EXPID      MY_EXPID
+setenv EXPDOMAIN  MY_EXPDOMAIN
+setenv EXPDIR     MY_EXPDIR
 setenv ESMADIR    $EXPDIR/build/
 setenv GEOSBIN    $ESMADIR/bin/
 # need to unsetenv LD_LIBRARY_PATH for execution of LDAS within the coupled land-atm DAS
@@ -58,16 +58,17 @@ setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 
 setenv    HOMDIR         $EXPDIR/run/
 setenv    SCRDIR         $EXPDIR/scratch
-setenv    MODEL          catchcnclm45
+setenv    MODEL          MY_MODEL
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
-setenv    POSTPROC_HIST  1
+setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 
 # LADAS_COUPLING : 0 -- stand-alone LDAS (no coupling to ADAS)
 #                : 1 -- LDAS coupled to central (deterministic) component of ADAS
 #                : 2 -- LDAS coupled to atmospheric ensemble component of ADAS
 
-setenv    LADAS_COUPLING 0
-setenv    ENSEMBLE_FORCING NO
+setenv    LADAS_COUPLING MY_LADAS_COUPLING
+setenv    ENSEMBLE_FORCING MY_ENSEMBLE_FORCING
+setenv    ADAS_EXPDIR   MY_ADAS_EXPDIR
 
 set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
 set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
@@ -372,8 +373,8 @@ while ( $counter <= ${NUM_SGMT} )
       exit
    endif
    
-   @ oserver_nodes = 0
-   @ writers = 0
+   @ oserver_nodes = MY_OSERVER_NODES
+   @ writers = MY_WRIITERS_NPES
 
    set total_npes = $SLURM_NTASKS
 
@@ -636,7 +637,7 @@ EOF
    # Move Intermediate Checkpoints to RESTARTS directory
    # ---------------------------------------------------
    
-   @ inens = 0
+   @ inens = MY_FIRST_ENS_ID
    @ enens = $inens + $NENS
    while ($inens < $enens)
        if ($inens <10) then
