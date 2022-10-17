@@ -1,85 +1,22 @@
 version: 2.1
 
-executors:
-  gfortran-large:
-    docker:
-      - image: gmao/ubuntu20-geos-env-mkl:v6.2.8-openmpi_4.0.6-gcc_11.2.0
-        auth:
-          username: $DOCKERHUB_USER
-          password: $DOCKERHUB_AUTH_TOKEN
-    environment:
-      OMPI_ALLOW_RUN_AS_ROOT: 1
-      OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
-      OMPI_MCA_btl_vader_single_copy_mechanism: none
-    resource_class: large
-    #MEDIUM# resource_class: medium
+# Anchor to prevent forgetting to update a version
+baselibs_version: &baselibs_version v7.5.0
 
-  ifort-large:
-    docker:
-      - image: gmao/ubuntu20-geos-env:v6.2.8-intelmpi_2021.3.0-intel_2021.3.0
-        auth:
-          username: $DOCKERHUB_USER
-          password: $DOCKERHUB_AUTH_TOKEN
-    resource_class: large
-    #MEDIUM# resource_class: medium
+orbs:
+  ci: geos-esm/circleci-tools@1
 
 workflows:
   build-test:
     jobs:
-      - build-GEOSldas:
+      - ci/build:
           name: build-GEOSldas-on-<< matrix.compiler >>
-          matrix:
-            parameters:
-              compiler: [gfortran, ifort]
           context:
             - docker-hub-creds
-
-jobs:
-  build-GEOSldas:
-    parameters:
-      compiler:
-        type: string
-    executor: << parameters.compiler >>-large
-    working_directory: /root/project
-    steps:
-      - checkout:
-          path: GEOSldas
-      - run:
-          name: "Versions etc"
-          command: mpirun --version && << parameters.compiler>> --version && echo $BASEDIR && pwd && ls
-      - run:
-          name: "Mepo clone external repos"
-          command: |
-            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas
-            mepo clone
-            mepo status
-      - run:
-          name: "Mepo checkout-if-exists"
-          command: |
-            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas
-            echo "${CIRCLE_BRANCH}"
-            if [ "${CIRCLE_BRANCH}" != "develop" ] && [ "${CIRCLE_BRANCH}" != "main" ]
-            then
-               mepo checkout-if-exists ${CIRCLE_BRANCH}
-            fi
-            mepo status
-      - run:
-          name: "CMake"
-          command: |
-            mkdir -p /logfiles
-            cd ${CIRCLE_WORKING_DIRECTORY}/GEOSldas
-            mkdir -p  ${CIRCLE_WORKING_DIRECTORY}/workspace/build-GEOSldas
-            cd ${CIRCLE_WORKING_DIRECTORY}/workspace/build-GEOSldas
-            cmake ${CIRCLE_WORKING_DIRECTORY}/GEOSldas -DBASEDIR=$BASEDIR/Linux -DCMAKE_Fortran_COMPILER=<< parameters.compiler >> -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=${CIRCLE_WORKING_DIRECTORY}/workspace/install-GEOSldas -DUSE_F2PY=OFF |& tee /logfiles/cmake.log
-      - run:
-          name: "Build and install"
-          command: |
-            cd ${CIRCLE_WORKING_DIRECTORY}/workspace/build-GEOSldas
-            make -j"$(nproc)" install |& tee /logfiles/make.log
-            #MEDIUM# make -j4 install |& tee /logfiles/make.log
-      - run:
-          name: "Compress artifacts"
-          command: |
-            gzip -9 /logfiles/*
-      - store_artifacts:
-          path: /logfiles
+          matrix:
+            parameters:
+              compiler: [ifort, gfortran]
+          baselibs_version: *baselibs_version
+          repo: GEOSldas
+          mepodevelop: false
+          persist_workspace: false # Needs to be true to run fv3/gcm experiment, costs extra

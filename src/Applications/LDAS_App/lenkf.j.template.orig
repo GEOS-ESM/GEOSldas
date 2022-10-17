@@ -76,7 +76,11 @@ setenv    POSTPROC_HIST  MY_POSTPROC_HIST
 
 setenv    LADAS_COUPLING   MY_LADAS_COUPLING
 setenv    ENSEMBLE_FORCING MY_ENSEMBLE_FORCING
+<<<<<<< HEAD
 setenv    ADAS_EXPDIR   MY_ADAS_EXPDIR
+=======
+setenv    ADAS_EXPDIR      MY_ADAS_EXPDIR
+>>>>>>> develop
 
 set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
 set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
@@ -399,7 +403,7 @@ while ( $counter <= ${NUM_SGMT} )
    endif
    
    @ oserver_nodes = MY_OSERVER_NODES
-   @ writers = MY_WRITERS_NPES
+   @ writers = MY_WRIITERS_NPES
 
    set total_npes = $SLURM_NTASKS
 

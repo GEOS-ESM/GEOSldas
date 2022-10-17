@@ -5,11 +5,14 @@ function [ aup, units ] = read_smapL4SMaup( fname, N_tile, isLDASsa );
 % reichle,  5 Feb 2014 - added tb_[h/v]_obs_time_sec
 % reichle, 21 Mar 2015 - changed units of soil moisture output from wetness
 %                         [dimensionless] to volumetric soil moisture [m3/m3]
+% reichle, 28 Jul 2022 - cleaned up LDASsa/GEOSldas switch for commit into GEOSldas repo
 
 % NOTE: For large files this reader is inefficient (slow execution,
 % excessive memory demand)  due to the use of a matlab structure
 % array. If better performance is needed, convert to reading 
 % data into a regular matrix (as opposed to a structure array).
+
+if ~exist('isLDASsa','var')  is_LDASsa = 0; end  % default is GEOSldas output
 
 N_param     = 31;           % number of records
 
@@ -26,8 +29,7 @@ dbl_precision   = 'float64';    % precision of real*8 data in input file
 
 disp(['read_smapL4SMaup.m: reading from ', fname])
   
-
-if exist('isLDASsa','var') && isLDASsa == 1
+if isLDASsa ~= 0
   machfmt = 'b'; % big-endian, LDASsa
 else
   machfmt = 'l'; % little-endian, GEOSldas
