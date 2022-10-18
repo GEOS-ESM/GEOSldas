@@ -566,7 +566,11 @@ contains
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     ! Misc variables
+<<<<<<< HEAD
     integer :: land_nt_local, k, NUM_ENSEMBLE, ens_id_width, total_tiles_running
+=======
+    integer :: land_nt_local, k, NUM_ENSEMBLE
+>>>>>>> origin/feature/wjiang/catchcn_ensemble_new
     integer :: ForceDtStep
     type(met_force_type) :: mf_nodata
     logical :: MERRA_file_specs, ensemble_forcing
@@ -574,7 +578,7 @@ contains
 
     integer :: AEROSOL_DEPOSITION
     type(MAPL_LocStream) :: locstream
-    character(len=ESMF_MAXSTR) :: grid_type, ENS_FORCING_STR, ens_forcing_path, id_string
+    character(len=ESMF_MAXSTR) :: grid_type, ENS_FORCING_STR, ens_forcing_path
     character(len=ESMF_MAXSTR) :: gridname
     character(3)               :: ensid_string3
     type(ESMF_Grid) :: agrid
@@ -1912,9 +1916,6 @@ contains
 
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
-    VERIFY_(status)
-
-    ! End
     RETURN_(ESMF_SUCCESS)
 
   end subroutine Finalize
