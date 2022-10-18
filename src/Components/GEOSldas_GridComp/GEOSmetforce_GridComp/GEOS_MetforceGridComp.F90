@@ -559,7 +559,7 @@ contains
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     ! Misc variables
-    integer :: land_nt_local, k, NUM_ENSEMBLE, ens_id_width
+    integer :: land_nt_local, k, NUM_ENSEMBLE
     integer :: ForceDtStep
     type(met_force_type) :: mf_nodata
     logical :: MERRA_file_specs, ensemble_forcing
@@ -567,8 +567,9 @@ contains
 
     integer :: AEROSOL_DEPOSITION
     type(MAPL_LocStream) :: locstream
-    character(len=ESMF_MAXSTR) :: grid_type, ENS_FORCING_STR, ens_forcing_path, id_string
+    character(len=ESMF_MAXSTR) :: grid_type, ENS_FORCING_STR, ens_forcing_path
     character(len=ESMF_MAXSTR) :: gridname
+    character(3)               :: ensid_string3
     type(ESMF_Grid) :: agrid
     integer :: dims(ESMF_MAXDIM)
     ! Begin...
@@ -677,13 +678,10 @@ contains
     VERIFY_(STATUS)
     ensemble_forcing = (trim(ENS_FORCING_STR) == 'YES') 
     if (ensemble_forcing .and. NUM_ENSEMBLE > 1) then
-      id_string = ""
-      call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+      ! note: comp_name ends in "_eXXXX"; for GEOS ADAS forcing, extract hard-coded 3-digit ens id string
       k = len(trim(comp_name))
-      id_string = comp_name(k-ens_id_width+1:k)
-      k = len(trim(id_string)) 
-      ! hard coded 3 character for forcing
-      call ESMF_CFIOStrTemplate(ens_forcing_path, trim(adjustl(mf%Path)),'GRADS', xid = trim(id_string(k-2:k)), stat=status)
+      ensid_string3 = comp_name(k-2:k)
+      call ESMF_CFIOStrTemplate(ens_forcing_path, trim(adjustl(mf%Path)),'GRADS', xid = ensid_string3, stat=status)
       mf%Path = ens_forcing_path
     endif
     ! Put MetForcing in Ldas' pvt internal state
