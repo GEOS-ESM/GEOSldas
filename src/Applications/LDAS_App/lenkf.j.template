@@ -385,9 +385,12 @@ while ( $counter <= ${NUM_SGMT} )
       echo ""
       echo "lenkf.j -debug:"
       echo ""
-      echo "To start debugging, you must now manually launch your debugging tool"
-      echo "with GEOSldas.x from here, e.g.,"
+      echo "To start debugging, you must now go to the experiment's scratch directory."
+      echo "From there, source g5_modules and launch your debugging tool with GEOSldas.x, e.g.,"
       echo ""           
+      echo "   cd        $SCRDIR
+      echo "   source    $GEOSBIN/g5_modules                        [for bash or zsh: source g5_modules.[z]sh]"           
+      echo "   module    load tview                                 [at NCCS]
       echo "   totalview $GEOSBIN/GEOSldas.x"           
       echo ""
       echo "Availability of tools depends on the computing system and may require"
