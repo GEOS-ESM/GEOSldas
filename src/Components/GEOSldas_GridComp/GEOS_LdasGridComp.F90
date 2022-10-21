@@ -803,19 +803,25 @@ contains
     type(ESMF_GridComp), pointer :: gcs(:)
     type(ESMF_State), pointer :: gim(:)
     type(ESMF_State), pointer :: gex(:)
+    type(ESMF_State) :: member_export
+
     character(len=ESMF_MAXSTR), pointer :: gcnames(:)
     type(ESMF_Time) :: ModelTimeCur
+    character(len=ESMF_MAXSTR) :: member_name
+    character(len=ESMF_MAXSTR) :: ensid_string
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL
 
     ! Misc variables
-    integer :: igc,i
+    integer :: igc,i, ens_id, FIRST_ENS_ID, ens_id_width
     logical :: IAmRoot
     integer :: mpierr
     integer :: LSM_CHOICE
+    type (ESMF_Field)                         :: field
 
-    ! Begin...
+
+     ! Begin...
 
     ! Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -832,6 +838,11 @@ contains
 
     ! Get information about children
     call MAPL_Get(MAPL, GCS=gcs, GIM=gim, GEX=gex, GCNAMES=gcnames, rc=status)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     ! MPI
@@ -919,15 +930,26 @@ contains
        ! Use LAND's output as the input to calculate the ensemble average
        igc = LAND(i)
        if (LSM_CHOICE == 1) then
-          ! collect cat_param 
-          call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=3, userRC=status)
+          ! collect cat_param
+          ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+          call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)  
+
+          member_name = 'CATCH'//trim(ensid_string)//"_Exports"
+
+          call ESMF_StateGet(gex(igc), trim(member_name), member_export, _RC)
+          call ESMF_StateGet(gex(igc), "Z2CH", field, _RC)
+          call ESMF_StateAddReplace(member_export, [field],_RC)
+          call ESMF_StateGet(gex(igc), "LAI", field, _RC)
+          call ESMF_StateAddReplace(member_export, [field],_RC)
+
+          call ESMF_GridCompRun(gcs(ENSAVG), importState=member_export, exportState=gex(ENSAVG), clock=clock,phase=3, userRC=status)
           VERIFY_(status)
-          call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
+          call ESMF_GridCompRun(gcs(ENSAVG), importState=member_export, exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
           VERIFY_(status)
 
           if( mwRTM ) then
              ! Calculate ensemble-average L-band Tb using LAND's output (add up and normalize after last member has been added)
-             call ESMF_GridCompRun(gcs(LANDASSIM), importState=gex(igc), exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
+             call ESMF_GridCompRun(gcs(LANDASSIM), importState=member_export, exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
              VERIFY_(status)
           endif
        endif
