@@ -13,6 +13,7 @@ module LDAS_ensdrv_Globals
   use, intrinsic :: iso_fortran_env, only : output_unit
 
   use MAPL_BaseMod,                  only : MAPL_UNDEF
+  use LDAS_ExceptionsMod, only: ldas_abort, LDAS_GENERIC_ERROR
   
   implicit none
   
@@ -29,6 +30,7 @@ module LDAS_ensdrv_Globals
   
   public :: echo_clsm_ensdrv_glob_param
   public :: write_status
+  public :: get_ensid_string
 
   ! ----------------------------------------------------------------------
       
@@ -141,7 +143,33 @@ contains
   end function LDAS_is_nodata
 
   ! *************************************************************
+  !
+  ! return ensemble id string "_eXXXX"
   
+  subroutine get_ensid_string(ensid_string, id, ens_id_width, num_ensemble)
+
+    ! ens_id_with = 2 + number of digits = total number of chars in ensid_string ("_eXXXX")
+    
+     character(*), intent(inout) :: ensid_string
+     integer,      intent(in)    :: id
+     integer,      intent(in)    :: ens_id_width
+     integer,      intent(in)    :: num_ensemble
+
+     character(len=100)  :: fmt_str
+
+     if (num_ensemble == 1) then
+        ensid_string = ''
+        return
+     endif
+     
+     ! the following format string works only if ens_id_width<=2+9 (see _ASSERT in GEOS_LdasGridcomp.F90)
+     
+     write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width-2,".",ens_id_width-2,")"
+     write (ensid_string, fmt_str) id
+     ensid_string = '_e'//trim(ensid_string)
+
+   end subroutine get_ensid_string
+   
 end module LDAS_ensdrv_Globals
 
 
