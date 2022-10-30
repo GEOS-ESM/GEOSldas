@@ -589,7 +589,7 @@ contains
     integer :: time_count
 
     ! For testing outputs from MAPL_LocStreamGet
-    integer ::  nt_global, total_tiles_36km, num_steps_day_75min
+    integer ::  nt_global, total_tiles_36km, num_steps_day_75min,i
     integer, pointer :: tiletype(:),tilekind(:), gridim(:), gridjm(:), local_id(:), local_i(:), local_j(:)
     real, pointer    ::  tilelons(:), tilelats(:), tilearea(:)
     character(len=20), pointer    ::  gridnames(:)
@@ -742,8 +742,6 @@ contains
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1,       RC=STATUS)
     VERIFY_(STATUS)
     ensemble_forcing = (trim(ENS_FORCING_STR) == 'YES') 
-    write(*,*) ensemble_forcing
-    write(*,*) 'ensemble_forcing'
     if (ensemble_forcing .and. NUM_ENSEMBLE > 1) then
       ! note: comp_name ends in "_eXXXX"; for GEOS ADAS forcing, extract hard-coded 3-digit ens id string
       k = len(trim(comp_name))
@@ -751,8 +749,6 @@ contains
       call ESMF_CFIOStrTemplate(ens_forcing_path, trim(adjustl(mf%Path)),'GRADS', xid = ensid_string3, stat=status)
       mf%Path = ens_forcing_path
     endif
-    write(*,*) ens_forcing_path
-    write(*,*) 'ens_forcing_path'
     ! Put MetForcing in Ldas' pvt internal state
     internal%mf = mf
     ! Create alarm for MetForcing
@@ -831,6 +827,7 @@ contains
         allocate(daily_force%Wind(num_steps_day_75min, total_tiles_running)) 
         allocate(daily_force%RefH(num_steps_day_75min, total_tiles_running)) 
         allocate(daily_force%date_int(num_steps_day_75min, total_tiles_running)) 
+        allocate(daily_force%tile_num(num_steps_day_75min, total_tiles_running)) 
 
     elseif (point_forcing_write == 0)then ! if not writing out point forcing files
         
@@ -939,16 +936,19 @@ contains
     type(met_force_type) :: mf_nodata
     integer, pointer :: local_id(:)
     double precision, allocatable, dimension(:) :: global_force_time
-    integer, dimension(1) :: time_ind, time_idx
+    integer, dimension(1) :: time_ind, time_idx, this_tile_ind
+    integer, allocatable, dimension(:) :: tile_ind, all_tiles
     character (len=100) :: met_tag
     real, allocatable, dimension(:,:) :: var_curr, final_metf
     real, allocatable, dimension(:) :: var_curr_cpu, Tair_new, curr_metf, local_metf
     double precision, allocatable, dimension(:,:) :: final_metf_time
     double precision, allocatable, dimension(:) :: local_metf_time
+    integer, allocatable, dimension(:) :: local_metf_tile
+    integer, allocatable, dimension(:,:) :: final_metf_tile
     integer, dimension(2) :: curr_shape
     character (len=100) :: filename
     integer :: ierr, num_processes, my_id, start_year
-    integer :: nt_global !global number of tiles running in simulation 
+    integer :: nt_global,i !global number of tiles running in simulation 
 
     logical :: MERRA_file_specs
     logical :: backward_looking_fluxes 
@@ -1359,7 +1359,7 @@ contains
           total_tiles_36km = 112573
           total_tiles_running  = size(local_id)
           num_steps_day_75min = 192
-          
+         write(*,*) 'made it to checking model time' 
           if (model_time_cur%month == 01 .and. model_time_cur%day == 01 &
              .and. model_time_cur%hour == 00 .and. Model_time_cur%min == 00                             &
              .and. model_time_cur%sec == 00)then
@@ -1378,6 +1378,7 @@ contains
              daily_force%Wind = -9999
              daily_force%RefH = -9999
              daily_force%date_int = -9999
+             daily_force%tile_num = -9999
           elseif (model_time_cur%hour == 00 .and. model_time_cur%min == 00                             &
               .and. model_time_cur%sec == 00)then
 
@@ -1400,6 +1401,7 @@ contains
               daily_force%Wind = -9999
               daily_force%RefH = -9999
               daily_force%date_int = -9999
+              daily_force%tile_num = -9999
               ! do for other variables here
 
           endif
@@ -1410,12 +1412,15 @@ contains
           allocate(final_metf(1,land_nt_local))
           allocate(local_metf_time(land_nt_local))
           allocate(final_metf_time(1,land_nt_local))
+          allocate(local_metf_tile(land_nt_local))
+          allocate(final_metf_tile(1,land_nt_local))
           local_metf = -9999
           curr_metf = -9999
           final_metf = -9999
           local_metf_time = -9999
           final_metf_time = -9999
-
+          
+          write(*,*) 'time_idx'
           time_idx = findloc(daily_force%Tair(:,1),-9999.)
 
           ! concatenate the time and convert it to an integer
@@ -1430,7 +1435,8 @@ contains
           read (time_str,*) time_con
           !write(*,*) 'time_str'
           !write(*,*) time_con
-
+          
+          !write(*,*) 'adding everything to daily_force'
           local_metf = mfDataNtp%Tair
           final_metf(1,:) = local_metf
           daily_force%Tair(time_idx,:) = final_metf
@@ -1482,7 +1488,19 @@ contains
           local_metf_time = time_con
           final_metf_time(1,:) = local_metf_time
           daily_force%date_int(time_idx,:) = final_metf_time
-
+          
+          !write(*,*) 'local_id'
+          !write(*,*) local_id
+          local_metf_tile = local_id
+          !write(*,*) 'local_metf_tile'
+          !write(*,*) local_metf_tile
+          final_metf_tile(1,:) = local_metf_tile
+          !write(*,*) 'final_metf_tile'
+          !write(*,*) final_metf_tile
+          daily_force%tile_num(time_idx,:) = final_metf_tile
+          !write(*,*) 'daily_force%tile_num'
+          !write(*,*) daily_force%tile_num
+          !write(*,*) 'added everything'
 
           ! do for other variables here
         endif
@@ -1556,6 +1574,7 @@ contains
        ! Get forcing data if MetForcing alarm is ringing
        !write(*,*) 'inside read option'
        call esmf2ldas(ModelTimeCur, model_time_cur, rc=status)
+       write (YYYY,'(i4.4)') model_time_cur%year
        !write(*,*) model_time_cur%month
        !write(*,*) model_time_cur%day
        !write(*,*) model_time_cur%hour
@@ -1587,10 +1606,9 @@ contains
                 ! MET TAG NEEDS TO BE UPDATED TO WORK WITH THE HISTORY.RC FILE
                 ! However, I am not sure how to do this so I will leave this for later discussion
            !     write(*,*) 'root has been discovered'
-           met_tag = '/discover/nobackup/trobinet/point_forcing_metforce/1980_point_forcing_data.nc4'
-           !write(*,*) 'before calling get_forcing_point'
+           met_tag = '/discover/nobackup/projects/medComplex/point_forcing_data/'//YYYY// &
+                   '_point_forcing_data.nc4'
            call get_forcing_point(met_tag,model_time_cur,local_id)
-           !write(*,*) 'after calling get_forcing_point'
                 !
                 !
                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1677,52 +1695,20 @@ contains
        if (.not. allocated(global_force_time)) then
            allocate(global_force_time(curr_shape(2)))
            allocate(var_curr(curr_shape(1),1))
-           allocate(var_curr_cpu(land_nt_local))
-           allocate(Tair_new(land_nt_local))
+           allocate(tile_ind(land_nt_local))
        endif
        !write(*,*) 'assigning global force time'
        global_force_time = met_force_new%date_int(1,:)
-       !write(*,*) 'findloc'
+       all_tiles = met_force_new%tile_num(:,1)
+       do i=1,land_nt_local
+          this_tile_ind = findloc(met_force_new%tile_num(:,1),local_id(i))
+          tile_ind(i) = this_tile_ind(1)
+       enddo
        time_ind = findloc(global_force_time,VALUE=model_time_double)
-       !ime_ind = FINDLOC(global_force_time,model_time_double,SIZE(global_force_time))
-       
-       !write(*,*) 'figured out single forcing point and assigning exports'
-
-       !var_curr = met_force_new%Tair(:,time_ind)
-       !var_curr_cpu = var_curr(local_id,1)
-       !Tair_new = var_curr_cpu
-       !Tair = Tair_new
-       
-       !write(*,*) 'curr_shape'
-       !write(*,*) curr_shape
-       !write(*,*) 'global_force_time'
-       !write(*,*) global_force_time
-       !write(*,*) 'model_time_double'
-       !write(*,*) model_time_double
-
-       !write(*,*) 'time_ind'
-       !write(*,*) time_ind
-       !write(*,*) 'shape(met_force_new%Tair(:,time_ind))'
-       !write(*,*) shape(met_force_new%Tair(:,time_ind))
-       !write(*,*) 'met_force_new%Tair'
-       !write(*,*) met_force_new%Tair
-       !write(*,*) 'shape(Tair)'
-       !write(*,*) shape(Tair)
-       !write(*,*) 'Tair'
-       !write(*,*) Tair
-       !write(*,*) 'met_force_new%Tair(:,time_ind)'
-       !write(*,*) met_force_new%Tair(:,time_ind)
-       !write(*,*) 'shape(met_force_new%Tair(:,time_ind))'
-       !write(*,*) shape(met_force_new%Tair(:,time_ind))
-
-       !Tair = met_force_new%Tair(:,time_ind)
-       !write(*,*) 'met_force_new%Tair(:,time_ind)'
-       !write(*,*) met_force_new%Tair(:,time_ind)
-       !write(*,*) 'Tair'
-       !write(*,*) Tair
        
        var_curr = met_force_new%Tair(:,time_ind)
-       Tair = var_curr(:,1)
+       Tair = var_curr(tile_ind,1)
+
        
        !write(*,*) 'Tair'
        !write(*,*) Tair

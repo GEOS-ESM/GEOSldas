@@ -67,6 +67,7 @@ module LDAS_ensdrv_mpi
   integer, public  :: MPI_met_force_type,  MPI_veg_param_type
   integer, public  :: MPI_bal_diagn_type,  MPI_alb_param_type  
   integer, public  :: MPI_date_time_type
+  integer, public  :: MPI_global_force_type
   integer, public  :: MPI_mwRTM_param_type,MPI_obs_type,        MPI_obs_param_type
   integer, public  :: MPI_cat_progn_int_type,                   MPI_cat_bias_param_type
   integer, public  :: MPI_obs_bias_type
@@ -503,6 +504,55 @@ contains
     deallocate(idisp)
     deallocate(itype)
 
+    ! --------------------------------------------------------------------------------
+    !
+    ! type global_force_type
+    !
+    ! real :: Tair                 ! air temperature at RefH                 [K]
+    ! real :: Qair                 ! specific humidity at RefH               [kg/kg]
+    ! real :: Psurf                ! surface pressure                        [Pa]
+    ! real :: Rainf_C              ! convective rainfall                     [kg/m2/s]
+    ! real :: Rainf                ! total rainfall                          [kg/m2/s]
+    ! real :: Snowf                ! total snowfall                          [kg/m2/s]
+    ! real :: LWdown               ! downward longwave radiation             [W/m2]
+    ! real :: SWdown               ! downward shortwave radiation            [W/m2]
+    ! real :: PARdrct              ! Photosynth. Active Radiation (direct)   [W/m2]
+    ! real :: PARdffs              ! Photosynth. Active Radiation (diffuse)  [W/m2]
+    ! real :: Wind                 ! wind speed at RefH                      [m/s]
+    ! real :: RefH                 ! reference height for Tair, Qair, Wind   [m]
+    ! double precision :: date_int 
+    ! integer :: tile_num
+
+
+    N_real = 14
+
+    icount = 2
+    
+    allocate(iblock(icount))
+    allocate(idisp( icount))
+    allocate(itype( icount))
+    
+    ! split MPI type into two blocks of real numbers
+    ! (having just one with N_met_force MPI_REAL entries did not work)
+    
+    itype(1)  = MPI_REAL
+    itype(2)  = MPI_REAL
+    
+    iblock(1) = 1
+    iblock(2) = N_real-1
+    
+    idisp(1)  = 0
+    idisp(2)  = idisp(1) + iblock(1)*4
+    
+    call MPI_TYPE_CREATE_STRUCT( icount, iblock, idisp, itype, &
+         MPI_global_force_type, mpierr )
+    
+    call MPI_TYPE_COMMIT(MPI_global_force_type, mpierr)
+    
+    deallocate(iblock)
+    deallocate(idisp)
+    deallocate(itype)
+    
     ! --------------------------------------------------------------------------------
     !    
     ! type veg_param_type

@@ -66,7 +66,8 @@ MODULE point_driver_functions
         call check(nf90_def_var(ncid, 'PARdffs' , NF90_FLOAT, d2, vid))    
         call check(nf90_def_var(ncid, 'Wind'    , NF90_FLOAT, d2, vid))    
         call check(nf90_def_var(ncid, 'RefH'    , NF90_FLOAT, d2, vid))  
-        call check(nf90_def_var(ncid, 'date_int', NF90_DOUBLE, d2, vid))  
+        call check(nf90_def_var(ncid, 'date_int', NF90_DOUBLE, d2, vid))
+        call check(nf90_def_var(ncid, 'tile'    , NF90_INT  , d2, vid))  
 
 
         !  Global attributes
@@ -101,11 +102,14 @@ MODULE point_driver_functions
         real, allocatable                       :: var_val(:), empty_var(:), return_val(:)
         real, dimension(:,:), allocatable       :: pull_val, final_val, final_val_trans
         double precision, dimension(:,:), allocatable       :: final_val_double, final_val_trans_double
-
+        integer, dimension(:,:), allocatable :: final_val_int, final_val_trans_int
+        
         character(len=4) :: YYYY
         character(len=2) :: MM,DD,hh,min,ss
         character(len=14) :: time_str
         double precision  :: time_double
+
+        write(*,*) 'entered time varying'
 
         ! concatenate the time and convert it to an integer
         write (YYYY,'(i4.4)') time%year
@@ -128,10 +132,16 @@ MODULE point_driver_functions
         allocate(final_val_trans(len_tile,num_steps_day_75min))
         allocate(final_val_double(num_steps_day_75min,len_tile))
         allocate(final_val_trans_double(len_tile,num_steps_day_75min))
+        allocate(final_val_int(num_steps_day_75min,len_tile))
+        allocate(final_val_trans_int(len_tile,num_steps_day_75min))
         final_val = -9999
         final_val_trans = -9999
         final_val_double = -9999
         final_val_trans_double = -9999
+        final_val_int = -9999
+        final_val_trans_int = -9999
+
+        !write(*,*) 'allocated vals'
         
         call check(nf90_inq_varid(ncid, 'Tair', curr_varid))
         final_val = daily_force%Tair
@@ -216,18 +226,22 @@ MODULE point_driver_functions
         final_val = daily_force%RefH
         final_val_trans = transpose(final_val)
         call check(nf90_put_var(ncid, curr_varid, final_val_trans, start = (/1,next_time/),count = (/len_tile,num_steps_day_75min/)))
-        final_val = -9999
-        final_val_trans = -9999
 
         !write(*,*) 'adding date_int'
         call check(nf90_inq_varid(ncid, 'date_int', curr_varid))
         final_val_double = daily_force%date_int
         final_val_trans_double = transpose(final_val_double)
         call check(nf90_put_var(ncid, curr_varid, final_val_trans_double, start = (/1,next_time/),count = (/len_tile,num_steps_day_75min/)))
-        !write(*,*) 'final_val_trans_double(1,1)'
-        !write(*,*) final_val_trans_double(1,1)
         
+        !write(*,*) 'daily_force%tile_num'
+        !write(*,*) daily_force%tile_num
+
+        call check(nf90_inq_varid(ncid, 'tile', curr_varid))
+        final_val_int = daily_force%tile_num
+        final_val_trans_int = transpose(final_val_int)
+        call check(nf90_put_var(ncid, curr_varid, final_val_trans_int, start = (/1,next_time/),count = (/len_tile,num_steps_day_75min/)))
         
+        !write(*,*) 'input tile num'
         ! ADD SOMETHING TO KEEP TRACK OF TIME IN A MEANINGFUL WAY!!!  
         !call check(nf90_inq_varid(ncid, 'date_int', curr_varid))
         !var_val = time_double

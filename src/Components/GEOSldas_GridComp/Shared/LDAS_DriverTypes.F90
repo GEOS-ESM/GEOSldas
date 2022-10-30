@@ -200,6 +200,7 @@ module LDAS_DriverTypes
     real, allocatable, dimension(:,:) :: Wind
     real, allocatable, dimension(:,:) :: RefH
     double precision, allocatable, dimension(:,:) :: date_int
+    integer, allocatable, dimension (:,:) :: tile_num
   end type global_force_type
 
   

@@ -41,7 +41,7 @@ r2 = np.random.random() #should this random number be between 0 and 1 or should 
 if exists(exp_dir+'/run/position_vals.csv') == False:
     #positions = np.random.random((2,65))*2 #all random values between 0 and 2
     #velocities = np.random.random((2,65))
-    positions = np.random.random((nparticles,nparameters))*5 #all random values between 0 and 2
+    positions = np.random.random((nparticles,nparameters))*2 #all random values between 0 and 2
     velocities = np.random.random((nparticles,nparameters))
     num_iterations = 0
     num_without_restart = 0

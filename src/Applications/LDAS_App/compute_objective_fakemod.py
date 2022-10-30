@@ -35,14 +35,12 @@ def compute_objective(exp_dir,num_parts,num_params,positions):
                 # get the model data necesarry
                 data = Dataset(filename,mode='r')
                 model_et_date = np.array(data['LHLAND'][:]) #will already be in ascending pixel order by default                
-                model_et_date_neg = np.where(model_et_date > 0)
-                model_et_date[model_et_date_neg] = 0
-                model_et_date = -model_et_date
+                model_et_date = model_et_date
                 model_et_all[time,:] = model_et_date
                 time += 1
         #lux_et = np.random.rand(num_times,num_pixels)
         #odel_et_all = positions
-        #model_et_all,flux_et = fake_mod(num_times,num_pixels,positions,ens)
+        model_et_all,flux_et = fake_mod(num_times,num_pixels,positions,ens)
         curr_obj_val = np.sqrt(((model_et_all[idx] - flux_et[idx]) ** 2).mean())
         with open(o_file,'a') as f:
             f.write(str('model_et_all'))

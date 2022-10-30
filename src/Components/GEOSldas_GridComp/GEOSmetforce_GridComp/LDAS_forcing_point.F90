@@ -154,16 +154,12 @@ contains
         allocate(met_force_new%Wind(len1,len2))
         allocate(met_force_new%RefH(len1,len2))
         allocate(met_force_new%date_int(len1,len2))
+        allocate(met_force_new%tile_num(len1,len2))
         allocate(values(len1,len2))
     endif
-    !write(*,*) 'assigning values'
-    !write(*,*) 'finding varid'
     call check(nf90_inq_varid(ncid,'Tair',varid))
-    !write(*,*) 'getting values'
     call check(nf90_get_var(ncid, varid, values))
-    !write(*,*) 'putting in met_force_new'
     met_force_new%Tair = values
-    !write(*,*) 'done for Tair'
      
     call check(nf90_inq_varid(ncid,'Qair',varid))
     call check(nf90_get_var(ncid, varid, values))
@@ -213,6 +209,11 @@ contains
     call check(nf90_inq_varid(ncid,'date_int',varid))
     call check(nf90_get_var(ncid, varid, values))
     met_force_new%date_int = values
+
+    call check(nf90_inq_varid(ncid,'tile',varid))
+    call check(nf90_get_var(ncid, varid, values))
+    met_force_new%tile_num = values
+
     !write(*,*) 'tim_int'
     !write(*,*) values(1,1)
     !write(*,*) met_force_new%date_int(1,1)
@@ -228,12 +229,3 @@ contains
 
 
 end module LDAS_Point_ForceMod    
-
-
- 
-
-
-
-
-
-
