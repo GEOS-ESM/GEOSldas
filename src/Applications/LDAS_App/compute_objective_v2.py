@@ -10,7 +10,7 @@ def compute_objective(exp_dir,num_parts,num_params,positions):
     objective_output = np.zeros(num_parts)
     o_file = exp_dir+'/run/output.txt'
     flux_et = pd.read_csv(
-        '../../../misc_and_testing/create_env_data/fluxcluster_et_final_19800101_19800102_TESTING.csv'
+        '../../../misc_and_testing/create_env_data/fluxcluster_et_final_20050101_20210102_TESTING.csv'
     )
     flux_et = flux_et.drop('time',axis=1)
     flux_et = np.array(flux_et)

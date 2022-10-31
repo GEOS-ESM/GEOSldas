@@ -831,6 +831,7 @@ contains
     logical :: IAmRoot
     integer :: mpierr
     integer :: LSM_CHOICE
+<<<<<<< HEAD
     integer :: pso_choice
     integer :: line_no
     integer :: reason
@@ -838,7 +839,9 @@ contains
     logical :: pso_alloc_stat
     integer :: fake_num_ensemble
     real, dimension(28,5) :: test_matrix
+=======
     type (ESMF_Field)                         :: field
+>>>>>>> origin/develop
 
 
      ! Begin...

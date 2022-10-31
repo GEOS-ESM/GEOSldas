@@ -17,7 +17,7 @@ rm -rf $exp_to_rm
 source g5_modules.sh
 ./ldas_setup setup $exp_dir_gen ./$exeinp ./$batinp
 cd /discover/nobackup/trobinet/exps/$exp_name/run
-cp ../../HISTORY.rc .
+cp /discover/nobackup/trobinet/GEOSldas_EFPH_develop/GEOSldas/src/Applications/LDAS_App/HISTORY.rc .
 sbatch lenkf.j
 cd ../
 cd ./scratch
