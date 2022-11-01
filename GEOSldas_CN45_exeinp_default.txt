@@ -1,0 +1,511 @@
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+#                                                          #
+#                 REQUIRED INPUTS                          #
+#                                                          #
+# These inputs are needed to set up output dir structure.  #
+#                                                          #
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+
+############################################################
+#                                                          #
+#                 EXPERIMENT INFO                          #
+#                                                          #
+# Format for start/end times is yyyymmdd hhmmss.           #
+#                                                          #
+############################################################
+
+EXP_ID:  GEOSldas_CN45_old_commit
+EXP_DOMAIN:SMAP_EASEv2_M36
+NUM_LDAS_ENSEMBLE: 10
+BEG_DATE: 19800101 000000
+END_DATE: 19810101 000000
+
+############################################################
+#                                                          #
+#                 RESTART INFO                             #
+#                                                          #
+# (i) Select "RESTART" option:                             #
+#                                                          #
+# Use one of the following options if you *have* a         #
+#   GEOSldas- or LDASsa-produced restart file:             #
+#                                                          #
+# RESTART: 1                                               #
+#   YES, have restart file from GEOSldas *or* LDASsa       #
+#        in SAME tile space (grid) with SAME boundary      #
+#        conditions and SAME snow model parameter (WEMIN). #
+#   GEOSldas-produced restart can be for the same or       #
+#        a larger domain.                                  #
+#   LDASsa-produced restart *must* be for the GLOBAL       #
+#        domain.                                           #
+#                                                          #
+# RESTART: 2                                               #
+#   YES, have restart file from GEOSldas *or* LDASsa but   #
+#        in a DIFFERENT tile space (grid) or with          #
+#        DIFFERENT boundary conditions or DIFFERENT snow   #
+#        model parameter (WEMIN).                          #
+#   Restart *must* be for the GLOBAL domain.               #
+#                                                          #
+# Use one of the following options if you DO NOT have a    #
+#   GEOSldas- or LDASsa-produced restart file:             #
+#                                                          #
+# RESTART: 0                                               #
+#   Cold start from arbitrary some old restart.            #
+#                                                          #
+# RESTART: M                                               #
+#   Re-tile from archived MERRA-2 restart file.            #
+#                                                          #
+# RESTART: F                                               #
+#   Re-tile from FP (Forward Processing) restart file.     #
+#                                                          #
+# RESTART: G                                               #
+#   Re-tile from any AGCM catch[cn]_internal_rst file.     #
+#                                                          #
+# -------------------------------------------------------- #
+# IMPORTANT:                                               #
+#   Except for RESTART=1, SPIN-UP is REQUIRED in almost    #
+#   all cases.                                             #
+# -------------------------------------------------------- #
+#                                                          #
+#                                                          #
+# (ii) Specify experiment ID/location of restart file:     #
+#                                                          #
+# For RESTART=1 or RESTART=2:                              #
+#   Specify RESTART_ID, RESTART_PATH, RESTART_DOMAIN with  #
+#   restarts stored as follows:                            #
+#     RESTART_PATH/RESTART_ID/output/RESTART_DOMAIN/rs/    #
+#                                                          #
+# For RESTART=0 or RESTART=M or RESTART=F:                 #
+#   There is no need to specify RESTART_ID, RESTART_PATH,  #
+#   and RESTART_DOMAIN.                                    #
+#                                                          #
+# For RESTART=G:                                           #
+#   RESTART_ID   : full_path_to_AGCM_experiment_directory  #
+#   RESTART_PATH : full_path_of_the_AGCM_restart_file      #
+#   RESTART_DOMAIN is NOT required.                        #
+#                                                          #
+############################################################
+
+RESTART: 1
+RESTART_ID: GEOSldas_CNCLM45_NT_rst
+RESTART_PATH: /discover/nobackup/jkolassa/restarts/
+RESTART_DOMAIN: SMAP_EASEv2_M36
+
+
+############################################################
+#                                                          #
+#         SURFACE METEOROLOGICAL FORCING                   #
+#                                                          #
+#  See README files in ./src/Applications/LDAS_App/doc     #
+#                                                          #
+#  Surface meteorological forcing time step is in seconds. #
+#                                                          #
+############################################################
+
+MET_TAG:  M2COR_cross__precCPCUGPCP22clim_MERRA2_BMTXS 
+MET_PATH: /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/
+FORCE_DTSTEP: 3600 
+
+############################################################
+#                                                          #
+#            LAND BOUNDARY CONDITIONS DIRECTORY            #
+#                                                          #
+#  See README files in ./src/Applications/LDAS_App/doc     #
+#                                                          #
+############################################################
+
+BCS_PATH: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_EASE/
+BCS_RESOLUTION: SMAP_EASEv2_M36
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+#                                                        #
+#            GEOSldas Resource Parameters                #
+#                                                        #
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
+
+
+# ---- Using Catchment/CatchmentCN offline?
+#
+#    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
+#    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
+#    2: Option  for GEOSldas, (WW,CH,CM,CQ,FR) are optional for input restart but will be in output
+#                               restart; select when using GEOSldas to create restarts for the GCM.
+#
+CATCHMENT_OFFLINE: 1
+
+# ---- Choice of land surface model
+#
+#    1 : Catchment model   (default)
+#    2 : CatchmentCN40 model (trent: I think???)
+#    3 : CatchmentCN45 model (trent: I think???)
+#
+LSM_CHOICE: 3
+
+
+# ---- Domain definition
+#
+#      The domain is determined by specifying a lat/lon rectangle in conjunction
+#      with ExcludeList and IncludeList files.  The files contain the IDs of tiles to
+#      be excluded and included in the domain.
+#      Included are all tiles within the rectangle or the IncludeList but not in the ExcludeList.
+#      In case of conflict, the ExcludeList takes precedence.
+#      The default is a GLOBAL (land) domain.
+#
+#      Specify extremities of lat/lon rectangle:
+#         Max lat/lon range: lon=-180:180, lat=-90:90.
+#      If only IncludeList should be used, specify dummy values such that:
+#         MINLON > MAXLON and MINLAT > MAXLAT.
+#
+ MINLON: -180.
+ MAXLON:  180.
+ MINLAT:  -90.
+ MAXLAT:   90.
+#
+#      Path and filenames for ExcludeList and IncludeList files.
+#      (May leave blank.)
+#
+# EXCLUDE_FILE: '' 
+# INCLUDE_FILE: '' 
+
+
+# ---- Surface meteorological forcing: Horizonal interpolation 
+#
+#    1 :  bilinear interpolation (default)
+#    0 :  nearest neighbor
+#
+MET_HINTERP: 0
+
+
+# ---- Specify if running model only or data assimilation
+#
+#  NO  : model only, with or without perturbations (default)
+#  YES : assimilation (full land analysis or just processing of obs for "innovations" output)
+#
+LAND_ASSIM: NO
+
+
+# ---- Perturbations: On/off 
+#
+# If num_ensemble > 1, PERTURBATIONS will automatically be set to 1. 
+#
+#    0 : No perturbactions.
+#    1 : With perturbations.
+#
+PERTURBATIONS: 0
+
+# ---- Perturbations: ID of first ensemble member
+#
+FIRST_ENS_ID: 0
+
+
+# ---- Path to special namelist input files
+#
+#      Applies only for ensemble simulations. The variable values in the special 
+#      namelist overwrite the DEFAULT values. There may be three files: 
+#          LDASsa_SPECIAL_inputs_ensupd.nml 
+#          LDASsa_SPECIAL_inputs_ensprop.nml 
+#          LDASsa_SPECIAL_inputs_catbias.nml 
+#
+# NML_INPUT_PATH: ''
+
+
+# ---- Microwave Radiative Transfer Model (mwRTM) parameter file name (nc4 format)
+#
+#      Must be provided for
+#          - output of Tb through HISTORY or
+#          - Tb assimilation.
+#      Otherwise, leave unspecified (i.e., use default empty string).
+#
+#      This file can be converted from binary with the program mwrtm_bin2nc4.x. 
+#      If empty or commented out, GEOSldas will search the restart directory.
+#
+# MWRTM_FILE: ''
+
+
+# ---- Job segments: Length
+#
+#      Specify period between GEOSldas.x shutdown and restart.
+#      Default is the entire simulation period (END_DATE minus BEG_DATE).
+#      Format:            yyyymmdd hhmmss
+#
+ JOB_SGMT: 00010000 000000
+
+# ---- Job segments: Number
+#
+#      One lenkf.j job simulates NUM_SGMT*JOB_SGMT time, then re-submits itself,
+#      so (NUM_SGMT*JOB_SGMT) should be done within the 12 hour CPU time limit (at NCCS).
+#      Low values for NUM_SGMT are recommended for run-time and storage efficiency.
+#      Default is 1.
+#
+ NUM_SGMT: 1
+
+
+# ---- CHECKPOINT file output
+#
+#      By default, CHECKPOINT (restart) files are are written at the end of each job segment. 
+#      Restart files can also be written before exiting GEOSldas.x. 
+#      The following resource parameters specify the frequency and reference time and date.
+#
+ RECORD_FREQUENCY: 7200000              # hhhmmss          (can be greater than 1 day!)
+ RECORD_REF_TIME:   000000              #  hhmmss          (reference time-of-day)
+ RECORD_REF_DATE:  19800201 000000      # yyyymmdd hhmmss  (date/time after which checkpoints are written)
+
+
+# ---- Output: Write log file (YES/NO)?
+#
+LDAS_logit: YES
+
+# ---- Output: HISTORY definition of model diagnostics
+#
+#      User-defined path and filename of output (HISTORY) specification file.
+#      If empty, ldas_setup will generate a default HISTORY.rc file.
+#
+# HISTRC_FILE: ''
+
+# ---- Concatenate sub-daily nc4 files into daily nc4 files and write monthly-mean output?
+#
+#      Optional post-processing of model diagnostics output into bundled daily files and monthly means.
+#      Reduces the file count and (optionally) the output volume.
+#
+#      Accurate monthly-means of time-average Collections require setting "ref_time" to "000000" in HISTRC_FILE!
+#
+#    0 : No post-processing (default).
+#    1 : For complete days, concatenate (bundle) sub-daily nc4 files, if any, into daily nc4 files.  
+#        For complete months, write monthly-mean nc4 files.  
+#    2 : As in 1, but delete daily nc4 files.
+#
+ POSTPROC_HIST: 2
+
+
+# ---- Name of file containing Surface GridComp resource parameters 
+#
+SURFRC: LDAS.rc
+
+
+#--------------------------------------------------------#
+# Do not change the following parameters in GEOSldas     #
+#--------------------------------------------------------#
+
+# ---- No dycore for offline
+#
+DYCORE: none
+
+# ---- For MAPL_RestartOptional
+#
+MAPL_ENABLE_BOOTSTRAP: YES
+
+
+#################################################################################### 
+#                                                                                  #
+#    Resource file for surface parameters, *jointly* used by the GCM and GEOSldas. #     
+#                                                                                  #
+#                            W A R N I N G ! ! !                                   #
+#                                                                                  #
+#    Many of the parameter options described below may NOT work as intended, or    # 
+#      at all...                                                                   #
+#                                                                                  #
+#    Choosing values other than the suggested defaults is NOT recommended for      #
+#      general users.                                                              #
+#                                                                                  #
+#################################################################################### 
+
+
+# ---- Surface layer turbulence scheme
+#
+#    0 : Louis                  (MERRA, Fortuna-DAS, SMAP NRv4/4.1/5/7.2)
+#    1 : Helfand Monin-Obukhov  (Fortuna-AR5, Ganymed, Heracles, Icarus-3_2, MERRA-2)
+#
+# GEOSagcm=>CHOOSEMOSFC: 1
+CHOOSEMOSFC: 0
+
+# ---- Thickness of surface layer for soil moisture [mm]
+#
+#    50.0 : Ganymed-4 and later, SMAP L4_SM 
+#    20.0 : Ganymed-3 and earlier
+#
+# GEOSagcm=>SURFLAY: 50.0
+SURFLAY: 50.0
+ 
+# ---- Version of assorted Catchment/snow model parameters
+#
+#    Icarus  : Icarus/f522_fp and earlier (scientifically close to MERRA-2)
+#    V24_C05 : GEOSldas_m4-17_0
+#    NRv7.2  : SMAP L4_SM Version 4, f525_fp
+#
+# GEOSagcm=>LAND_PARAMS: NRv7.2
+LAND_PARAMS: CN_CLM45
+
+# ---- Formulation for turbulent roughness length (z0)
+#
+#    0 : Fortuna,      SMAP NRv3
+#    1 : Ganymed-4_1,  SMAP NRv4/NRv4.1
+#    2 : Heracles-4_3, Icarus (AGCM default)
+#    3 :               SMAP NRv5/NRv7.2
+#    4 : Icarus-NLv3 (f525_fp)
+#                      SMAP NRv8.1
+#
+# GEOSagcm=>Z0_FORMULATION: 4
+Z0_FORMULATION: 3
+
+# ---- Compute runoff from large-scale and convective storms
+#	
+#   FWETC and FWETL are the areal fractions of canopy on to which convective and "large-scale" precipitation 
+#   falls, respectively.  These parameter values and the functional form to compute surface runoff
+#   are set in conjunction with the logical resource parameter USE_FWET_FOR_RUNOFF as follows:
+#
+#    .FALSE.  : Default; uses total throughfall to compute surface runoff with FWETC=FWETL=0.02. 
+#
+#    .TRUE.   : Accounts for separate convective and large-scale throughfalls to compute surface runoff.
+#               Off-line, 36-km simulations using MERRA-2(?) forcing yielded calibrated parameter values 
+#               of FWETC=0.005 and FWETL=0.025.
+#               Note that the partitioning between "convective" and "large-scale" precipitation in 
+#               the GCM depends strongly on resolution, presumably requiring tuned FWETC and FWETL
+#               values that depend on the atmospheric resolution.
+#
+# GEOSagcm=>USE_FWET_FOR_RUNOFF: .FALSE.	
+USE_FWET_FOR_RUNOFF: .FALSE.
+#
+# GEOSagcm=>FWETC: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.
+FWETC: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE. 
+#	
+# GEOSagcm=>FWETL: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.    	
+FWETL: 0.02	                     # 0.02 is hard-wired default for USE_FWET_FOR_RUNOFF=.FALSE.
+
+# ---- ASCAT-derived turbulent roughness length
+#
+#    0 : Default - do not use ASCAT information.
+#    1 : Replace model roughness length with ASCAT z0 where climatological NDVI<0.2.
+#
+# GEOSagcm=>USE_ASCATZ0: 0
+USE_ASCATZ0: 0
+
+# ---- Prescribe interannually varying LAI, VISDF, and NIRDF from MODIS V006
+#
+# This option is NOT yet available in GEOSldas!
+#
+#    0 : DEFAULT climatologies in BCSDIR are used
+#    1 : Prescribe interannually varying  MCD15A2H.006 LAI and MCD43GF.006 VISDF and NIRDF albedo 
+#
+# GEOSagcm=>MODIS_DVG: 0                     # NOT yet used in GEOSldas
+
+
+#--------------------------------------------------------#
+#    GOSWIM aerosol deposition on surface snow           #
+#--------------------------------------------------------#
+
+# ---- Aerosol deposition on snow (available only with MERRA-2 forcings)
+#
+#    0 : GOCART aerosol are NOT used (default)
+#    1 : Use all GOCART aerosol data 
+#    2 : Use GOCART aerosols *except* dust 
+#    3 : Use GOCART aerosols *except* black carbon 
+#    4 : Use GOCART aerosols *except* organic carbon
+#
+# GEOSagcm=>AEROSOL_DEPOSITION: 0
+AEROSOL_DEPOSITION: 0
+
+# ---- Number of constituents for GOSWIM (the GOddard SnoW Impurity Module)
+#
+# NOTE: There are separate parameters for LAND and LANDICE
+#
+#    0 : Default, GOSWIM snow albedo scheme is turned OFF for land/landice
+#    9 : GOSWIM snow albedo scheme is turned ON for land/landice
+#
+# GEOSagcm=>N_CONST_LAND4SNWALB: 0
+N_CONST_LAND4SNWALB: 0
+#
+# GEOSagcm=>N_CONST_LANDICE4SNWALB: 0        # NOT yet used in GEOSldas
+
+
+#--------------------------------------------------------#
+#                   Irrigation model                     #
+#--------------------------------------------------------#
+
+# ---- Run irrigation module
+#
+#    0 : Do NOT run irrigation module (default)
+#    1 : YES, run irrigation module
+#
+# GEOSagcm=>RUN_IRRIG: 0
+RUN_IRRIG: 0
+
+# ---- Irrigation model method 
+#
+#    0 : Sprinkler and Flood irrigation combined (default)
+#    1 : Sprinkler irrigation only
+#    2 : Flood irrigation only
+#
+# GEOSagcm=>IRRIG_METHOD: 0
+IRRIG_METHOD: 0
+
+
+#--------------------------------------------------------#
+#              River routing model (RRM)                 #
+#--------------------------------------------------------#
+
+# ---- Run river routing model interactively 
+#
+#    0 : Default - NO
+#    1 : YES
+#
+# GEOSagcm=>RUN_ROUTE: 0
+RUN_ROUTE: 0
+
+# ---- Time step for river routing [s]
+#
+# GEOSagcm=>RRM_DT: 3600
+RRM_DT: 3600 
+
+
+#--------------------------------------------------------#
+#             CatchCN-specific parameters                #
+#--------------------------------------------------------#
+
+# ---- Time step for carbon/nitrogen routines in CatchmentCN model [s]
+#
+# NOTE: Time step for water/energy routines is controlled by HEARTBEAT_DT in CAP.rc.
+#
+# GEOSagcm=>DTCN: 5400
+DTCN: 5400
+
+# ---- Atmospheric CO2
+#
+#    0: Use a fixed value defined by "CO2" resource parameter [ppm]
+#    1: NOAA CT tracker monthly mean diurnal cycle
+#    2: NOAA CT tracker monthly mean diurnal cycle scaled to match EEA global average CO2:
+#       NOAA CT CO2 is scaled to the EEA global average CO2, linearly interpolated to the METFORCE year. 
+#       For offline simulations: the optional resource parameter "CO2_YEAR" can be used to  
+#         set the beginning year of the atmospheric CO2 concentration of the simulation 
+#         if it is earlier than the METFORCE year.
+#    3: CMIP5 recommended annual average global mean concentrations from getco2.F90 (1765-2150)
+#    4: Import AGCM model CO2 (GCM only, does not work with GEOSldas!)
+#
+# GEOSagcm=>ATM_CO2: 2
+# GEOSagcm=>CO2: 350.e-6
+#
+ATM_CO2: 2
+CO2: 350.e-6
+# 
+CO2_YEAR:-9999   # Only for GEOSldas with ATM_C02=2
+
+# ---- Prescribe daily LAI and SAI data from an archived CATCHCN simulation
+#
+#    0 : NO,  run CN Model interactively (default)
+#    1 : YES, prescribe interannually varying LAI and SAI
+#    2 : YES, prescribe climatological LAI and SAI
+#    3 : Estimated LAI/SAI using anomalies at the beginning of the forecast and climatological LAI/SAI
+#    4 : Write LAI/SAI anomalies in catchcn_internal_rst for above option 3
+#
+# GEOSagcm=>PRESCRIBE_DVG: 0
+PRESCRIBE_DVG: 0
+
+# ---- Scale CATCHCN ALBEDO and FPAR
+#
+#    0 : NO scaling is performed (default)
+#    1 : Scale albedo to match interannually varying MODIS NIRDF and VISDF anomaly
+#    2 : Scale albedo to match CDFs of model fPAR to MODIS CDFs of fPAR 
+#    3 : Perform both 1 and 2 above 
+#
+# GEOSagcm=>SCALE_ALBFPAR: 0
+SCALE_ALBFPAR: 0
+
+
