@@ -1575,11 +1575,11 @@ contains
        !write(*,*) 'inside read option'
        call esmf2ldas(ModelTimeCur, model_time_cur, rc=status)
        write (YYYY,'(i4.4)') model_time_cur%year
-       !write(*,*) model_time_cur%month
-       !write(*,*) model_time_cur%day
-       !write(*,*) model_time_cur%hour
-       !write(*,*) model_time_cur%min
-       !write(*,*) model_time_cur%sec
+       write (MM  ,'(i2.2)') model_time_cur%month
+       write (DD  ,'(i2.2)') model_time_cur%day
+       write (hh  ,'(i2.2)') model_time_cur%hour
+       write (min ,'(i2.2)') model_time_cur%min
+       write (ss  ,'(i2.2)') model_time_cur%sec
 
 
        if (model_time_cur%month == 01 .and. model_time_cur%day == 01 &
@@ -1606,8 +1606,11 @@ contains
                 ! MET TAG NEEDS TO BE UPDATED TO WORK WITH THE HISTORY.RC FILE
                 ! However, I am not sure how to do this so I will leave this for later discussion
            !     write(*,*) 'root has been discovered'
-           met_tag = '/discover/nobackup/projects/medComplex/point_forcing_data/'//YYYY// &
-                   '_point_forcing_data.nc4'
+           met_tag = '/discover/nobackup/projects/medComplex/' &
+           //'pf/'//YYYY//'_point_forcing_data.nc4'
+           write(*,*) 'met_tag'
+           write(*,*) met_tag
+           !write(*,*) 'before calling get_forcing_point'
            call get_forcing_point(met_tag,model_time_cur,local_id)
                 !
                 !
@@ -1677,12 +1680,6 @@ contains
        
        !write(*,*) 'writing time strings'
 
-       write (YYYY,'(i4.4)') model_time_cur%year
-       write (MM  ,'(i2.2)') model_time_cur%month
-       write (DD  ,'(i2.2)') model_time_cur%day
-       write (hh  ,'(i2.2)') model_time_cur%hour
-       write (min ,'(i2.2)') model_time_cur%min
-       write (ss  ,'(i2.2)') model_time_cur%sec
        !write(*,*) 'concatenating long time string'
        model_time_str = YYYY//MM//DD//hh//min//ss
        !write(*,*) model_time_str
