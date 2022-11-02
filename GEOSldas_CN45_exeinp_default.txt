@@ -14,11 +14,11 @@
 #                                                          #
 ############################################################
 
-EXP_ID:  GEOSldas_CN45_old_commit
+EXP_ID:  GEOSldas_CN45_res_pf
 EXP_DOMAIN:SMAP_EASEv2_M36
-NUM_LDAS_ENSEMBLE: 10
+NUM_LDAS_ENSEMBLE: 1
 BEG_DATE: 19800101 000000
-END_DATE: 19810101 000000
+END_DATE: 20220101 000000
 
 ############################################################
 #                                                          #
@@ -155,16 +155,16 @@ LSM_CHOICE: 3
 #      If only IncludeList should be used, specify dummy values such that:
 #         MINLON > MAXLON and MINLAT > MAXLAT.
 #
- MINLON: -180.
- MAXLON:  180.
- MINLAT:  -90.
- MAXLAT:   90.
+ MINLON: 180.
+ MAXLON: -180.
+ MINLAT: 90.
+ MAXLAT: -90.
 #
 #      Path and filenames for ExcludeList and IncludeList files.
 #      (May leave blank.)
 #
 # EXCLUDE_FILE: '' 
-# INCLUDE_FILE: '' 
+ INCLUDE_FILE: /discover/nobackup/trobinet/GEOSldas_writeforce/GEOSldas/src/Applications/LDAS_App/include 
 
 
 # ---- Surface meteorological forcing: Horizonal interpolation 
@@ -236,7 +236,7 @@ FIRST_ENS_ID: 0
 #      Low values for NUM_SGMT are recommended for run-time and storage efficiency.
 #      Default is 1.
 #
- NUM_SGMT: 1
+ NUM_SGMT: 5
 
 
 # ---- CHECKPOINT file output
@@ -245,9 +245,9 @@ FIRST_ENS_ID: 0
 #      Restart files can also be written before exiting GEOSldas.x. 
 #      The following resource parameters specify the frequency and reference time and date.
 #
- RECORD_FREQUENCY: 7200000              # hhhmmss          (can be greater than 1 day!)
- RECORD_REF_TIME:   000000              #  hhmmss          (reference time-of-day)
- RECORD_REF_DATE:  19800201 000000      # yyyymmdd hhmmss  (date/time after which checkpoints are written)
+# RECORD_FREQUENCY: 7200000              # hhhmmss          (can be greater than 1 day!)
+# RECORD_REF_TIME:   000000              #  hhmmss          (reference time-of-day)
+# RECORD_REF_DATE:  19800201 000000      # yyyymmdd hhmmss  (date/time after which checkpoints are written)
 
 
 # ---- Output: Write log file (YES/NO)?
