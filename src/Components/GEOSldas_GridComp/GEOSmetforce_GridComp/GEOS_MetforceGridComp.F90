@@ -602,8 +602,8 @@ contains
     !write(*,*) 'started initialize'
 
     ! Define whether this is point forcing case or normal
-    point_forcing_write = 0 
-    point_forcing_read =  1
+    point_forcing_write = 1 
+    point_forcing_read =  0
 
     !Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -993,8 +993,8 @@ contains
     !write(*,*) 'started run'
 
     ! Set whether we are in point forcing mode
-    point_forcing_write = 0
-    point_forcing_read =  1 
+    point_forcing_write = 1
+    point_forcing_read =  0 
 
     
     ! Get my name and setup traceback handle
@@ -1351,15 +1351,14 @@ contains
           !write (*,*) force_time_prv
           !write (*,*) 'land_nt_local:'
           !write (*,*) land_nt_local
-          filename = '/discover/nobackup/projects/medComplex/point_forcing_data/'//YYYY//'_point_forcing_data.nc4'
+          filename = '/discover/nobackup/projects/medComplex/pf/'//YYYY//'_point_forcing_data.nc4'
           filename = trim(filename)
-          write(*,*) filename
+          !write(*,*) filename
           !write(*,*) local_id
-          start_year = 1980
           total_tiles_36km = 112573
           total_tiles_running  = size(local_id)
           num_steps_day_75min = 192
-         write(*,*) 'made it to checking model time' 
+          write(*,*) 'made it to checking model time' 
           if (model_time_cur%month == 01 .and. model_time_cur%day == 01 &
              .and. model_time_cur%hour == 00 .and. Model_time_cur%min == 00                             &
              .and. model_time_cur%sec == 00)then
@@ -1503,6 +1502,15 @@ contains
           !write(*,*) 'added everything'
 
           ! do for other variables here
+
+          elseif (model_time_cur%month == 12 .and. model_time_cur%day == 31 &
+                  model_time_cur%hour == 23 .and. model_time_cur%min == 52  &
+              .and. model_time_cur%sec == 30)then
+
+              !write(*,*) 'called write_time_varying' 
+              call write_time_varying (local_id, filename, &
+                                       model_time_cur,mfDataNtp,internal%mf%zenav,num_steps_day_75min)
+          endif
         endif
         !write (*,*) 'right after writing' 
         if(AEROSOL_DEPOSITION /=0)then 
