@@ -245,9 +245,9 @@ FIRST_ENS_ID: 0
 #      Restart files can also be written before exiting GEOSldas.x. 
 #      The following resource parameters specify the frequency and reference time and date.
 #
- RECORD_FREQUENCY: 7200000              # hhhmmss          (can be greater than 1 day!)
- RECORD_REF_TIME:   000000              #  hhmmss          (reference time-of-day)
- RECORD_REF_DATE:  19800201 000000      # yyyymmdd hhmmss  (date/time after which checkpoints are written)
+# RECORD_FREQUENCY: 7200000              # hhhmmss          (can be greater than 1 day!)
+# RECORD_REF_TIME:   000000              #  hhmmss          (reference time-of-day)
+# RECORD_REF_DATE:  19800201 000000      # yyyymmdd hhmmss  (date/time after which checkpoints are written)
 
 
 # ---- Output: Write log file (YES/NO)?
@@ -273,7 +273,7 @@ LDAS_logit: YES
 #        For complete months, write monthly-mean nc4 files.  
 #    2 : As in 1, but delete daily nc4 files.
 #
- POSTPROC_HIST: 2
+ POSTPROC_HIST: 1
 
 
 # ---- Name of file containing Surface GridComp resource parameters 
