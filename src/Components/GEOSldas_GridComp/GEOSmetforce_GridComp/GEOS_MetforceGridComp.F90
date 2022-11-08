@@ -603,7 +603,7 @@ contains
 
     ! Define whether this is point forcing case or normal
     point_forcing_write = 0 
-    point_forcing_read =  1
+    point_forcing_read =  0
 
     !Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -994,7 +994,7 @@ contains
 
     ! Set whether we are in point forcing mode
     point_forcing_write = 0
-    point_forcing_read =  1 
+    point_forcing_read =  0 
 
     
     ! Get my name and setup traceback handle

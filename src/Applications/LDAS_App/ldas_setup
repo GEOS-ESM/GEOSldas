@@ -1281,14 +1281,14 @@ class LDASsetup:
         status = False
 
         os.chdir(self.rundir)
-        lenkf=self.blddir+'/../src/Applications/LDAS_App/lenkf.j.template.PSO'
+        lenkf=self.blddir+'/../src/Applications/LDAS_App/lenkf.j.template.original'
         shutil.copy(lenkf,'lenkf.j')
 
-        pso=self.blddir+'/../src/Applications/LDAS_App/PSO_v2_objective.py'
-        shutil.copy(pso,'PSO_v2_objective.py')
+        #pso=self.blddir+'/../src/Applications/LDAS_App/PSO_v2_objective.py'
+        #shutil.copy(pso,'PSO_v2_objective.py')
 
-        obj=self.blddir+'/../src/Applications/LDAS_App/compute_objective_v2.py'
-        shutil.copy(obj,'compute_objective_v2.py')
+        #obj=self.blddir+'/../src/Applications/LDAS_App/compute_objective_v2.py'
+        #shutil.copy(obj,'compute_objective_v2.py')
 
         my_qos='allnccs'
         if 'qos' in self.optRmInp :

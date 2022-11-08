@@ -14,9 +14,9 @@
 #                                                          #
 ############################################################
 
-EXP_ID:  GEOSldas_CN45_old_commit
+EXP_ID:  GEOSldas_CN45_medlyn_05
 EXP_DOMAIN:SMAP_EASEv2_M36
-NUM_LDAS_ENSEMBLE: 10
+NUM_LDAS_ENSEMBLE: 1
 BEG_DATE: 19800101 000000
 END_DATE: 19810101 000000
 
