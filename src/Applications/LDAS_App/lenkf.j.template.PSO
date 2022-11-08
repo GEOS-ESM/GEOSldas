@@ -875,8 +875,16 @@ else if ($convergence == 1) then
    echo 'resubmitted on same job, convergence=1' >> $HOMDIR/PSO_iterations.txt
    $HOMDIR/lenkf.j 
 else if ($convergence == 2) then
+   set fulltime="${capdate} ${caphhmmss}"
+   echo $fulltime >> $HOMDIR/PSO_iterations.txt
+   sed -i "s/$fulltime/$BEG_DATE/" $HOMDIR/cap_restart
+   echo $capdate >>$HOMDIR/PSO_iterations.txt
+   echo $caphhmmss >>$HOMDIR/PSO_iterations.txt
+   echo $BEG_DATE >>$HOMDIR/PSO_iterations.txt
+   echo $capdate $caphhmmss >> $HOMDIR/PSO_iterations.txt
+   cat cap_restart >> $HOMDIR/PSO_iterations.txt
    echo 'resubmitted on new job, convergence=2' >> $HOMDIR/PSO_iterations.txt
-   sbatch lenkf.j
+   sbatch $HOMDIR/lenkf.j
 else if ($convergence == 3) then
    echo 'MAX_ITER REACHED WITHOUT PSO CONVERGENCE, convergence=3' >> $HOMDIR/PSO_iterations.txt
 endif

@@ -18,8 +18,8 @@ exp_dir = sys.argv[1]
 # set important parameters
 convergence_threshold = 10 #num iterations with no change to global_best to converge
 max_iterations = 1000
-restart_every = 500
-nparticles = 16 #fits architecture of NCCS?
+restart_every = 10
+nparticles = 2 #fits architecture of NCCS?
 nparameters = 5
 o_file = exp_dir+'/run/output.txt'
 #parameter 1: j for forests
@@ -31,7 +31,7 @@ o_file = exp_dir+'/run/output.txt'
 # do PSO calculations
 #PSO parameters
 w = 1 #SEE WHAT WAS USED PREVIOUSLY; inertia weight that slows down the velocity of particle at previous step
-c1 = 1 #SEE WHAT WAS USED PREVIOUSLY; weight put on the individual particle's best position (higher=more exploration)
+c1 = 3 #SEE WHAT WAS USED PREVIOUSLY; weight put on the individual particle's best position (higher=more exploration)
 c2 = 1 #SEE WHAT WAS USED PREVIOUSLY; weight put on the global best position (higher=faster convergence)\
 r1 = np.random.random() #should this random number be between 0 and 1 or should I scale?
 r2 = np.random.random() #should this random number be between 0 and 1 or should I scale?
@@ -167,7 +167,7 @@ else:
     # determine value to return to lenkf.j
     if (is_converged == 1):
         convergence = 0
-        print(global_best_positions)
+        #print(global_best_positions)
         #print(convergence)
     elif (is_converged == 0 and (num_iterations <= max_iterations)
           and (num_without_restart < restart_every)):
@@ -198,6 +198,18 @@ else:
         f.write(str('objective_result'))
         f.write('\n')
         f.write(str(objective_result))
+        f.write('\n')
+        f.write(str('global_best_objective'))
+        f.write('\n')
+        f.write(str(global_best_objective))
+        f.write('\n')
+        f.write(str('global_best_positions'))
+        f.write('\n')
+        f.write(str(global_best_positions))
+        f.write('\n')
+        f.write(str('best_positions'))
+        f.write('\n')
+        f.write(str(best_positions))
         f.write('\n')
 
     print(convergence)

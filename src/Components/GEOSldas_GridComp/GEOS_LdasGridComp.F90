@@ -30,7 +30,6 @@ module GEOS_LdasGridCompMod
   use catch_constants, only: echo_catch_constants  
   use StieglitzSnow, only: StieglitzSnow_echo_constants
   use SurfParams,    only: SurfParams_init
-  !use pso_params_mod
 
   implicit none
 
@@ -399,7 +398,6 @@ contains
     type(ESMF_VM) :: vm
     integer :: mpierr
     logical :: IamRoot
-    integer :: pso_choice, num_params !things needed for PSO
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord_f => null()
     type(tile_coord_type), dimension(:), pointer :: tile_coord_l => null()
@@ -765,17 +763,6 @@ contains
     if ( IamRoot) call echo_catch_constants(logunit)
     if ( IamRoot) call StieglitzSnow_echo_constants(logunit)
 
-    ! are we running a PSO optimization?
-    !pso_choice = 1
-    !num_params = 5 ! this is true for my current case, may need to be updated to be automoated
-    !write(*,*) 'before pso_choice in initialize'
-    !if (pso_choice == 1) then
-    !    !write(*,*) 'inside pso_choice initialize'
-    !
-    !    allocate(pso_params%param_vals(NUM_ENSEMBLE,num_params))
-    !    write(*,*) 'pso_params has been allocated'
-    !endif
-
     ! Turn timer off
     call MAPL_TimerOff(MAPL, "Initialize")
     call MAPL_TimerOff(MAPL, "TOTAL")
@@ -792,7 +779,6 @@ contains
 
   subroutine Run(gc, import, export, clock, rc)
     
-    !use pso_params_mod
     ! !ARGUMENTS:
     
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
@@ -831,11 +817,9 @@ contains
     logical :: IAmRoot
     integer :: mpierr
     integer :: LSM_CHOICE
-    integer :: pso_choice
     integer :: line_no
     integer :: reason
     integer :: num_params
-    logical :: pso_alloc_stat
     integer :: fake_num_ensemble
     real, dimension(28,5) :: test_matrix
     type (ESMF_Field)                         :: field
@@ -917,14 +901,6 @@ contains
 
     do i  = 1,NUM_ENSEMBLE
        
-       !if (pso_choice == 1) then
-       !pso_params%ens_num = i
-       !   write(*,*) 'i'
-       !   write(*,*) i
-       !write(*,*) 'pso_params%ens_num'
-       !write(*,*) pso_params%ens_num
-       !endif
-
        !ApplyForcePert
        igc = LANDPERT(i)
        call MAPL_TimerOn(MAPL, gcnames(igc))

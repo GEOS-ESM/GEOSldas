@@ -1359,7 +1359,6 @@ contains
           total_tiles_36km = 112573
           total_tiles_running  = size(local_id)
           num_steps_day_75min = 192
-         write(*,*) 'made it to checking model time' 
           if (model_time_cur%month == 01 .and. model_time_cur%day == 01 &
              .and. model_time_cur%hour == 00 .and. Model_time_cur%min == 00                             &
              .and. model_time_cur%sec == 00)then
@@ -1608,8 +1607,6 @@ contains
            !     write(*,*) 'root has been discovered'
            met_tag = '/discover/nobackup/projects/medComplex/' &
            //'pf/'//YYYY//'_point_forcing_data.nc4'
-           write(*,*) 'met_tag'
-           write(*,*) met_tag
            !write(*,*) 'before calling get_forcing_point'
            call get_forcing_point(met_tag,model_time_cur,local_id)
                 !
