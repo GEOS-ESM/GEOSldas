@@ -4613,7 +4613,7 @@ contains
 
                          ! compute analysis snow depth assuming forecast snow density
 
-                         tmp_sndz(kk, n_e, isnow) = cat_progn(kk, n_e)%sndz(isnow) + tmp_wesn(kk, n_e, isnow) / (cat_progn(kk, n_e)%wesn(isnow) / cat_progn(kk, n_e)%sndz(isnow))
+                         tmp_sndz(kk, n_e, isnow) =  tmp_wesn(kk, n_e, isnow) / (cat_progn(kk, n_e)%wesn(isnow) / cat_progn(kk, n_e)%sndz(isnow))
                          
                          if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana = 1.0'
                          
