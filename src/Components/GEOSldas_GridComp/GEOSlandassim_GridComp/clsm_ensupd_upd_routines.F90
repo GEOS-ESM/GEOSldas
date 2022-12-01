@@ -3554,7 +3554,7 @@ contains
 
     ! TO DO: RENAME SO THE USE OF THESE VARIABLES IN SCA ANALYSIS IS MORE OBVIOUS, reichle 20221007 
 
-    real, parameter:: alpha_threshold = 0.20   ! dimensionless    DEPENDS ON WEMIN (and might be wrong in Toure et al!!!!) - NEEDS VERIFICATION & CLEANUP
+    real, parameter:: alpha_threshold = 0.40   ! dimensionless    DEPENDS ON WEMIN (and might be wrong in Toure et al!!!!) - NEEDS VERIFICATION & CLEANUP
     real, parameter:: beta_threshold  = 0.40   ! dimensionless
     real, parameter:: max_incr_swe    = 5.0    ! kg m-2 
     real, parameter:: smallfcstswe    = 0.01   ! kg m-2  threshold for "no snow" below which the ratio of swe_ana/swe_fcst tends to be unreasonable
