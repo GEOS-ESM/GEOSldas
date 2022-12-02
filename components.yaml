@@ -35,5 +35,5 @@ MAPL:
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: feature/wjiang/further_reorg_bcs
+  branch: develop
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
