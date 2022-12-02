@@ -26,7 +26,7 @@ module GEOS_LdasGridCompMod
   use LDAS_ensdrv_mpi, only: MPI_tile_coord_type, MPI_grid_def_type
   use LDAS_ensdrv_mpi, only: init_MPI_types,mpicomm,numprocs,myid 
   use LDAS_ensdrv_mpi, only: root_proc
-  use LDAS_ensdrv_Globals, only: logunit,logit,root_logit,echo_clsm_ensdrv_glob_param
+  use LDAS_ensdrv_Globals, only: logunit,logit,root_logit,echo_clsm_ensdrv_glob_param, get_ensid_string
   use catch_constants, only: echo_catch_constants  
   use StieglitzSnow, only: StieglitzSnow_echo_constants
   use SurfParams,    only: SurfParams_init
@@ -78,7 +78,7 @@ contains
     ! ensemble set up:
 
     integer :: i, k
-    integer,allocatable :: ens_id(:)
+    integer :: ens_id
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     type(ESMF_GridComp), pointer :: gcs(:)=>null() ! Children gridcomps
     character(len=ESMF_MAXSTR), pointer :: gcnames(:)=>null() ! Children's names
@@ -86,7 +86,7 @@ contains
     integer :: status
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
-    character(len=ESMF_MAXSTR) :: id_string,childname, fmt_str
+    character(len=ESMF_MAXSTR) :: ensid_string,childname
     character(len=ESMF_MAXSTR) :: LAND_ASSIM_STR, mwRTM_file, ENS_FORCING_STR
     integer                    :: ens_id_width
     ! Local variables
@@ -173,21 +173,29 @@ contains
        allocate(METFORCE(1))
     endif
 
-    allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
-    _ASSERT( ens_id_width < 10, "need 1 billion ensemble members? increase ens_id_width first")
-    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")" 
+    allocate(LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
+
+    ! ens_id_with = 2 + number of digits = total number of chars in ensid_string ("_eXXXX")
+    !
+    ! Assert ens_id_width<=2+9 so number of digits remains single-digit and "I1" can be
+    !   hardwired when assembling a format string.
+    ! Assert ens_id_width>=2+3 to avoid user configuration errors when LDAS is coupled into ADAS.
+    !   (Met forcing from the atm ensemble uses hardwired, 3-character ensemble IDs.) 
+
+    if (NUM_ENSEMBLE > 1) then
+       _ASSERT( ens_id_width < 12, "Must use ens_id_width <= 11  (2 for '_e' + 9 digits max)")
+       _ASSERT( ens_id_width >= 5, "Must use ens_id_width >=  5  (2 for '_e' + 3 digits min)")
+    endif
 
     do i=1,NUM_ENSEMBLE
-       ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
-       if(NUM_ENSEMBLE == 1 .or. .not. ensemble_forcing) then
-          id_string=''
-       else
-          write(id_string, fmt_str) ens_id(i)
-       endif
+       ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+       
+       call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)   ! "_eXXXX"
 
-       id_string=trim(id_string)
+       ! allow for Catchment ensemble simulation to be forced with single-member met inputs
+       if (.not. ensemble_forcing ) ensid_string = ''    
 
-       childname='METFORCE'//trim(id_string)
+       childname='METFORCE'//trim(ensid_string)
        METFORCE(i) = MAPL_AddChild(gc, name=trim(childname), ss=MetforceSetServices, rc=status)
        VERIFY_(status)
        ! exit after i=1 if using deterministic forcing
@@ -195,20 +203,15 @@ contains
     enddo
 
     do i=1,NUM_ENSEMBLE
-       ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
-       if(NUM_ENSEMBLE == 1 ) then
-          id_string=''
-       else
-          write(id_string, fmt_str) ens_id(i)
-       endif
+       ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
 
-       id_string=trim(id_string)
+       call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)
 
-       childname='LANDPERT'//trim(id_string)
+       childname='LANDPERT'//trim(ensid_string)
        LANDPERT(i) = MAPL_AddChild(gc, name=childname, ss=LandPertSetServices, rc=status)
        VERIFY_(status)
 
-       childname='LAND'//trim(id_string)
+       childname='LAND'//trim(ensid_string)
        LAND(i) = MAPL_AddChild(gc, name=childname, ss=LandSetServices, rc=status)
        VERIFY_(status)
     enddo
@@ -800,19 +803,25 @@ contains
     type(ESMF_GridComp), pointer :: gcs(:)
     type(ESMF_State), pointer :: gim(:)
     type(ESMF_State), pointer :: gex(:)
+    type(ESMF_State) :: member_export
+
     character(len=ESMF_MAXSTR), pointer :: gcnames(:)
     type(ESMF_Time) :: ModelTimeCur
+    character(len=ESMF_MAXSTR) :: member_name
+    character(len=ESMF_MAXSTR) :: ensid_string
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL
 
     ! Misc variables
-    integer :: igc,i
+    integer :: igc,i, ens_id, FIRST_ENS_ID, ens_id_width
     logical :: IAmRoot
     integer :: mpierr
     integer :: LSM_CHOICE
+    type (ESMF_Field)                         :: field
 
-    ! Begin...
+
+     ! Begin...
 
     ! Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -829,6 +838,11 @@ contains
 
     ! Get information about children
     call MAPL_Get(MAPL, GCS=gcs, GIM=gim, GEX=gex, GCNAMES=gcnames, rc=status)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     ! MPI
@@ -916,15 +930,26 @@ contains
        ! Use LAND's output as the input to calculate the ensemble average
        igc = LAND(i)
        if (LSM_CHOICE == 1) then
-          ! collect cat_param 
-          call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=3, userRC=status)
+          ! collect cat_param
+          ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+          call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)  
+
+          member_name = 'CATCH'//trim(ensid_string)//"_Exports"
+
+          call ESMF_StateGet(gex(igc), trim(member_name), member_export, _RC)
+          call ESMF_StateGet(gex(igc), "Z2CH", field, _RC)
+          call ESMF_StateAddReplace(member_export, [field],_RC)
+          call ESMF_StateGet(gex(igc), "LAI", field, _RC)
+          call ESMF_StateAddReplace(member_export, [field],_RC)
+
+          call ESMF_GridCompRun(gcs(ENSAVG), importState=member_export, exportState=gex(ENSAVG), clock=clock,phase=3, userRC=status)
           VERIFY_(status)
-          call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
+          call ESMF_GridCompRun(gcs(ENSAVG), importState=member_export, exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
           VERIFY_(status)
 
           if( mwRTM ) then
              ! Calculate ensemble-average L-band Tb using LAND's output (add up and normalize after last member has been added)
-             call ESMF_GridCompRun(gcs(LANDASSIM), importState=gex(igc), exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
+             call ESMF_GridCompRun(gcs(LANDASSIM), importState=member_export, exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
              VERIFY_(status)
           endif
        endif

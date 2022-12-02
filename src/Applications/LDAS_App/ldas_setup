@@ -113,6 +113,7 @@ class LDASsetup:
         self.ladas_coupling = 0
         self.in_rstfile = None
         self.in_tilefile = 'None' # default string
+        self.ens_id_width = 6     # _eXXXX
         # ------
         # Read exe input file which is required to set up the dir
         # ------
@@ -159,7 +160,10 @@ class LDASsetup:
         if self.nens > 1:
            self.perturb = 1
         self.ensdirs  = ['ens%04d'%iens for iens in range(self.first_ens_id, self.nens  + self.first_ens_id)]
-        self.ensids   = ['%04d'%iens    for iens in range(self.first_ens_id, self.nens  + self.first_ens_id)]
+        # if self.ens_id_width = 4, _width = '_e%04d'
+        _width = '_e%0{}d'.format(self.ens_id_width-2)
+        # self.ensids will be a list of [_e0000, _e0001, ...] 
+        self.ensids   = [ _width%iens for iens in range(self.first_ens_id, self.nens  + self.first_ens_id)]
         if (self.nens == 1) :
             self.ensdirs_avg = self.ensdirs
             self.ensids=['']
@@ -600,12 +604,12 @@ class LDASsetup:
         self._mkdir_p(self.scratchdir)
 
         #-start-shorthand-function-
-        def _getDirName(outtyp, ensid, yyyymm):
+        def _getDirName(outtyp, ensdir, yyyymm):
             return '/'.join([
                     self.outdir,
                     self.rqdExeInp['EXP_DOMAIN'],
                     outtyp, # ana/cat/rs/rc_out
-                    ensid,
+                    ensdir,
                     yyyymm
                     ])
         #-end-shorthand-function-
@@ -628,15 +632,15 @@ class LDASsetup:
                 y4m2_list.append('Y%4d/M%02d' % (newDate.year, newDate.month))
 
             # ExpDomain/ana/, /cat/ directories
-            for ensid in self.ensdirs_avg:
+            for ensdir in self.ensdirs_avg:
                 for y4m2 in y4m2_list:
-                    self._mkdir_p(_getDirName('ana', ensid, y4m2))
-                    self._mkdir_p(_getDirName('cat', ensid, y4m2))
+                    self._mkdir_p(_getDirName('ana', ensdir, y4m2))
+                    self._mkdir_p(_getDirName('cat', ensdir, y4m2))
 
             # ExpDomain/rs/ directories
-            for ensid in self.ensdirs:
+            for ensdir in self.ensdirs:
                 for y4m2 in y4m2_list:
-                    self._mkdir_p(_getDirName('rs', ensid, y4m2))
+                    self._mkdir_p(_getDirName('rs', ensdir, y4m2))
 
             # ExpDomain/rc_out/ - only for _start
             self._mkdir_p(_getDirName('rc_out', '', y4m2_list[0]))
@@ -872,8 +876,8 @@ class LDASsetup:
         catchRstFile0  = ''
         vegdynRstFile0 = ''
         for iens in range(self.nens) :
-            ens   = self.ensdirs[iens]
-            ensid = self.ensids[iens]
+            ensdir   = self.ensdirs[iens]
+            ensid    = self.ensids[iens]
             myCatchRst = myRstDir+'/'+self.catch +ensid +'_internal_rst'
             myVegRst   = myRstDir+'/'+'vegdyn'+ensid +'_internal_rst'
             myPertRst  = myRstDir+'/'+ 'landpert' +ensid +'_internal_rst'
@@ -889,8 +893,8 @@ class LDASsetup:
                     vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
                     catchRstFile  = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+'_internal_rst.'+YYYYMMDD+'*')[0]
                 else : # RESTART == 1
-                    catchRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
-                    vegdynRstFile= rstpath+ens +'/'+self.rqdExeInp['RESTART_ID']+ '.vegdyn_internal_rst'
+                    catchRstFile = rstpath+ensdir +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
+                    vegdynRstFile= rstpath+ensdir +'/'+self.rqdExeInp['RESTART_ID']+ '.vegdyn_internal_rst'
                     if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
                        if not os.path.isfile(vegdynRstFile0):
                          vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
@@ -900,7 +904,7 @@ class LDASsetup:
 
             # catchment restart file
             if os.path.isfile(catchRstFile) :
-                catchLocal = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
+                catchLocal = self.rstdir+ensdir +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
                 if self.islocal :
                     print( "Creating local catchment restart file... \n")
                     cmd='./preprocess_ldas.x c_localcatchrst '+ catchRstFile +' ' + catchLocal 
@@ -911,14 +915,14 @@ class LDASsetup:
 
                 catchRstFile = catchLocal
 
-                if '0000' in ens :
+                if '0000' in ensdir :
                     catchRstFile0 = catchRstFile
             else : # re-use 0000 catch file    
                 catchRstFile = catchRstFile0
 
             # vegdyn restart file
             if os.path.isfile(vegdynRstFile) :
-                vegdynLocal = self.rstdir+ens +'/'+self.rqdExeInp['EXP_ID']+'.vegdyn_internal_rst'
+                vegdynLocal = self.rstdir+ensdir +'/'+self.rqdExeInp['EXP_ID']+'.vegdyn_internal_rst'
                 if self.islocal :
                     print ("Creating the local veg restart file... \n")
                     cmd='./preprocess_ldas.x c_localvegrst '+ vegdynRstFile +' ' + vegdynLocal  
@@ -929,14 +933,14 @@ class LDASsetup:
 
                 vegdynRstFile = vegdynLocal
 
-                if '0000' in ens :
+                if '0000' in ensdir :
                     vegdynRstFile0 = vegdynRstFile
             else :    
                 vegdynRstFile = vegdynRstFile0
 
             if (self.has_geos_pert and self.perturb == 1) :
-                pertRstFile = rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
-                pertLocal   = self.rstdir+ens +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
+                pertRstFile = rstpath+ensdir +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
+                pertLocal   = self.rstdir+ensdir +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                 shutil.copy(pertRstFile,pertLocal)
                 pertRstFile = pertLocal
 
@@ -1160,7 +1164,7 @@ class LDASsetup:
 
                 if self.nens > 1 :
                    keyn='ENS_ID_WIDTH'
-                   valn='4'
+                   valn=str(self.ens_id_width)
                    ldasrcInp[keyn]= valn
 
                 if self.has_landassim_seed and self.assim :
