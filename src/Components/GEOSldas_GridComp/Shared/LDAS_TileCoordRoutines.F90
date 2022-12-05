@@ -372,7 +372,23 @@ contains
        end if
        
        tile_grid%gridtype = trim(gridname(k:))
-       
+
+       ! correct slopy EASE grid name from "-Mxx" to "_MXX"
+       k = index(tile_grid%gridtype, '-M36')       
+       if (k /=0) tile_grid%gridtype(k:k+3) = '_M36'
+
+       k = index(tile_grid%gridtype, '-M25')       
+       if (k /=0) tile_grid%gridtype(k:k+3) = '_M25'
+
+       k = index(tile_grid%gridtype, '-M09')       
+       if (k /=0) tile_grid%gridtype(k:k+3) = '_M09'
+
+       k = index(tile_grid%gridtype, '-M03')       
+       if (k /=0) tile_grid%gridtype(k:k+3) = '_M03'
+
+       k = index(tile_grid%gridtype, '-M01')       
+       if (k /=0) tile_grid%gridtype(k:k+3) = '_M01'
+ 
        tile_grid%ind_base = 0
        
        ! global cylindrical EASE grid 
