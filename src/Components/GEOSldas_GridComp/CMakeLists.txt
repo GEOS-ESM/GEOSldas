@@ -13,5 +13,5 @@ esma_add_library(${this}
   SRCS GEOS_LdasGridComp.F90
   SUBCOMPONENTS ${alldirs}
   SUBDIRS Shared
-  DEPENDENCIES GEOSland_GridComp MAPL
+  DEPENDENCIES GEOSland_GridComp raster MAPL
   INCLUDES ${INC_ESMF})
