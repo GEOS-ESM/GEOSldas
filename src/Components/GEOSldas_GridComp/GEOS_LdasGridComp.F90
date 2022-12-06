@@ -15,7 +15,7 @@ module GEOS_LdasGridCompMod
   use GEOS_EnsGridCompMod, only: EnsSetServices => SetServices
   use GEOS_LandAssimGridCompMod, only: LandAssimSetServices => SetServices
 
-  use LDAS_EASE_conv, only: ease_inverse
+  use EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
   use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type
   use LDAS_TileCoordRoutines, only: get_tile_grid, get_ij_ind_from_latlon, io_domain_files

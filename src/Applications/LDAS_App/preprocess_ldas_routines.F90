@@ -2898,7 +2898,7 @@ contains
     call LDAS_create_grid_g( gridname, n_lon, n_lat,                        &
          tile_grid_g, i_indg_offset, j_indg_offset, ease_cell_area )
     
-    if (index(tile_grid_g%gridtype,'EASE')/=0)  ease_grid = .true.  ! 'EASE' and 'EASEv2'
+    if (index(tile_grid_g%gridtype,'EASE')/=0)  ease_grid = .true.  ! 'EASEv1' or 'EASEv2'
     if (index(tile_grid_g%gridtype,'SiB2')/=0)  col_order=1         ! old bcs
     
     allocate(tile_coord(N_tile))
@@ -2949,7 +2949,10 @@ contains
                   tile_coord(i)%frac_cell             !  7
              
              tile_coord(i)%frac_pfaf = nodata_generic
-             tile_coord(i)%area      = ease_cell_area*tile_coord(i)%frac_cell
+
+             ! compute area of tile in [km^2]  (units convention in tile_coord structure)
+
+             tile_coord(i)%area      = ease_cell_area*tile_coord(i)%frac_cell/1000./1000.  ! [km^2]
              
           else ! not ease grid
              
