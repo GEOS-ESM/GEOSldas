@@ -1,33 +1,33 @@
 #!/bin/csh
 
-# rewind ldas run to specified date/time 
+# rewind existing GEOSldas run to specified date/time 
 
-setenv MYNAME rewindldas.csh
+setenv MYNAME rewind_GEOSldas.csh
 
 if ( $#argv < 4 ) then
    echo " "
-   echo " NAME"
+   echo " NAME "
    echo " "
-   echo "  $MYNAME - rewind ldas run to restart time of nymd nhms "
+   echo "   $MYNAME - rewind existing GEOSldas run to restart time of nymd nhms"
    echo " "
-   echo " SYNOPSIS"
+   echo " SYNOPSIS "
    echo " "
-   echo "  $MYNAME  nymd nhms expid exp_path grid nens "
+   echo "   $MYNAME nymd nhms expid exppath "
    echo " "
-   echo " where"
-   echo "   nymd   -  restart date, as YYYYMMDD "
-   echo "   time   -  restart time, as HHMMSS"
-   echo "   expid  -  experiment name, e.g., ldas4coup"
-   echo "   path   - run dir path, e.g., /discover/nobackup/user"
+   echo " where "
+   echo "   nymd    - restart date, as YYYYMMDD "
+   echo "   time    - restart time, as HHMMSS "
+   echo "   expid   - experiment name, e.g., ldas4coup "
+   echo "   exppath - run directory path, e.g., /discover/nobackup/[user]/ "
    echo " "
    echo " DESCRIPTION "
    echo " "
-   echo "   This procedure rewind/reset an existing ldas experiment "
-   echo "   specified by path/expid   " 
-   echo "   to the restart date/time specified by the input arguments "
+   echo "   This procedure rewinds and resets the GEOSldas experiment "
+   echo "   specified by expid and exppath to the restart date/time " 
+   echo "   specified by nymd and nhms. "
    echo " "
-   echo " Example of valid command line:"
-   echo " $MYNAME 20170829 210000 ldas4coup /discover/nobackup/qzhang "
+   echo " Example of valid command line: "
+   echo "   $MYNAME 20170829 210000 ldas4coup /discover/nobackup/qzhang "
    exit(0)
 endif
 
@@ -54,49 +54,54 @@ set grid  = `ls output`
 
 ## rewind links to restart files  
 
-  @ NENS = $nmem 
+@ NENS = $nmem 
 
 set rsout = ${rundir}/${expid}/output/${grid}/rs 
-set rstin  = ${rundir}/${expid}/input/restart 
+set rstin = ${rundir}/${expid}/input/restart 
 cd $rstin 
-  /bin/rm -rf catch*_internal_rst
-  /bin/rm -rf landpert*_internal_rst
-  /bin/rm -rf landassim_obspertrseed*_rst
 
-   @ inens = 1
-  while ($inens <= $NENS)
-      if ($inens <10) then
-          set ENSDIR = `echo ens000${inens}`
-           set catin = `echo catch000${inens}`
-            set pertin = `echo landpert000${inens}`
-           set seedin = `echo obspertrseed000${inens}`
-        else if($inens<100) then
-          set ENSDIR=`echo ens00${inens}`
-          set catin = `echo catch00${inens}`
-          set pertin = `echo landpert00${inens}`
-          set seedin = `echo obspertrseed00${inens}`
-        else if($inens < 1000) then
-          set ENSDIR =`echo ens0${inens}`
-          set catin = `echo catch0${inens}`
-          set pertin = `echo landpert0${inens}`
-         set seedin = `echo obspertrseed0${inens}`
-        else
-          set ENSDIR = `echo ens${inens}`
-          set catin = `echo catch${inens}`
-          set pertin = `echo landpert${inens}`
-          set seedin = `echo obspertrseed${inens}`
-       endif
-      /bin/ln -s ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.catch_internal_rst.${date} ${catin}_internal_rst
+/bin/rm -rf catch*_internal_rst
+/bin/rm -rf landpert*_internal_rst
+/bin/rm -rf landassim_obspertrseed*_rst
 
-      if (-e ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.landpert_internal_rst.${date}.gz ) then  
-       gunzip ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.landpert_internal_rst.${date}.gz 
-      endif 
-      /bin/ln -s ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.landpert_internal_rst.${date} ${pertin}_internal_rst
+@ inens = 1
 
-     /bin/ln -s ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.landassim_obspertrseed_rst.${date} landassim_${seedin}_rst
+while ($inens <= $NENS)
 
-  @ inens ++
-  end
+    if     ($inens <   10) then
+        set ENSDIR = `echo          ens000${inens}`
+        set catin  = `echo        catch000${inens}`
+        set pertin = `echo     landpert000${inens}`
+        set seedin = `echo obspertrseed000${inens}`
+    else if($inens <  100) then
+        set ENSDIR = `echo           ens00${inens}`
+        set catin  = `echo         catch00${inens}`
+        set pertin = `echo      landpert00${inens}`
+        set seedin = `echo  obspertrseed00${inens}`
+    else if($inens < 1000) then
+        set ENSDIR = `echo            ens0${inens}`
+        set catin  = `echo          catch0${inens}`
+        set pertin = `echo       landpert0${inens}`
+        set seedin = `echo   obspertrseed0${inens}`
+    else
+        set ENSDIR = `echo             ens${inens}`
+        set catin  = `echo           catch${inens}`
+        set pertin = `echo        landpert${inens}`
+        set seedin = `echo    obspertrseed${inens}`
+    endif
+
+    /bin/ln -s ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.catch_internal_rst.${date} ${catin}_internal_rst
+
+    if (-e ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.landpert_internal_rst.${date}.gz ) then  
+      gunzip ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.landpert_internal_rst.${date}.gz 
+    endif 
+
+    /bin/ln -s ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.landpert_internal_rst.${date} ${pertin}_internal_rst
+
+    /bin/ln -s ${rsout}/${ENSDIR}/Y${yin}/M${min}/${expid}.landassim_obspertrseed_rst.${date} landassim_${seedin}_rst
+
+    @ inens ++
+end
 
 ## -- remove records in rc_out 
 cd  ${rundir}/${expid}/output/${grid}/rc_out/Y${yin}/M${min} 
@@ -109,3 +114,4 @@ cd  ${rundir}/${expid}/run
 /bin/rm -rf cap_restart
 echo $nymd ${nhms} > cap_restart 
 
+## EOF ####################################################################
