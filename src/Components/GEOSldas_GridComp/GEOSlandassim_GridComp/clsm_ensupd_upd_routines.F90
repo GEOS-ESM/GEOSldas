@@ -1727,9 +1727,7 @@ contains
                 ! for EASE grids *ONLY*: screen for non-land surfaces (e.g., lakes)
                 ! - reichle, 28 Mar 2015
                 
-                if   (                                                                 &
-                     (index(tile_grid_g%gridtype, 'EASE_M')  /=0) .or.                 &
-                     (index(tile_grid_g%gridtype, 'EASEv2_M')/=0)       )  then
+                if (index(tile_grid_g%gridtype, 'EASEv')  /=0) then
                    
                    ! ASSUMPTIONS: 
                    !  - at most one land tile per grid cell
@@ -3236,8 +3234,7 @@ contains
        pert_grid_lH%ur_lon = pert_grid_lH%ll_lon + delta_lon
        pert_grid_lH%ur_lat = pert_grid_lH%ll_lat + delta_lat
        
-    elseif ( (index(pert_grid_lH%gridtype,'EASE_M')  /=0)     .or.          &
-             (index(pert_grid_lH%gridtype,'EASEv2_M')/=0)          )  then
+    elseif ( index(pert_grid_lH%gridtype,'EASEv')  /=0 ) then
        
        pert_grid_lH%dlon   = pert_grid_f%dlon
        

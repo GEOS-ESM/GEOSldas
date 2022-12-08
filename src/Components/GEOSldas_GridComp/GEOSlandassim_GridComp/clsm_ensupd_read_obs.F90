@@ -21,9 +21,9 @@ module clsm_ensupd_read_obs
   use io_hdf5,                          ONLY:     &
        hdf5read 
 
-  use LDAS_ease_conv,                   ONLY:     &
-       easeV2_convert,                            &
-       easeV2_extent
+  use EASE_conv,                        ONLY:     &
+       ease_convert,                              &
+       ease_extent
   
   use LDAS_ensdrv_globals,              ONLY:     &
        logit,                                     &
@@ -4919,12 +4919,12 @@ contains
                 
                    if (tmp_tile_num(ii)>0) then
                       
-                      call easeV2_convert('M36',                  &
+                      call ease_convert('EASEv2_M36',             &
                            tile_coord(tmp_tile_num(ii))%com_lat,  &
                            tile_coord(tmp_tile_num(ii))%com_lon,  &
                            M36_col_ind_tile, M36_row_ind_tile  )
                       
-                      call easeV2_convert('M36',                  &
+                      call ease_convert('EASEv2_M36',             &
                            tmp_lat(ii),                           &
                            tmp_lon(ii),                           &
                            M36_col_ind_obs,  M36_row_ind_obs  )
@@ -5610,12 +5610,12 @@ contains
                    
                    if (tmp_tile_num(ii)>0) then
                       
-                      call easeV2_convert('M09',                  &
+                      call ease_convert('EASEv2_M09',                  &
                            tile_coord(tmp_tile_num(ii))%com_lat,  &
                            tile_coord(tmp_tile_num(ii))%com_lon,  &
                            M09_col_ind_tile, M09_row_ind_tile  )
                       
-                      call easeV2_convert('M09',                  &
+                      call ease_convert('EASEv2_M09',                  &
                            tmp_lat(ii),                           &
                            tmp_lon(ii),                           &
                            M09_col_ind_obs,  M09_row_ind_obs  )
@@ -6601,7 +6601,7 @@ contains
              
              ! shift M36 obs lat/lon for proper assignment of M09 tile?
              
-             if ( L1C_files .and. (index(tile_grid_d%gridtype, 'EASEv2_M09')  /=0) ) then
+             if ( L1C_files .and. (index(tile_grid_d%gridtype, 'EASEv2_M09')  /=0 .or. index(tile_grid_d%gridtype, 'EASEv2-M09')  /=0 )) then
                 
                 ! temporarily shift lat/lon of obs for computation of nearest tile to
                 ! avoid ambiguous assignment of M09 model tile within M36 obs grid cell
@@ -6668,12 +6668,12 @@ contains
                    
                    if (tmp_tile_num(ii)>0) then
                       
-                      call easeV2_convert('M36',                  &
+                      call ease_convert('EASEv2_M36',                  &
                            tile_coord(tmp_tile_num(ii))%com_lat,  &
                            tile_coord(tmp_tile_num(ii))%com_lon,  &
                            M36_col_ind_tile, M36_row_ind_tile  )
                       
-                      call easeV2_convert('M36',                  &
+                      call ease_convert('EASEv2_M36',                  &
                            tmp_lat(ii),                           &
                            tmp_lon(ii),                           &
                            M36_col_ind_obs,  M36_row_ind_obs  )
@@ -6969,7 +6969,7 @@ contains
        !
        ! assemble 36 km EASEv2 mask of L2AP_Tb obs 
 
-       call easeV2_extent( 'M36', N_cols, N_rows )
+       call ease_extent( 'EASEv2_M36', N_cols, N_rows )
        
        allocate( mask_h_A(N_cols,N_rows) )
        allocate( mask_h_D(N_cols,N_rows) )
@@ -6991,7 +6991,7 @@ contains
                 
                 if  (Observations_f(ii)%species==species_L2AP_Tbh_A) then  
                    
-                   call easeV2_convert('M36', Observations_f(ii)%lat, Observations_f(ii)%lon, &
+                   call ease_convert('EASEv2_M36', Observations_f(ii)%lat, Observations_f(ii)%lon, &
                         col, row)
 
                    ! set mask=.true. for the M36 grid cell that contains the L2AP_Tb obs;
@@ -7013,7 +7013,7 @@ contains
                 
                 if  (Observations_f(ii)%species==species_L2AP_Tbh_D) then  
                    
-                   call easeV2_convert('M36', Observations_f(ii)%lat, Observations_f(ii)%lon, &
+                   call ease_convert('EASEv2_M36', Observations_f(ii)%lat, Observations_f(ii)%lon, &
                         col, row)
 
                    ! set mask=.true. for the M36 grid cell that contains the L2AP_Tb obs;
@@ -7035,7 +7035,7 @@ contains
                 
                 if  (Observations_f(ii)%species==species_L2AP_Tbv_A) then  
                    
-                   call easeV2_convert('M36', Observations_f(ii)%lat, Observations_f(ii)%lon, &
+                   call ease_convert('EASEv2_M36', Observations_f(ii)%lat, Observations_f(ii)%lon, &
                         col, row)
 
                    ! set mask=.true. for the M36 grid cell that contains the L2AP_Tb obs;
@@ -7057,7 +7057,7 @@ contains
                 
                 if  (Observations_f(ii)%species==species_L2AP_Tbv_D) then  
                    
-                   call easeV2_convert('M36', Observations_f(ii)%lat, Observations_f(ii)%lon, &
+                   call ease_convert('EASEv2_M36', Observations_f(ii)%lat, Observations_f(ii)%lon, &
                         col, row)
 
                    ! set mask=.true. for the M36 grid cell that contains the L2AP_Tb obs;
@@ -7092,7 +7092,7 @@ contains
              
              if (Observations_l(ii)%species==species_L1C_Tbh_A) then  
                 
-                call easeV2_convert('M36',                                      &
+                call ease_convert('EASEv2_M36',                                      &
                      Observations_l(ii)%lat, Observations_l(ii)%lon, col, row)
                 
                 ! note conversion to one-based indices
@@ -7111,7 +7111,7 @@ contains
              
              if (Observations_l(ii)%species==species_L1C_Tbh_D) then  
                 
-                call easeV2_convert('M36',                                      &
+                call ease_convert('EASEv2_M36',                                      &
                      Observations_l(ii)%lat, Observations_l(ii)%lon, col, row)
                 
                 ! note conversion to one-based indices
@@ -7132,7 +7132,7 @@ contains
              
              if (Observations_l(ii)%species==species_L1C_Tbv_A) then  
                 
-                call easeV2_convert('M36',                                      &
+                call ease_convert('EASEv2_M36',                                      &
                      Observations_l(ii)%lat, Observations_l(ii)%lon, col, row)
                 
                 ! note conversion to one-based indices
@@ -7151,7 +7151,7 @@ contains
              
              if (Observations_l(ii)%species==species_L1C_Tbv_D) then  
                 
-                call easeV2_convert('M36',                                      &
+                call ease_convert('EASEv2_M36',                                      &
                      Observations_l(ii)%lat, Observations_l(ii)%lon, col, row)
                 
                 ! note conversion to one-based indices
