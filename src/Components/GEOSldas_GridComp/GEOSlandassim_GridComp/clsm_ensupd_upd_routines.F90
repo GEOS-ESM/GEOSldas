@@ -4546,7 +4546,7 @@ contains
                    
                    ! REMOVE SNOW: IF SCA of model is greater than observed SCA
                    
-                   swe_incr(kk,n_e) = (-1.) *  max_incr_swe * (1. - Observations(ind_obs(1))%obs/beta_threshold)
+                   swe_incr(kk,n_e) = (-1.) *  max_incr_swe * asnow_fcst * (1. - Observations(ind_obs(1))%obs/beta_threshold)
                    
                 else 
                    
