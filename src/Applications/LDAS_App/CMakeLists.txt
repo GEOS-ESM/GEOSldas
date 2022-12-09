@@ -27,6 +27,7 @@ set (scripts
    ens_forcing/ensemble_forc.py 
    ens_forcing/regrid_forc.csh 
    ens_forcing/enpert_forc.csh
+   util/config/rewind_GEOSldas.csh
    )
 
 install (
