@@ -1548,6 +1548,405 @@ contains
     if (associated(tmp_lat))      deallocate(tmp_lat)
 
   end subroutine read_obs_sm_ASCAT
+  
+  ! ****************************************************************************
+
+  subroutine read_obs_sm_ASCAT_EUMET(                                  &
+       work_path, exp_id,                                        &
+       date_time, dtstep_assim, N_catd, tile_coord,              &
+       tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
+       this_obs_param,                                           &
+       found_obs, sm_ASCAT, std_sm_ASCAT )
+    
+    !---------------------------------------------------------------------
+    ! 
+    ! Routine to read in ASCAT surface degree of saturation obs. 
+    ! Output is found_obs, sm_ASCAT, std_sm_ASCAT 
+    !
+    ! Read in the EUMETSAT level 2 soil mositure product 25 km (SMO), PPF software version 5.0 
+    ! the data correspond to re-sampled (spatially averaged) sigma0 values, on a 25 km
+    ! orbit swath grid. The input data files are in BUFR file format.
+    !
+    !  Q. Liu, Nov. 2019.  
+    ! based on read_obs_sm_ASCAT
+    ! --------------------------------------------------------------------
+        
+    implicit none
+    
+    ! inputs:
+    
+    character(*), intent(in) :: work_path
+    character(*),  intent(in) :: exp_id
+
+    type(date_time_type), intent(in) :: date_time
+    
+    integer, intent(in) :: dtstep_assim, N_catd
+    
+    type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+    
+    type(grid_def_type), intent(in) :: tile_grid_d
+    
+    integer, dimension(tile_grid_d%N_lon,tile_grid_d%N_lat), intent(in) :: &
+         N_tile_in_cell_ij
+    
+    integer, dimension(:,:,:), pointer :: tile_num_in_cell_ij   ! input
+    
+    type(obs_param_type), intent(in) :: this_obs_param
+    
+    ! outputs:
+    
+    real,    intent(out), dimension(N_catd) :: sm_ASCAT   ! wetness range 0-1
+    real,    intent(out), dimension(N_catd) :: std_sm_ASCAT
+    logical, intent(out)                    :: found_obs
+    
+    ! ---------------
+    
+    ! Each obs file contains about 1 hour 40 minutes observations
+    ! file name indicates the start time of the swaths.  
+    ! "ae_time_offset" is used to find the mean time of the the interval
+    ! which is approximately the time of the equator overpass.
+    ! This time is assigned to all observations of the swath.
+
+    ! Will need to be updated if using EUMETSAT BUFR files
+
+    integer, parameter :: ae_time_offset = 3600   ! 60 minutes in seconds
+    
+    character(4)   :: DDHH
+    character(6)   :: YYYYMM
+    character(8)   :: date_string
+    character(10)  :: time_string
+    character(300) :: tmpfname, tmpfname2
+    character(400) :: cmd
+
+    type(date_time_type) :: date_time_tmp
+    type(date_time_type) :: date_time_low
+    type(date_time_type) :: date_time_upp
+    
+    integer :: i, ind, N_tmp, N_files
+
+    character(300), dimension(:), allocatable :: fnames
+ 
+    real(8) :: tmp_data, tmp_vdata(4), tmp_time(6) 
+    integer, parameter :: lnbufr = 50
+    integer, parameter :: max_rec = 200000 
+    integer :: idate,iret,kk
+    integer :: ireadmg,ireadsb
+    character(8)  :: subset
+    real,  dimension(:),     allocatable  :: tmp1_lon, tmp1_lat, tmp1_obs
+
+    real,    dimension(:), pointer :: tmp_obs, tmp_lat, tmp_lon
+    integer, dimension(:), pointer :: tmp_tile_num
+
+    integer, dimension(N_catd) :: N_obs_in_tile    
+
+    real, parameter :: tol = 1e-2
+
+    character(len=*), parameter :: Iam = 'read_obs_sm_ASCAT_EUMET'
+    character(len=400) :: err_msg
+
+    ! -------------------------------------------------------------------
+    
+    nullify( tmp_obs, tmp_lat, tmp_lon, tmp_tile_num )    
+    
+    ! ---------------
+    
+    ! initialize
+    
+    found_obs = .false.
+
+    ! find files that are within half-open interval 
+    ! [date_time-dtstep_assim/2,date_time+dtstep_assim/2)
+
+    date_time_low = date_time    
+    call augment_date_time( -(dtstep_assim/2), date_time_low)
+    date_time_upp = date_time    
+    call augment_date_time(  (dtstep_assim/2), date_time_upp)
+
+    ! for ASCAT file name stamp
+    date_time_tmp = date_time 
+    call augment_date_time( -(dtstep_assim/2 + ae_time_offset), date_time_tmp )
+    
+    ! get tmp file name and remove file if it exists
+    
+    call date_and_time(date_string, time_string)  ! f90 intrinsic function
+    
+    tmpfname = trim(work_path) // '/' // 'tmp.' // trim(exp_id) &
+         // '.' // date_string // time_string
+
+    cmd = '/bin/rm -f ' // tmpfname 
+    
+    call Execute_command_line(trim(cmd))
+    
+    ! identify all files within current assimilation interval
+    ! (list all files within hourly intervals)
+   
+    ! Every EUMETSTA BUFR contains data over ~2 hr sensing period. it's necessary to
+    ! search additional files for obs. 
+    do i=1,(dtstep_assim/3600)+2
+       
+       write (YYYYMM,'(i6.6)') date_time_tmp%year*100 + date_time_tmp%month
+       write (DDHH,  '(i4.4)') date_time_tmp%day *100 + date_time_tmp%hour
+       
+       ! EUMETSAT BUFR
+       cmd = 'ls ' // trim(this_obs_param%path) // '/Y' // YYYYMM(1:4) // &
+            '/M' // YYYYMM(5:6) // '/' // trim(this_obs_param%name) // '*-'&
+            // YYYYMM // DDHH // '*Z-*.bfr' 
+       
+       cmd = trim(cmd) // ' >> ' // trim(tmpfname)
+       
+       call Execute_command_line(trim(cmd))
+       
+       call augment_date_time( 3600, date_time_tmp )
+       
+    end do
+    
+    ! find out how many need to be read
+    
+    tmpfname2 = trim(tmpfname) // '.wc'
+    
+    cmd = 'wc -w ' // trim(tmpfname) // ' > ' // trim(tmpfname2)
+    
+    call Execute_command_line(trim(cmd))
+    
+    open(10, file=tmpfname2, form='formatted', action='read')
+    
+    read(10,*) N_files
+    
+    close(10,status='delete')
+    
+    ! load file names into "fnames"
+    
+    open(10, file=tmpfname,  form='formatted', action='read')
+    
+    if (N_files>0) then
+       
+       allocate(fnames(N_files))
+       
+       do i=1,N_files
+          read(10,'(a)') fnames(i)
+          write(logunit,*) trim(fnames(i))
+       end do
+       
+    end if
+    
+    close(10,status='delete')
+    
+    ! read observations:
+    !
+    ! 1.) read N_tmp observations and their lat/lon info from file
+    ! 2.) for each observation
+    !     a) determine grid cell that contains lat/lon
+    !     b) determine tile within grid cell that contains lat/lon
+    ! 3.) compute super-obs for each tile from all obs w/in that tile
+    !
+    ! ----------------------------------------------------------------
+    !
+    ! 1.) read N_tmp observations and their lat/lon info from file
+
+    ! read and process data if files are found
+    allocate(tmp1_lon(max_rec))
+    allocate(tmp1_lat(max_rec))
+    allocate(tmp1_obs(max_rec))
+
+    if (N_files>0) then
+       
+       ! file loop
+       N_tmp = 0
+       do kk = 1,N_files
+
+          ! open on bufr file
+          call closbf(lnbufr)
+          open(lnbufr, file=trim(fnames(kk)), action='read',form='unformatted')
+          call openbf(lnbufr,'SEC3', lnbufr)
+          call MTINFO( trim(this_obs_param%path) // '/BUFR_mastertable/', 51, 52)
+          call datelen(10)
+         
+          msg_report: do while(ireadmg(lnbufr,subset,idate) ==0)  
+            loop_report: do while(ireadsb(lnbufr) == 0)
+            ! extract sensing time information 
+                 call ufbint(lnbufr,tmp_time,6,1,iret,'YEAR MNTH DAYS HOUR MINU SECO')
+                 date_time_tmp.year = int(tmp_time(1))
+                 date_time_tmp.month = int(tmp_time(2)) 
+                 date_time_tmp.day = int(tmp_time(3))
+                 date_time_tmp.hour = int(tmp_time(4))
+                 date_time_tmp.min = int(tmp_time(5))
+                 date_time_tmp.sec = int(tmp_time(6))
+                 ! skip if record outside of current assim window
+                 if ( datetime_lt_refdatetime( date_time_low, date_time_tmp ) .and.        &
+                      datetime_le_refdatetime( date_time_tmp, date_time_upp )) cycle loop_report
+                 
+                 ! skip if record contain no valid soil moisture value
+                 call ufbint(lnbufr,tmp_data,1,1,iret,'SSOM')
+                 if(tmp_data > 100. .or. tmp_data < 0.) cycle loop_report
+
+                 ! EUMETSAT file contains data of both ascending and descending orbits. 
+                 ! DOMO - “Direction of motion of moving observing platform” is used to seperate Asc and Desc
+                 ! because the file doesn't contain any explicit orbit indicator variable.
+                 ! according to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk 
+                 ! "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
+                 ! of the orbit … when it is between 270 and 360 degrees, it is the ascending part"
+                 call ufbint(lnbufr,tmp_data,1,1,iret,'DOMO')
+                 if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data < 270 .or. tmp_data > 360)) cycle loop_report
+                 if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data < 180 .or. tmp_data >= 270)) cycle loop_report
+                  
+                 ! skip if processing flag is set               
+                 call ufbint(lnbufr,tmp_data,1,1,iret,'SMPF')
+                 if(int(tmp_data) /= 0) cycle loop_report
+
+                 ! skip if correction flag is set               
+                 call ufbint(lnbufr,tmp_data,1,1,iret,'SMCF')
+                 if(int(tmp_data) /= 0) cycle loop_report
+
+                 ! skip if land fraction is missing or < 0.9
+                 call ufbint(lnbufr,tmp_data,1,1,iret,'ALFR')
+                 if(tmp_data >1 .or. tmp_data < 0.9 ) cycle loop_report
+
+                 ! additioanal QC varibles from file               
+                 !call ufbint(lnbufr,tmp_data,1,1,iret,'TPCX') ! topo complexity
+                 !call ufbint(lnbufr,tmp_data,1,1,iret,'IWFR') ! Inundation And Wetland Fraction
+                 !call ufbint(lnbufr,tmp_data,1,1,iret,'SNOC') ! snow cover
+                 !call ufbint(lnbufr,tmp_data,1,1,iret,'FLSF') ! frozen land fraction
+
+                 N_tmp = N_tmp + 1
+                 call ufbint(lnbufr,tmp_vdata,4,1,iret,'CLATH CLONH SSOM EESSM')
+                 tmp1_lat(N_tmp) = tmp_vdata(1) 
+                 tmp1_lon(N_tmp) = tmp_vdata(2) 
+                 tmp1_obs(N_tmp) = tmp_vdata(3)/100.  ! change value from 0-100 to 0-1
+                 !tmp_obserr(N_tmp) = tmp_vdata(4)
+
+            end do loop_report
+
+          end do msg_report
+          call closbf(lnbufr)
+          close(lnbufr)
+
+       end do ! end file loop
+
+       if (logit) then
+          
+          write (logunit,*) 'read_obs_sm_ASCAT_EUMET: read ', N_tmp,  &
+               ' at date_time = ', date_time, ' from '
+          do i=1,N_files
+             write (logunit,*) trim(fnames(i))
+          end do
+          write (logunit,*) '----------'
+          write (logunit,*) 'max(obs)=',maxval(tmp1_obs(1:N_tmp)), 'min(obs)=',minval(tmp1_obs(1:N_tmp)), &
+               ' avg(obs)=',sum(tmp1_obs(1:N_tmp))/N_tmp
+       end if
+
+       deallocate(fnames)
+    else
+       N_tmp = 0
+       
+    end if
+
+    allocate(tmp_lon(N_tmp))
+    allocate(tmp_lat(N_tmp))
+    allocate(tmp_obs(N_tmp))
+
+    tmp_lon = tmp1_lon(1:N_tmp)
+    tmp_lat = tmp1_lat(1:N_tmp)
+    tmp_obs = tmp1_obs(1:N_tmp)
+   
+    deallocate(tmp1_lon)
+    deallocate(tmp1_lat)
+    deallocate(tmp1_obs) 
+
+    ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !
+    ! SOME QC SHOULD BE DONE HERE!!!
+    !
+    ! MAKE SURE no-data-values ARE DEALT WITH
+    !
+    ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
+    ! ----------------------------------------------------------------
+    !
+    ! 2.) for each observation
+    !     a) determine grid cell that contains lat/lon
+    !     b) determine tile within grid cell that contains lat/lon
+
+    if (N_tmp>0) then
+       
+       allocate(tmp_tile_num(N_tmp))
+       
+       call get_tile_num_for_obs(N_catd, tile_coord,                 &
+            tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,     &
+            N_tmp, tmp_lat, tmp_lon,                                 &
+            this_obs_param,                                          &
+            tmp_tile_num )
+ 
+       
+       ! ----------------------------------------------------------------
+       !
+       ! 3.) compute super-obs for each tile from all obs w/in that tile
+       !     (also eliminate observations that are not in domain)
+       
+       sm_ASCAT = 0.
+       N_obs_in_tile  = 0
+       
+       do i=1,N_tmp
+          
+          ind = tmp_tile_num(i)   ! 1<=tmp_tile_num<=N_catd (unless nodata)
+          
+          if (ind>0) then         ! this step eliminates obs outside domain
+             
+             sm_ASCAT(ind) = sm_ASCAT(ind) + tmp_obs(i)
+             
+             N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
+             
+          end if
+          
+       end do
+       
+       ! normalize
+       
+       do i=1,N_catd
+          
+          if (N_obs_in_tile(i)>1) then
+             
+             sm_ASCAT(i) = sm_ASCAT(i)/real(N_obs_in_tile(i))
+          
+          elseif (N_obs_in_tile(i)==0) then
+             
+             sm_ASCAT(i) = this_obs_param%nodata
+             
+          end if
+          
+       end do
+       
+       ! clean up
+       
+       if (associated(tmp_tile_num)) deallocate(tmp_tile_num)
+       
+       ! --------------------------------
+       
+       ! set observation error standard deviation
+
+         do i=1,N_catd
+	      std_sm_ASCAT(i) = this_obs_param%errstd
+         enddo
+       ! --------------------------------
+       
+       if (any(N_obs_in_tile>0)) then
+        
+          found_obs = .true.
+          
+       else 
+          
+          found_obs = .false.
+          
+       end if
+       
+    end if
+    
+    ! clean up
+    
+    if (associated(tmp_obs))      deallocate(tmp_obs)
+    if (associated(tmp_lon))      deallocate(tmp_lon)
+    if (associated(tmp_lat))      deallocate(tmp_lat)
+
+  end subroutine read_obs_sm_ASCAT_EUMET
 
   ! ***************************************************************************
 
@@ -7043,6 +7442,26 @@ contains
                 tmp_obs, tmp_std_obs )
            
         end if
+        
+    case ('ASCAT_META_SM_A', 'ASCAT_META_SM_D','ASCAT_METB_SM_A', 'ASCAT_METB_SM_D' )
+      
+        call read_obs_sm_ASCAT_EUMET(                                        &
+             work_path, exp_id,                                        &
+             date_time, dtstep_assim, N_catd, tile_coord,              &
+             tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
+             this_obs_param,                                           &
+             found_obs, tmp_obs, tmp_std_obs )
+        
+        ! scale observations to model climatology
+        
+        if (this_obs_param%scale .and. found_obs) then
+
+           scaled_obs = .true.
+
+           call scale_obs_sfmc_cdf( N_catd, tile_coord, this_obs_param,   &
+                tmp_obs, tmp_std_obs )
+           
+        end if        
 
     case ('isccp_tskin_gswp2_v1')
        
