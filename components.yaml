@@ -19,6 +19,12 @@ ecbuild:
   remote: ../ecbuild.git
   tag: geos/v1.3.0
 
+NCEP_Shared:
+  local: ./src/Shared/@NCEP_Shared
+  remote: ../NCEP_Shared.git
+  tag: v1.2.0
+  develop: main
+
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
