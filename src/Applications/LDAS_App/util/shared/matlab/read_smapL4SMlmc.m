@@ -12,8 +12,11 @@ function [ lmc, units ] = read_smapL4SMlmc( fname, N_tile, isLDASsa);
 %                       - revised fieldnames for consistency with L4_SM Product Specs Doc
 % reichle, 27 May 2014: - changed wilting point output from "clsm_wpwet" to "clsm_wp"
 % reichle, 17 Nov 2015: - added "veghght" output
+% reichle, 28 Jul 2022 - cleaned up LDASsa/GEOSldas switch for commit into GEOSldas repo
 
 % ----------------------------------------------------------------
+
+if ~exist('isLDASsa','var')  isLDASsa = 0; end  % default is GEOSldas output
 
 % for backward compatibility, back out number of parameters in file
 % from file size:
@@ -43,7 +46,7 @@ float_precision = 'float32';    % precision of data in input file
 
 disp(['read_smapL4SMlmc.m: reading from ', fname])
 
-if exist('isLDASsa','var') && isLDASsa == 1
+if isLDASsa ~= 0
   machfmt = 'b'; % big-endian, LDASsa
 else
   machfmt = 'l'; % little-endian, GEOSldas

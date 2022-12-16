@@ -18,30 +18,30 @@ program main
   implicit none
   
   character(len=20 ) :: option
-  character(len=200) :: arg1
-  character(len=200) :: arg2
-  character(len=200) :: arg3
-  character(len=200) :: arg4
-  character(len=200) :: arg5
-  character(len=200) :: arg6
-  character(len=200) :: arg7
+  character(len=512) :: arg1
+  character(len=512) :: arg2
+  character(len=512) :: arg3
+  character(len=512) :: arg4
+  character(len=512) :: arg5
+  character(len=512) :: arg6
+  character(len=512) :: arg7
   
-  character(len=200) :: orig_tile
-  character(len=200) :: new_tile
-  character(len=200) :: domain_def_file
-  character(len=200) :: catch_def_file
-  character(len=200) :: out_path 
-  character(len=200) :: exp_id 
-  character(len=200) :: orig_catch
-  character(len=200) :: new_rtm
-  character(len=200) :: orig_rtm
-  character(len=200) :: new_catch
-  character(len=200) :: orig_BC
-  character(len=200) :: new_BC
-  character(len=200) :: orig_Veg
-  character(len=200) :: new_veg
-  character(len=200) :: orig_ease
-  character(len=200) :: new_ease
+  character(len=512) :: orig_tile
+  character(len=512) :: new_tile
+  character(len=512) :: domain_def_file
+  character(len=512) :: catch_def_file
+  character(len=512) :: out_path 
+  character(len=512) :: exp_id 
+  character(len=512) :: orig_catch
+  character(len=512) :: new_rtm
+  character(len=512) :: orig_rtm
+  character(len=512) :: new_catch
+  character(len=512) :: orig_BC
+  character(len=512) :: new_BC
+  character(len=512) :: orig_Veg
+  character(len=512) :: new_veg
+  character(len=512) :: orig_ease
+  character(len=512) :: new_ease
   character(len=12 ) :: ymdhm
   character(len=12 ) :: SURFLAY
   

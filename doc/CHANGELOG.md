@@ -33,6 +33,52 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
+[v17.12.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.12.0) - 2022-12-16
+------------------------------
+
+- Not zero-diff vs. v17.11.1 for simulations with data assimilation in EASE-grid tile space.  Simulations in EASE-grid tile space without data assimilation are zero-diff except for roundoff differences in “tilegrids” and “tilecoord” parameters (`ll_lat`, `ll_lon`, `ur_lat`, `ur_lon`, `dlon`, `dlat`, `area`). Zero-diff for simulations in cube-sphere tile space with and without data assimilation.
+
+- Science changes:
+  - Support for MODIS-based snow albedo (GEOSgcm_GridComp [PR#618](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/618)).
+  - Support for CatchCN ensemble simulations ([PR #584](https://github.com/GEOS-ESM/GEOSldas/pull/584), GEOSgcm_GridComp [PR#645](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/645)).
+ 
+- Utilities:
+  - Re-mapping of restart files ([PR #551](https://github.com/GEOS-ESM/GEOSldas/pull/551), GMAO_Shared [PR#238](https://github.com/GEOS-ESM/GMAO_Shared/pull/238), GEOSgcm_GridComp [PR#571](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/571) and [PR#658](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/658)):
+    - New GMAO_Shared utility `remap_restarts.py`, including fixes to re-mapping of CatchCN restart variables (not fixed for `regrid.pl`).
+    - Deprecated perl script `regrid.pl`.
+    - New GEOSldas utility `process_rst.py` (replaces `process_rst.csh`).
+    - Re-mapping of LDASsa-formatted binary restarts is no longer supported.
+    - Trivial non-zero diff changes (presence/absence) in optional restart fields (`TSURF`, `WW`, `FR`, `CQ`, `CH`).
+    - Major cleanup of Catch[CN]-related routines for processing restarts in GEOSldas and GEOSgcm_GridComp.
+    - Updated `ldas_setup` to python3.
+  - Further cleanup and reorganization of EASE grid utilities and make_bcs ([PR #586](https://github.com/GEOS-ESM/GEOSldas/pull/586), GEOSgcm_GridComp [PR#601](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/601) and [PR#634]( https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/634)):
+    - Unified source code for EASEv1 and EASEv2 utilities, which causes roundoff differences.     
+  - Reorganized and added utilities in LDAS_App ([PR #569](https://github.com/GEOS-ESM/GEOSldas/pull/569)):
+    - Added matlab routines for generation of Tb scaling parameters, mwRTM parameters, and climatology files.
+    - Added LADAS-related utilities and sample config files, incl. option for ensemble forcing of LDAS coupled to deterministic simulation in Hybrid4DEnVar.
+    - Added script for rewinding existing GEOSldas run ([PR #606](https://github.com/GEOS-ESM/GEOSldas/pull/606)).
+
+- Interface:
+  - Increased character length of string variables to avoid truncation of input file paths/names ([PR #574](https://github.com/GEOS-ESM/GEOSldas/pull/574)).
+  - Changed ensemble member identifier string in HISTORY.rc to “_e[XXXX]” ([PR #584](https://github.com/GEOS-ESM/GEOSldas/pull/584)).
+  - Restored GEOSldas “debug” mode ([PR #587](https://github.com/GEOS-ESM/GEOSldas/pull/587), [PR #589](https://github.com/GEOS-ESM/GEOSldas/pull/589), and [PR #591](https://github.com/GEOS-ESM/GEOSldas/pull/591)).
+
+- Infrastructure:
+  - Updated environment, CMake, ecbuild, and MAPL ([PR #604](https://github.com/GEOS-ESM/GEOSldas/pull/604)):
+    - ESMA_env v4.8.0
+    - ESMA_cmake v3.21.0
+    - ecbuild v1.3.0
+    - MAPL 2.33.0
+  - GMAO_Shared v1.6.3
+  - GEOSgcm_GridComp v1.17.2
+
+- Documentation:
+  - Added README_LDAS_App ([PR #569](https://github.com/GEOS-ESM/GEOSldas/pull/569))
+
+- Bug fixes and other minor changes:
+  -  Fixed units labels of several CatchCNCLM45 restart variables (GEOSgcm_GridComp [PR#660](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/660))
+ 
+------------------------------
 [v17.11.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.11.1) - 2022-06-15
 ------------------------------
 
@@ -50,6 +96,7 @@ Overview of Git Releases:
 - Bug fixes and other minor changes:
   - Corrected exports for water table depth and free-standing water change over peat ([PR #556](https://github.com/GEOS-ESM/GEOSldas/pull/556), [GEOSgcm_GridComp PR #593](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/593)).
  
+------------------------------
 [v17.11.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.11.0) - 2022-03-04
 ------------------------------
 
