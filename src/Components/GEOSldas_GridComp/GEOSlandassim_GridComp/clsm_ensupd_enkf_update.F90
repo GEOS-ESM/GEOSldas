@@ -73,9 +73,8 @@ module clsm_ensupd_enkf_update
   use nr_ran2_gasdev,                   ONLY:     &
        NRANDSEED
 
-  use LDAS_ease_conv,                   ONLY:     &
-       easeV1_convert,                            &
-       easeV2_convert
+  use ease_conv,                        ONLY:     &
+       ease_convert
 
   use my_matrix_functions,              ONLY:     &
        row_std
@@ -2100,14 +2099,14 @@ contains
 
     character(len=*), parameter :: Iam = 'write_smapL4SMaup'
     character(len=400) :: err_msg
+    character(len=10)  :: gridname_tmp
 
     ! --------------------------------------------------------------
     !
     ! smapL4SMaup output only works for 9 km EASE grids
 
-    if ( (trim(tile_grid_g%gridtype)/='EASE_M09'  )  .and.                  &
-         (trim(tile_grid_g%gridtype)/='EASEv2_M09')         )               then
-       err_msg = 'out_smapL4SMaup requires tile-space for 9 km EASE[v2] grid'
+    if ( index(tile_grid_g%gridtype, 'M09') == 0  ) then
+       err_msg = 'out_smapL4SMaup requires tile-space for 9 km EASEv1 or EASEv2 grid'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
 
@@ -2228,17 +2227,11 @@ contains
                   'SMAP_L1C_Tbh_E09_D', 'SMAP_L1C_Tbv_E09_D',   &
                   'SMAP_L1C_Tbh_E09_A', 'SMAP_L1C_Tbv_E09_A'    &
                   )
-                
-                if     (trim(tile_grid_g%gridtype)=='EASE_M09')   then
-                   
-                   call easeV1_convert('M09', this_lat, this_lon, col_ind, row_ind)
-                   
-                elseif (trim(tile_grid_g%gridtype)=='EASEv2_M09') then
-                   
-                   call easeV2_convert('M09', this_lat, this_lon, col_ind, row_ind)
-                   
-                end if
-                
+               
+                if (index(tile_grid_g%gridtype, 'M09') /=0) then 
+                   call  ease_convert(trim(tile_grid_g%gridtype), this_lat, this_lon, col_ind, row_ind)                
+                endif
+
                 ! col_ind and row_ind are zero-based, need one-based index here
                 
                 col_beg_9km(n) = nint(col_ind)+1
@@ -2253,16 +2246,10 @@ contains
              case('SMAP_L1C_Tbh_E27_D', 'SMAP_L1C_Tbv_E27_D',   &
                   'SMAP_L1C_Tbh_E27_A', 'SMAP_L1C_Tbv_E27_A'    &
                   )
-                
-                if     (trim(tile_grid_g%gridtype)=='EASE_M09')   then
-                   
-                   call easeV1_convert('M09', this_lat, this_lon, col_ind, row_ind)
-                   
-                elseif (trim(tile_grid_g%gridtype)=='EASEv2_M09') then
-                   
-                   call easeV2_convert('M09', this_lat, this_lon, col_ind, row_ind)
-                   
-                end if
+
+                if (index(tile_grid_g%gridtype, 'M09') /=0) then
+                   call  ease_convert(trim(tile_grid_g%gridtype), this_lat, this_lon, col_ind, row_ind)             
+                endif                
                 
                 ! col_ind and row_ind are zero-based, need one-based index here
                 ! L1C E27 spacing is one every three in each direction (~27-km spacing)
@@ -2282,16 +2269,12 @@ contains
                   'SMOS_fit_Tbh_A', 'SMOS_fit_Tbv_A'    &
                   )
                 
-                if     (trim(tile_grid_g%gridtype)=='EASE_M09')   then
-                   
-                   call easeV1_convert('M36', this_lat, this_lon, col_ind, row_ind)
-                   
-                elseif (trim(tile_grid_g%gridtype)=='EASEv2_M09') then
-                   
-                   call easeV2_convert('M36', this_lat, this_lon, col_ind, row_ind)
-                   
-                end if
-                
+                if (index(tile_grid_g%gridtype, 'M09') /=0) then
+                   ! subindex (1:7) to get the string EASEvx_
+                   gridname_tmp = tile_grid_g%gridtype(1:7)//'M36'
+                   call  ease_convert(gridname_tmp, this_lat, this_lon, col_ind, row_ind)                
+                endif
+
                 ! col_ind and row_ind are zero-based, need one-based index here
                 
                 col_beg_9km(n) =  nint(col_ind)   *4 + 1

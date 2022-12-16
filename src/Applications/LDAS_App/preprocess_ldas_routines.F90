@@ -118,8 +118,8 @@ contains
     character(*) :: SURFLAY
     
     real :: minlon,maxlon,minlat,maxlat
-    character(len=200):: exclude_file,include_file
-    character(len=300):: bcs_path
+    character(len=512):: exclude_file,include_file
+    character(len=512):: bcs_path
     logical :: file_exist
     logical :: d_exist,c_exist
     
@@ -420,7 +420,7 @@ contains
       
       type(grid_def_type) :: tmp_grid_def
       logical :: c3_grid 
-      character(300) :: fname
+      character(512) :: fname
       
       character(len=*), parameter :: Iam = 'domain_setup'
       character(len=400) :: err_msg
@@ -739,7 +739,7 @@ contains
       
       ! local variables
       
-      character(len=400) :: filename
+      character(len=512) :: filename
       
       integer :: i, istat
       
@@ -1405,7 +1405,7 @@ contains
     subroutine write_cat_param(cat_param, N_catd)
       type(cat_param_type), intent(in) :: cat_param(:)
       integer,intent(in) :: N_catd
-      character(len=300):: fname
+      character(len=512):: fname
       type(date_time_type) :: start_time
       
       integer :: k,n
@@ -1557,7 +1557,7 @@ contains
     character(*), intent(in) :: orig_tile
     character(*), intent(in) :: new_tile
     
-    character(len=200) :: line
+    character(len=256) :: line
     character(len=3)   :: MAPL_Land_STRING
     character(len=4)   :: MAPL_Land_ExcludeFromDomain_STRING
     character(len=400) :: err_msg
@@ -1972,7 +1972,7 @@ contains
     character(*),intent(in) :: new_ease
     logical :: file_exist,is_oldEASE
     integer :: i, N_tile, N_grid
-    character(len=200) :: tmpline
+    character(len=256) :: tmpline
     
     inquire(file=trim(orig_ease),exist=file_exist)
     if( .not. file_exist) stop (" no ease_tile_file")
@@ -2053,8 +2053,8 @@ contains
     integer :: avg_land,n0,local
     integer :: i,s,e,j,k,n1,n2
     logical :: file_exist
-    character(len=100):: tmpLine
-    character(len=100):: gridname
+    character(len=256):: tmpLine
+    character(len=128):: gridname
     real :: rate,rates(60),maxf(60)
     integer :: IMGLOB, JMGLOB
     integer :: face(6),face_land(6)
@@ -2855,8 +2855,9 @@ contains
     logical :: ease_grid
     integer :: typ,k,fid
     
-    character(200) :: tmpline,gridname
-    character(300) :: fname
+    character(256) :: tmpline
+    character(128) :: gridname
+    character(512) :: fname
 
     character(len=*), parameter :: Iam = 'LDAS_read_til_file'
 
@@ -2897,7 +2898,7 @@ contains
     call LDAS_create_grid_g( gridname, n_lon, n_lat,                        &
          tile_grid_g, i_indg_offset, j_indg_offset, ease_cell_area )
     
-    if (index(tile_grid_g%gridtype,'EASE')/=0)  ease_grid = .true.  ! 'EASE' and 'EASEv2'
+    if (index(tile_grid_g%gridtype,'EASE')/=0)  ease_grid = .true.  ! 'EASEv1' or 'EASEv2'
     if (index(tile_grid_g%gridtype,'SiB2')/=0)  col_order=1         ! old bcs
     
     allocate(tile_coord(N_tile))
@@ -2948,7 +2949,10 @@ contains
                   tile_coord(i)%frac_cell             !  7
              
              tile_coord(i)%frac_pfaf = nodata_generic
-             tile_coord(i)%area      = ease_cell_area*tile_coord(i)%frac_cell
+
+             ! compute area of tile in [km^2]  (units convention in tile_coord structure)
+
+             tile_coord(i)%area      = ease_cell_area*tile_coord(i)%frac_cell/1000./1000.  ! [km^2]
              
           else ! not ease grid
              
