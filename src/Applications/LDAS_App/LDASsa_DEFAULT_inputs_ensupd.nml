@@ -2064,6 +2064,164 @@ obs_param_nml(48)%ycorr          = 0.1875
 obs_param_nml(48)%adapt          = 0
 
 ! --------------------------------------------------------------------
+!
+!  49 = ASCAT_META_SM_A (ASCAT soil moisture ascending)
+!
+! ASCAT: VV-pol, incidence angle 25-65 deg
+! for now keep N_ang=0, pol=0
+! - reichle, 30 Jun 2015
+
+obs_param_nml(49)%descr          = 'ASCAT_META_SM_A'
+obs_param_nml(49)%orbit          = 1
+obs_param_nml(49)%pol            = 0
+obs_param_nml(49)%N_ang          = 0
+obs_param_nml(49)%freq           = 5.255e9
+obs_param_nml(49)%FOV            = 20.
+obs_param_nml(49)%FOV_units      = 'km'
+obs_param_nml(49)%assim          = .false.
+obs_param_nml(49)%scale          = .false.
+obs_param_nml(49)%getinnov       = .false.
+obs_param_nml(49)%RTM_ID         = 0
+obs_param_nml(49)%bias_Npar      = 0
+obs_param_nml(49)%bias_trel      = 864000
+obs_param_nml(49)%bias_tcut      = 432000
+obs_param_nml(49)%nodata         = -9999.
+obs_param_nml(49)%varname        = 'sfmc'
+obs_param_nml(49)%units          = 'm3/m3'
+obs_param_nml(49)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_A/'
+obs_param_nml(49)%name           = 'M02-ASCA-ASCSMO02'
+obs_param_nml(49)%scalepath      = ''
+obs_param_nml(49)%scalename      = ''
+obs_param_nml(49)%flistpath      = ''
+obs_param_nml(49)%flistname      = ''
+obs_param_nml(49)%errstd         = .04
+obs_param_nml(49)%std_normal_max = 2.5
+obs_param_nml(49)%zeromean       = .true.
+obs_param_nml(49)%coarsen_pert   = .false.
+obs_param_nml(49)%xcorr          = 0.25
+obs_param_nml(49)%ycorr          = 0.25
+obs_param_nml(49)%adapt          = 0
+
+! -------------------
+!
+!  50 = ASCAT_META_SM_D (ASCAT soil moisture descending)
+!
+! TO DO: What is pol of backscatter used in retrieval?
+! TO DO: How deal w/ inc angle?
+!        http://oiswww.eumetsat.org/WEBOPS/eps-pg/ASCAT/ASCAT-PG-4ProdOverview.htm
+
+obs_param_nml(50)%descr          = 'ASCAT_META_SM_D'
+obs_param_nml(50)%orbit          = 2
+obs_param_nml(50)%pol            = 0
+obs_param_nml(50)%N_ang          = 0
+obs_param_nml(50)%freq           = 5.255e9
+obs_param_nml(50)%FOV            = 20.
+obs_param_nml(50)%FOV_units      = 'km'
+obs_param_nml(50)%assim          = .false.
+obs_param_nml(50)%scale          = .false.
+obs_param_nml(50)%getinnov       = .false.
+obs_param_nml(50)%RTM_ID         = 0
+obs_param_nml(50)%bias_Npar      = 0
+obs_param_nml(50)%bias_trel      = 864000
+obs_param_nml(50)%bias_tcut      = 432000
+obs_param_nml(50)%nodata         = -9999.
+obs_param_nml(50)%varname        = 'sfmc'
+obs_param_nml(50)%units          = 'm3/m3'
+obs_param_nml(50)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_A/'
+obs_param_nml(50)%name           = 'M02-ASCA-ASCSMO02'
+obs_param_nml(50)%scalepath      = ''
+obs_param_nml(50)%scalename      = ''
+obs_param_nml(50)%flistpath      = ''
+obs_param_nml(50)%flistname      = ''
+obs_param_nml(50)%errstd         = .04
+obs_param_nml(50)%std_normal_max = 2.5
+obs_param_nml(50)%zeromean       = .true.
+obs_param_nml(50)%coarsen_pert   = .false.
+obs_param_nml(50)%xcorr          = 0.25
+obs_param_nml(50)%ycorr          = 0.25
+obs_param_nml(50)%adapt          = 0
+
+! --------------------------------------------------------------------
+! --------------------------------------------------------------------
+!
+!  51 = ASCAT_METB_SM_A (ASCAT soil moisture ascending)
+!
+! ASCAT: VV-pol, incidence angle 25-65 deg
+! for now keep N_ang=0, pol=0
+! - reichle, 30 Jun 2015
+
+obs_param_nml(51)%descr          = 'ASCAT_METB_SM_A'
+obs_param_nml(51)%orbit          = 1
+obs_param_nml(51)%pol            = 0
+obs_param_nml(51)%N_ang          = 0
+obs_param_nml(51)%freq           = 5.255e9
+obs_param_nml(51)%FOV            = 20.
+obs_param_nml(51)%FOV_units      = 'km'
+obs_param_nml(51)%assim          = .false.
+obs_param_nml(51)%scale          = .false.
+obs_param_nml(51)%getinnov       = .false.
+obs_param_nml(51)%RTM_ID         = 0
+obs_param_nml(51)%bias_Npar      = 0
+obs_param_nml(51)%bias_trel      = 864000
+obs_param_nml(51)%bias_tcut      = 432000
+obs_param_nml(51)%nodata         = -9999.
+obs_param_nml(51)%varname        = 'sfmc'
+obs_param_nml(51)%units          = 'm3/m3'
+obs_param_nml(51)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_B/'
+obs_param_nml(51)%name           = 'M01-ASCA-ASCSMO02'
+obs_param_nml(51)%scalepath      = ''
+obs_param_nml(51)%scalename      = ''
+obs_param_nml(51)%flistpath      = ''
+obs_param_nml(51)%flistname      = ''
+obs_param_nml(51)%errstd         = .04
+obs_param_nml(51)%std_normal_max = 2.5
+obs_param_nml(51)%zeromean       = .true.
+obs_param_nml(51)%coarsen_pert   = .false.
+obs_param_nml(51)%xcorr          = 0.25
+obs_param_nml(51)%ycorr          = 0.25
+obs_param_nml(51)%adapt          = 0
+
+! -------------------
+!
+!  52 = ASCAT_METB_SM_D (ASCAT soil moisture descending)
+!
+! TO DO: What is pol of backscatter used in retrieval?
+! TO DO: How deal w/ inc angle?
+!        http://oiswww.eumetsat.org/WEBOPS/eps-pg/ASCAT/ASCAT-PG-4ProdOverview.htm
+
+obs_param_nml(52)%descr          = 'ASCAT_METB_SM_D'
+obs_param_nml(52)%orbit          = 2
+obs_param_nml(52)%pol            = 0
+obs_param_nml(52)%N_ang          = 0
+obs_param_nml(52)%freq           = 5.255e9
+obs_param_nml(52)%FOV            = 20.
+obs_param_nml(52)%FOV_units      = 'km'
+obs_param_nml(52)%assim          = .false.
+obs_param_nml(52)%scale          = .false.
+obs_param_nml(52)%getinnov       = .false.
+obs_param_nml(52)%RTM_ID         = 0
+obs_param_nml(52)%bias_Npar      = 0
+obs_param_nml(52)%bias_trel      = 864000
+obs_param_nml(52)%bias_tcut      = 432000
+obs_param_nml(52)%nodata         = -9999.
+obs_param_nml(52)%varname        = 'sfmc'
+obs_param_nml(52)%units          = 'm3/m3'
+obs_param_nml(52)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_B/'
+obs_param_nml(52)%name           = 'M01-ASCA-ASCSMO02'
+obs_param_nml(52)%scalepath      = ''
+obs_param_nml(52)%scalename      = ''
+obs_param_nml(52)%flistpath      = ''
+obs_param_nml(52)%flistname      = ''
+obs_param_nml(52)%errstd         = .04
+obs_param_nml(52)%std_normal_max = 2.5
+obs_param_nml(52)%zeromean       = .true.
+obs_param_nml(52)%coarsen_pert   = .false.
+obs_param_nml(52)%xcorr          = 0.25
+obs_param_nml(52)%ycorr          = 0.25
+obs_param_nml(52)%adapt          = 0
+
+
+! --------------------------------------------------------------------
 
 /
 
