@@ -1348,7 +1348,7 @@ contains
           call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
           _VERIFY(STATUS)
           _ASSERT( (NUM_ENSEMBLE>1),                   "out_smapL4SMaup=.true. only works for NUM_ENSEMBLE>1")
-          _ASSERT( (index(GridName,"EASEv2-M09") /=0), "out_smapL4SMaup=.true. only works with EASEv2-M09 tile space")
+          _ASSERT( (index(GridName,"EASEv2-M09") /=0 .or. index(GridName,"EASEv2_M09") /=0), "out_smapL4SMaup=.true. only works with EASEv2-M09 tile space")
           
        end if
 

@@ -16,7 +16,7 @@ find_package(HDF5 REQUIRED COMPONENTS Fortran)
 esma_add_library (${this}
   SRCS ${SRCS}
   SUBCOMPONENTS ${alldirs}
-  DEPENDENCIES GEOS_LdasShared GEOSens_GridComp GEOSlandpert_GridComp GEOSland_GridComp MAPL GMAO_gfio_r4 hdf5hl_fortran hdf5_fortran ${NETCDF_LIBRARIES}
+  DEPENDENCIES GEOS_LdasShared GEOSens_GridComp GEOSlandpert_GridComp GEOSland_GridComp raster MAPL GMAO_gfio_r4 hdf5hl_fortran hdf5_fortran ${NETCDF_LIBRARIES}
   INCLUDES ${INC_ESMF} ${INC_HDF5})
 
 target_compile_definitions (${this} PRIVATE LDAS_MPI)
