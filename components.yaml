@@ -26,6 +26,12 @@ GMAO_Shared:
   sparse: ./config/GMAO_Shared.sparse
   develop: main
 
+GMAO_Util:
+  local: ./src/Shared/@GEOS_Util
+  remote: ../GEOS_Util.git
+  branch: main
+  develop: main
+
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
