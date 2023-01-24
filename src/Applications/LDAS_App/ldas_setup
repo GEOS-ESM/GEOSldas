@@ -9,6 +9,7 @@ import shutil
 import argparse
 import fileinput
 import time
+import resource
 import subprocess as sp
 import shlex
 from dateutil import rrule
@@ -1708,6 +1709,7 @@ def parseCmdLine():
 
 if __name__=='__main__':
 
+    resource.setrlimit(resource.RLIMIT_STACK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
     #print "reading params...."
     args = vars(parseCmdLine()) # vars converts to dict
     ld = LDASsetup(args)
