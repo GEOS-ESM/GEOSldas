@@ -51,6 +51,13 @@ if($LSM_CHOICE == 3) then
    sed -i 's/>>>HIST_CATCHCNCLM45<<</''/g' $HISTRC
 endif
 
+if($LSM_CHOICE == 4) then
+   set GridComp = CATCHCN
+   sed -i 's/>>>HIST_CATCHCN<<</''/g' $HISTRC
+   sed -i 's/>>>HIST_CATCHCNCLM51<<</''/g' $HISTRC
+endif
+
+
 if($NENS > 1) then
    set GridComp = ENSAVG
    sed -i 's|VEGDYN|'VEGDYN_e0000'|g' $HISTRC
