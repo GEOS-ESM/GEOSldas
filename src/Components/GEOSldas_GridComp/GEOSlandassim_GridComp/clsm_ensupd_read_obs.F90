@@ -1802,8 +1802,13 @@ contains
                  if(tmp_data >1 .or. tmp_data < 0.9 ) cycle loop_report
 
                  ! additioanal QC varibles from file               
-                 !call ufbint(lnbufr,tmp_data,1,1,iret,'TPCX') ! topo complexity
-                 !call ufbint(lnbufr,tmp_data,1,1,iret,'IWFR') ! Inundation And Wetland Fraction
+                 ! skip if topographic complexity > 10%
+                 call ufbint(lnbufr,tmp_data,1,1,iret,'TPCX') ! topo complexity
+                 if(tmp_data > 10.) cycle loop_report
+                 
+                 ! skip if inudatation and wetland faction > 10%
+                 call ufbint(lnbufr,tmp_data,1,1,iret,'IWFR') ! Inundation And Wetland Fraction
+                 if(tmp_data > 10.) cycle loop_report
                  !call ufbint(lnbufr,tmp_data,1,1,iret,'SNOC') ! snow cover
                  !call ufbint(lnbufr,tmp_data,1,1,iret,'FLSF') ! frozen land fraction
 
