@@ -1131,7 +1131,7 @@ contains
           get_sfmc_lH  = .true.
           get_tsurf_l  = .true.    ! needed for model-based QC
 
-       case ('sfds')
+       case ('sfdsss')
           
           get_sfmc_l   = .true.
           get_sfmc_lH  = .true.
@@ -1675,7 +1675,7 @@ contains
                 
                 tmp_data(1:N_tmp)    = sfmc_lH(  ind_tmp(1:N_tmp), n_e )
             
-             case ('sfds')
+             case ('sfdsss')
                 
                 tmp_data(1:N_tmp)    = sfmc_lH(  ind_tmp(1:N_tmp), n_e )
                 
@@ -3710,7 +3710,7 @@ contains
        N_select_varnames  = 2
        
        select_varnames(1) = 'sfmc'
-       select_varnames(2) = 'sfds'
+       select_varnames(2) = 'sfdsss'
 
        call get_select_species(                                           &
             N_select_varnames, select_varnames(1:N_select_varnames),      &
