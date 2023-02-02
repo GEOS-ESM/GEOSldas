@@ -1125,17 +1125,11 @@ contains
        
        select case (trim(obs_param(i)%varname))
           
-       case ('sfmc')
+       case ('sfmc', 'sfds')
           
           get_sfmc_l   = .true.
           get_sfmc_lH  = .true.
           get_tsurf_l  = .true.    ! needed for model-based QC
-
-       case ('sfds')
-          
-          get_sfmc_l   = .true.
-          get_sfmc_lH  = .true.
-          get_tsurf_l  = .true.    ! needed for model-based QC          
 
        case ('rzmc')
           
@@ -1671,11 +1665,7 @@ contains
              
              select case (trim(obs_param(this_species)%varname))
                 
-             case ('sfmc')
-                
-                tmp_data(1:N_tmp)    = sfmc_lH(  ind_tmp(1:N_tmp), n_e )
-            
-             case ('sfds')
+             case ('sfmc', 'sfds')
                 
                 tmp_data(1:N_tmp)    = sfmc_lH(  ind_tmp(1:N_tmp), n_e )
                 
