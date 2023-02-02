@@ -222,11 +222,11 @@ contains
        !if(logit) write(logunit, *) 'fname: ', fnames(j)
 
        sd_id(j) = sfstart(fnames(j), DFACC_READ)
-       !if(logit) write (logunit, *), 'sd_id:' , sd_id(j)
+       if(logit) write (logunit, *), 'sd_id:' , sd_id(j)
 
        status = sffinfo(sd_id(j), n_datasets, n_file_attrs)
-       ! if(logit) write(logunit, *)  '! Number of data sets in the file and Number of file attributes :'
-       ! if(logit) write(logunit, *)  'sffinfo: ', status, n_datasets, n_file_attrs
+        !if(logit) write(logunit, *)  '! Number of data sets in the file and Number of file attributes :'
+        !if(logit) write(logunit, *)  'sffinfo: ', status, n_datasets, n_file_attrs
 
       do i=1,N_fields
    
@@ -463,7 +463,7 @@ contains
     write (logunit, *) 'DOY: ', DDD
     
    tmpfname1 = trim(this_obs_param%path) //  YYYY // '/MOD10C1.A' // YYYY // DDD // &
-               '.006.hdf'  
+               '.061.hdf'  
 
    if (logit) write (logunit, *) 'Trying to read data from', &
    trim(tmpfname1)
