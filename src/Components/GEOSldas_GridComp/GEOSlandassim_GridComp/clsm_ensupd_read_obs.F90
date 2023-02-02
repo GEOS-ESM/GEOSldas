@@ -346,7 +346,7 @@ contains
  
      if(keep_data) then     
           j=j+1
-          MODIS_SCA_tmp(j) = MODIS_SCA_raw(i)/100
+          MODIS_SCA_tmp(j) = MODIS_SCA_raw(i)/CI_Index(i)
           lon_tmp(j)      = lon_1D(i)
           lat_tmp(j)      = lat_1D(i)
     
