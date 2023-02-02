@@ -16,7 +16,7 @@ def remap_config_ldas(config, RESTART_str, RESTART_PATH, RESTART_ID):
      config['input']['shared'] = merra2_expid(config['input']['shared'])
      config['input']['shared']['rst_dir'] = out_dir+ '/merra2_tmp_'+ yyyymmddhh
      config['input']['surface']['wemin'] = 26
-     config['input']['shared']['bcs_dir'] = '/gpfsm/dnb02/ltakacs/bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/CF0180x6C_DE1440xPE0720/'
+     config['input']['shared']['bcs_dir'] = '/discover/nobackup/ltakacs/bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/CF0180x6C_DE1440xPE0720/'
      
    if RESTART_str == "G" :
      # WY note: it is a bad idea to overload restart_path and restart_id
