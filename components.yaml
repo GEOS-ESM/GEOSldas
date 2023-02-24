@@ -35,7 +35,7 @@ GEOS_Util:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.34.1
+  branch: feature/wjiang/add_reading_writing_chars
   develop: develop
 
 GEOSgcm_GridComp:
