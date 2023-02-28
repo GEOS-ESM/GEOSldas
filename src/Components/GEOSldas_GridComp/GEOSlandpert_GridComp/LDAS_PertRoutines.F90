@@ -658,7 +658,9 @@ contains
     else ! cubed-sphere grid
        !for cubed-sphere grid, global lat_lon grid
        N_x=tile_grid%n_lon
-
+       ! NOTE: the grid specification is hard-wired here, 
+       ! if perturbation sdv is heterogeous input from a file  
+       ! the input grid must match this grid  (sqz 2/2023)  
        n_lon=4*N_x
        n_lat=3*N_x
        write(lattmp,'(I6.6)') n_lat
@@ -1111,6 +1113,8 @@ contains
        call MPI_BCAST(stdfilename_force_pert,300,MPI_CHARACTER,0,mpicomm,mpierr)
 
        nc4_file = stdfilename_force_pert
+       ! NOTE: the input file is in netcdf, with a group 'std_force_pert',
+       ! and the grid is same as *global* grid (tile_grid_g) (sqz 2/2023) 
 
        ! --compute-local-shape-first-
        ! ASSUMPTION: data in file are on the *global* grid (tile_grid_g)
@@ -1150,11 +1154,11 @@ contains
                         )
                    if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
                    ! get _FillValue for nc4_varname
-                   nc4_stat = nf90_get_att(nc4_grpid, nc4_varid, '_FillValue', nc4_fillval)
-                   if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
+                   !nc4_stat = nf90_get_att(nc4_grpid, nc4_varid, '_FillValue', nc4_fillval)
+                   !if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
                    ! replace _FillValue by zero
-                   where (abs(std_force_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
-                        std_force_pert(ivar,:,:) = 0.
+                   !where (abs(std_force_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
+                   !    std_force_pert(ivar,:,:) = 0.
                 end if
              end do
           end if
@@ -1503,6 +1507,8 @@ contains
        call MPI_BCAST(stdfilename_progn_pert,300,MPI_CHARACTER,0,mpicomm,mpierr)
 
        nc4_file = stdfilename_progn_pert
+       ! NOTE: the input file is in netcdf, with a group 'std_progn_pert',
+       ! and the grid is same as *global* grid (tile_grid_g) (sqz 2/2023)  
 
        ! --compute-local-shape-first-
        ! ASSUMPTION: data in file are on the *global* grid (tile_grid_g)
@@ -1542,17 +1548,17 @@ contains
                         )
                    if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
                    ! get _FillValue for nc4_varname
-                   nc4_stat = nf90_get_att(nc4_grpid, nc4_varid, '_FillValue', nc4_fillval)
-                   if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
+                   !nc4_stat = nf90_get_att(nc4_grpid, nc4_varid, '_FillValue', nc4_fillval)
+                   !if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
                    ! replace _FillValue by zero
-                   where (abs(std_progn_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
-                        std_progn_pert(ivar,:,:) = 0.
+                   !where (abs(std_progn_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
+                        !std_progn_pert(ivar,:,:) = 0.
                 end if
              end do
+             ! close file
+             nc4_stat = nf90_close(nc4_id)
+             if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
           end if
-          ! close file
-          nc4_stat = nf90_close(nc4_id)
-          if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
        end do
        call MPI_Barrier(mpicomm, mpierr)
     end if
