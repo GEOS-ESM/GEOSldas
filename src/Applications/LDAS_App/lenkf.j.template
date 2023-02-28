@@ -112,10 +112,6 @@ cd $SCRDIR
 
 set LSMCHOICE = `grep -n -m 1 "LSM_CHOICE" $HOMDIR/LDAS.rc | cut -d':' -f3`
 
-if( ${LSMCHOICE} > 1 ) then # CatchCN Only
-    ln -s /discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4
-endif
-
 #######################################################################
 # if $LADAS_COUPLING == 1:  LDAS coupled to central ADAS simulation
 #######################################################################
