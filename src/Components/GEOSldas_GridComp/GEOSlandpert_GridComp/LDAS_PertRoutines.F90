@@ -1154,11 +1154,11 @@ contains
                         )
                    if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
                    ! get _FillValue for nc4_varname
-                   !nc4_stat = nf90_get_att(nc4_grpid, nc4_varid, '_FillValue', nc4_fillval)
-                   !if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
+                   nc4_stat = nf90_get_att(nc4_grpid, nc4_varid, '_FillValue', nc4_fillval)
+                   if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
                    ! replace _FillValue by zero
-                   !where (abs(std_force_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
-                   !    std_force_pert(ivar,:,:) = 0.
+                   where (abs(std_force_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
+                       std_force_pert(ivar,:,:) = 0.
                 end if
              end do
           end if
@@ -1548,11 +1548,11 @@ contains
                         )
                    if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
                    ! get _FillValue for nc4_varname
-                   !nc4_stat = nf90_get_att(nc4_grpid, nc4_varid, '_FillValue', nc4_fillval)
-                   !if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
+                   nc4_stat = nf90_get_att(nc4_grpid, nc4_varid, '_FillValue', nc4_fillval)
+                   if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
                    ! replace _FillValue by zero
-                   !where (abs(std_progn_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
-                        !std_progn_pert(ivar,:,:) = 0.
+                   where (abs(std_progn_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
+                        std_progn_pert(ivar,:,:) = 0.
                 end if
              end do
              ! close file

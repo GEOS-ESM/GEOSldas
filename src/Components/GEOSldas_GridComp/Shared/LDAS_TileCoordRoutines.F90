@@ -427,7 +427,7 @@ contains
        
        if (date_line_on_center) then
           
-          tile_grid%ll_lon = -180. + tile_grid%dlon/2.  ! fixed sign (sqz 2023)
+          tile_grid%ll_lon = -180. - tile_grid%dlon/2.  
           tile_grid%ur_lon =  180. - tile_grid%dlon/2.  ! fixed 20 sep 2010, reichle
           
        else
