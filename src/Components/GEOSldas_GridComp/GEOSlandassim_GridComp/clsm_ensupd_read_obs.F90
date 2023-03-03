@@ -1795,6 +1795,7 @@ contains
 
                  ! skip if correction flag is set               
                  call ufbint(lnbufr,tmp_data,1,1,iret,'SMCF')
+                 ! if (.not. (int(tmp_data) == 0 .or. int(tmp_data) == 4)) cycle loop_report
                  if(int(tmp_data) /= 0) cycle loop_report
 
                  ! skip if land fraction is missing or < 0.9
@@ -7456,7 +7457,19 @@ contains
              tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
              this_obs_param,                                           &
              found_obs, tmp_obs, tmp_std_obs )
-        
+        ! Temporay hack to output if ascending/decending instead of tmp_std_obs
+        select case (trim(this_obs_param%descr))
+
+        case ('ASCAT_META_SM_A', 'ASCAT_METB_SM_A')
+          
+            tmp_std_obs(1:N_catd) = 1
+
+        case ('ASCAT_META_SM_D', 'ASCAT_METB_SM_D')
+
+           tmp_std_obs(1:N_catd) = 2
+
+        end select
+ 
         ! scale observations to model climatology
         
         if (this_obs_param%scale .and. found_obs) then
