@@ -1,7 +1,7 @@
 set (this GEOS_LdasShared)
 
 set (SRCS
-  enkf_types.F90 catch_types.F90 LDAS_ensdrv_Globals.F90 LDAS_DateTimeMod.F90 LDAS_DriverTypes.F90
+  enkf_types.F90 catch_types.F90 LDAS_ensdrv_Globals.F90 LDAS_DriverTypes.F90
   LDAS_Convert.F90 LDAS_Exceptions.F90 LDAS_TileCoordType.F90 LDAS_PertTypes.F90
   LDAS_ensdrv_functions.F90 my_matrix_functions.F90
   LDAS_TileCoordRoutines.F90
