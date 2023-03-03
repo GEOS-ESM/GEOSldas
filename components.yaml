@@ -35,12 +35,12 @@ GEOS_Util:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.34.1
+  tag: v2.35.0
   develop: develop
 
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: develop
+  branch: feature/jkolassa_catchCNrst_cleanup
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
