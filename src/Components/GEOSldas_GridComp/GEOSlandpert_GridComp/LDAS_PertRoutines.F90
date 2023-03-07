@@ -658,9 +658,9 @@ contains
     else ! cubed-sphere grid
        !for cubed-sphere grid, global lat_lon grid
        N_x=tile_grid%n_lon
-       ! NOTE: the grid specification is hard-wired here, 
-       ! if perturbation sdv is heterogeous input from a file  
-       ! the input grid must match this grid  (sqz 2/2023)  
+       ! NOTE: The pert grid specification is hard-wired here.
+       ! If perturbation stddev is heterogeneous input from a file,  
+       ! then the input grid must match this hard-wired grid.  (sqz 2/2023)  
        n_lon=4*N_x
        n_lat=3*N_x
        write(lattmp,'(I6.6)') n_lat
@@ -1114,7 +1114,7 @@ contains
 
        nc4_file = stdfilename_force_pert
        ! NOTE: the input file is in netcdf, with a group 'std_force_pert',
-       ! and the grid is same as *global* grid (tile_grid_g) (sqz 2/2023) 
+       ! and the grid is same as the *global* grid (tile_grid_g) (sqz 2/2023) 
 
        ! --compute-local-shape-first-
        ! ASSUMPTION: data in file are on the *global* grid (tile_grid_g)
@@ -1158,7 +1158,7 @@ contains
                    if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
                    ! replace _FillValue by zero
                    where (abs(std_force_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
-                       std_force_pert(ivar,:,:) = 0.
+                        std_force_pert(ivar,:,:) = 0.
                 end if
              end do
           end if
@@ -1508,7 +1508,7 @@ contains
 
        nc4_file = stdfilename_progn_pert
        ! NOTE: the input file is in netcdf, with a group 'std_progn_pert',
-       ! and the grid is same as *global* grid (tile_grid_g) (sqz 2/2023)  
+       ! and the grid is same as the *global* grid (tile_grid_g) (sqz 2/2023)  
 
        ! --compute-local-shape-first-
        ! ASSUMPTION: data in file are on the *global* grid (tile_grid_g)
