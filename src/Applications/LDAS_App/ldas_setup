@@ -787,6 +787,10 @@ class LDASsetup:
            myBC=self.inpdir+'/'+bcln+'.data'
            os.symlink(bc,myBC)
 
+        if ("catchcn" in self.catch):
+           os.symlink('/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4', \
+                       self.inpdir+'/CO2_MonthlyMean_DiurnalCycle.nc4')
+
         # create and link restart 
         print ("Creating and linking restart...")
         _start = self.begDates[0]
@@ -1137,6 +1141,8 @@ class LDASsetup:
                    keyn = key+'_FILE'
                    valn = val+'.data'
                    ldasrcInp[keyn]= valn
+                if('catchcn' in self.catch):
+                   ldasrcInp['CO2_MonthlyMean_DiurnalCycle_FILE']= '../input/CO2_MonthlyMean_DiurnalCycle.nc4'
 
                 # create restart item in RC
                 catch_ = self.catch.upper()
