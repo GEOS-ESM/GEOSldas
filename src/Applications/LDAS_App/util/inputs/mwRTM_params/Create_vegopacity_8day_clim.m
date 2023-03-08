@@ -34,7 +34,7 @@ fill_small_gaps =  1;
 
 % provide a GEOSldas simulation with matching tile information
 if strcmp(resolution,'M36')
-    L4_path = '/gpfsm/dnb05/projects/p51/SMAP_Nature/SMAP_Nature_v9.x/';
+    L4_path = '/discover/nobackup/projects/gmao/smap/SMAP_Nature/SMAP_Nature_v9.x/';
     L4_version = 'SMAP_Nature_v9.1_M36';
     based_on_h5 = 0;
     out_Nlon = 3856/4;
