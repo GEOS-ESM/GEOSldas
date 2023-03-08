@@ -657,6 +657,15 @@ contains
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'ave_catchment_temp_incl_snw ens.sdv',&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TPSURFsdv'                    ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'temperature_top_snow_layer',&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TPSNOW'                    ,&
@@ -801,6 +810,15 @@ contains
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'water_surface_layer ens.sdv' ,&
+    UNITS              = 'm3 m-3'                    ,&
+    SHORT_NAME         = 'WCSFsdv'                   ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'water_root_zone'           ,&
     UNITS              = 'm3 m-3'                    ,&
     SHORT_NAME         = 'WCRZ'                      ,&
@@ -808,6 +826,16 @@ contains
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
   VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'water_root_zone ens.sdv'   ,&
+    UNITS              = 'm3 m-3'                    ,&
+    SHORT_NAME         = 'WCRZsdv'                   ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
 
   call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'water_ave_prof'            ,&
@@ -819,9 +847,27 @@ contains
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'water_ave_prof ens.sdv'    ,&
+    UNITS              = 'm3 m-3'                    ,&
+    SHORT_NAME         = 'WCPRsdv'                   ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
     LONG_NAME          = 'soil_temperatures_layer_1' ,&
     UNITS              = 'K'                         ,&
     SHORT_NAME         = 'TSOIL1TILE'                ,&
+    DIMS               = MAPL_DimsTileOnly           ,&
+    VLOCATION          = MAPL_VLocationNone          ,&
+                                           RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC,                    &
+    LONG_NAME          = 'soil_temperatures_layer_1 ens.sdv' ,&
+    UNITS              = 'K'                         ,&
+    SHORT_NAME         = 'TSOIL1TILEsdv'             ,&
     DIMS               = MAPL_DimsTileOnly           ,&
     VLOCATION          = MAPL_VLocationNone          ,&
                                            RC=STATUS  )
@@ -2287,7 +2333,7 @@ contains
     real, dimension(:),pointer :: HLATN,HLATN_enavg
     real, dimension(:),pointer :: QINFIL,QINFIL_enavg
     real, dimension(:),pointer :: GHFLX,GHFLX_enavg
-    real, dimension(:),pointer :: TPSURF,TPSURF_enavg
+    real, dimension(:),pointer :: TPSURF,TPSURF_enavg,TPSURF_ensdv
     real, dimension(:),pointer :: TPSNOW,TPSNOW_enavg
     real, dimension(:),pointer :: TPUNST,TPUNST_enavg
     real, dimension(:),pointer :: TPSAT,TPSAT_enavg
@@ -2304,10 +2350,10 @@ contains
     real, dimension(:),pointer :: WET1,WET1_enavg
     real, dimension(:),pointer :: WET2,WET2_enavg
     real, dimension(:),pointer :: WET3,WET3_enavg
-    real, dimension(:),pointer :: WCSF,WCSF_enavg
-    real, dimension(:),pointer :: WCRZ,WCRZ_enavg
-    real, dimension(:),pointer :: WCPR,WCPR_enavg
-    real, dimension(:),pointer :: TP1,TP1_enavg
+    real, dimension(:),pointer :: WCSF,WCSF_enavg,WCSF_ensdv
+    real, dimension(:),pointer :: WCRZ,WCRZ_enavg,WCRZ_ensdv
+    real, dimension(:),pointer :: WCPR,WCPR_enavg,WCPR_ensdv
+    real, dimension(:),pointer :: TP1,TP1_enavg,TP1_ensdv
     real, dimension(:),pointer :: TP2,TP2_enavg
     real, dimension(:),pointer :: TP3,TP3_enavg
     real, dimension(:),pointer :: TP4,TP4_enavg
@@ -2859,6 +2905,8 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(export, TPSURF_enavg,  'TPSURF' ,rc=status)
     VERIFY_(status)
+    call MAPL_GetPointer(export, TPSURF_ensdv,  'TPSURFsdv' ,rc=status)
+    VERIFY_(status)
     call MAPL_GetPointer(export, TPSNOW_enavg,  'TPSNOW' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, TPUNST_enavg,  'TPUNST' ,rc=status)
@@ -2891,11 +2939,19 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(export, WCSF_enavg,  'WCSF' ,rc=status)
     VERIFY_(status)
+    call MAPL_GetPointer(export, WCSF_ensdv,  'WCSFsdv' ,rc=status)
+    VERIFY_(status)
     call MAPL_GetPointer(export, WCRZ_enavg,  'WCRZ' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, WCRZ_ensdv,  'WCRZsdv' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, WCPR_enavg,  'WCPR' ,rc=status)
     VERIFY_(status)
+    call MAPL_GetPointer(export, WCPR_ensdv,  'WCPRsdv' ,rc=status)
+    VERIFY_(status)
     call MAPL_GetPointer(export, TP1_enavg,  'TSOIL1TILE' ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, TP1_ensdv,  'TSOIL1TILEsdv' ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, TP2_enavg,  'TSOIL2TILE' ,rc=status)
     VERIFY_(status)
@@ -3107,6 +3163,7 @@ contains
         if(associated(QINFIL_enavg)) QINFIL_enavg =  0.0
         if(associated(GHFLX_enavg)) GHFLX_enavg =  0.0
         if(associated(TPSURF_enavg)) TPSURF_enavg =  0.0
+        if(associated(TPSURF_ensdv)) TPSURF_ensdv =  0.0
         if(associated(TPSNOW_enavg)) TPSNOW_enavg =  0.0
         if(associated(TPUNST_enavg)) TPUNST_enavg =  0.0
         if(associated(TPSAT_enavg)) TPSAT_enavg =  0.0
@@ -3123,9 +3180,13 @@ contains
         if(associated(WET2_enavg)) WET2_enavg =  0.0
         if(associated(WET3_enavg)) WET3_enavg =  0.0
         if(associated(WCSF_enavg)) WCSF_enavg =  0.0
+        if(associated(WCSF_ensdv)) WCSF_ensdv =  0.0
         if(associated(WCRZ_enavg)) WCRZ_enavg =  0.0
+        if(associated(WCRZ_ensdv)) WCRZ_ensdv =  0.0
         if(associated(WCPR_enavg)) WCPR_enavg =  0.0
+        if(associated(WCPR_ensdv)) WCPR_ensdv =  0.0
         if(associated(TP1_enavg)) TP1_enavg =  0.0
+        if(associated(TP1_ensdv)) TP1_ensdv =  0.0
         if(associated(TP2_enavg)) TP2_enavg =  0.0
         if(associated(TP3_enavg)) TP3_enavg =  0.0
         if(associated(TP4_enavg)) TP4_enavg =  0.0
@@ -3306,6 +3367,8 @@ contains
         GHFLX_enavg = GHFLX_enavg + GHFLX
     if(associated(TPSURF_enavg) .and. associated(TPSURF))   & 
         TPSURF_enavg = TPSURF_enavg + TPSURF
+    if(associated(TPSURF_ensdv) .and. associated(TPSURF))   &
+        TPSURF_ensdv = TPSURF_ensdv + TPSURF*TPSURF
     if(associated(TPSNOW_enavg) .and. associated(TPSNOW))   & 
         TPSNOW_enavg = TPSNOW_enavg + TPSNOW
     if(associated(TPUNST_enavg) .and. associated(TPUNST))   & 
@@ -3338,12 +3401,20 @@ contains
         WET3_enavg = WET3_enavg + WET3
     if(associated(WCSF_enavg) .and. associated(WCSF))   & 
         WCSF_enavg = WCSF_enavg + WCSF
+    if(associated(WCSF_ensdv) .and. associated(WCSF))   &
+        WCSF_ensdv = WCSF_ensdv + WCSF*WCSF
     if(associated(WCRZ_enavg) .and. associated(WCRZ))   & 
         WCRZ_enavg = WCRZ_enavg + WCRZ
+    if(associated(WCRZ_ensdv) .and. associated(WCRZ))   &
+        WCRZ_ensdv = WCRZ_ensdv + WCRZ*WCRZ
     if(associated(WCPR_enavg) .and. associated(WCPR))   & 
         WCPR_enavg = WCPR_enavg + WCPR
+    if(associated(WCPR_ensdv) .and. associated(WCPR))   &
+        WCPR_ensdv = WCPR_ensdv + WCPR*WCPR
     if(associated(TP1_enavg) .and. associated(TP1))   & 
         TP1_enavg = TP1_enavg + TP1
+    if(associated(TP1_ensdv) .and. associated(TP1))   &
+        TP1_ensdv = TP1_ensdv + TP1*TP1
     if(associated(TP2_enavg) .and. associated(TP2))   & 
         TP2_enavg = TP2_enavg + TP2
     if(associated(TP3_enavg) .and. associated(TP3))   & 
@@ -3591,6 +3662,9 @@ contains
         !if(associated(RZEQ_enavg)) RZEQ_enavg = RZEQ_enavg/NUM_ENSEMBLE
         if(associated(GHFLX_enavg)) GHFLX_enavg = GHFLX_enavg/NUM_ENSEMBLE
         if(associated(TPSURF_enavg)) TPSURF_enavg = TPSURF_enavg/NUM_ENSEMBLE
+        if(associated(TPSURF_ensdv)) TPSURF_ensdv = TPSURF_ensdv/NUM_ENSEMBLE
+        if(associated(TPSURF_ensdv) .and. associated(TPSURF_enavg)) &
+             TPSURF_ensdv = sqrt(TPSURF_ensdv - TPSURF_enavg*TPSURF_enavg)
         if(associated(TPSNOW_enavg)) TPSNOW_enavg = TPSNOW_enavg/NUM_ENSEMBLE
         if(associated(TPUNST_enavg)) TPUNST_enavg = TPUNST_enavg/NUM_ENSEMBLE
         if(associated(TPSAT_enavg)) TPSAT_enavg = TPSAT_enavg/NUM_ENSEMBLE
@@ -3607,9 +3681,21 @@ contains
         if(associated(WET2_enavg)) WET2_enavg = WET2_enavg/NUM_ENSEMBLE
         if(associated(WET3_enavg)) WET3_enavg = WET3_enavg/NUM_ENSEMBLE
         if(associated(WCSF_enavg)) WCSF_enavg = WCSF_enavg/NUM_ENSEMBLE
+        if(associated(WCSF_ensdv)) WCSF_ensdv = WCSF_ensdv/NUM_ENSEMBLE
+        if(associated(WCSF_ensdv) .and. associated(WCSF_enavg)) &
+            WCSF_ensdv = sqrt(WCSF_ensdv -WCSF_enavg*WCSF_enavg)
         if(associated(WCRZ_enavg)) WCRZ_enavg = WCRZ_enavg/NUM_ENSEMBLE
+        if(associated(WCRZ_ensdv)) WCRZ_ensdv = WCRZ_ensdv/NUM_ENSEMBLE
+        if(associated(WCRZ_ensdv) .and. associated(WCRZ_enavg)) &
+            WCRZ_ensdv = sqrt(WCRZ_ensdv -WCRZ_enavg*WCRZ_enavg)
         if(associated(WCPR_enavg)) WCPR_enavg = WCPR_enavg/NUM_ENSEMBLE
+        if(associated(WCPR_ensdv)) WCPR_ensdv = WCPR_ensdv/NUM_ENSEMBLE
+        if(associated(WCPR_ensdv) .and. associated(WCPR_enavg)) &
+            WCPR_ensdv = sqrt(WCPR_ensdv -WCPR_enavg*WCPR_enavg)
         if(associated(TP1_enavg)) TP1_enavg = TP1_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
+        if(associated(TP1_ensdv)) TP1_ensdv = TP1_ensdv/NUM_ENSEMBLE
+        if(associated(TP1_ensdv) .and. associated(TP1_enavg)) &
+            TP1_ensdv = sqrt(TP1_ensdv - TP1_enavg*TP1_enavg)
         if(associated(TP2_enavg)) TP2_enavg = TP2_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
         if(associated(TP3_enavg)) TP3_enavg = TP3_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
         if(associated(TP4_enavg)) TP4_enavg = TP4_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
