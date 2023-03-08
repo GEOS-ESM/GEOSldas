@@ -419,11 +419,21 @@ COLLECTIONS:
                                      'WCPR'        , 'ENSAVG'    , 'PRMC_FCST'       ,
                                      'TPSURF'      , 'ENSAVG'    , 'TSURF_FCST'      ,
                                      'TSOIL1TILE'  , 'ENSAVG'    , 'TSOIL1_FCST'     ,
+                                     'WCSFsdv'     , 'ENSAVG'    , 'SFMC_FCSTsdv'    ,
+                                     'WCRZsdv'     , 'ENSAVG'    , 'RZMC_FCSTsdv'    ,
+                                     'WCPRsdv'     , 'ENSAVG'    , 'PRMC_FCSTsdv'    ,
+                                     'TPSURFsdv'   , 'ENSAVG'    , 'TSURF_FCSTsdv'   ,
+                                     'TSOIL1TILEsdv' , 'ENSAVG'  , 'TSOIL1_FCSTsdv'  ,
                                      'WCSF_ANA'    , 'LANDASSIM' , 'SFMC_ANA'        ,
                                      'WCRZ_ANA'    , 'LANDASSIM' , 'RZMC_ANA'        ,
                                      'WCPR_ANA'    , 'LANDASSIM' , 'PRMC_ANA'        ,
                                      'TPSURF_ANA'  , 'LANDASSIM' , 'TSURF_ANA'       ,
                                      'TSOIL1_ANA'  , 'LANDASSIM' , 'TSOIL1_ANA'      ,
+                                     'WCSF_ANAsdv' , 'LANDASSIM' , 'SFMC_ANAsdv'     ,
+                                     'WCRZ_ANAsdv' , 'LANDASSIM' , 'RZMC_ANAsdv'     ,
+                                     'WCPR_ANAsdv' , 'LANDASSIM' , 'PRMC_ANAsdv'     ,
+                                     'TPSURF_ANAsdv' , 'LANDASSIM' , 'TSURF_ANAsdv'  ,
+                                     'TSOIL1_ANAsdv' , 'LANDASSIM' , 'TSOIL1_ANAsdv' 
                         ::
 
 # For lndfcstana, *.frequency and *.ref_time must be consistent with the LDAS.rc resource

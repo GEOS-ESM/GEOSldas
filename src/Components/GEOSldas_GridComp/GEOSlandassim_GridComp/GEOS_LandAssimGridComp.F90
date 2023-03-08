@@ -777,7 +777,16 @@ contains
        VLOCATION          = MAPL_VLocationNone                                    ,&
        RC=STATUS  ) 
   VERIFY_(STATUS)
-  
+ 
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_moisture_surface_analysis ens.sdv'              ,&
+       UNITS              = 'm3 m-3'                                              ,&
+       SHORT_NAME         = 'WCSF_ANAsdv'                                         ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+ 
   call MAPL_AddExportSpec(GC                                                      ,&
        LONG_NAME          = 'soil_moisture_rootzone_analysis'                     ,&
        UNITS              = 'm3 m-3'                                              ,&
@@ -788,12 +797,30 @@ contains
   VERIFY_(STATUS)
   
   call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_moisture_rootzone_analysis ens.sdv'             ,&
+       UNITS              = 'm3 m-3'                                              ,&
+       SHORT_NAME         = 'WCRZ_ANAsdv'                                         ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                                                      ,&
        LONG_NAME          = 'soil_moisture_profile_analysis'                      ,&
        UNITS              = 'm3 m-3'                                              ,&
        SHORT_NAME         = 'WCPR_ANA'                                            ,&
        DIMS               = MAPL_DimsTileOnly                                     ,&
        VLOCATION          = MAPL_VLocationNone                                    ,&
        RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_moisture_profile_analysis ens.sdv'              ,&
+       UNITS              = 'm3 m-3'                                              ,&
+       SHORT_NAME         = 'WCPR_ANAsdv'                                         ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
   VERIFY_(STATUS)
   
   call MAPL_AddExportSpec(GC                                                      ,&
@@ -806,6 +833,15 @@ contains
   VERIFY_(STATUS)
   
   call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'ave_catchment_temp_incl_snw_analysisi ens.sdv'       ,&
+       UNITS              = 'K'                                                   ,&
+       SHORT_NAME         = 'TPSURF_ANAsdv'                                       ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                                                      ,&
        LONG_NAME          = 'soil_temperatures_layer_1_analysis'                  ,&
        UNITS              = 'K'                                                   ,&
        SHORT_NAME         = 'TSOIL1_ANA'                                          ,&
@@ -814,6 +850,15 @@ contains
        RC=STATUS  ) 
   VERIFY_(STATUS) 
   
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_temperatures_layer_1_analysis ens.sdv'          ,&
+       UNITS              = 'K'                                                   ,&
+       SHORT_NAME         = 'TSOIL1_ANAsdv'                                       ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
   ! Exports for microwave radiative transfer model (mwRTM)
 
   call MAPL_AddExportSpec(GC                                                      ,&
@@ -1456,7 +1501,7 @@ contains
 
     type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS
     type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS_ensavg
-
+    type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS_enssdv
     type(obs_type),       dimension(:),     pointer     :: Observations_l => null()
 
     logical  :: fresh_incr
@@ -1488,6 +1533,11 @@ contains
     real, dimension(:),pointer :: PRMC_ana=>null()     ! profile soil moisture
     real, dimension(:),pointer :: TPSURF_ana=>null()   ! tpsurf
     real, dimension(:),pointer :: TSOIL1_ana=>null()   ! tsoil1
+    real, dimension(:),pointer :: SFMC_anasdv=>null()  ! surface soil moisture
+    real, dimension(:),pointer :: RZMC_anasdv=>null()  ! rootzone soil moisture
+    real, dimension(:),pointer :: PRMC_anasdv=>null()  ! profile soil moisture
+    real, dimension(:),pointer :: TPSURF_anasdv=>null()  ! tpsurf
+    real, dimension(:),pointer :: TSOIL1_anasdv=>null()  ! tsoil1
 
     !! export for microwave radiative transfer model (mwRTM)
 
@@ -1654,6 +1704,16 @@ contains
     call MAPL_GetPointer(export, RZMC_ana,    'WCRZ_ANA'  ,rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, PRMC_ana,    'WCPR_ANA'  ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, TPSURF_anasdv,  'TPSURF_ANAsdv' ,rc=status)    
+    VERIFY_(status)       
+    call MAPL_GetPointer(export, TSOIL1_anasdv,  'TSOIL1_ANAsdv' ,rc=status)    
+    VERIFY_(status)       
+    call MAPL_GetPointer(export, SFMC_anasdv,    'WCSF_ANAsdv'  ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, RZMC_anasdv,    'WCRZ_ANAsdv'  ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, PRMC_anasdv,    'WCPR_ANAsdv'  ,rc=status)
     VERIFY_(status)
 
     ! exports for microwave radiative transfer model (mwRTM)
@@ -1912,9 +1972,11 @@ contains
        allocate(cat_progn_tmp(   N_catl))
        allocate(cat_diagS(       N_catl))
        allocate(cat_diagS_ensavg(N_catl))
+       allocate(cat_diagS_enssdv(N_catl))     
        
        do ii=1,N_catl
           cat_diagS_ensavg(ii) = 0.0        ! initialize ens average
+          cat_diagS_enssdv(ii) = 0.0
        end do
        
        do n_e=1,NUM_ENSEMBLE
@@ -1930,13 +1992,23 @@ contains
           do ii=1,N_catl
              cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii) + cat_diagS(ii)
           end do
-          
+          cat_diagS_enssdv(:)%sfmc = cat_diagS_enssdv(:)%sfmc + cat_diagS(:)%sfmc*cat_diagS(:)%sfmc
+          cat_diagS_enssdv(:)%rzmc = cat_diagS_enssdv(:)%rzmc + cat_diagS(:)%rzmc*cat_diagS(:)%rzmc
+          cat_diagS_enssdv(:)%prmc = cat_diagS_enssdv(:)%prmc + cat_diagS(:)%prmc*cat_diagS(:)%rzmc
+          cat_diagS_enssdv(:)%tsurf = cat_diagS_enssdv(:)%tsurf + cat_diagS(:)%tsurf*cat_diagS(:)%tsurf
+          cat_diagS_enssdv(:)%tp(1) = cat_diagS_enssdv(:)%tp(1) + cat_diagS(:)%tp(1) * cat_diagS(:)%tp(1) 
        end do
        
        do ii=1,N_catl
           cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize
+          cat_diagS_enssdv(ii) = cat_diagS_enssdv(ii)/real(NUM_ENSEMBLE)
        end do
 
+       cat_diagS_enssdv(:)%sfmc = sqrt(cat_diagS_enssdv(:)%sfmc - cat_diagS_ensavg(:)%sfmc * cat_diagS_ensavg(:)%sfmc )
+       cat_diagS_enssdv(:)%rzmc = sqrt(cat_diagS_enssdv(:)%rzmc - cat_diagS_ensavg(:)%rzmc * cat_diagS_ensavg(:)%rzmc )
+       cat_diagS_enssdv(:)%prmc = sqrt(cat_diagS_enssdv(:)%prmc - cat_diagS_ensavg(:)%prmc * cat_diagS_ensavg(:)%prmc )
+       cat_diagS_enssdv(:)%tsurf = sqrt(cat_diagS_enssdv(:)%tsurf - cat_diagS_ensavg(:)%tsurf * cat_diagS_ensavg(:)%tsurf )
+       cat_diagS_enssdv(:)%tp(1) = sqrt(cat_diagS_enssdv(:)%tp(1) - cat_diagS_ensavg(:)%tp(1) * cat_diagS_ensavg(:)%tp(1))
        ! set export variables
        
        if(associated(SFMC_ana))         SFMC_ana(:)         = cat_diagS_ensavg(:)%sfmc 
@@ -1944,12 +2016,18 @@ contains
        if(associated(PRMC_ana))         PRMC_ana(:)         = cat_diagS_ensavg(:)%prmc 
        if(associated(TPSURF_ana))       TPSURF_ana(:)       = cat_diagS_ensavg(:)%tsurf
        if(associated(TSOIL1_ana))       TSOIL1_ana(:)       = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
+       if(associated(SFMC_anasdv))      SFMC_anasdv(:)      = cat_diagS_enssdv(:)%sfmc
+       if(associated(RZMC_anasdv))      RZMC_anasdv(:)      = cat_diagS_enssdv(:)%rzmc
+       if(associated(PRMC_anasdv))      PRMC_anasdv(:)      = cat_diagS_enssdv(:)%prmc
+       if(associated(TPSURF_anasdv))    TPSURF_anasdv(:)    = cat_diagS_enssdv(:)%tsurf
+       if(associated(TSOIL1_anasdv))    TSOIL1_anasdv(:)    = cat_diagS_enssdv(:)%tp(1) 
 
        if(associated(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
        
        deallocate(cat_progn_tmp)
        deallocate(cat_diagS)
-       deallocate(cat_diagS_ensavg) 
+       deallocate(cat_diagS_ensavg)
+       deallocate(cat_diagS_enssdv)
        
        ! write analysis fields into SMAP L4_SM aup file 
        ! whenever it was time for assimilation (regardless 
