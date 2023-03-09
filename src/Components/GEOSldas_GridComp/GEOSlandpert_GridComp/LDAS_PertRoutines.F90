@@ -651,14 +651,26 @@ contains
     !       perturbations in tile space from gridded perturbations fields
     !       (see calls to "grid2tile" in clsm_ensdrv_pert_routines.F90,  
     !        clsm_ensupd_upd_routines.F90, and clsm_adapt_routines.F90)
+    
     if(index(tile_grid%gridtype,"c3") ==0) then
+
+       ! If *not* cube-sphere tile space, then for perturbations use the grid that 
+       ! defines the tile space (a.k.a. "tile_grid").  E.g., if in EASE grid tile space, 
+       ! the pert grid is the EASE grid.
 
        pert_grid = tile_grid
 
     else ! cubed-sphere grid
-       !for cubed-sphere grid, global lat_lon grid
+    
+       ! For cubed-sphere tile space, use a global lat_lon pert grid with a resolution
+       ! similar to that of the grid that defines the tile space.
+       
        N_x=tile_grid%n_lon
-
+       
+       ! NOTE: The pert grid specification is hard-wired here.
+       ! If perturbation stddev is heterogeneous input from a file,  
+       ! then the input grid must match this hard-wired grid.  (sqz 2/2023)  
+       
        n_lon=4*N_x
        n_lat=3*N_x
        write(lattmp,'(I6.6)') n_lat
@@ -1111,9 +1123,13 @@ contains
        call MPI_BCAST(stdfilename_force_pert,300,MPI_CHARACTER,0,mpicomm,mpierr)
 
        nc4_file = stdfilename_force_pert
-
+       
+       ! NOTE: the input file is in netcdf format, with a group 'std_force_pert',
+       ! and the grid in the netcdf file must be the *global* pert grid 
+       ! (see subroutine get_pert_grid()) 
+       
        ! --compute-local-shape-first-
-       ! ASSUMPTION: data in file are on the *global* grid (tile_grid_g)
+       ! ASSUMPTION: data in file are on the *global* pert grid
        xstart = pert_grid_l%i_offg + 1
        xcount = pert_grid_l%N_lon
        ystart = pert_grid_l%j_offg + 1
@@ -1503,9 +1519,13 @@ contains
        call MPI_BCAST(stdfilename_progn_pert,300,MPI_CHARACTER,0,mpicomm,mpierr)
 
        nc4_file = stdfilename_progn_pert
+       
+       ! NOTE: the input file is in netcdf format, with a group 'std_force_pert',
+       ! and the grid in the netcdf file must be the *global* pert grid 
+       ! (see subroutine get_pert_grid()) 
 
        ! --compute-local-shape-first-
-       ! ASSUMPTION: data in file are on the *global* grid (tile_grid_g)
+       ! ASSUMPTION: data in file are on the *global* pert grid 
        xstart = pert_grid_l%i_offg + 1
        xcount = pert_grid_l%N_lon
        ystart = pert_grid_l%j_offg + 1
@@ -1549,10 +1569,10 @@ contains
                         std_progn_pert(ivar,:,:) = 0.
                 end if
              end do
+             ! close file
+             nc4_stat = nf90_close(nc4_id)
+             if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
           end if
-          ! close file
-          nc4_stat = nf90_close(nc4_id)
-          if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
        end do
        call MPI_Barrier(mpicomm, mpierr)
     end if
