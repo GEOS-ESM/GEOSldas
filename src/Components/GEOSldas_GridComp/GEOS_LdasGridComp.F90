@@ -406,9 +406,10 @@ contains
     integer :: N_catf
     integer :: LSM_CHOICE
 
-    type(grid_def_type) :: tile_grid_g
-    type(grid_def_type) :: tile_grid_f
-    type(grid_def_type) :: tile_grid_l
+    type(grid_def_type) :: tile_grid_g, pert_grid_g
+    type(grid_def_type) :: tile_grid_f, pert_grid_f
+    type(grid_def_type) :: tile_grid_l, pert_grid_l
+
     type(date_time_type):: start_time
     type(ESMF_Time)     :: CurrentTime
     !type(CubedSphereGridFactory) :: cubed_sphere_factory
@@ -619,39 +620,33 @@ contains
        close(10)
        call io_grid_def_type('w', logunit, tile_grid_f, 'tile_grid_f')
 
-       block 
-          type(grid_def_type) :: latlon_tmp_g
-          integer :: perturbations
+       call get_pert_grid(tile_grid_g, pert_grid_g)
+       if(trim(grid_type) == "Cubed-Sphere" ) then
 
-          call MAPL_GetResource(MAPL, perturbations, 'PERTURBATIONS:', default=0, rc=status)
-          if(trim(grid_type) == "Cubed-Sphere" ) then
-
-            _ASSERT(index(tile_grid_g%gridtype, 'c3') /=0, "tile_grid_g does not describe a cubed-sphere grid")
+          _ASSERT(index(tile_grid_g%gridtype, 'c3') /=0, "tile_grid_g does not describe a cubed-sphere grid")
+         
+          !1) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
+          !2) get hash index
+          do i = 1, N_catf
+             call get_ij_ind_from_latlon(pert_grid_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
+              tile_coord_f(i)%hash_i_indg,tile_coord_f(i)%hash_j_indg)
+          enddo
+          !3) re-generate tile_grid_f in Lat-Lon
+          call get_tile_grid(N_catf, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
+               tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
+               pert_grid_g, pert_grid_f)
             
-            !1) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
-            call get_pert_grid(tile_grid_g, latlon_tmp_g)
-            tile_grid_g = latlon_tmp_g
-            !2) get hash index
-            do i = 1, N_catf
-               call get_ij_ind_from_latlon(latlon_tmp_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
-                 tile_coord_f(i)%hash_i_indg,tile_coord_f(i)%hash_j_indg)
-            enddo
-            !3) re-generate tile_grid_f in Lat-Lon
-            call get_tile_grid(N_catf, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
-                 tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
-                 tile_grid_g, tile_grid_f)
-            
-          endif
-       end block 
-
+       else
+          call get_pert_grid(tile_grid_f, pert_grid_f)
+       endif
     endif
     
     call MPI_BCAST(N_catf,1,MPI_INTEGER,0,mpicomm,mpierr)
     if (.not. IamRoot) allocate(tile_coord_f(N_catf))
 
     call MPI_BCAST(tile_coord_f,N_catf,    MPI_tile_coord_type,0,mpicomm, mpierr)
-    call MPI_BCAST(tile_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
-    call MPI_BCAST(tile_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
+    call MPI_BCAST(pert_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
+    call MPI_BCAST(pert_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
 
     block
       integer, allocatable :: f2tile_id(:), tile_id2f(:)
@@ -686,13 +681,12 @@ contains
          tcinternal%tile_coord%hash_i_indg, tcinternal%tile_coord%hash_j_indg,   &
          tcinternal%tile_coord%min_lon,     tcinternal%tile_coord%min_lat,       &
          tcinternal%tile_coord%max_lon,     tcinternal%tile_coord%max_lat,       &
-         tile_grid_g,tile_grid_l)
+         pert_grid_g, pert_grid_l)
    
-    ! re-arrange tile_coord_f
 
-    tcinternal%grid_g = tile_grid_g
-    tcinternal%grid_f = tile_grid_f
-    tcinternal%grid_l = tile_grid_l
+    tcinternal%pgrid_g = pert_grid_g
+    tcinternal%pgrid_f = pert_grid_f
+    tcinternal%pgrid_l = pert_grid_l
 
     do i = 1, NUM_ENSEMBLE
        call MAPL_GetObjectFromGC(gcs(METFORCE(i)), CHILD_MAPL, rc=status)

@@ -1078,8 +1078,6 @@ contains
     ! mapping f to re-orderd f so it is continous for mpi_gather
     ! rf -- ordered by processors. Within the processor, ordered by MAPL grid
     integer, allocatable :: f2rf(:) ! mapping re-orderd rf to f for the LDASsa output
-    type(grid_def_type)  :: tile_grid_g
-    type(grid_def_type)  :: tile_grid_f
     character(len=300)   :: seed_fname
     character(len=300)   :: fname_tpl
     character(len=14)    :: datestamp
@@ -1842,8 +1840,8 @@ contains
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
          trim(out_path), trim(exp_id), exp_domain,                         &
          met_force, lai, cat_param, mwRTM_param,                           &
-         tile_coord_l, tile_coord_rf, tcinternal%grid_f,                   &
-         tcinternal%grid_f, tcinternal%grid_l, tcinternal%grid_g,          &
+         tile_coord_l, tile_coord_rf, tcinternal%pgrid_f,                   &
+         tcinternal%pgrid_f, tcinternal%pgrid_l, tcinternal%pgrid_g,          &
          N_catl_vec, low_ind, l2rf, rf2l,                                  &
          N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
          update_type,                                                      &
@@ -1880,7 +1878,7 @@ contains
             date_time_new, trim(out_path), trim(exp_id),                 &
             N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
             N_catl, tile_coord_l,                                        &
-            N_catf, tile_coord_rf, tcinternal%grid_f, tcinternal%grid_g, &
+            N_catf, tile_coord_rf, tcinternal%pgrid_f, tcinternal%pgrid_g, &
             N_catl_vec, low_ind, rf2l, N_catg, rf2g,                     &
             obs_param,                                                   &
             met_force, lai,                                              &
@@ -1959,7 +1957,7 @@ contains
        if (out_smapL4SMaup)                                                        &
             call write_smapL4SMaup( 'analysis', date_time_new, trim(out_path),     &
             trim(exp_id), NUM_ENSEMBLE, N_catl, N_catf, N_obsl, tile_coord_rf,     &
-            tcinternal%grid_g, N_catl_vec, low_ind,                                &
+            tcinternal%pgrid_g, N_catl_vec, low_ind,                                &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn   )
 
     end if ! end if (.true.)

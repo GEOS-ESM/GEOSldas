@@ -850,6 +850,7 @@ contains
     type(LANDPERT_WRAP) :: wrap
  
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     ! MAPL internal pointers
@@ -895,7 +896,8 @@ contains
    ! Get component's internal tile_coord variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
-    tile_coord => tcwrap%ptr%tile_coord
+    tcinternal => tcwrap%ptr
+    tile_coord => tcinternal%tile_coord
 
     ! Are we perturbing variables?
     call MAPL_GetResource(MAPL, internal%PERTURBATIONS, 'PERTURBATIONS:', default=0, rc=status)
@@ -931,20 +933,16 @@ contains
     GEOSldas_FORCE_PERT_DTSTEP = internal%ForcePert%dtstep
     GEOSldas_PROGN_PERT_DTSTEP = internal%PrognPert%dtstep
 
-    call get_pert_grid(tcwrap%ptr%grid_g,internal%pgrid_g)
-    call get_pert_grid(tcwrap%ptr%grid_f,internal%pgrid_f)
-    call get_pert_grid(tcwrap%ptr%grid_l,internal%pgrid_l)
- 
-    n_lon = internal%pgrid_l%n_lon
-    n_lat = internal%pgrid_l%n_lat
+    n_lon = tcinternal%pgrid_l%n_lon
+    n_lat = tcinternal%pgrid_l%n_lat
 
     call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
     VERIFY_(status)
 
    ! Pointers to mapl internals
     if ( internal%isCubedSphere ) then
-       n_lon_g = internal%pgrid_g%n_lon
-       n_lat_g = internal%pgrid_g%n_lat
+       n_lon_g = tcinternal%pgrid_g%n_lon
+       n_lat_g = tcinternal%pgrid_g%n_lat
        allocate(internal%fpert_ntrmdt(n_lon_g, n_lat_g, N_FORCE_PERT_MAX), source=0.0)
        allocate(internal%ppert_ntrmdt(n_lon_g, n_lat_g, N_PROGN_PERT_MAX), source=0.0)
        allocate(internal%pert_rseed_r8(NRANDSEED), source=0.0d0)
@@ -994,10 +992,10 @@ contains
              VERIFY_(status)
           endif
        endif 
-       lon1 = internal%pgrid_l%i_offg + 1
-       lon2 = internal%pgrid_l%i_offg + n_lon
-       lat1 = internal%pgrid_l%j_offg + 1
-       lat2 = internal%pgrid_l%j_offg + n_lat
+       lon1 = tcinternal%pgrid_l%i_offg + 1
+       lon2 = tcinternal%pgrid_l%i_offg + n_lon
+       lat1 = tcinternal%pgrid_l%j_offg + 1
+       lat2 = tcinternal%pgrid_l%j_offg + n_lat
     else
        call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=MINTERNAL, rc=status)
        VERIFY_(status)
@@ -1012,10 +1010,10 @@ contains
        VERIFY_(status)
        call ESMF_GRID_INTERIOR  (GRID, I1,IN,J1,JN)
 
-       lon1 = internal%pgrid_l%i_offg + 1 ! global index, starting from 1
+       lon1 = tcinternal%pgrid_l%i_offg + 1 ! global index, starting from 1
        lon1 = lon1 - i1 + 1               ! relative to local
        lon2 = lon1 + n_lon - 1
-       lat1 = internal%pgrid_l%j_offg + 1 ! global index, starting from 1
+       lat1 = tcinternal%pgrid_l%j_offg + 1 ! global index, starting from 1
        lat1 = lat1 - j1 +1                ! relative to local
        lat2 = lat1 + n_lat - 1
     endif
@@ -1051,7 +1049,7 @@ contains
     ! Get pert options from *default* namelist files
     ! WARNING: get_force/progn_pert_param() calls allocate memory
 
-    call get_force_pert_param(internal%pgrid_l, internal%ForcePert%npert, internal%ForcePert%param)
+    call get_force_pert_param(tcinternal%pgrid_l, internal%ForcePert%npert, internal%ForcePert%param)
     _ASSERT(internal%ForcePert%npert==size(internal%ForcePert%param), "ForcePert: param size does not match npert")
 
     internal%ForcePert%fft_npert = internal%ForcePert%npert
@@ -1066,7 +1064,7 @@ contains
        call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%coarsen,  N=1, ROOT=0,rc=status)
     enddo
 
-    call get_progn_pert_param(internal%pgrid_l, internal%PrognPert%npert, internal%PrognPert%param)
+    call get_progn_pert_param(tcinternal%pgrid_l, internal%PrognPert%npert, internal%PrognPert%param)
     _ASSERT(internal%PrognPert%npert==size(internal%PrognPert%param), "PrognPert: param size does not match npert")
 
     internal%PrognPert%fft_npert = internal%PrognPert%npert
@@ -1141,7 +1139,7 @@ contains
        call propagate_pert(                                                     &
             internal%ForcePert%fft_npert,                                       &
             1,                                                                  &
-            internal%pgrid_l, internal%pgrid_f,                                 &
+            tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
             ! arbitrary dtstep
             -1.0,                                                               &
             pert_rseed,                                                         &
@@ -1156,7 +1154,7 @@ contains
        call propagate_pert(                                                     &
             internal%PrognPert%fft_npert,                                       &
             1,                                                                  &
-            internal%pgrid_l, internal%pgrid_f,                                 &
+            tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
             ! arbitrary dtstep
             -1.0,                                                               &
             pert_rseed,                                                         &
@@ -1172,7 +1170,7 @@ contains
     if(internal%ens_id == FIRST_ENS_ID ) fpert_enavg(:,:,:)=0. 
 
     do m = 1,internal%ForcePert%npert
-       call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
+       call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
        if(internal%ForcePert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
           fpert_enavg(:,:,m)=fpert_enavg(:,:,m)+fpert_ntrmdt(lon1:lon2,lat1:lat2,m)
           if( internal%ens_id-FIRST_ENS_ID == internal%NUM_ENSEMBLE-1) then
@@ -1184,7 +1182,7 @@ contains
     if(internal%ens_id == FIRST_ENS_ID) ppert_enavg(:,:,:)=0. 
 
     do m = 1,internal%PrognPert%npert  
-       call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
+       call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
        if(internal%PrognPert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
           ppert_enavg(:,:,m)=ppert_enavg(:,:,m)+ppert_ntrmdt(lon1:lon2,lat1:lat2,m)
           if( internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE-1) then
@@ -1311,6 +1309,7 @@ contains
     type(LANDPERT_WRAP) :: wrap
  
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     ! MAPL internal pointers
@@ -1349,13 +1348,14 @@ contains
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
-    n_lon = internal%pgrid_l%n_lon
-    n_lat = internal%pgrid_l%n_lat
 
    ! Get component's internal tile_coord variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
-    tile_coord => tcwrap%ptr%tile_coord
+    tcinternal => tcwrap%ptr
+    tile_coord => tcinternal%tile_coord
+    n_lon = tcinternal%pgrid_l%n_lon
+    n_lat = tcinternal%pgrid_l%n_lat
 
     if (internal%PERTURBATIONS == 0) then ! no perturbations
        call MAPL_TimerOff(MAPL, "phase2_Initialize")
@@ -1419,7 +1419,7 @@ contains
          internal%ForcePert%npert,                                              &
          internal%ForcePert%fft_npert,                                          &
          1,                                                                     &
-         internal%pgrid_l, internal%pgrid_f,                                    &
+         tcinternal%pgrid_l, tcinternal%pgrid_f,                                    &
          real(internal%ForcePert%dtstep),                                       &
          internal%ForcePert%param,                                              &
          pert_rseed,                                                            &
@@ -1432,9 +1432,9 @@ contains
          )
 
     do ipert=1,internal%ForcePert%npert
-       call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+       call grid2tile( tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 fpert_grid(:,:,ipert), internal%ForcePert%DataPrv(:,ipert))
-       call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
+       call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
     end do
     internal%ForcePert%DataNxt = internal%ForcePert%DataPrv
 
@@ -1451,7 +1451,7 @@ contains
          internal%PrognPert%npert,                                              &
          internal%PrognPert%fft_npert,                                          &
          1,                                                                     &
-         internal%pgrid_l, internal%pgrid_f,                                    &
+         tcinternal%pgrid_l, tcinternal%pgrid_f,                                    &
          real(internal%PrognPert%dtstep),                                       &
          internal%PrognPert%param,                                              &
          pert_rseed,                                                            &
@@ -1464,9 +1464,9 @@ contains
          )
 
     do ipert=1,internal%PrognPert%npert
-       call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
+       call grid2tile( tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataPrv(:,ipert))
-       call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
+       call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
     end do
     internal%PrognPert%DataNxt = internal%PrognPert%DataPrv
 
@@ -1528,6 +1528,7 @@ contains
     type(T_LANDPERT_STATE), pointer :: internal=>null()
     type(LANDPERT_WRAP) :: wrap
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(MAPL_LocStream) :: locstream
  
     ! MAPL internal pointers
@@ -1562,13 +1563,17 @@ contains
     VERIFY_(status)
     internal => wrap%ptr
 
-    n_lon=internal%pgrid_l%n_lon
-    n_lat=internal%pgrid_l%n_lat
-
     if (internal%PERTURBATIONS == 0) then ! no perturbations
        call MAPL_TimerOff(MAPL, "GenerateRaw")
        RETURN_(ESMF_SUCCESS)
     end if
+
+    call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
+    VERIFY_(status)
+    tcinternal => tcwrap%ptr
+
+    n_lon=tcinternal%pgrid_l%n_lon
+    n_lat=tcinternal%pgrid_l%n_lat
 
     ! Get locstream
     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
@@ -1617,22 +1622,20 @@ contains
        VERIFY_(STATUS)
        call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
        VERIFY_(STATUS)
-       call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
-       VERIFY_(status)
 
        nfpert = internal%ForcePert%npert
        nppert = internal%PrognPert%npert
-       tile_coord_f => tcwrap%ptr%tile_coord_f
+       tile_coord_f => tcinternal%tile_coord_f
        n_tile =  size(tile_coord_f,1)
        ! 1) grid2tile
        allocate(tile_data_f(land_nt_local,nfpert))
        allocate(tile_data_p(land_nt_local,nppert))
        do m = 1, nfpert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 fpert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_f(:,m)) 
        enddo
        do m = 1, nppert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 ppert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_p(:,m)) 
        enddo
        ! 2) gather tiledata
@@ -1659,10 +1662,10 @@ contains
        if (IamRoot) then
        ! 3) tile2grid. simple reverser of grid2tile without weighted averaging/no-data-handling
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, tcinternal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, tcinternal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
        
        ! 4) writing
@@ -1684,7 +1687,7 @@ contains
        call propagate_pert(                                                   &
           internal%ForcePert%fft_npert,                                       &
           1,                                                                  &
-          internal%pgrid_l, internal%pgrid_f,                                 &
+          tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
           real(internal%ForcePert%dtstep),                                    &
           pert_rseed,                                                         &
           internal%ForcePert%param,                                           &
@@ -1695,7 +1698,7 @@ contains
        if(internal%ens_id == FIRST_ENS_ID ) fpert_enavg(:,:,:)=0.    
 
        do m = 1,internal%ForcePert%npert
-          call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
+          call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
           if(internal%ForcePert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
              fpert_enavg(:,:,m)=fpert_enavg(:,:,m)+fpert_ntrmdt(lon1:lon2,lat1:lat2,m)
              if( internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE-1) then              
@@ -1712,7 +1715,7 @@ contains
         call propagate_pert(                                                  &
            internal%PrognPert%fft_npert,                                      &
            1,                                                                 &
-           internal%pgrid_l, internal%pgrid_f,                                &
+           tcinternal%pgrid_l, tcinternal%pgrid_f,                                &
            real(internal%PrognPert%dtstep),                                   &
            pert_rseed,                                                        &
            internal%PrognPert%param,                                          &
@@ -1723,7 +1726,7 @@ contains
        if(internal%ens_id == FIRST_ENS_ID) ppert_enavg(:,:,:)=0.       
 
        do m = 1,internal%PrognPert%npert
-          call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
+          call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
           if(internal%PrognPert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
               ppert_enavg(:,:,m)=ppert_enavg(:,:,m)+ppert_ntrmdt(lon1:lon2,lat1:lat2,m)
               if( internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE -1) then                      
@@ -1831,6 +1834,7 @@ contains
     real, allocatable :: FORCEPERT(:,:)
     real, allocatable :: fpert_grid(:,:,:)
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     integer :: n_lon,n_lat
@@ -1866,13 +1870,14 @@ contains
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
-    n_lon = internal%pgrid_l%n_lon
-    n_lat = internal%pgrid_l%n_lat
 
    ! Get component's internal tile_coord variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
-    tile_coord => tcwrap%ptr%tile_coord
+    tcinternal => tcwrap%ptr
+    n_lon = tcinternal%pgrid_l%n_lon
+    n_lat = tcinternal%pgrid_l%n_lat
+    tile_coord => tcinternal%tile_coord
 
     ! Get locstream
     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
@@ -1951,7 +1956,7 @@ contains
                internal%ForcePert%npert,                                           &
                internal%ForcePert%fft_npert,                                       &
                1,                                                                  &
-               internal%pgrid_l, internal%pgrid_f,                                 &
+               tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
                real(internal%ForcePert%dtstep),                                    &
                internal%ForcePert%param,                                           &
                pert_rseed,                                                         &
@@ -1968,9 +1973,9 @@ contains
           ! -convert-nxt-gridded-perturbations-to-tile-
           call MAPL_TimerOn(MAPL, '-LocStreamTransform')
           do ipert=1,internal%ForcePert%npert
-             call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_grid(:,:,ipert), &
+             call grid2tile( tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_grid(:,:,ipert), &
                   internal%ForcePert%DataNxt(:,ipert))
-             call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
+             call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
           end do
        
           call MAPL_TimerOff(MAPL, '-LocStreamTransform')
@@ -2267,6 +2272,7 @@ contains
     real, allocatable :: PROGNPERT(:,:)
     real, allocatable :: ppert_grid(:,:,:)
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     integer :: n_lon,n_lat
@@ -2307,13 +2313,14 @@ contains
     call MAPL_TimerOn(MAPL, "TOTAL")
     call MAPL_TimerOn(MAPL, "Run_ApplyPrognPert")
 
-    n_lon = internal%pgrid_l%n_lon
-    n_lat = internal%pgrid_l%n_lat
 
    ! Get component's internal tile_coord variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
-    tile_coord => tcwrap%ptr%tile_coord
+    tcinternal => tcwrap%ptr
+    n_lon = tcinternal%pgrid_l%n_lon
+    n_lat = tcinternal%pgrid_l%n_lat
+    tile_coord => tcinternal%tile_coord
  
     ! Pointers to imports
     call MAPL_GetPointer(import, tcPert, 'TCPert', rc=status)
@@ -2430,7 +2437,7 @@ contains
             internal%PrognPert%npert,                                           &
             internal%PrognPert%fft_npert,                                       &
             1,                                                                  &
-            internal%pgrid_l, internal%pgrid_f,                                 &
+            tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
             real(internal%PrognPert%dtstep),                                    &
             internal%PrognPert%param,                                           &
             pert_rseed,                                                         &
@@ -2446,9 +2453,9 @@ contains
        ! -convert-nxt-gridded-perturbations-to-tile-
        call MAPL_TimerOn(MAPL, '-LocStreamTransform')
        do ipert=1,internal%PrognPert%npert
-          call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
+          call grid2tile( tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataNxt(:,ipert))
-          call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
+          call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
        end do
        call MAPL_TimerOff(MAPL, '-LocStreamTransform')
 
@@ -2660,6 +2667,7 @@ contains
     type(LANDPERT_WRAP) :: wrap
     type(MAPL_LocStream) :: locstream
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     integer :: m,n_lon,n_lat, land_nt_local, ens_id_width
 
     integer :: nfpert, nppert, n_tile
@@ -2685,6 +2693,9 @@ contains
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
+    call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
+    VERIFY_(status)
+    tcinternal => tcwrap%ptr
 
     if ( internal%isCubedSphere .and. internal%PERTURBATIONS /= 0) then
        call MAPL_Get(MAPL, LocStream=locstream,rc=status)
@@ -2695,22 +2706,19 @@ contains
        VERIFY_(STATUS)
        call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
        VERIFY_(STATUS)
-       call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
-       VERIFY_(status)
-
        nfpert = internal%ForcePert%npert
        nppert = internal%PrognPert%npert
-       tile_coord_f => tcwrap%ptr%tile_coord_f
+       tile_coord_f => tcinternal%tile_coord_f
        n_tile =  size(tile_coord_f,1)
        ! 1) grid2tile
        allocate(tile_data_f(land_nt_local,nfpert))
        allocate(tile_data_p(land_nt_local,nppert))
        do m = 1, nfpert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 internal%fpert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_f(:,m)) 
        enddo
        do m = 1, nppert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 internal%ppert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_p(:,m)) 
        enddo
        ! 2) gather tiledata
@@ -2739,10 +2747,10 @@ contains
        ! 3) tile2grid 
             ! this step is simply a reverse of grid2tile without any weighted   
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, tcinternal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, tcinternal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
 
         ! 4) writing

@@ -641,7 +641,7 @@ contains
     character(len=30) :: latlon_gridname
     character(len=6) ::  lattmp,lontmp
 
-    type(grid_def_type)  :: tile_grid_g,tile_grid_tmp
+    type(grid_def_type)  :: latlon_grid_tmp
 
     integer :: n_x,i_off,j_off,n_lon,n_lat
 
@@ -677,9 +677,9 @@ contains
        write(lontmp,'(I6.6)') n_lon
        latlon_gridname = "DE"//lontmp//"x"//"PE"//lattmp
 
-       call LDAS_create_grid_g(latlon_gridname,n_lon,n_lat,tile_grid_g,i_off,j_off)
+       call LDAS_create_grid_g(latlon_gridname,n_lon,n_lat, latlon_grid_tmp,i_off,j_off)
 
-       pert_grid = tile_grid_g              
+       pert_grid = latlon_grid_tmp  
 
     endif
 
