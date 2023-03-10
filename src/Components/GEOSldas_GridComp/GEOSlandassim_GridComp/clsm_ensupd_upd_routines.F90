@@ -79,7 +79,7 @@ module clsm_ensupd_upd_routines
        get_tile_num_in_ellipse,                   &
        get_number_of_tiles_in_cell_ij,            &
        get_tile_num_in_cell_ij,                   &
-       get_minimum_grid,                             &
+       get_minExtent_grid,                        &
        get_ij_ind_from_latlon
 
   use land_pert_routines,               ONLY:     &
@@ -1513,7 +1513,7 @@ contains
        
        ! determine tile_grid_lH from tile_coord_lH
        
-       tile_grid_lH = get_minimum_grid( N_catlH, tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,  &
+       tile_grid_lH = get_minExtent_grid( N_catlH, tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,&
             tile_coord_lH%min_lon, tile_coord_lH%min_lat, tile_coord_lH%max_lon, tile_coord_lH%max_lat, &
             tile_grid_g) 
        

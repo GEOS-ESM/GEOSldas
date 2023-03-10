@@ -42,7 +42,7 @@ module LDAS_TileCoordRoutines
 
   private
   
-  public :: get_minimum_grid
+  public :: get_minExtent_grid
   public :: get_number_of_tiles_in_cell_ij
   public :: get_tile_num_in_cell_ij
   public :: get_tile_num_in_ellipse
@@ -460,7 +460,7 @@ contains
   
   ! *******************************************************************
   
-  function get_minimum_grid( N_tile, tc_i_indg, tc_j_indg, tc_minlon, tc_minlat, tc_maxlon, tc_maxlat, &
+  function get_minExtent_grid( N_tile, tc_i_indg, tc_j_indg, tc_minlon, tc_minlat, tc_maxlon, tc_maxlat, &
        tile_grid_g) result( tile_grid )     
     
     ! get matching tile_grid for given tile_coord and (global) tile_grid_g
@@ -503,7 +503,7 @@ contains
     integer :: this_i_indg, this_j_indg
     integer , allocatable :: i_indg_(:), j_indg_(:)
     logical :: c3_grid 
-    character(len=*), parameter :: Iam = 'get_minimum_grid'
+    character(len=*), parameter :: Iam = 'get_minExtent_grid'
     character(len=400) :: err_msg
 
     ! -------------------------------------------------
@@ -607,7 +607,7 @@ contains
     tile_grid%i_dir    = tile_grid_g%i_dir
     tile_grid%j_dir    = tile_grid_g%j_dir
     
-  end function get_minimum_grid
+  end function get_minExtent_grid
 
   ! **********************************************************************
 

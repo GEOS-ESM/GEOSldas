@@ -46,7 +46,7 @@ module preprocess_ldas_routines
   
   use LDAS_TileCoordRoutines,          ONLY:   &
        LDAS_create_grid_g,                     &
-       get_minimum_grid,                          &
+       get_minExtent_grid,                     &
        io_domain_files
   
   use nr_ran2_gasdev,                  ONLY:   &
@@ -537,8 +537,8 @@ contains
          !  determine smallest subgrid of tile_grid_d that contains all
          !  catchments/tiles in domain
          
-         tile_grid_d = get_minimum_grid( N_cat_domain, tile_coord%i_indg, tile_coord%j_indg,  &
-              tile_coord%min_lon, tile_coord%min_lat, tile_coord%max_lon, tile_coord%max_lat, &
+         tile_grid_d = get_minExtent_grid( N_cat_domain, tile_coord%i_indg, tile_coord%j_indg, &
+              tile_coord%min_lon, tile_coord%min_lat, tile_coord%max_lon, tile_coord%max_lat,  &
               tile_grid_g) 
          
          ! output domain files

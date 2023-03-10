@@ -18,7 +18,7 @@ module GEOS_LdasGridCompMod
   use EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
   use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type
-  use LDAS_TileCoordRoutines, only: get_minimum_grid, get_ij_ind_from_latlon, io_domain_files
+  use LDAS_TileCoordRoutines, only: get_minExtent_grid, get_ij_ind_from_latlon, io_domain_files
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_PertRoutinesMod, only: get_pert_grid
   use LDAS_ensdrv_functions,ONLY:  get_io_filename 
@@ -633,7 +633,7 @@ contains
               tile_coord_f(i)%hash_i_indg,tile_coord_f(i)%hash_j_indg)
           enddo
           !2) re-generate pert_grid_f in Lat-Lon
-          pert_grid_f = get_minimum_grid(N_catf, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
+          pert_grid_f = get_minExtent_grid(N_catf, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, &
                tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
                pert_grid_g)
             
@@ -677,7 +677,7 @@ contains
 
     allocate(tcinternal%tile_coord_f,source = tile_coord_f)
     
-     pert_grid_l = get_minimum_grid(land_nt_local,                               &
+     pert_grid_l = get_minExtent_grid(land_nt_local,                             &
          tcinternal%tile_coord%hash_i_indg, tcinternal%tile_coord%hash_j_indg,   &
          tcinternal%tile_coord%min_lon,     tcinternal%tile_coord%min_lat,       &
          tcinternal%tile_coord%max_lon,     tcinternal%tile_coord%max_lat,       &
