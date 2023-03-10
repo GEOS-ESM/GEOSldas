@@ -630,14 +630,14 @@ contains
   end subroutine check_pert_dtstep
 
   ! *********************************************************************
-  subroutine get_pert_grid( tile_grid, pert_grid )
+  function get_pert_grid( tile_grid) result (pert_grid)
 
     ! reichle, 20 May 2010
     ! jiang,   03/10/2017
     implicit none
 
     type(grid_def_type), intent(in)  :: tile_grid
-    type(grid_def_type), intent(out) :: pert_grid
+    type(grid_def_type)              :: pert_grid
     character(len=30) :: latlon_gridname
     character(len=6) ::  lattmp,lontmp
 
@@ -683,7 +683,7 @@ contains
 
     endif
 
-  end subroutine get_pert_grid
+  end function get_pert_grid
 
   ! *********************************************************************
 

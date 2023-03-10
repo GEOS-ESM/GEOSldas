@@ -31,7 +31,6 @@ module GEOS_LandPertGridCompMod
   use LDAS_PertRoutinesMod, only: get_progn_pert_param
   use LDAS_PertRoutinesMod, only: read_ens_prop_inputs
   use LDAS_PertRoutinesMod, only: echo_pert_param
-  use LDAS_PertRoutinesMod, only: get_pert_grid
   use LDAS_PertRoutinesMod, only: interpolate_pert_to_timestep
   use LDAS_PertRoutinesMod, only: check_pert_dtstep
   use LDAS_PertRoutinesMod, only: GEOSldas_FORCE_PERT_DTSTEP
