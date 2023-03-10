@@ -636,8 +636,6 @@ contains
           pert_grid_f = get_minExtent_grid(N_catf, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, &
                tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
                pert_grid_g)
-            
-       else
        endif
     endif
     
