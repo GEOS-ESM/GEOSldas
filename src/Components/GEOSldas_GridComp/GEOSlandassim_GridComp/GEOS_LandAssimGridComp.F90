@@ -1840,8 +1840,8 @@ contains
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
          trim(out_path), trim(exp_id), exp_domain,                         &
          met_force, lai, cat_param, mwRTM_param,                           &
-         tile_coord_l, tile_coord_rf, tcinternal%pgrid_f,                   &
-         tcinternal%pgrid_f, tcinternal%pgrid_l, tcinternal%pgrid_g,          &
+         tile_coord_l, tile_coord_rf,                                      &
+         tcinternal%pgrid_f, tcinternal%pgrid_g,                           &
          N_catl_vec, low_ind, l2rf, rf2l,                                  &
          N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
          update_type,                                                      &

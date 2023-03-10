@@ -3375,7 +3375,7 @@ contains
   subroutine cat_enkf_increments(                               &
        N_ens, N_obs, N_catd, N_obs_param,                       &
        update_type, obs_param,                                  &
-       tile_grid_f, tile_coord, l2f,                            &
+       tile_coord, l2f,                                         &
        Observations, Obs_pred, Obs_pert,                        &
        cat_param,                                               &
        xcompact, ycompact, fcsterr_inflation_fac,               &
@@ -3414,8 +3414,6 @@ contains
     integer, intent(in) :: N_ens, N_obs, N_catd, N_obs_param, update_type
 
     type(obs_param_type), dimension(N_obs_param), intent(in) :: obs_param               
-
-    type(grid_def_type), intent(in) :: tile_grid_f
 
     type(tile_coord_type), dimension(:), pointer  :: tile_coord     ! input
 
@@ -4943,7 +4941,7 @@ contains
        ! In the obs readers, each obs is assigned to a single tile
        ! based on subroutine get_tile_num_from_latlon().  The assignment
        ! is such that the the obs lat/lon and the tile center-of-mass lat/lon
-       ! must always be within the same grid cell of the tile_grid.
+       ! must always be within the same grid cell of the tile_grid [or pert_grid??].
        ! Furthermore, the obs lat/lon 
        !  - must be within the min/max lat/lon boundaries of the tile
        !  OR

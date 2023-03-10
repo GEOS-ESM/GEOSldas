@@ -142,8 +142,8 @@ contains
        N_ens, N_catl, N_catf, N_obsl_max,                                &
        work_path, exp_id, exp_domain,                                    &
        met_force, lai, cat_param, mwRTM_param,                           &
-       tile_coord_l, tile_coord_f, pert_grid_f_NotUsed,                  &
-       pert_grid_f, pert_grid_l_NotUsed, pert_grid_g,                    &
+       tile_coord_l, tile_coord_f,                                       &
+       pert_grid_f, pert_grid_g,                                         &
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
@@ -192,7 +192,7 @@ contains
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord_l, tile_coord_f  ! input
 
-    type(grid_def_type), intent(in) :: pert_grid_f_NotUsed, pert_grid_f, pert_grid_l_NotUsed, pert_grid_g
+    type(grid_def_type), intent(in) :: pert_grid_f, pert_grid_g
 
     integer, intent(in), dimension(numprocs) :: N_catl_vec, low_ind
 
@@ -1046,7 +1046,7 @@ contains
           call cat_enkf_increments(                       &
                N_ens, nObs_ana, nTiles_ana, N_obs_param,  &
                update_type, obs_param,                    &
-               pert_grid_f, tile_coord_ana, indTiles_ana, & ! indTiles_ana is essentially ana2f
+               tile_coord_ana, indTiles_ana,              & ! indTiles_ana is essentially ana2f
                Obs_ana,                                   & ! size: nObs_ana
                Obs_pred_ana,                              & ! size: (nObs_ana,N_ens)
                Obs_pert_tmp,                              &
@@ -1074,7 +1074,7 @@ contains
           call cat_enkf_increments(                                     &
                N_ens, N_obslH, N_catl, N_obs_param,                     &
                update_type, obs_param,                                  &
-               pert_grid_f, tile_coord_l, l2f,                          &
+               tile_coord_l, l2f,                                       &
                Observations_lH(1:N_obslH),                              &
                Obs_pred_lH(1:N_obslH,1:N_ens),                          &
                Obs_pert_tmp,                                            &
