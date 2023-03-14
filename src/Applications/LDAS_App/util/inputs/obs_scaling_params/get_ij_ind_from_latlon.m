@@ -5,11 +5,11 @@ function [i_ind,j_ind] = get_ij_ind_from_latlon( tile_grid, lat, lon)
     if (strcmp(tile_grid.gridtype,'EASEv2_M36'))
         %row, col
         [j_indg,i_indg] = ...
-            smapeasev2_latlon2ind(lat,lon,'M36');
+            EASEv2_latlon2ind(lat,lon,'M36');
     elseif (strcmp(tile_grid.gridtype,'EASEv2_M09'))
         %row, col
         [j_indg,i_indg] = ...
-            smapeasev2_latlon2ind(lat,lon,'M09');
+            EASEv2_latlon2ind(lat,lon,'M09');
     else
         error('not ready for this grid');
     end
@@ -18,6 +18,9 @@ function [i_ind,j_ind] = get_ij_ind_from_latlon( tile_grid, lat, lon)
 
     i_ind = i_indg - tile_grid.i_offg - (tile_grid.ind_base - 1);
     j_ind = j_indg - tile_grid.j_offg - (tile_grid.ind_base - 1);
+    
+    i_ind = round(i_ind);
+    j_ind = round(j_ind);
 
 end
 

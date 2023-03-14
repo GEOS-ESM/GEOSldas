@@ -19,7 +19,7 @@ run_months = [1:12 1:4]; %loop through 1:4 again to get complete pentads
 %exp_run  = {'SPL4SM_OL4001'};
 %exp_path = '/smap1/qliu/output/SMAP_Nature_v8.3/NRv8.3_innov/S1/';
 %exp_run  = {'SMAP_NRv8.3_innov'};
-exp_path = '/home/qliu/smap/SMAP_Nature/';
+exp_path = '/discover/nobackup/amfox';
 exp_run  = {'SPL4SM_OL7000'};
 domain   = 'SMAP_EASEv2_M09_GLOBAL';
 
