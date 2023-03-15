@@ -1831,7 +1831,7 @@ contains
 
   subroutine output_smapL4SMaup( date_time, work_path, exp_id, dtstep_assim,    &
        N_ens, N_catl, N_catf, N_obsl, N_obsl_max,                               &
-       tile_coord_f, tile_coord_l, pert_grid_g, pert_grid_f,                    &
+       tile_coord_f, tile_coord_l, tile_grid_g, pert_grid_f,                    &
        N_catl_vec, low_ind, l2f, N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,    &
        N_obs_param, obs_param, Observations_l, cat_param, cat_progn )
 
@@ -1860,7 +1860,7 @@ contains
     type(tile_coord_type), dimension(:),     pointer :: tile_coord_f  ! input
     type(tile_coord_type), dimension(:),     pointer :: tile_coord_l  ! input
 
-    type(grid_def_type),                             intent(in) :: pert_grid_g
+    type(grid_def_type),                             intent(in) :: tile_grid_g
     type(grid_def_type),                             intent(in) :: pert_grid_f
 
     integer,               dimension(numprocs),      intent(in) :: N_catl_vec
@@ -1945,7 +1945,7 @@ contains
     ! write appropriate fields (according to 'option') into file
 
     call write_smapL4SMaup( 'orig_obs', date_time, work_path, exp_id, N_ens,     &
-         N_catl, N_catf, N_obsl_tmp, tile_coord_f, pert_grid_g,                  &
+         N_catl, N_catf, N_obsl_tmp, tile_coord_f, tile_grid_g,                  &
          N_catl_vec, low_ind,                                                    &
          N_obs_param_tmp, obs_param_tmp(1:N_obs_param_tmp), Observations_l,      &
          cat_param, cat_progn       )
@@ -1955,7 +1955,7 @@ contains
   ! **********************************************************************
 
   subroutine write_smapL4SMaup( option, date_time, work_path, exp_id, N_ens,    &
-       N_catl, N_catf, N_obsl, tile_coord_f, pert_grid_g, N_catl_vec, low_ind,  &
+       N_catl, N_catf, N_obsl, tile_coord_f, tile_grid_g, N_catl_vec, low_ind,  &
        N_obs_param, obs_param, Observations_l, cat_param, cat_progn       )
 
     ! output of custom collection for SMAP L4_SM "aup" (analysis update)
@@ -2034,7 +2034,7 @@ contains
 
     type(tile_coord_type), dimension(:),     pointer :: tile_coord_f  ! input
 
-    type(grid_def_type),                             intent(in) :: pert_grid_g
+    type(grid_def_type),                             intent(in) :: tile_grid_g
 
     integer,               dimension(numprocs),      intent(in) :: N_catl_vec
     integer,               dimension(numprocs),      intent(in) :: low_ind
@@ -2105,7 +2105,7 @@ contains
     !
     ! smapL4SMaup output only works for 9 km EASE grids
 
-    if ( index(pert_grid_g%gridtype, 'M09') == 0  ) then
+    if ( index(tile_grid_g%gridtype, 'M09') == 0  ) then
        err_msg = 'out_smapL4SMaup requires tile-space for 9 km EASEv1 or EASEv2 grid'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
@@ -2228,8 +2228,8 @@ contains
                   'SMAP_L1C_Tbh_E09_A', 'SMAP_L1C_Tbv_E09_A'    &
                   )
                
-                if (index(pert_grid_g%gridtype, 'M09') /=0) then 
-                   call  ease_convert(trim(pert_grid_g%gridtype), this_lat, this_lon, col_ind, row_ind)                
+                if (index(tile_grid_g%gridtype, 'M09') /=0) then 
+                   call  ease_convert(trim(tile_grid_g%gridtype), this_lat, this_lon, col_ind, row_ind)                
                 endif
 
                 ! col_ind and row_ind are zero-based, need one-based index here
@@ -2247,8 +2247,8 @@ contains
                   'SMAP_L1C_Tbh_E27_A', 'SMAP_L1C_Tbv_E27_A'    &
                   )
 
-                if (index(pert_grid_g%gridtype, 'M09') /=0) then
-                   call  ease_convert(trim(pert_grid_g%gridtype), this_lat, this_lon, col_ind, row_ind)             
+                if (index(tile_grid_g%gridtype, 'M09') /=0) then
+                   call  ease_convert(trim(tile_grid_g%gridtype), this_lat, this_lon, col_ind, row_ind)             
                 endif                
                 
                 ! col_ind and row_ind are zero-based, need one-based index here
@@ -2269,9 +2269,9 @@ contains
                   'SMOS_fit_Tbh_A', 'SMOS_fit_Tbv_A'    &
                   )
                 
-                if (index(pert_grid_g%gridtype, 'M09') /=0) then
+                if (index(tile_grid_g%gridtype, 'M09') /=0) then
                    ! subindex (1:7) to get the string EASEvx_
-                   gridname_tmp = pert_grid_g%gridtype(1:7)//'M36'
+                   gridname_tmp = tile_grid_g%gridtype(1:7)//'M36'
                    call  ease_convert(gridname_tmp, this_lat, this_lon, col_ind, row_ind)                
                 endif
 
@@ -2298,8 +2298,8 @@ contains
 
           ! map Observations%[xx] fields onto global 9km EASE grid,
 
-          allocate(ndata_h_9km_grid(pert_grid_g%N_lon,pert_grid_g%N_lat))
-          allocate(ndata_v_9km_grid(pert_grid_g%N_lon,pert_grid_g%N_lat))
+          allocate(ndata_h_9km_grid(tile_grid_g%N_lon,tile_grid_g%N_lat))
+          allocate(ndata_v_9km_grid(tile_grid_g%N_lon,tile_grid_g%N_lat))
 
           if (option=='orig_obs') then
 
@@ -2312,8 +2312,8 @@ contains
 
              allocate(Obs_f_tmpdata_8(N_obsf))
 
-             allocate(data_h_9km_grid_8(pert_grid_g%N_lon,pert_grid_g%N_lat))
-             allocate(data_v_9km_grid_8(pert_grid_g%N_lon,pert_grid_g%N_lat))
+             allocate(data_h_9km_grid_8(tile_grid_g%N_lon,tile_grid_g%N_lat))
+             allocate(data_v_9km_grid_8(tile_grid_g%N_lon,tile_grid_g%N_lat))
 
              allocate(data_h_9km_tile_8(N_catf))
              allocate(data_v_9km_tile_8(N_catf))
@@ -2326,8 +2326,8 @@ contains
 
              allocate(Obs_f_tmpdata(N_obsf))
 
-             allocate(data_h_9km_grid(pert_grid_g%N_lon,pert_grid_g%N_lat))
-             allocate(data_v_9km_grid(pert_grid_g%N_lon,pert_grid_g%N_lat))
+             allocate(data_h_9km_grid(tile_grid_g%N_lon,tile_grid_g%N_lat))
+             allocate(data_v_9km_grid(tile_grid_g%N_lon,tile_grid_g%N_lat))
 
              allocate(data_h_9km_tile(N_catf))
              allocate(data_v_9km_tile(N_catf))
@@ -2357,8 +2357,8 @@ contains
 
                    allocate(Obs_f_tmpdata(N_obsf))
 
-                   allocate(data_h_9km_grid(pert_grid_g%N_lon,pert_grid_g%N_lat))
-                   allocate(data_v_9km_grid(pert_grid_g%N_lon,pert_grid_g%N_lat))
+                   allocate(data_h_9km_grid(tile_grid_g%N_lon,tile_grid_g%N_lat))
+                   allocate(data_v_9km_grid(tile_grid_g%N_lon,tile_grid_g%N_lat))
 
                    allocate(data_h_9km_tile(N_catf))
                    allocate(data_v_9km_tile(N_catf))
@@ -2740,10 +2740,10 @@ contains
                 data_h_9km_tile_8 = real(nodata_generic,kind(0.0D0)) ! init (not in grid2tile!)
                 data_v_9km_tile_8 = real(nodata_generic,kind(0.0D0)) ! init (not in grid2tile!)
 
-                call grid2tile( pert_grid_g, N_catf, tile_coord_f%i_indg, tile_coord_f%j_indg, data_h_9km_grid_8, &
+                call grid2tile( tile_grid_g, N_catf, tile_coord_f%i_indg, tile_coord_f%j_indg, data_h_9km_grid_8, &
                      data_h_9km_tile_8 )
 
-                call grid2tile( pert_grid_g, N_catf, tile_coord_f%i_indg, tile_coord_f%j_indg, data_v_9km_grid_8, &
+                call grid2tile( tile_grid_g, N_catf, tile_coord_f%i_indg, tile_coord_f%j_indg, data_v_9km_grid_8, &
                      data_v_9km_tile_8 )
 
                 ! write into file
@@ -2756,10 +2756,10 @@ contains
                 data_h_9km_tile = nodata_generic  ! initialize (not done in grid2tile!)
                 data_v_9km_tile = nodata_generic  ! initialize (not done in grid2tile!)
 
-                call grid2tile( pert_grid_g, N_catf, tile_coord_f%i_indg,tile_coord_f%j_indg, data_h_9km_grid, &
+                call grid2tile( tile_grid_g, N_catf, tile_coord_f%i_indg,tile_coord_f%j_indg, data_h_9km_grid, &
                      data_h_9km_tile )
 
-                call grid2tile( pert_grid_g, N_catf, tile_coord_f%i_indg,tile_coord_f%j_indg, data_v_9km_grid, &
+                call grid2tile( tile_grid_g, N_catf, tile_coord_f%i_indg,tile_coord_f%j_indg, data_v_9km_grid, &
                      data_v_9km_tile )
 
                 ! write into file
