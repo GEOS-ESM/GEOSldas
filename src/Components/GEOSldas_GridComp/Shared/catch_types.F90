@@ -376,8 +376,8 @@ module catch_types
   end interface
   
   interface operator (*)
-     module procedure cat_diagS_mult_scalar
-     module procedure cat_diagF_mult_scalar
+     module procedure    scalar_mult_cat_diagS
+     module procedure    scalar_mult_cat_diagF
      module procedure cat_diagS_mult_cat_diagS
   end interface
 
@@ -479,37 +479,37 @@ contains
   
   ! -----------------------------------------------------------
 
-  function cat_diagS_mult_scalar( cat_diagS, scalar )
+  function scalar_mult_cat_diagS( scalar, cat_diagS )
     
     implicit none
 
-    type(cat_diagS_type)             :: cat_diagS_mult_scalar
+    type(cat_diagS_type)             :: scalar_mult_cat_diagS
     type(cat_diagS_type), intent(in) :: cat_diagS
     
     real, intent(in) :: scalar
     
     integer :: i     ! local
     
-    cat_diagS_mult_scalar%ar1        = cat_diagS%ar1    * scalar
-    cat_diagS_mult_scalar%ar2        = cat_diagS%ar2    * scalar
-                                   
-    cat_diagS_mult_scalar%asnow      = cat_diagS%asnow  * scalar
-                                   
-    cat_diagS_mult_scalar%sfmc       = cat_diagS%sfmc   * scalar
-    cat_diagS_mult_scalar%rzmc       = cat_diagS%rzmc   * scalar
-    cat_diagS_mult_scalar%prmc       = cat_diagS%prmc   * scalar
-                                   
-    cat_diagS_mult_scalar%tsurf      = cat_diagS%tsurf  * scalar
-    
-    do i=1,N_gt
-       cat_diagS_mult_scalar%tp(i)   = cat_diagS%tp(i)  * scalar
-    end do
-
-    do i=1,N_snow
-       cat_diagS_mult_scalar%tpsn(i) = cat_diagS%tpsn(i)* scalar
+    scalar_mult_cat_diagS%ar1        = scalar * cat_diagS%ar1    
+    scalar_mult_cat_diagS%ar2        = scalar * cat_diagS%ar2    
+                                                
+    scalar_mult_cat_diagS%asnow      = scalar * cat_diagS%asnow  
+                                                
+    scalar_mult_cat_diagS%sfmc       = scalar * cat_diagS%sfmc   
+    scalar_mult_cat_diagS%rzmc       = scalar * cat_diagS%rzmc   
+    scalar_mult_cat_diagS%prmc       = scalar * cat_diagS%prmc   
+                                                
+    scalar_mult_cat_diagS%tsurf      = scalar * cat_diagS%tsurf  
+                                                
+    do i=1,N_gt                                 
+       scalar_mult_cat_diagS%tp(i)   = scalar * cat_diagS%tp(i)  
+    end do                                      
+                                                
+    do i=1,N_snow                               
+       scalar_mult_cat_diagS%tpsn(i) = scalar * cat_diagS%tpsn(i)
     end do
  
-  end function cat_diagS_mult_scalar
+  end function scalar_mult_cat_diagS
 
   ! -----------------------------------------------------------
 
@@ -545,48 +545,48 @@ contains
 
   ! -----------------------------------------------------------
 
-  function cat_diagF_mult_scalar( cat_diagF, scalar )
+  function scalar_mult_cat_diagF( scalar, cat_diagF )
     
     implicit none
 
-    type(cat_diagF_type)             :: cat_diagF_mult_scalar
+    type(cat_diagF_type)             :: scalar_mult_cat_diagF
     type(cat_diagF_type), intent(in) :: cat_diagF
     
     real, intent(in) :: scalar
     
-    cat_diagF_mult_scalar%shflux = cat_diagF%shflux * scalar
-    cat_diagF_mult_scalar%lhflux = cat_diagF%lhflux * scalar
-    cat_diagF_mult_scalar%ghflux = cat_diagF%ghflux * scalar
-
-    cat_diagF_mult_scalar%evap   = cat_diagF%evap   * scalar
-    cat_diagF_mult_scalar%eint   = cat_diagF%eint   * scalar
-    cat_diagF_mult_scalar%esoi   = cat_diagF%esoi   * scalar
-    cat_diagF_mult_scalar%eveg   = cat_diagF%eveg   * scalar
-    cat_diagF_mult_scalar%esno   = cat_diagF%esno   * scalar
+    scalar_mult_cat_diagF%shflux = scalar * cat_diagF%shflux 
+    scalar_mult_cat_diagF%lhflux = scalar * cat_diagF%lhflux 
+    scalar_mult_cat_diagF%ghflux = scalar * cat_diagF%ghflux 
+                                            
+    scalar_mult_cat_diagF%evap   = scalar * cat_diagF%evap   
+    scalar_mult_cat_diagF%eint   = scalar * cat_diagF%eint   
+    scalar_mult_cat_diagF%esoi   = scalar * cat_diagF%esoi   
+    scalar_mult_cat_diagF%eveg   = scalar * cat_diagF%eveg   
+    scalar_mult_cat_diagF%esno   = scalar * cat_diagF%esno   
+                                            
+                                            
+    scalar_mult_cat_diagF%runoff = scalar * cat_diagF%runoff 
+    scalar_mult_cat_diagF%runsrf = scalar * cat_diagF%runsrf 
+    scalar_mult_cat_diagF%bflow  = scalar * cat_diagF%bflow  
+                                            
+    scalar_mult_cat_diagF%snmelt = scalar * cat_diagF%snmelt 
+                                            
+    scalar_mult_cat_diagF%lwup   = scalar * cat_diagF%lwup   
+    scalar_mult_cat_diagF%swup   = scalar * cat_diagF%swup   
+                                            
+    scalar_mult_cat_diagF%qinfil = scalar * cat_diagF%qinfil 
+                                            
+    scalar_mult_cat_diagF%hsnacc = scalar * cat_diagF%hsnacc 
+    scalar_mult_cat_diagF%evacc  = scalar * cat_diagF%evacc  
+    scalar_mult_cat_diagF%shacc  = scalar * cat_diagF%shacc  
+    scalar_mult_cat_diagF%lhacc  = scalar * cat_diagF%lhacc  
+    scalar_mult_cat_diagF%eacc_0 = scalar * cat_diagF%eacc_0 
+                                            
+    scalar_mult_cat_diagF%t2m    = scalar * cat_diagF%t2m    
+    scalar_mult_cat_diagF%q2m    = scalar * cat_diagF%q2m    
 
     
-    cat_diagF_mult_scalar%runoff = cat_diagF%runoff * scalar
-    cat_diagF_mult_scalar%runsrf = cat_diagF%runsrf * scalar
-    cat_diagF_mult_scalar%bflow  = cat_diagF%bflow  * scalar
-
-    cat_diagF_mult_scalar%snmelt = cat_diagF%snmelt * scalar
-    
-    cat_diagF_mult_scalar%lwup   = cat_diagF%lwup   * scalar
-    cat_diagF_mult_scalar%swup   = cat_diagF%swup   * scalar
-
-    cat_diagF_mult_scalar%qinfil = cat_diagF%qinfil * scalar
-    
-    cat_diagF_mult_scalar%hsnacc = cat_diagF%hsnacc * scalar 
-    cat_diagF_mult_scalar%evacc  = cat_diagF%evacc  * scalar 
-    cat_diagF_mult_scalar%shacc  = cat_diagF%shacc  * scalar 
-    cat_diagF_mult_scalar%lhacc  = cat_diagF%lhacc  * scalar 
-    cat_diagF_mult_scalar%eacc_0 = cat_diagF%eacc_0 * scalar 
-   
-    cat_diagF_mult_scalar%t2m    = cat_diagF%t2m    * scalar
-    cat_diagF_mult_scalar%q2m    = cat_diagF%q2m    * scalar
-
-    
-  end function cat_diagF_mult_scalar
+  end function scalar_mult_cat_diagF
 
   ! -----------------------------------------------------------
 
@@ -814,38 +814,6 @@ contains
 
     
   end function subtract_cat_diagF
-
-  ! -----------------------------------------------------------
-
-  function cat_diagS_square( cat_diagS )
-    
-    implicit none
-
-    type(cat_diagS_type)             :: cat_diagS_square
-    type(cat_diagS_type), intent(in) :: cat_diagS
-    
-    integer :: i     ! local
-    
-    cat_diagS_square%ar1        = cat_diagS%ar1     * cat_diagS%ar1     
-    cat_diagS_square%ar2        = cat_diagS%ar2     * cat_diagS%ar2     
-                                                                           
-    cat_diagS_square%asnow      = cat_diagS%asnow   * cat_diagS%asnow   
-                                                                           
-    cat_diagS_square%sfmc       = cat_diagS%sfmc    * cat_diagS%sfmc    
-    cat_diagS_square%rzmc       = cat_diagS%rzmc    * cat_diagS%rzmc    
-    cat_diagS_square%prmc       = cat_diagS%prmc    * cat_diagS%prmc    
-                                                                           
-    cat_diagS_square%tsurf      = cat_diagS%tsurf   * cat_diagS%tsurf   
-                                                                           
-    do i=1,N_gt                                                            
-       cat_diagS_square%tp(i)   = cat_diagS%tp(i)   * cat_diagS%tp(i)   
-    end do                                                                 
-                                                                           
-    do i=1,N_snow                                                          
-       cat_diagS_square%tpsn(i) = cat_diagS%tpsn(i) * cat_diagS%tpsn(i) 
-    end do
- 
-  end function cat_diagS_square
 
   ! -----------------------------------------------------------
 
