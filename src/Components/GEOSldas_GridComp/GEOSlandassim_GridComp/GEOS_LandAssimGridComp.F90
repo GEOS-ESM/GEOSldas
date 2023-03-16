@@ -779,9 +779,9 @@ contains
   VERIFY_(STATUS)
  
   call MAPL_AddExportSpec(GC                                                      ,&
-       LONG_NAME          = 'soil_moisture_surface_analysis ensstd'              ,&
+       LONG_NAME          = 'soil_moisture_surface_analysis_ensstd'               ,&
        UNITS              = 'm3 m-3'                                              ,&
-       SHORT_NAME         = 'WCSF_ANAstd'                                         ,&
+       SHORT_NAME         = 'WCSF_ANA_ENSSTD'                                     ,&
        DIMS               = MAPL_DimsTileOnly                                     ,&
        VLOCATION          = MAPL_VLocationNone                                    ,&
        RC=STATUS  )
@@ -797,9 +797,9 @@ contains
   VERIFY_(STATUS)
   
   call MAPL_AddExportSpec(GC                                                      ,&
-       LONG_NAME          = 'soil_moisture_rootzone_analysis ensstd'             ,&
+       LONG_NAME          = 'soil_moisture_rootzone_analysis_ensstd'              ,&
        UNITS              = 'm3 m-3'                                              ,&
-       SHORT_NAME         = 'WCRZ_ANAstd'                                         ,&
+       SHORT_NAME         = 'WCRZ_ANA_ENSSTD'                                     ,&
        DIMS               = MAPL_DimsTileOnly                                     ,&
        VLOCATION          = MAPL_VLocationNone                                    ,&
        RC=STATUS  )
@@ -815,9 +815,9 @@ contains
   VERIFY_(STATUS)
 
   call MAPL_AddExportSpec(GC                                                      ,&
-       LONG_NAME          = 'soil_moisture_profile_analysis ensstd'              ,&
+       LONG_NAME          = 'soil_moisture_profile_analysis_ensstd'               ,&
        UNITS              = 'm3 m-3'                                              ,&
-       SHORT_NAME         = 'WCPR_ANAstd'                                         ,&
+       SHORT_NAME         = 'WCPR_ANA_ENSSTD'                                     ,&
        DIMS               = MAPL_DimsTileOnly                                     ,&
        VLOCATION          = MAPL_VLocationNone                                    ,&
        RC=STATUS  )
@@ -833,9 +833,9 @@ contains
   VERIFY_(STATUS)
   
   call MAPL_AddExportSpec(GC                                                      ,&
-       LONG_NAME          = 'ave_catchment_temp_incl_snw_analysisi ensstd'       ,&
+       LONG_NAME          = 'ave_catchment_temp_incl_snw_analysis_ensstd'         ,&
        UNITS              = 'K'                                                   ,&
-       SHORT_NAME         = 'TPSURF_ANAstd'                                       ,&
+       SHORT_NAME         = 'TPSURF_ANA_ENSSTD'                                   ,&
        DIMS               = MAPL_DimsTileOnly                                     ,&
        VLOCATION          = MAPL_VLocationNone                                    ,&
        RC=STATUS  )
@@ -851,9 +851,9 @@ contains
   VERIFY_(STATUS) 
   
   call MAPL_AddExportSpec(GC                                                      ,&
-       LONG_NAME          = 'soil_temperatures_layer_1_analysis ensstd'           ,&
+       LONG_NAME          = 'soil_temperatures_layer_1_analysis_ensstd'           ,&
        UNITS              = 'K'                                                   ,&
-       SHORT_NAME         = 'TSOIL1_ANAstd'                                       ,&
+       SHORT_NAME         = 'TSOIL1_ANA_ENSSTD'                                   ,&
        DIMS               = MAPL_DimsTileOnly                                     ,&
        VLOCATION          = MAPL_VLocationNone                                    ,&
        RC=STATUS  )
@@ -1528,16 +1528,17 @@ contains
 
     !! export for analysis model diagnostics 
 
-    real, dimension(:),pointer :: SFMC_ana=>null()     ! surface soil moisture
-    real, dimension(:),pointer :: RZMC_ana=>null()     ! rootzone soil moisture
-    real, dimension(:),pointer :: PRMC_ana=>null()     ! profile soil moisture
-    real, dimension(:),pointer :: TPSURF_ana=>null()   ! tpsurf
-    real, dimension(:),pointer :: TSOIL1_ana=>null()   ! tsoil1
-    real, dimension(:),pointer :: SFMC_anastd=>null()  ! surface soil moisture
-    real, dimension(:),pointer :: RZMC_anastd=>null()  ! rootzone soil moisture
-    real, dimension(:),pointer :: PRMC_anastd=>null()  ! profile soil moisture
-    real, dimension(:),pointer :: TPSURF_anastd=>null()  ! tpsurf
-    real, dimension(:),pointer :: TSOIL1_anastd=>null()  ! tsoil1
+    real, dimension(:),pointer :: SFMC_ana=>null()           ! surface soil moisture
+    real, dimension(:),pointer :: RZMC_ana=>null()           ! rootzone soil moisture
+    real, dimension(:),pointer :: PRMC_ana=>null()           ! profile soil moisture
+    real, dimension(:),pointer :: TPSURF_ana=>null()         ! tpsurf
+    real, dimension(:),pointer :: TSOIL1_ana=>null()         ! tsoil1
+
+    real, dimension(:),pointer :: SFMC_ana_ensstd=>null()    ! surface soil moisture
+    real, dimension(:),pointer :: RZMC_ana_ensstd=>null()    ! rootzone soil moisture
+    real, dimension(:),pointer :: PRMC_ana_ensstd=>null()    ! profile soil moisture
+    real, dimension(:),pointer :: TPSURF_ana_ensstd=>null()  ! tpsurf
+    real, dimension(:),pointer :: TSOIL1_ana_ensstd=>null()  ! tsoil1
 
     !! export for microwave radiative transfer model (mwRTM)
 
@@ -1551,7 +1552,7 @@ contains
     character(len=ESMF_MAXSTR) :: ensid_string
     integer                    :: ens, nymd, nhms, ens_id_width
     integer                    :: LandassimDTstep
-    real                       :: nn1 
+    real                       :: NdivNm1 
 
 #ifdef DBG_LANDASSIM_INPUTS
     ! vars for debugging purposes
@@ -1697,25 +1698,25 @@ contains
     
     ! exports for analysis model diagnostics
     
-    call MAPL_GetPointer(export, TPSURF_ana,  'TPSURF_ANA' ,rc=status)
+    call MAPL_GetPointer(export, TPSURF_ana,         'TPSURF_ANA'        ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, TSOIL1_ana,  'TSOIL1_ANA' ,rc=status)
+    call MAPL_GetPointer(export, TSOIL1_ana,         'TSOIL1_ANA'        ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, SFMC_ana,    'WCSF_ANA'  ,rc=status)
+    call MAPL_GetPointer(export, SFMC_ana,           'WCSF_ANA'          ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, RZMC_ana,    'WCRZ_ANA'  ,rc=status)
+    call MAPL_GetPointer(export, RZMC_ana,           'WCRZ_ANA'          ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, PRMC_ana,    'WCPR_ANA'  ,rc=status)
+    call MAPL_GetPointer(export, PRMC_ana,           'WCPR_ANA'          ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, TPSURF_anastd,  'TPSURF_ANAstd' ,rc=status)    
+    call MAPL_GetPointer(export, TPSURF_ana_ensstd,  'TPSURF_ANA_ENSSTD' ,rc=status)    
     VERIFY_(status)       
-    call MAPL_GetPointer(export, TSOIL1_anastd,  'TSOIL1_ANAstd' ,rc=status)    
+    call MAPL_GetPointer(export, TSOIL1_ana_ensstd,  'TSOIL1_ANA_ENSSTD' ,rc=status)    
     VERIFY_(status)       
-    call MAPL_GetPointer(export, SFMC_anastd,    'WCSF_ANAstd'  ,rc=status)
+    call MAPL_GetPointer(export, SFMC_ana_ensstd,    'WCSF_ANA_ENSSTD'   ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, RZMC_anastd,    'WCRZ_ANAstd'  ,rc=status)
+    call MAPL_GetPointer(export, RZMC_ana_ensstd,    'WCRZ_ANA_ENSSTD'   ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, PRMC_anastd,    'WCPR_ANAstd'  ,rc=status)
+    call MAPL_GetPointer(export, PRMC_ana_ensstd,    'WCPR_ANA_ENSSTD'   ,rc=status)
     VERIFY_(status)
 
     ! exports for microwave radiative transfer model (mwRTM)
@@ -1994,39 +1995,43 @@ contains
           do ii=1,N_catl
              cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii) + cat_diagS(ii)
           end do
-          cat_diagS_ensstd(:)%sfmc = cat_diagS_ensstd(:)%sfmc + cat_diagS(:)%sfmc*cat_diagS(:)%sfmc
-          cat_diagS_ensstd(:)%rzmc = cat_diagS_ensstd(:)%rzmc + cat_diagS(:)%rzmc*cat_diagS(:)%rzmc
-          cat_diagS_ensstd(:)%prmc = cat_diagS_ensstd(:)%prmc + cat_diagS(:)%prmc*cat_diagS(:)%rzmc
+          cat_diagS_ensstd(:)%sfmc  = cat_diagS_ensstd(:)%sfmc  + cat_diagS(:)%sfmc*cat_diagS(:)%sfmc
+          cat_diagS_ensstd(:)%rzmc  = cat_diagS_ensstd(:)%rzmc  + cat_diagS(:)%rzmc*cat_diagS(:)%rzmc
+          cat_diagS_ensstd(:)%prmc  = cat_diagS_ensstd(:)%prmc  + cat_diagS(:)%prmc*cat_diagS(:)%rzmc
           cat_diagS_ensstd(:)%tsurf = cat_diagS_ensstd(:)%tsurf + cat_diagS(:)%tsurf*cat_diagS(:)%tsurf
-          cat_diagS_ensstd(:)%tp(1) = cat_diagS_ensstd(:)%tp(1) + cat_diagS(:)%tp(1) * cat_diagS(:)%tp(1) 
+          cat_diagS_ensstd(:)%tp(1) = cat_diagS_ensstd(:)%tp(1) + cat_diagS(:)%tp(1)*cat_diagS(:)%tp(1) 
        end do
        
        do ii=1,N_catl
           cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize
           cat_diagS_ensstd(ii) = cat_diagS_ensstd(ii)/real(NUM_ENSEMBLE-1)
        end do
+
        if (NUM_ENSEMBLE > 1 ) then
-           nn1 = real(NUM_ENSEMBLE)/real(NUM_ENSEMBLE-1) 
+           NdivNm1 = real(NUM_ENSEMBLE)/real(NUM_ENSEMBLE-1) 
        else 
-           nn1 = real(NUM_ENSEMBLE)
+           NdivNm1 = real(NUM_ENSEMBLE)
        endif
-       cat_diagS_ensstd(:)%sfmc = sqrt(cat_diagS_ensstd(:)%sfmc - nn1*(cat_diagS_ensavg(:)%sfmc)**2 ) 
-       cat_diagS_ensstd(:)%rzmc = sqrt(cat_diagS_ensstd(:)%rzmc - nn1*(cat_diagS_ensavg(:)%rzmc)**2 )
-       cat_diagS_ensstd(:)%prmc = sqrt(cat_diagS_ensstd(:)%prmc - nn1*(cat_diagS_ensavg(:)%prmc)**2 ) 
-       cat_diagS_ensstd(:)%tsurf = sqrt(cat_diagS_ensstd(:)%tsurf - nn1*(cat_diagS_ensavg(:)%tsurf)**2 ) 
-       cat_diagS_ensstd(:)%tp(1) = sqrt(cat_diagS_ensstd(:)%tp(1) - nn1*(cat_diagS_ensavg(:)%tp(1))**2 )
+
+       cat_diagS_ensstd(:)%sfmc  = sqrt(cat_diagS_ensstd(:)%sfmc  - NdivNm1*(cat_diagS_ensavg(:)%sfmc)**2 ) 
+       cat_diagS_ensstd(:)%rzmc  = sqrt(cat_diagS_ensstd(:)%rzmc  - NdivNm1*(cat_diagS_ensavg(:)%rzmc)**2 )
+       cat_diagS_ensstd(:)%prmc  = sqrt(cat_diagS_ensstd(:)%prmc  - NdivNm1*(cat_diagS_ensavg(:)%prmc)**2 ) 
+       cat_diagS_ensstd(:)%tsurf = sqrt(cat_diagS_ensstd(:)%tsurf - NdivNm1*(cat_diagS_ensavg(:)%tsurf)**2 ) 
+       cat_diagS_ensstd(:)%tp(1) = sqrt(cat_diagS_ensstd(:)%tp(1) - NdivNm1*(cat_diagS_ensavg(:)%tp(1))**2 )
+
        ! set export variables
        
-       if(associated(SFMC_ana))         SFMC_ana(:)         = cat_diagS_ensavg(:)%sfmc 
-       if(associated(RZMC_ana))         RZMC_ana(:)         = cat_diagS_ensavg(:)%rzmc  
-       if(associated(PRMC_ana))         PRMC_ana(:)         = cat_diagS_ensavg(:)%prmc 
-       if(associated(TPSURF_ana))       TPSURF_ana(:)       = cat_diagS_ensavg(:)%tsurf
-       if(associated(TSOIL1_ana))       TSOIL1_ana(:)       = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
-       if(associated(SFMC_anastd))      SFMC_anastd(:)      = cat_diagS_ensstd(:)%sfmc
-       if(associated(RZMC_anastd))      RZMC_anastd(:)      = cat_diagS_ensstd(:)%rzmc
-       if(associated(PRMC_anastd))      PRMC_anastd(:)      = cat_diagS_ensstd(:)%prmc
-       if(associated(TPSURF_anastd))    TPSURF_anastd(:)    = cat_diagS_ensstd(:)%tsurf
-       if(associated(TSOIL1_anastd))    TSOIL1_anastd(:)    = cat_diagS_ensstd(:)%tp(1) 
+       if(associated(SFMC_ana))             SFMC_ana(:)             = cat_diagS_ensavg(:)%sfmc 
+       if(associated(RZMC_ana))             RZMC_ana(:)             = cat_diagS_ensavg(:)%rzmc  
+       if(associated(PRMC_ana))             PRMC_ana(:)             = cat_diagS_ensavg(:)%prmc 
+       if(associated(TPSURF_ana))           TPSURF_ana(:)           = cat_diagS_ensavg(:)%tsurf
+       if(associated(TSOIL1_ana))           TSOIL1_ana(:)           = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
+
+       if(associated(SFMC_ana_ensstd))      SFMC_ana_ensstd(:)      = cat_diagS_ensstd(:)%sfmc
+       if(associated(RZMC_ana_ensstd))      RZMC_ana_ensstd(:)      = cat_diagS_ensstd(:)%rzmc
+       if(associated(PRMC_ana_ensstd))      PRMC_ana_ensstd(:)      = cat_diagS_ensstd(:)%prmc
+       if(associated(TPSURF_ana_ensstd))    TPSURF_ana_ensstd(:)    = cat_diagS_ensstd(:)%tsurf
+       if(associated(TSOIL1_ana_ensstd))    TSOIL1_ana_ensstd(:)    = cat_diagS_ensstd(:)%tp(1) 
 
        if(associated(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
        
