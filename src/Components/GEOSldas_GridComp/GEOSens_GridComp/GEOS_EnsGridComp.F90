@@ -2448,7 +2448,7 @@ contains
     real, dimension(:), pointer :: CNBURN,  CNBURN_enavg
     real, dimension(:), pointer :: CNFSEL,  CNFSEL_enavg
 
-    real ::  NdivNm1    
+    real ::  Nm1, NdivNm1    
 
     ! Get my name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -3618,11 +3618,10 @@ contains
 
 
     if(collect_land_counter == NUM_ENSEMBLE) then
-        if (NUM_ENSEMBLE >1 ) then
-            NdivNm1 = real(NUM_ENSEMBLE)/real(NUM_ENSEMBLE-1) 
-        else 
-            NdivNm1 = real(NUM_ENSEMBLE)
-        endif 
+
+        Nm1 = real(NUM_ENSEMBLE-1) 
+        if (NUM_ENSEMBLE>1) NdivNm1 = real(NUM_ENSEMBLE)/Nm1
+
         collect_land_counter = 0
         if(associated(TC_enavg)) TC_enavg = TC_enavg/NUM_ENSEMBLE
         if(associated(QC_enavg)) QC_enavg = QC_enavg/NUM_ENSEMBLE
@@ -3670,9 +3669,11 @@ contains
         !if(associated(RZEQ_enavg)) RZEQ_enavg = RZEQ_enavg/NUM_ENSEMBLE
         if(associated(GHFLX_enavg)) GHFLX_enavg = GHFLX_enavg/NUM_ENSEMBLE
         if(associated(TPSURF_enavg)) TPSURF_enavg = TPSURF_enavg/NUM_ENSEMBLE
-        if(associated(TPSURF_enstd)) TPSURF_enstd = TPSURF_enstd/(NUM_ENSEMBLE-1)
-        if(associated(TPSURF_enstd) .and. associated(TPSURF_enavg)) &
-             TPSURF_enstd = sqrt(TPSURF_enstd - NdivNm1*(TPSURF_enavg)**2)
+        if((NUM_ENSEMBLE>1) .and. associated(TPSURF_enstd) .and. associated(TPSURF_enavg)) then
+           TPSURF_enstd = sqrt( TPSURF_enstd/Nm1 - NdivNm1*(TPSURF_enavg**2) )
+        else if (associated(TPSURF_enstd)) then
+           TPSURF_enstd = MAPL_UNDEF
+        end if
         if(associated(TPSNOW_enavg)) TPSNOW_enavg = TPSNOW_enavg/NUM_ENSEMBLE
         if(associated(TPUNST_enavg)) TPUNST_enavg = TPUNST_enavg/NUM_ENSEMBLE
         if(associated(TPSAT_enavg)) TPSAT_enavg = TPSAT_enavg/NUM_ENSEMBLE
@@ -3689,21 +3690,29 @@ contains
         if(associated(WET2_enavg)) WET2_enavg = WET2_enavg/NUM_ENSEMBLE
         if(associated(WET3_enavg)) WET3_enavg = WET3_enavg/NUM_ENSEMBLE
         if(associated(WCSF_enavg)) WCSF_enavg = WCSF_enavg/NUM_ENSEMBLE
-        if(associated(WCSF_enstd)) WCSF_enstd = WCSF_enstd/(NUM_ENSEMBLE-1)
-        if(associated(WCSF_enstd) .and. associated(WCSF_enavg)) &
-            WCSF_enstd = sqrt(WCSF_enstd - NdivNm1*(WCSF_enavg)**2)
+        if((NUM_ENSEMBLE>1) .and. associated(WCSF_enstd) .and. associated(WCSF_enavg)) then
+           WCSF_enstd = sqrt( WCSF_enstd/Nm1 - NdivNm1*(WCSF_enavg**2) )
+        else if (associated(WCSF_enstd)) then
+           WCSF_enstd = MAPL_UNDEF
+        end if
         if(associated(WCRZ_enavg)) WCRZ_enavg = WCRZ_enavg/NUM_ENSEMBLE
-        if(associated(WCRZ_enstd)) WCRZ_enstd = WCRZ_enstd/(NUM_ENSEMBLE-1)
-        if(associated(WCRZ_enstd) .and. associated(WCRZ_enavg)) &
-            WCRZ_enstd = sqrt(WCRZ_enstd - NdivNm1*(WCRZ_enavg)**2)
+        if((NUM_ENSEMBLE>1) .and. associated(WCRZ_enstd) .and. associated(WCRZ_enavg)) then
+           WCRZ_enstd = sqrt( WCRZ_enstd/Nm1 - NdivNm1*(WCRZ_enavg**2) )
+        else if (associated(WCRZ_enstd)) then
+           WCRZ_enstd = MAPL_UNDEF
+        end if
         if(associated(WCPR_enavg)) WCPR_enavg = WCPR_enavg/NUM_ENSEMBLE
-        if(associated(WCPR_enstd)) WCPR_enstd = WCPR_enstd/(NUM_ENSEMBLE-1)
-        if(associated(WCPR_enstd) .and. associated(WCPR_enavg)) &
-            WCPR_enstd = sqrt(WCPR_enstd - NdivNm1*(WCPR_enavg)**2) 
-        if(associated(TP1_enavg)) TP1_enavg = TP1_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
-        if(associated(TP1_enstd)) TP1_enstd = TP1_enstd/(NUM_ENSEMBLE-1)
-        if(associated(TP1_enstd) .and. associated(TP1_enavg)) &
-            TP1_enstd = sqrt(TP1_enstd - NdivNm1*(TP1_enavg)**2) 
+        if((NUM_ENSEMBLE>1) .and. associated(WCPR_enstd) .and. associated(WCPR_enavg)) then
+           WCPR_enstd = sqrt( WCPR_enstd/Nm1 - NdivNm1*(WCPR_enavg**2) ) 
+        else if (associated(WCPR_enstd)) then
+           WCPR_enstd = MAPL_UNDEF
+        end if
+        if(associated(TP1_enavg)) TP1_enavg = TP1_enavg/NUM_ENSEMBLE                  ! units K 
+        if((NUM_ENSEMBLE>1) .and. associated(TP1_enstd) .and. associated(TP1_enavg)) then
+           TP1_enstd = sqrt( TP1_enstd/Nm1 - NdivNm1*(TP1_enavg**2) ) 
+        else if (associated(TP1_enstd)) then
+           TP1_enstd = MAPL_UNDEF
+        end if
         if(associated(TP2_enavg)) TP2_enavg = TP2_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
         if(associated(TP3_enavg)) TP3_enavg = TP3_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
         if(associated(TP4_enavg)) TP4_enavg = TP4_enavg/NUM_ENSEMBLE                  ! units now K, rreichle & borescan, 6 Nov 2020
