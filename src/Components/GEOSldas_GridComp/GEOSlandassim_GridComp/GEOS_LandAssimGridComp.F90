@@ -49,7 +49,8 @@ module GEOS_LandAssimGridCompMod
   use catch_types,               only: cat_progn_type
   use catch_types,               only: cat_param_type
   use catch_types,               only: cat_diagS_type
-  use catch_types,               only: assignment(=), operator (+), operator (/)
+  use catch_types,               only: cat_diagS_sqrt
+  use catch_types,               only: assignment(=), operator (+), operator (-), operator (*), operator (/)
   use clsm_bias_routines,        only: initialize_obs_bias
   use clsm_bias_routines,        only: read_cat_bias_inputs 
 
@@ -1552,7 +1553,7 @@ contains
     character(len=ESMF_MAXSTR) :: ensid_string
     integer                    :: ens, nymd, nhms, ens_id_width
     integer                    :: LandassimDTstep
-    real                       :: NdivNm1 
+    real                       :: Nm1, NdivNm1 
 
 #ifdef DBG_LANDASSIM_INPUTS
     ! vars for debugging purposes
@@ -1978,10 +1979,12 @@ contains
        allocate(cat_diagS_ensstd(N_catl))     
        
        do ii=1,N_catl
-          cat_diagS_ensavg(ii) = 0.0        ! initialize ens average
-          cat_diagS_ensstd(ii) = 0.0
+          cat_diagS_ensavg(ii) = 0.0        ! initialize sum for ens average
+          cat_diagS_ensstd(ii) = 0.0        ! initialize sum of squares for ensemble standard deviation
        end do
        
+       ! compute sum (and sum of squares) of ensemble members
+
        do n_e=1,NUM_ENSEMBLE
           
           ! make a copy of cat_progn to ensure 0-diff (recompute_diagS() potentially alters its input cat_progn)
@@ -1993,31 +1996,32 @@ contains
           call recompute_diagS( N_catl, cat_param, cat_progn_tmp, cat_diagS )
           
           do ii=1,N_catl
-             cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii) + cat_diagS(ii)
+             cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii) +   cat_diagS(ii)                       ! sum 
+             cat_diagS_ensstd(ii) = cat_diagS_ensstd(ii) + ( cat_diagS(ii) * cat_diagS(ii) )     ! sum of squares
           end do
-          cat_diagS_ensstd(:)%sfmc  = cat_diagS_ensstd(:)%sfmc  + cat_diagS(:)%sfmc*cat_diagS(:)%sfmc
-          cat_diagS_ensstd(:)%rzmc  = cat_diagS_ensstd(:)%rzmc  + cat_diagS(:)%rzmc*cat_diagS(:)%rzmc
-          cat_diagS_ensstd(:)%prmc  = cat_diagS_ensstd(:)%prmc  + cat_diagS(:)%prmc*cat_diagS(:)%rzmc
-          cat_diagS_ensstd(:)%tsurf = cat_diagS_ensstd(:)%tsurf + cat_diagS(:)%tsurf*cat_diagS(:)%tsurf
-          cat_diagS_ensstd(:)%tp(1) = cat_diagS_ensstd(:)%tp(1) + cat_diagS(:)%tp(1)*cat_diagS(:)%tp(1) 
+
        end do
        
+       ! finalize ensemble average and standard deviation
+       
+       Nm1 = real(NUM_ENSEMBLE-1)
+
+       if (NUM_ENSEMBLE > 1)  NdivNm1 = real(NUM_ENSEMBLE)/Nm1 
+       
        do ii=1,N_catl
-          cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize
-          cat_diagS_ensstd(ii) = cat_diagS_ensstd(ii)/real(NUM_ENSEMBLE-1)
+                    
+          cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize --> ens avg
+          
+          if (NUM_ENSEMBLE > 1 ) then
+             
+             cat_diagS_ensstd(ii) = cat_diagS_sqrt( cat_diagS_ensstd(ii)/Nm1 - NdivNm1*(cat_diagS_ensavg(ii)*cat_diagS_ensavg(ii)) )
+             
+          else    ! NUM_ENSEMBLE = 1
+             
+             cat_diagS_ensstd(ii) = MAPL_UNDEF
+             
+          end if
        end do
-
-       if (NUM_ENSEMBLE > 1 ) then
-           NdivNm1 = real(NUM_ENSEMBLE)/real(NUM_ENSEMBLE-1) 
-       else 
-           NdivNm1 = real(NUM_ENSEMBLE)
-       endif
-
-       cat_diagS_ensstd(:)%sfmc  = sqrt(cat_diagS_ensstd(:)%sfmc  - NdivNm1*(cat_diagS_ensavg(:)%sfmc)**2 ) 
-       cat_diagS_ensstd(:)%rzmc  = sqrt(cat_diagS_ensstd(:)%rzmc  - NdivNm1*(cat_diagS_ensavg(:)%rzmc)**2 )
-       cat_diagS_ensstd(:)%prmc  = sqrt(cat_diagS_ensstd(:)%prmc  - NdivNm1*(cat_diagS_ensavg(:)%prmc)**2 ) 
-       cat_diagS_ensstd(:)%tsurf = sqrt(cat_diagS_ensstd(:)%tsurf - NdivNm1*(cat_diagS_ensavg(:)%tsurf)**2 ) 
-       cat_diagS_ensstd(:)%tp(1) = sqrt(cat_diagS_ensstd(:)%tp(1) - NdivNm1*(cat_diagS_ensavg(:)%tp(1))**2 )
 
        ! set export variables
        
