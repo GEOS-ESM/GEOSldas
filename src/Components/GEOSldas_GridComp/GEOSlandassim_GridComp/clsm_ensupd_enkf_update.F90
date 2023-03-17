@@ -143,7 +143,7 @@ contains
        work_path, exp_id, exp_domain,                                    &
        met_force, lai, cat_param, mwRTM_param,                           &
        tile_coord_l, tile_coord_f,                                       &
-       pert_grid_f, pert_grid_g,                                         &
+       pert_grid_f, pert_grid_g, tile_grid_g,                            &
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
@@ -192,7 +192,7 @@ contains
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord_l, tile_coord_f  ! input
 
-    type(grid_def_type), intent(in) :: pert_grid_f, pert_grid_g
+    type(grid_def_type), intent(in) :: pert_grid_f, pert_grid_g, tile_grid_g
 
     integer, intent(in), dimension(numprocs) :: N_catl_vec, low_ind
 
@@ -394,12 +394,12 @@ contains
 
           ! first call: count how many tiles are in each pert_grid_f cell
           call get_number_of_tiles_in_cell_ij( N_catf,                           &
-               tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
+               tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg,               &
                pert_grid_f, N_tile_in_cell_ij_f )
           ! second call: find out which tiles are in each pert_grid_f cell
 
           call get_tile_num_in_cell_ij( N_catf,                                  &
-               tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
+               tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg,               &
                pert_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
        else
           allocate(N_tile_in_cell_ij_f(0,0)) !for debugging
@@ -418,7 +418,7 @@ contains
        if (out_smapL4SMaup)                                                        &
             call output_smapL4SMaup( date_time, work_path, exp_id, dtstep_assim,   &
             N_ens, N_catl, N_catf, N_obsl, N_obsl_max,                             &
-            tile_coord_f, tile_coord_l, pert_grid_g, pert_grid_f,                  &
+            tile_coord_f, tile_coord_l, tile_grid_g, pert_grid_f,                  &
             N_catl_vec, low_ind, l2f, N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,  &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn  )
 

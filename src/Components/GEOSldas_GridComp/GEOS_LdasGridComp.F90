@@ -630,10 +630,10 @@ contains
           !1) get hash index for cubed-sphere
           do i = 1, N_catf
              call get_ij_ind_from_latlon(pert_grid_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
-              tile_coord_f(i)%hash_i_indg,tile_coord_f(i)%hash_j_indg)
+              tile_coord_f(i)%pert_i_indg,tile_coord_f(i)%pert_j_indg)
           enddo
           !2) re-generate pert_grid_f in Lat-Lon
-          pert_grid_f = get_minExtent_grid(N_catf, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, &
+          pert_grid_f = get_minExtent_grid(N_catf, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, &
                tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
                pert_grid_g)
        endif
@@ -645,6 +645,10 @@ contains
     call MPI_BCAST(tile_coord_f,N_catf,    MPI_tile_coord_type,0,mpicomm, mpierr)
     call MPI_BCAST(pert_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
     call MPI_BCAST(pert_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
+
+    if(trim(grid_type) == "Cubed-Sphere" ) then
+      call MPI_BCAST(tile_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
+    endif
 
     block
       integer, allocatable :: f2tile_id(:), tile_id2f(:)
@@ -675,16 +679,20 @@ contains
 
     allocate(tcinternal%tile_coord_f,source = tile_coord_f)
     
-     pert_grid_l = get_minExtent_grid(land_nt_local,                             &
-         tcinternal%tile_coord%hash_i_indg, tcinternal%tile_coord%hash_j_indg,   &
+    pert_grid_l = get_minExtent_grid(land_nt_local,                             &
+         tcinternal%tile_coord%pert_i_indg, tcinternal%tile_coord%pert_j_indg,   &
          tcinternal%tile_coord%min_lon,     tcinternal%tile_coord%min_lat,       &
          tcinternal%tile_coord%max_lon,     tcinternal%tile_coord%max_lat,       &
          pert_grid_g)
-   
 
     tcinternal%pgrid_g = pert_grid_g
     tcinternal%pgrid_f = pert_grid_f
     tcinternal%pgrid_l = pert_grid_l
+    if(trim(grid_type) == "Cubed-Sphere" ) then
+      tcinternal%grid_g = tile_grid_g
+    else
+      tcinternal%grid_g = tcinternal%pgrid_g
+    endif
 
     do i = 1, NUM_ENSEMBLE
        call MAPL_GetObjectFromGC(gcs(METFORCE(i)), CHILD_MAPL, rc=status)

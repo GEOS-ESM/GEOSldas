@@ -59,11 +59,11 @@ module LDAS_TileCoordType
      real    :: max_lat      ! maximum latitude (bounding box for tile)
      integer :: i_indg       ! i index (w.r.t. *global* grid that cuts tiles) 
      integer :: j_indg       ! j index (w.r.t. *global* grid that cuts tiles)
-     ! For cubed-sphere tile spaces, hash_[x]_indg refers to a lat-lon "hash" grid that will 
+     ! For cubed-sphere tile spaces, pert_[x]_indg refers to a lat-lon perturbation grid that will 
      !   be created at runtime to support efficient mapping for perturbations and the EnKF analysis.
-     ! For EASE and LatLon tile spaces, hash_[x]_indg is identical to [x]_indg
-     integer :: hash_i_indg  ! i index (w.r.t. *global* "hash" grid for perts and EnKF) 
-     integer :: hash_j_indg  ! j index (w.r.t. *global* "hash" grid for perts and EnKF)
+     ! For EASE and LatLon tile spaces, pert_[x]_indg is identical to [x]_indg
+     integer :: pert_i_indg  ! i index (w.r.t. *global* pert_grid for perts and EnKF) 
+     integer :: pert_j_indg  ! j index (w.r.t. *global* pert_grid for perts and EnKF)
      real    :: frac_cell    ! area fraction of grid cell covered by tile
      real    :: frac_pfaf    ! fraction of Pfafstetter catchment for land tiles 
      real    :: area         ! area [km^2]
@@ -162,6 +162,7 @@ module LDAS_TileCoordType
      type(tile_coord_type), pointer, contiguous :: tile_coord_f(:)=>null()
      integer, pointer    :: l2f(:)=>null()
      type(grid_def_type) :: pgrid_g
+     type(grid_def_type) :: grid_g
      type(grid_def_type) :: pgrid_f
      type(grid_def_type) :: pgrid_l
   end type T_TILECOORD_STATE
@@ -367,8 +368,8 @@ contains
     ! reichle, 24 July 2010
     ! reichle,  2 May  2013 - changed N_tile to intent(in)
     ! reichle,  7 Jan  2014 - changed to binary (unformatted) I/O
-    ! wjiang, reichle, 18 Aug 2020 - Added initialization of %hash_[x]_indg during read.
-    !                                Note that %hash_[x]_indg is NOT written out.
+    ! wjiang, reichle, 18 Aug 2020 - Added initialization of %pert_[x]_indg during read.
+    !                                Note that %pert_[x]_indg is NOT written out.
 
     implicit none
     
@@ -465,9 +466,9 @@ contains
        read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        tile_coord(:)%elev= tmp_real(:)
 
-       ! Initialize [x]_indg to hash_[x]_indg.  For cs tile spaces, hash_[x]_indg will be redefined
-       tile_coord(:)%hash_i_indg = tile_coord(:)%i_indg
-       tile_coord(:)%hash_j_indg = tile_coord(:)%j_indg
+       ! Initialize [x]_indg to pert_[x]_indg.  For cs tile spaces, pert_[x]_indg will be redefined
+       tile_coord(:)%pert_i_indg = tile_coord(:)%i_indg
+       tile_coord(:)%pert_j_indg = tile_coord(:)%j_indg
        tile_coord(:)%f_num = -9999 ! not assigned values yet
        deallocate(tmp_int, tmp_real)
     case default

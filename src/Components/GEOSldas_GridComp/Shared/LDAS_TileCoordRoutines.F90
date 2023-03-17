@@ -471,13 +471,13 @@ contains
     !   then tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !   then tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! reichle, 20 June 2012 -- moved from within domain_setup() 
     !                           for re-use in get_obs_pred() 
     !
     ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
-    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !                                tile_coord%[x]_indg or tile_coord%pert_[x]_indg
     !
     ! -------------------------------------------------------------------
     
@@ -623,12 +623,12 @@ contains
     !   then tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !   then tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
     !
     ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
-    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !                                tile_coord%[x]_indg or tile_coord%pert_[x]_indg
     !
     ! ----------------------------------------------------------
     
@@ -694,12 +694,12 @@ contains
     !   then tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !   then tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
     !
     ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
-    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !                                tile_coord%[x]_indg or tile_coord%pert_[x]_indg
     !
     ! ----------------------------------------------------------
     

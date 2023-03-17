@@ -1042,8 +1042,8 @@ contains
     VERIFY_(status) 
     allocate(internal%j_indgs(land_nt_local),stat=status)
     VERIFY_(status)
-    internal%i_indgs(:)=tile_coord(:)%hash_i_indg
-    internal%j_indgs(:)=tile_coord(:)%hash_j_indg
+    internal%i_indgs(:)=tile_coord(:)%pert_i_indg
+    internal%j_indgs(:)=tile_coord(:)%pert_j_indg
 
     ! Get pert options from *default* namelist files
     ! WARNING: get_force/progn_pert_param() calls allocate memory
@@ -1661,10 +1661,10 @@ contains
        if (IamRoot) then
        ! 3) tile2grid. simple reverser of grid2tile without weighted averaging/no-data-handling
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, tcinternal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, tcinternal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, tcinternal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, tcinternal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
        
        ! 4) writing
@@ -2746,10 +2746,10 @@ contains
        ! 3) tile2grid 
             ! this step is simply a reverse of grid2tile without any weighted   
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, tcinternal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, tcinternal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, tcinternal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, tcinternal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
 
         ! 4) writing
