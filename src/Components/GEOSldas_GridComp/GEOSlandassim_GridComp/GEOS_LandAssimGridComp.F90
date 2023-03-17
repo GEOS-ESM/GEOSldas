@@ -2025,19 +2025,19 @@ contains
 
        ! set export variables
        
-       if(associated(SFMC_ana))             SFMC_ana(:)             = cat_diagS_ensavg(:)%sfmc 
-       if(associated(RZMC_ana))             RZMC_ana(:)             = cat_diagS_ensavg(:)%rzmc  
-       if(associated(PRMC_ana))             PRMC_ana(:)             = cat_diagS_ensavg(:)%prmc 
-       if(associated(TPSURF_ana))           TPSURF_ana(:)           = cat_diagS_ensavg(:)%tsurf
-       if(associated(TSOIL1_ana))           TSOIL1_ana(:)           = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
+       if(associated(SFMC_ana))           SFMC_ana(:)          = cat_diagS_ensavg(:)%sfmc 
+       if(associated(RZMC_ana))           RZMC_ana(:)          = cat_diagS_ensavg(:)%rzmc 
+       if(associated(PRMC_ana))           PRMC_ana(:)          = cat_diagS_ensavg(:)%prmc 
+       if(associated(TPSURF_ana))         TPSURF_ana(:)        = cat_diagS_ensavg(:)%tsurf
+       if(associated(TSOIL1_ana))         TSOIL1_ana(:)        = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE   ! convert to K
 
-       if(associated(SFMC_ana_ensstd))      SFMC_ana_ensstd(:)      = cat_diagS_ensstd(:)%sfmc
-       if(associated(RZMC_ana_ensstd))      RZMC_ana_ensstd(:)      = cat_diagS_ensstd(:)%rzmc
-       if(associated(PRMC_ana_ensstd))      PRMC_ana_ensstd(:)      = cat_diagS_ensstd(:)%prmc
-       if(associated(TPSURF_ana_ensstd))    TPSURF_ana_ensstd(:)    = cat_diagS_ensstd(:)%tsurf
-       if(associated(TSOIL1_ana_ensstd))    TSOIL1_ana_ensstd(:)    = cat_diagS_ensstd(:)%tp(1) 
+       if(associated(SFMC_ana_ensstd))    SFMC_ana_ensstd(:)   = max( cat_diagS_ensstd(:)%sfmc  , 0. )
+       if(associated(RZMC_ana_ensstd))    RZMC_ana_ensstd(:)   = max( cat_diagS_ensstd(:)%rzmc  , 0. )
+       if(associated(PRMC_ana_ensstd))    PRMC_ana_ensstd(:)   = max( cat_diagS_ensstd(:)%prmc  , 0. )
+       if(associated(TPSURF_ana_ensstd))  TPSURF_ana_ensstd(:) = max( cat_diagS_ensstd(:)%tsurf , 0. )
+       if(associated(TSOIL1_ana_ensstd))  TSOIL1_ana_ensstd(:) = max( cat_diagS_ensstd(:)%tp(1) , 0. ) 
 
-       if(associated(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
+       if(associated(MWRTM_VEGOPACITY))   MWRTM_VEGOPACITY(:)  = mwRTM_param(:)%VEGOPACITY
        
        deallocate(cat_progn_tmp)
        deallocate(cat_diagS)

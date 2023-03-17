@@ -3670,7 +3670,7 @@ contains
         if(associated(GHFLX_enavg)) GHFLX_enavg = GHFLX_enavg/NUM_ENSEMBLE
         if(associated(TPSURF_enavg)) TPSURF_enavg = TPSURF_enavg/NUM_ENSEMBLE
         if((NUM_ENSEMBLE>1) .and. associated(TPSURF_enstd) .and. associated(TPSURF_enavg)) then
-           TPSURF_enstd = sqrt( TPSURF_enstd/Nm1 - NdivNm1*(TPSURF_enavg**2) )
+           TPSURF_enstd = max( sqrt( TPSURF_enstd/Nm1 - NdivNm1*(TPSURF_enavg**2) ), 0. )
         else if (associated(TPSURF_enstd)) then
            TPSURF_enstd = MAPL_UNDEF
         end if
@@ -3691,25 +3691,25 @@ contains
         if(associated(WET3_enavg)) WET3_enavg = WET3_enavg/NUM_ENSEMBLE
         if(associated(WCSF_enavg)) WCSF_enavg = WCSF_enavg/NUM_ENSEMBLE
         if((NUM_ENSEMBLE>1) .and. associated(WCSF_enstd) .and. associated(WCSF_enavg)) then
-           WCSF_enstd = sqrt( WCSF_enstd/Nm1 - NdivNm1*(WCSF_enavg**2) )
+           WCSF_enstd = max( sqrt( WCSF_enstd/Nm1 - NdivNm1*(WCSF_enavg**2) ), 0. )
         else if (associated(WCSF_enstd)) then
            WCSF_enstd = MAPL_UNDEF
         end if
         if(associated(WCRZ_enavg)) WCRZ_enavg = WCRZ_enavg/NUM_ENSEMBLE
         if((NUM_ENSEMBLE>1) .and. associated(WCRZ_enstd) .and. associated(WCRZ_enavg)) then
-           WCRZ_enstd = sqrt( WCRZ_enstd/Nm1 - NdivNm1*(WCRZ_enavg**2) )
+           WCRZ_enstd = max( sqrt( WCRZ_enstd/Nm1 - NdivNm1*(WCRZ_enavg**2) ), 0. )
         else if (associated(WCRZ_enstd)) then
            WCRZ_enstd = MAPL_UNDEF
         end if
         if(associated(WCPR_enavg)) WCPR_enavg = WCPR_enavg/NUM_ENSEMBLE
         if((NUM_ENSEMBLE>1) .and. associated(WCPR_enstd) .and. associated(WCPR_enavg)) then
-           WCPR_enstd = sqrt( WCPR_enstd/Nm1 - NdivNm1*(WCPR_enavg**2) ) 
+           WCPR_enstd = max( sqrt( WCPR_enstd/Nm1 - NdivNm1*(WCPR_enavg**2) ), 0. ) 
         else if (associated(WCPR_enstd)) then
            WCPR_enstd = MAPL_UNDEF
         end if
         if(associated(TP1_enavg)) TP1_enavg = TP1_enavg/NUM_ENSEMBLE                  ! units K 
         if((NUM_ENSEMBLE>1) .and. associated(TP1_enstd) .and. associated(TP1_enavg)) then
-           TP1_enstd = sqrt( TP1_enstd/Nm1 - NdivNm1*(TP1_enavg**2) ) 
+           TP1_enstd = max( sqrt( TP1_enstd/Nm1 - NdivNm1*(TP1_enavg**2) ), 0. ) 
         else if (associated(TP1_enstd)) then
            TP1_enstd = MAPL_UNDEF
         end if
