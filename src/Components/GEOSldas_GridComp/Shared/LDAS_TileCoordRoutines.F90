@@ -463,15 +463,15 @@ contains
   function get_minExtent_grid( N_tile, tc_i_indg, tc_j_indg, tc_minlon, tc_minlat, tc_maxlon, tc_maxlat, &
        tile_grid_g) result( tile_grid )     
     
-    ! get matching tile_grid for given tile_coord and (global) tile_grid_g
+    ! get tile_grid with smallest extent for given set of tiles in tile_coord on (global) tile_grid_g
     !
     ! make sure to pass in consistent tile_coord (tc) and tile_grid_g inputs:
     !
     !   iff tile_grid_g is the grid that is associated with the tile space definition,
-    !   then tc_[x]_indg must be tile_coord%[x]_indg
+    !   then input tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%pert_[x]_indg
+    !   then input tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! reichle, 20 June 2012 -- moved from within domain_setup() 
     !                           for re-use in get_obs_pred() 

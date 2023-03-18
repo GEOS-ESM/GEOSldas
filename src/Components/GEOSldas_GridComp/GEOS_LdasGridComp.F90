@@ -620,22 +620,43 @@ contains
        close(10)
        call io_grid_def_type('w', logunit, tile_grid_f, 'tile_grid_f')
 
+       ! get a grid for perturbations and EnKF:
+       !
+       !  tile grid                 !  pert grid
+       !  (defines tile space)      !  (used for perturbations and as "hash" grid in EnKF analysis)
+       ! ===========================================================================================================
+       !  lat/lon                   !  same as tile_grid (i.e., lat/lon)
+       ! -----------------------------------------------------------------------------------------------------------
+       !  EASEv[X]                  !  same as tile_grid (i.e., EASE)
+       ! -----------------------------------------------------------------------------------------------------------
+       !  cube-sphere               !  lat/lon grid of resolution similar to that of (cube-sphere) tile_grid
+       
        pert_grid_g = get_pert_grid(tile_grid_g)
-       pert_grid_f = get_pert_grid(tile_grid_f)
+       ! pert_grid_f = get_pert_grid(tile_grid_f) -- SEEMS REDUNDANT, OVERWRITTEN BELOW: pert_grid_f = get_minExtent_grid()
+       
+       !if(trim(grid_type) == "Cubed-Sphere" ) then
+       !
+       !   _ASSERT(index(tile_grid_g%gridtype, 'c3') /=0, "tile_grid_g does not describe a cubed-sphere grid")
+       
+       if ( .not. (pert_grid_g==tile_grid_g) ) then
 
-       if(trim(grid_type) == "Cubed-Sphere" ) then
-
-          _ASSERT(index(tile_grid_g%gridtype, 'c3') /=0, "tile_grid_g does not describe a cubed-sphere grid")
-         
-          !1) get hash index for cubed-sphere
+          ! arrive here when tile_grid_g is cube-sphere and pert_grid_g is lat/lon after call to get_pert_grid() above
+ 
+          !1) get pert_i_indg, pert_j_indg for tiles in (full) domain relative to pert_grid_g
           do i = 1, N_catf
              call get_ij_ind_from_latlon(pert_grid_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
               tile_coord_f(i)%pert_i_indg,tile_coord_f(i)%pert_j_indg)
           enddo
-          !2) re-generate pert_grid_f in Lat-Lon
+          !2) determine pert_grid_f
           pert_grid_f = get_minExtent_grid(N_catf, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, &
                tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
                pert_grid_g)
+
+       else
+          
+          ! do nothing because %pert_i_indg and %pert_j_indg were initialized to %i_indg and %j_indg
+          !   in io_tile_coord_type() when tile_coord was read via io_domain_files()
+          
        endif
     endif
     
@@ -645,10 +666,10 @@ contains
     call MPI_BCAST(tile_coord_f,N_catf,    MPI_tile_coord_type,0,mpicomm, mpierr)
     call MPI_BCAST(pert_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
     call MPI_BCAST(pert_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
-
-    if(trim(grid_type) == "Cubed-Sphere" ) then
-      call MPI_BCAST(tile_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
-    endif
+    
+    !if(trim(grid_type) == "Cubed-Sphere" ) then
+    call MPI_BCAST(tile_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
+    !endif
 
     block
       integer, allocatable :: f2tile_id(:), tile_id2f(:)
@@ -688,11 +709,11 @@ contains
     tcinternal%pgrid_g = pert_grid_g
     tcinternal%pgrid_f = pert_grid_f
     tcinternal%pgrid_l = pert_grid_l
-    if(trim(grid_type) == "Cubed-Sphere" ) then
-      tcinternal%grid_g = tile_grid_g
-    else
-      tcinternal%grid_g = tcinternal%pgrid_g
-    endif
+    !if(trim(grid_type) == "Cubed-Sphere" ) then
+    tcinternal%tgrid_g = tile_grid_g
+    !else
+    !  tcinternal%grid_g = tcinternal%pgrid_g
+    !endif
 
     do i = 1, NUM_ENSEMBLE
        call MAPL_GetObjectFromGC(gcs(METFORCE(i)), CHILD_MAPL, rc=status)

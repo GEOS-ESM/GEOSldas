@@ -143,7 +143,7 @@ contains
        work_path, exp_id, exp_domain,                                    &
        met_force, lai, cat_param, mwRTM_param,                           &
        tile_coord_l, tile_coord_f,                                       &
-       pert_grid_f, pert_grid_g, tile_grid_g,                            &
+       tile_grid_g, pert_grid_f, pert_grid_g,                            &
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
@@ -192,7 +192,7 @@ contains
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord_l, tile_coord_f  ! input
 
-    type(grid_def_type), intent(in) :: pert_grid_f, pert_grid_g, tile_grid_g
+    type(grid_def_type), intent(in) :: tile_grid_g, pert_grid_f, pert_grid_g
 
     integer, intent(in), dimension(numprocs) :: N_catl_vec, low_ind
 
@@ -1196,7 +1196,7 @@ contains
 
        if (out_smapL4SMaup)                                                          &
             call write_smapL4SMaup( 'obs_fcst', date_time, work_path, exp_id, N_ens, &
-            N_catl, N_catf, N_obsl, tile_coord_f, pert_grid_g, N_catl_vec, low_ind,  &
+            N_catl, N_catf, N_obsl, tile_coord_f, tile_grid_g, N_catl_vec, low_ind,  &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn       )
 
     end if  ! end if (.true.)

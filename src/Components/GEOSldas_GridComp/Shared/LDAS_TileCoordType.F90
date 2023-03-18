@@ -161,10 +161,10 @@ module LDAS_TileCoordType
      type(tile_coord_type), pointer, contiguous :: tile_coord(:)=>null()
      type(tile_coord_type), pointer, contiguous :: tile_coord_f(:)=>null()
      integer, pointer    :: l2f(:)=>null()
-     type(grid_def_type) :: pgrid_g
-     type(grid_def_type) :: grid_g
-     type(grid_def_type) :: pgrid_f
-     type(grid_def_type) :: pgrid_l
+     type(grid_def_type) :: tgrid_g         ! tile_grid_g
+     type(grid_def_type) :: pgrid_g         ! pert_grid_g
+     type(grid_def_type) :: pgrid_f         ! pert_grid_f
+     type(grid_def_type) :: pgrid_l         ! pert_grid_l
   end type T_TILECOORD_STATE
 
   type TILECOORD_WRAP

@@ -138,11 +138,11 @@ contains
     !     real    :: max_lat      ! maximum latitude (bounding box for tile)
     !     integer :: i_indg       ! i index (w.r.t. *global* grid that cuts tiles) 
     !     integer :: j_indg       ! j index (w.r.t. *global* grid that cuts tiles)
-    !     ! For cubed-sphere tile spaces, pert_[x]_indg refers to a lat-lon "hash" grid that will 
+    !     ! For cubed-sphere tile spaces, pert_[x]_indg refers to a lat-lon perturbation grid that will 
     !     !   be created at runtime to support efficient mapping for perturbations and the EnKF analysis.
     !     ! For EASE and LatLon tile spaces, pert_[x]_indg is identical to [x]_indg
-    !     integer :: pert_i_indg  ! i index (w.r.t. *global* "hash" grid for perts and EnKF) 
-    !     integer :: pert_j_indg  ! j index (w.r.t. *global* "hash" grid for perts and EnKF)
+    !     integer :: pert_i_indg  ! i index (w.r.t. *global* pert_grid for perts and EnKF) 
+    !     integer :: pert_j_indg  ! j index (w.r.t. *global* pert_grid for perts and EnKF)
     !     real    :: frac_cell    ! area fraction of grid cell covered by tile
     !     real    :: frac_pfaf    ! fraction of Pfafstetter catchment for land tiles 
     !     real    :: area         ! area [km^2]
