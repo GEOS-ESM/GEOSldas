@@ -17,7 +17,7 @@ module GEOS_LdasGridCompMod
 
   use EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
-  use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type
+  use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type, operator (==)
   use LDAS_TileCoordRoutines, only: get_minExtent_grid, get_ij_ind_from_latlon, io_domain_files
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_PertRoutinesMod, only: get_pert_grid
