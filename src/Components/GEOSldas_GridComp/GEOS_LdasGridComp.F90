@@ -654,7 +654,9 @@ contains
 
        else
           
-          ! do nothing because %pert_i_indg and %pert_j_indg were initialized to %i_indg and %j_indg
+          pert_grid_f = tile_grid_f
+
+          ! note that %pert_i_indg and %pert_j_indg were initialized to %i_indg and %j_indg
           !   in io_tile_coord_type() when tile_coord was read via io_domain_files()
           
        endif
