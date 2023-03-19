@@ -65,6 +65,20 @@ function [] = write_seqbin_file(fname, colind, rowind,...
 int_precision   = 'int32';      % precision of fortran tag
 float_precision = 'float32';    % precision of data in input file
 
+% Generate some random data
+x = colind;
+y = rowind;
+z =data(5,:)';
+
+z(z==-9999)=nan;
+
+figure;
+% Plot the scatter plot with colored points
+scatter(x,y,[],z,'filled','SizeData',2);
+
+% Add a colorbar to the plot
+colorbar;
+
 % check dimensions
 
 if size(data,1)~=N_out_fields

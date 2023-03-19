@@ -117,12 +117,12 @@ end
 overwrite    =  1;
 
 Nf = 5;                %5 fields per polarization
-N_out_fields = 2*Nf+4; %14; 
+N_out_fields = 12; %1*Nf+4; %14; 
 
 write_ind_latlon = 'latlon_id'; %'latlon';
 
 N_angle = length(inc_angle);
-N_pol   = 2;
+N_pol   = 1; %length(pol);
 
 tmp_shift_lon    = 0.01;
 tmp_shift_lat    = 0.005;
@@ -461,12 +461,12 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
 
                 % Organize the data in a big matrix
 
-                angle = obs_param(this_species == [obs_param.species]).ang;
-                pol   = obs_param(this_species == [obs_param.species]).pol;
+                angle = 1;  %obs_param(this_species == [obs_param.species]).ang;
+                pol   = 1; %obs_param(this_species == [obs_param.species]).pol;
 
                 %pol intrinsically gives an index
                 %now find the index for the angle
-                angle_i = find(angle(1) == inc_angle);
+                angle_i = 1; %find(angle(1) == inc_angle);
 
                 % Only writes lat-lon at exact obs locations, but with
                 % hscale>0, these obs are spread outside their exact
@@ -572,7 +572,7 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
 
   % data_out = zeros(N_out_fields,1:N_tiles,N_angle);
   
-  for pol=[0 1]
+  for pol=[0]
 
       pp = pol*Nf;
 
@@ -673,8 +673,8 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
 
   data_out(11,:,:) = o_data(1,:,:,w_days-floor(w_days/2.0))./N_data(1,:,:,w_days-floor(w_days/2.0));
   data_out(12,:,:) = m_data(1,:,:,w_days-floor(w_days/2.0))./N_data(1,:,:,w_days-floor(w_days/2.0));
-  data_out(13,:,:) = o_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
-  data_out(14,:,:) = m_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
+%  data_out(13,:,:) = o_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
+%  data_out(14,:,:) = m_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
 
   % Get rid of NaN before writing a file
 

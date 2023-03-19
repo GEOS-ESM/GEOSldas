@@ -67,7 +67,7 @@ function [tile_num] = get_tile_num_for_obs(tile_coord, tile_grid,...
           % map from i_ind, j_ind to tile_num
 
           if   ( ~isempty(strfind(tile_grid.gridtype, 'EASE_M')) || ...
-                 ~isempty(strfind(tile_grid.gridtype, 'EASEv2_M')) )
+                 ~isempty(strfind(tile_grid.gridtype, 'EASEv2-M')) )
 
              % ASSUMPTION: tiles match EASE or EASEv2 grid cells exactly
              %             (unless "outside" the domain, eg. water surface)
