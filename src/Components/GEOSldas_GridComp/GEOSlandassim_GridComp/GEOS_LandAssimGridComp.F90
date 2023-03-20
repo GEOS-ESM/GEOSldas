@@ -2004,24 +2004,31 @@ contains
        
        ! finalize ensemble average and standard deviation
        
-       Nm1 = real(NUM_ENSEMBLE-1)
+       if (NUM_ENSEMBLE > 1)  then
 
-       if (NUM_ENSEMBLE > 1)  NdivNm1 = real(NUM_ENSEMBLE)/Nm1 
+          Nm1     = real(NUM_ENSEMBLE-1)
+
+          NdivNm1 = real(NUM_ENSEMBLE)/Nm1 
        
-       do ii=1,N_catl
-                    
-          cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize --> ens avg
+          do ii=1,N_catl
           
-          if (NUM_ENSEMBLE > 1 ) then
-             
+             cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize --> ens avg
+          
              cat_diagS_ensstd(ii) = cat_diagS_sqrt( cat_diagS_ensstd(ii)/Nm1 - NdivNm1*(cat_diagS_ensavg(ii)*cat_diagS_ensavg(ii)) )
+
+          end do
+
+       else    ! NUM_ENSEMBLE = 1
              
-          else    ! NUM_ENSEMBLE = 1
-             
+          ! no need to normalize ens avg, set ens std to undef
+
+          do ii=1,N_catl
+
              cat_diagS_ensstd(ii) = MAPL_UNDEF
+          
+          end do
              
-          end if
-       end do
+       end if
 
        ! set export variables
        

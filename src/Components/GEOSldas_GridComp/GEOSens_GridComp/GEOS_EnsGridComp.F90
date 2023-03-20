@@ -3165,7 +3165,7 @@ contains
         if(associated(HLATN_enavg)) HLATN_enavg =  0.0
         if(associated(QINFIL_enavg)) QINFIL_enavg =  0.0
         if(associated(GHFLX_enavg)) GHFLX_enavg =  0.0
-        if(associated(TPSURF_enavg)) TPSURF_enavg =  0.0
+        if(associated(TPSURF_enavg) .or. associated(TPSURF_enstd)) TPSURF_enavg =  0.0
         if(associated(TPSURF_enstd)) TPSURF_enstd =  0.0
         if(associated(TPSNOW_enavg)) TPSNOW_enavg =  0.0
         if(associated(TPUNST_enavg)) TPUNST_enavg =  0.0
@@ -3182,13 +3182,13 @@ contains
         if(associated(WET1_enavg)) WET1_enavg =  0.0
         if(associated(WET2_enavg)) WET2_enavg =  0.0
         if(associated(WET3_enavg)) WET3_enavg =  0.0
-        if(associated(WCSF_enavg)) WCSF_enavg =  0.0
+        if(associated(WCSF_enavg) .or. associated(WCSF_enstd)) WCSF_enavg =  0.0
         if(associated(WCSF_enstd)) WCSF_enstd =  0.0
-        if(associated(WCRZ_enavg)) WCRZ_enavg =  0.0
+        if(associated(WCRZ_enavg) .or. associated(WCRZ_enstd)) WCRZ_enavg =  0.0
         if(associated(WCRZ_enstd)) WCRZ_enstd =  0.0
-        if(associated(WCPR_enavg)) WCPR_enavg =  0.0
+        if(associated(WCPR_enavg) .or. associated(WCPR_enstd)) WCPR_enavg =  0.0
         if(associated(WCPR_enstd)) WCPR_enstd =  0.0
-        if(associated(TP1_enavg)) TP1_enavg =  0.0
+        if(associated(TP1_enavg) .or. associated(TP1_enstd)) TP1_enavg =  0.0
         if(associated(TP1_enstd)) TP1_enstd =  0.0
         if(associated(TP2_enavg)) TP2_enavg =  0.0
         if(associated(TP3_enavg)) TP3_enavg =  0.0
