@@ -632,11 +632,6 @@ contains
        !  cube-sphere               !  lat/lon grid of resolution similar to that of (cube-sphere) tile_grid
        
        pert_grid_g = get_pert_grid(tile_grid_g)
-       ! pert_grid_f = get_pert_grid(tile_grid_f) -- SEEMS REDUNDANT, OVERWRITTEN BELOW: pert_grid_f = get_minExtent_grid()
-       
-       !if(trim(grid_type) == "Cubed-Sphere" ) then
-       !
-       !   _ASSERT(index(tile_grid_g%gridtype, 'c3') /=0, "tile_grid_g does not describe a cubed-sphere grid")
        
        if ( .not. (pert_grid_g==tile_grid_g) ) then
 
@@ -668,10 +663,7 @@ contains
     call MPI_BCAST(tile_coord_f,N_catf,    MPI_tile_coord_type,0,mpicomm, mpierr)
     call MPI_BCAST(pert_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
     call MPI_BCAST(pert_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
-    
-    !if(trim(grid_type) == "Cubed-Sphere" ) then
     call MPI_BCAST(tile_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
-    !endif
 
     block
       integer, allocatable :: f2tile_id(:), tile_id2f(:)
@@ -711,11 +703,7 @@ contains
     tcinternal%pgrid_g = pert_grid_g
     tcinternal%pgrid_f = pert_grid_f
     tcinternal%pgrid_l = pert_grid_l
-    !if(trim(grid_type) == "Cubed-Sphere" ) then
     tcinternal%tgrid_g = tile_grid_g
-    !else
-    !  tcinternal%grid_g = tcinternal%pgrid_g
-    !endif
 
     do i = 1, NUM_ENSEMBLE
        call MAPL_GetObjectFromGC(gcs(METFORCE(i)), CHILD_MAPL, rc=status)
