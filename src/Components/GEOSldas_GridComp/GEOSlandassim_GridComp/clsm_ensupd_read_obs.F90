@@ -1795,8 +1795,8 @@ contains
 
                  ! skip if correction flag is set               
                  call ufbint(lnbufr,tmp_data,1,1,iret,'SMCF')
-                 ! if (.not. (int(tmp_data) == 0 .or. int(tmp_data) == 4)) cycle loop_report
-                 if(int(tmp_data) /= 0) cycle loop_report
+                 if (.not. (int(tmp_data) == 0 .or. int(tmp_data) == 4)) cycle loop_report
+                 ! if(int(tmp_data) /= 0) cycle loop_report
 
                  ! skip if land fraction is missing or < 0.9
                  call ufbint(lnbufr,tmp_data,1,1,iret,'ALFR')
