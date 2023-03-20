@@ -214,7 +214,7 @@ contains
 
     type(grid_def_type), intent(in) :: grid_1, grid_2
     
-    if ( index(grid_1%gridtype,trim(grid_2%gridtype))>0        .and. &
+    if ( trim(grid_1%gridtype) == trim(grid_2%gridtype)        .and. &
          grid_1%ind_base == grid_2%ind_base                    .and. &
          grid_1%i_dir    == grid_2%i_dir                       .and. &
          grid_1%j_dir    == grid_2%j_dir                       .and. &
