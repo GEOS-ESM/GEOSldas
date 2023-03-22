@@ -106,8 +106,7 @@ module LDAS_PertTypes
       integer :: ens_id
       integer :: NUM_ENSEMBLE
       logical :: isCubedSphere
-     ! pert grids - local and full
-      type(grid_def_type) :: pgrid_l, pgrid_f,pgrid_g
+
       integer,allocatable :: i_indgs(:)
       integer,allocatable :: j_indgs(:)
      ! if it is cubed-sphere grid, swith to internal start

@@ -42,7 +42,7 @@ module LDAS_TileCoordRoutines
 
   private
   
-  public :: get_tile_grid
+  public :: get_minExtent_grid
   public :: get_number_of_tiles_in_cell_ij
   public :: get_tile_num_in_cell_ij
   public :: get_tile_num_in_ellipse
@@ -460,24 +460,24 @@ contains
   
   ! *******************************************************************
   
-  subroutine get_tile_grid( N_tile, tc_i_indg, tc_j_indg, tc_minlon, tc_minlat, tc_maxlon, tc_maxlat, &
-       tile_grid_g, tile_grid )     
+  function get_minExtent_grid( N_tile, tc_i_indg, tc_j_indg, tc_minlon, tc_minlat, tc_maxlon, tc_maxlat, &
+       tile_grid_g) result( tile_grid )     
     
-    ! get matching tile_grid for given tile_coord and (global) tile_grid_g
+    ! get tile_grid with smallest extent for given set of tiles in tile_coord on (global) tile_grid_g
     !
     ! make sure to pass in consistent tile_coord (tc) and tile_grid_g inputs:
     !
     !   iff tile_grid_g is the grid that is associated with the tile space definition,
-    !   then tc_[x]_indg must be tile_coord%[x]_indg
+    !   then input tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !   then input tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! reichle, 20 June 2012 -- moved from within domain_setup() 
     !                           for re-use in get_obs_pred() 
     !
     ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
-    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !                                tile_coord%[x]_indg or tile_coord%pert_[x]_indg
     !
     ! -------------------------------------------------------------------
     
@@ -488,7 +488,7 @@ contains
     real,                  intent(in), dimension(N_tile) :: tc_maxlon, tc_maxlat
     
     type(grid_def_type),   intent(in)                    :: tile_grid_g
-    type(grid_def_type),   intent(out)                   :: tile_grid
+    type(grid_def_type)                                  :: tile_grid
     
     ! local variables
     
@@ -503,7 +503,7 @@ contains
     integer :: this_i_indg, this_j_indg
     integer , allocatable :: i_indg_(:), j_indg_(:)
     logical :: c3_grid 
-    character(len=*), parameter :: Iam = 'get_tile_grid'
+    character(len=*), parameter :: Iam = 'get_minExtent_grid'
     character(len=400) :: err_msg
 
     ! -------------------------------------------------
@@ -607,7 +607,7 @@ contains
     tile_grid%i_dir    = tile_grid_g%i_dir
     tile_grid%j_dir    = tile_grid_g%j_dir
     
-  end subroutine get_tile_grid
+  end function get_minExtent_grid
 
   ! **********************************************************************
 
@@ -623,12 +623,12 @@ contains
     !   then tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !   then tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
     !
     ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
-    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !                                tile_coord%[x]_indg or tile_coord%pert_[x]_indg
     !
     ! ----------------------------------------------------------
     
@@ -694,12 +694,12 @@ contains
     !   then tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !   then tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
     !
     ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
-    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !                                tile_coord%[x]_indg or tile_coord%pert_[x]_indg
     !
     ! ----------------------------------------------------------
     
