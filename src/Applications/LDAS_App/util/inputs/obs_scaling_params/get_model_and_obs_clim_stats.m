@@ -1,8 +1,8 @@
 
-function [] = get_model_and_obs_clim_stats( varname,              ...
+function [] = get_model_and_obs_clim_stats( species_names,              ...
     run_months, exp_path, exp_run, domain, start_year, end_year,   ...
     dt_assim, t0_assim, species, obs_param, ...
-    hscale, inc_angle, int_Asc, w_days, Ndata_min, prefix, ...
+    hscale, w_days, Ndata_min, prefix, ...
     convert_grid , time_of_day_in_hours )
 
 %
@@ -116,13 +116,15 @@ end
 
 overwrite    =  1;
 
-Nf = 5;                %5 fields per polarization
-N_out_fields = 2*Nf+4; %14; 
+N_species = length(species);
+
+Nf = 5;                %5 fields per species
+N_out_fields = N_species*Nf + N_species * 2; %This includes the debugging fields to replicate SMAP code
 
 write_ind_latlon = 'latlon_id'; %'latlon';
 
-N_angle = length(inc_angle);
-N_pol   = 2;
+%d N_angle = length(inc_angle);
+%d N_pol   = 2;
 
 tmp_shift_lon    = 0.01;
 tmp_shift_lat    = 0.005;
@@ -185,12 +187,53 @@ fname_out_base_p = [ outpath, '/', prefix,   ...
 	      '_hscale_', num2str(hscale,'%2.2f'), '_',  ...
 	      'W_', num2str(round(w_days/5)),'p_Nmin_', num2str(Ndata_min)];
 
-%fname_out_base = [fname_out_base, spec_tag];
+% Some clunky code to maintain backwards compatibility with adding orbit
+% tag
 
-if (int_Asc == 1)
-    Orbit_tag = '_A'; %'_Asc';
+% Initialize counters for cells ending in "_A" and cells ending in "_D"
+a_count = 0;
+d_count = 0;
+
+% Loop through each cell in the array
+for i = 1:numel(species_names)
+    % Check if the text in the cell ends with either "_A" or "_D"
+    if endsWith(species_names{i}, '_A')
+        % If it ends with "_A", increment the "_A" counter
+        a_count = a_count + 1;
+    elseif endsWith(species_names{i}, '_D')
+        % If it ends with "_D", increment the "_D" counter
+        d_count = d_count + 1;
+    end
+    
+    if startsWith(species_names{i}, 'SMAP')
+        inc_angle = [40.0];
+    else
+        inc_angle = [-999.9];
+    end
+    
+end
+
+% Determine the output based on the values of the "_A" and "_D" counters
+if a_count == numel(species_names)
+    % Both cells end in "_A"
+    disp('All species are "_A"');
+    Orbit_tag = '_A'; 
+     int_Asc = 1;
+elseif d_count == numel(species_names)
+    % Both cells end in "_D"
+    disp('All species are "_D"');
+    Orbit_tag = '_D'; 
+    int_Asc = 2;
+elseif a_count > 0 && d_count > 0
+    % There is a mix of "_A" and "_D"
+    disp('Spcies have a mix of "_A" and "_D"');
+    Orbit_tag = '_AD'; 
+    int_Asc = 3;
 else
-    Orbit_tag = '_D'; %'_Desc';
+    % Neither cell ends in "_A" or "_D"
+    disp('Neither cell ends in "_A" or "_D"');
+    Orbit_tag = '_NoOrbits';
+    int_Asc = 4;
 end
 
 fname_out_base   = [fname_out_base, Orbit_tag];
@@ -330,13 +373,13 @@ end
 %       N_pol and N_angle be specified here. Then subsample specifically
 %       when the files are written out.
 
-o_data     = NaN+zeros(N_pol,N_tile_obs,N_angle,w_days);
-m_data     = NaN+zeros(N_pol,N_tile_obs,N_angle,w_days);
-o_data2    = NaN+zeros(N_pol,N_tile_obs,N_angle,w_days);
-m_data2    = NaN+zeros(N_pol,N_tile_obs,N_angle,w_days);
-N_data     = NaN+zeros(N_pol,N_tile_obs,N_angle,w_days);
+o_data     = NaN+zeros(N_species,N_tile_obs,w_days);
+m_data     = NaN+zeros(N_species,N_tile_obs,w_days);
+o_data2    = NaN+zeros(N_species,N_tile_obs,w_days);
+m_data2    = NaN+zeros(N_species,N_tile_obs,w_days);
+N_data     = NaN+zeros(N_species,N_tile_obs,w_days);
 
-data_out   = NaN+zeros(N_out_fields,N_tile_obs,N_angle);
+data_out   = NaN+zeros(N_out_fields,N_tile_obs);
 
 % -------------------------------------------------------------		  
 
@@ -437,8 +480,12 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
           % extract species of interest
           
           ind = [];
+          
+          scnt = 0;
 
           for this_species = species
+              
+              scnt = scnt + 1;
 
             ind = find( obs_species == this_species);
 
@@ -466,7 +513,7 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
 
                 %pol intrinsically gives an index
                 %now find the index for the angle
-                angle_i = find(angle(1) == inc_angle);
+                %d angle_i = find(angle(1) == inc_angle);
 
                 % Only writes lat-lon at exact obs locations, but with
                 % hscale>0, these obs are spread outside their exact
@@ -500,15 +547,15 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
                         %e.g. at the poles.
                         %**nansum of NaN's** result in zero, this need to be
                         %taken care of
-                        o_data(pol(1),obs_i,angle_i,count) = nansum([o_data(pol(1),obs_i,angle_i,count); obs_obs_i' ]);
-                        m_data(pol(1),obs_i,angle_i,count) = nansum([m_data(pol(1),obs_i,angle_i,count); obs_fcst_i']);
+                        o_data(scnt,obs_i,count) = nansum([o_data(scnt,obs_i,count); obs_obs_i' ]);
+                        m_data(scnt,obs_i,count) = nansum([m_data(scnt,obs_i,count); obs_fcst_i']);
                             
                         %X^2
-                        o_data2(pol(1),obs_i,angle_i,count) = nansum([o_data2(pol(1),obs_i,angle_i,count); obs_obs_i'.^2 ]);
-                        m_data2(pol(1),obs_i,angle_i,count) = nansum([m_data2(pol(1),obs_i,angle_i,count); obs_fcst_i'.^2]);
+                        o_data2(scnt,obs_i,count) = nansum([o_data2(scnt,obs_i,count); obs_obs_i'.^2 ]);
+                        m_data2(scnt,obs_i,count) = nansum([m_data2(scnt,obs_i,count); obs_fcst_i'.^2]);
                             
                         %Sum of obs or model elements at each location
-                        N_data(pol(1),obs_i,angle_i,count) = nansum([N_data(pol(1),obs_i,angle_i,count); ~isnan([obs_obs_i])']);
+                        N_data(scnt,obs_i,count) = nansum([N_data(scnt,obs_i,count); ~isnan([obs_obs_i])']);
 
                 else
 
@@ -520,20 +567,20 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
                                       %hscale_ind =[obs space] % 
 
                         %Sum of X
-                        o_data(pol(1),s_eff,angle_i,count) = ...
-                            nansum([o_data(pol(1),s_eff,angle_i,count); repmat(obs_obs_i(i_ind),1,length(s_eff))]);
-                        m_data(pol(1),s_eff,angle_i,count) = ...
+                        o_data(scnt,obs_i,count) = ...
+                            nansum([o_data(scnt,obs_i,count); repmat(obs_obs_i(i_ind),1,length(s_eff))]);
+                        m_data(scnt,obs_i,count) = ...
                             nansum([m_data(pol(1),s_eff,angle_i,count); repmat(obs_fcst_i(i_ind),1,length(s_eff))]);
 
                         %Sum of X^2
-                        o_data2(pol(1),s_eff,angle_i,count) = ...
-                            nansum([o_data2(pol(1),s_eff,angle_i,count); repmat(obs_obs_i(i_ind).^2,1,length(s_eff))]);
-                        m_data2(pol(1),s_eff,angle_i,count) = ...
-                            nansum([m_data2(pol(1),s_eff,angle_i,count); repmat(obs_fcst_i(i_ind).^2,1,length(s_eff))]);
+                        o_data2(scnt,obs_i,count) = ...
+                            nansum([o_data2(scnt,obs_i,count); repmat(obs_obs_i(i_ind).^2,1,length(s_eff))]);
+                        m_data2(scnt,obs_i,count) = ...
+                            nansum([m_data2(scnt,obs_i,count); repmat(obs_fcst_i(i_ind).^2,1,length(s_eff))]);
 
                         %Sum of obs or model elements at each location
-                        N_data(pol(1),s_eff,angle_i,count) = ...
-                            nansum([N_data(pol(1),s_eff,angle_i,count);  repmat(~isnan([obs_obs_i(i_ind)]),1,length(s_eff)) ]);
+                        N_data(scnt,obs_i,count) = ...
+                            nansum([N_data(scnt,obs_i,count);  repmat(~isnan([obs_obs_i(i_ind)]),1,length(s_eff)) ]);
 
                     end
 
@@ -572,48 +619,48 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
 
   % data_out = zeros(N_out_fields,1:N_tiles,N_angle);
   
-  for pol=[0 1]
+  for i = 0:N_species-1
 
-      pp = pol*Nf;
+      pp = i*Nf;
 
-      N_hscale_window = nansum(N_data(1+pol,:,:,1:w_days),4);
+      N_hscale_window = nansum(N_data(1+i,:,1:w_days),3);
 
       if w_days == 95
-         N_hscale_inner_window = nansum(N_data(1+pol,:,:,((w_days+1)/2-15):((w_days+1)/2+15)),4);
+         N_hscale_inner_window = nansum(N_data(1+i,:,((w_days+1)/2-15):((w_days+1)/2+15)),3);
       end
       
       % OBSERVATIONS
       %----------------
       %o_data is a sum over neighbouring obs above; 
       %here then take a sum over the time steps in the window
-      data_out(1+pp,:,:) = nansum(o_data(1+pol,:,:,1:w_days),4);
+      data_out(1+pp,:) = nansum(o_data(1+i,:,1:w_days),3);
 
       %then make the average, by dividing over the sum of the number of
       %timesteps and influencing obs at each location
-      data_out(1+pp,:,:) = data_out(1+pp,:,:)./N_hscale_window;   
+      data_out(1+pp,:) = data_out(1+pp,:)./N_hscale_window;   
 
       %stdv_H = sqrt(E[X^2] - E[X]^2)
-      data_out(2+pp,:,:) = nansum(o_data2(1+pol,:,:,1:w_days),4);
-      data_out(2+pp,:,:) = data_out(2+pp,:,:)./N_hscale_window;
-      data_out(2+pp,:,:) = sqrt( data_out(2+pp,:,:) - data_out(1+pp,:,:).^2);
+      data_out(2+pp,:) = nansum(o_data2(1+i,:,1:w_days),3);
+      data_out(2+pp,:) = data_out(2+pp,:)./N_hscale_window;
+      data_out(2+pp,:) = sqrt( data_out(2+pp,:) - data_out(1+pp,:).^2);
 
       % MODEL
       %----------------
-      data_out(3+pp,:,:) = nansum(m_data(1+pol,:,:,1:w_days),4);
-      data_out(3+pp,:,:) = data_out(3+pp,:,:)./N_hscale_window;            
+      data_out(3+pp,:) = nansum(m_data(1+i,:,1:w_days),3);
+      data_out(3+pp,:) = data_out(3+pp,:)./N_hscale_window;            
 
-      data_out(4+pp,:,:) = nansum(m_data2(1+pol,:,:,1:w_days),4);
-      data_out(4+pp,:,:) = data_out(4+pp,:,:)./N_hscale_window;
-      data_out(4+pp,:,:) = sqrt( data_out(4+pp,:,:) - data_out(3+pp,:,:).^2);
+      data_out(4+pp,:) = nansum(m_data2(1+i,:,1:w_days),3);
+      data_out(4+pp,:) = data_out(4+pp,:)./N_hscale_window;
+      data_out(4+pp,:) = sqrt( data_out(4+pp,:) - data_out(3+pp,:).^2);
 
-      data_out(5+pp,:,:) = N_hscale_window;
+      data_out(5+pp,:) = N_hscale_window;
 
       % Toss out stats that are based on too little data
 
-      data_out([1:5]+pp,N_hscale_window<Ndata_min) = NaN;
+      data_out([1:Nf]+pp,N_hscale_window<Ndata_min) = NaN;
       
       if w_days == 95
-          data_out([1:5]+pp,N_hscale_inner_window < (Ndata_min/2.5)) = NaN;
+          data_out([1:Nf]+pp,N_hscale_inner_window < (Ndata_min/2.5)) = NaN;
       end
       
   end
@@ -670,11 +717,19 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
           
          
   % Get the actual obs/model at the center point (for debugging only!!)
+tmp_Nf = N_species*Nf; %Number of actual fields before debug information
 
-  data_out(11,:,:) = o_data(1,:,:,w_days-floor(w_days/2.0))./N_data(1,:,:,w_days-floor(w_days/2.0));
-  data_out(12,:,:) = m_data(1,:,:,w_days-floor(w_days/2.0))./N_data(1,:,:,w_days-floor(w_days/2.0));
-  data_out(13,:,:) = o_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
-  data_out(14,:,:) = m_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
+for i = 1:N_species
+    rr = tmp_Nf+((i*2)-1);
+    data_out(rr,:) = o_data(1,:,w_days-floor(w_days/2.0))./N_data(1,:,w_days-floor(w_days/2.0));
+    rr = tmp_Nf+(i*2);
+    data_out(rr,:) = m_data(1,:,w_days-floor(w_days/2.0))./N_data(1,:,w_days-floor(w_days/2.0));
+end
+    
+  %d data_out(11,:,:) = o_data(1,:,:,w_days-floor(w_days/2.0))./N_data(1,:,:,w_days-floor(w_days/2.0));
+  %d data_out(12,:,:) = m_data(1,:,:,w_days-floor(w_days/2.0))./N_data(1,:,:,w_days-floor(w_days/2.0));
+  %d data_out(13,:,:) = o_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
+  %d data_out(14,:,:) = m_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
 
   % Get rid of NaN before writing a file
 
@@ -734,7 +789,7 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
   if print_each_DOY
         
       write_seqbin_file(fname_out, lon_out, lat_out, ...
-                inc_angle, data_out(:,:,:), int_Asc, 0, ...  %instead of writing the version#, write Ndata_min=0
+                inc_angle, data_out(:,:), int_Asc, 0, ...  %instead of writing the version#, write Ndata_min=0
                 start_time, end_time, overwrite, ...
                 N_out_fields, write_ind_latlon, 'scaling',...
                 tile_coord_tile_id)
@@ -748,7 +803,7 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
       if mod((DOY + 2),5) == 0
       
         write_seqbin_file(fname_out, lon_out, lat_out, ...
-            inc_angle, data_out(:,:,:), int_Asc, 0, ...  
+            inc_angle, data_out(:,:), int_Asc, 0, ...  
             start_time, end_time, overwrite, ...
             N_out_fields, write_ind_latlon, 'scaling',...
             tile_coord_tile_id)
@@ -765,17 +820,17 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
   
   % shift the window by one day and make room for the next day at the end      
 
-  o_data(:,:,:,1:w_days-1)  = o_data(:,:,:,2:w_days);
-  m_data(:,:,:,1:w_days-1)  = m_data(:,:,:,2:w_days);
-  o_data2(:,:,:,1:w_days-1) = o_data2(:,:,:,2:w_days);
-  m_data2(:,:,:,1:w_days-1) = m_data2(:,:,:,2:w_days);
-  N_data(:,:,:,1:w_days-1)  = N_data(:,:,:,2:w_days);
+  o_data(:,:,1:w_days-1)  = o_data(:,:,2:w_days);
+  m_data(:,:,1:w_days-1)  = m_data(:,:,2:w_days);
+  o_data2(:,:,1:w_days-1) = o_data2(:,:,2:w_days);
+  m_data2(:,:,1:w_days-1) = m_data2(:,:,2:w_days);
+  N_data(:,:,1:w_days-1)  = N_data(:,:,2:w_days);
 
-  o_data(:,:,:,w_days)  = NaN;
-  m_data(:,:,:,w_days)  = NaN;
-  o_data2(:,:,:,w_days) = NaN;
-  m_data2(:,:,:,w_days) = NaN;
-  N_data(:,:,:,w_days)  = NaN;
+  o_data(:,:,w_days)  = NaN;
+  m_data(:,:,w_days)  = NaN;
+  o_data2(:,:,w_days) = NaN;
+  m_data2(:,:,w_days) = NaN;
+  N_data(:,:,w_days)  = NaN;
 
   data_out = NaN+0.0.*data_out;      
   
