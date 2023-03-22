@@ -630,18 +630,18 @@ contains
   end subroutine check_pert_dtstep
 
   ! *********************************************************************
-  subroutine get_pert_grid( tile_grid, pert_grid )
+  function get_pert_grid( tile_grid) result (pert_grid)
 
     ! reichle, 20 May 2010
     ! jiang,   03/10/2017
     implicit none
 
     type(grid_def_type), intent(in)  :: tile_grid
-    type(grid_def_type), intent(out) :: pert_grid
+    type(grid_def_type)              :: pert_grid
     character(len=30) :: latlon_gridname
     character(len=6) ::  lattmp,lontmp
 
-    type(grid_def_type)  :: tile_grid_g,tile_grid_tmp
+    type(grid_def_type)  :: latlon_grid_tmp
 
     integer :: n_x,i_off,j_off,n_lon,n_lat
 
@@ -677,13 +677,13 @@ contains
        write(lontmp,'(I6.6)') n_lon
        latlon_gridname = "DE"//lontmp//"x"//"PE"//lattmp
 
-       call LDAS_create_grid_g(latlon_gridname,n_lon,n_lat,tile_grid_g,i_off,j_off)
+       call LDAS_create_grid_g(latlon_gridname,n_lon,n_lat, latlon_grid_tmp,i_off,j_off)
 
-       pert_grid = tile_grid_g              
+       pert_grid = latlon_grid_tmp  
 
     endif
 
-  end subroutine get_pert_grid
+  end function get_pert_grid
 
   ! *********************************************************************
 
