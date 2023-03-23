@@ -144,8 +144,8 @@ contains
        N_ens, N_catl, N_catf, N_obsl_max,                                &
        work_path, exp_id, exp_domain,                                    &
        met_force, lai, cat_param, mwRTM_param,                           &
-       tile_coord_l, tile_coord_f, tile_grid_f,                          &
-       pert_grid_f, pert_grid_l_NotUsed, tile_grid_g,                    &
+       tile_coord_l, tile_coord_f,                                       &
+       tile_grid_g, pert_grid_f, pert_grid_g,                            &
        N_catl_vec, low_ind, l2f, f2l,                                    &
        N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
@@ -194,7 +194,7 @@ contains
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord_l, tile_coord_f  ! input
 
-    type(grid_def_type), intent(in) :: tile_grid_f, pert_grid_f, pert_grid_l_NotUsed, tile_grid_g
+    type(grid_def_type), intent(in) :: tile_grid_g, pert_grid_f, pert_grid_g
 
     integer, intent(in), dimension(numprocs) :: N_catl_vec, low_ind
 
@@ -393,18 +393,17 @@ contains
        if ( (root_proc)                                        .or.              &
             (any(obs_param(1:N_obs_param)%FOV>FOV_threshold))        )  then
 
-          allocate(N_tile_in_cell_ij_f(tile_grid_f%N_lon,tile_grid_f%N_lat))
+          allocate(N_tile_in_cell_ij_f(pert_grid_f%N_lon,pert_grid_f%N_lat))
 
-          ! first call: count how many tiles are in each tile_grid_f cell
+          ! first call: count how many tiles are in each pert_grid_f cell
           call get_number_of_tiles_in_cell_ij( N_catf,                           &
-               tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
-               tile_grid_f, N_tile_in_cell_ij_f )
-          ! second call: find out which tiles are in each tile_grid_f cell
+               tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg,               &
+               pert_grid_f, N_tile_in_cell_ij_f )
+          ! second call: find out which tiles are in each pert_grid_f cell
 
           call get_tile_num_in_cell_ij( N_catf,                                  &
-               tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
-               tile_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
-
+               tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg,               &
+               pert_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
        else
           allocate(N_tile_in_cell_ij_f(0,0)) !for debugging
        end if
@@ -422,7 +421,7 @@ contains
        if (out_smapL4SMaup)                                                        &
             call output_smapL4SMaup( date_time, work_path, exp_id, dtstep_assim,   &
             N_ens, N_catl, N_catf, N_obsl, N_obsl_max,                             &
-            tile_coord_f, tile_coord_l, tile_grid_g, tile_grid_f,                  &
+            tile_coord_f, tile_coord_l, tile_grid_g, pert_grid_f,                  &
             N_catl_vec, low_ind, l2f, N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,  &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn  )
 
@@ -431,7 +430,7 @@ contains
        call collect_obs(                                              &
             work_path, exp_id, date_time, dtstep_assim,               &
             N_catl, tile_coord_l,                                     &
-            N_catf, tile_coord_f, tile_grid_f,                        &
+            N_catf, tile_coord_f, pert_grid_f,                        &
             N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,               &
             N_catl_vec, low_ind, l2f,                                 &
             N_obs_param, obs_param, N_obsl_max, out_obslog,           &
@@ -514,7 +513,7 @@ contains
                N_obs_param, N_ens,                                &
                N_catl, tile_coord_l,                              &
                N_catf, tile_coord_f, f2l,                         &
-               N_catl_vec, low_ind, tile_grid_g,                  &
+               N_catl_vec, low_ind, pert_grid_g,                  &
                obs_param,                                         &
                met_force, lai, cat_param, cat_progn, mwRTM_param, &
                N_obsl, Observations_l, Obs_pred_l, obsbias_ok,    &
@@ -1098,7 +1097,7 @@ contains
           call cat_enkf_increments(                       &
                N_ens, nObs_ana, nTiles_ana, N_obs_param,  &
                update_type, obs_param,                    &
-               tile_grid_f, tile_coord_ana, indTiles_ana, & ! indTiles_ana is essentially ana2f
+               tile_coord_ana, indTiles_ana,              & ! indTiles_ana is essentially ana2f
                Obs_ana,                                   & ! size: nObs_ana
                Obs_pred_ana,                              & ! size: (nObs_ana,N_ens)
                Obs_pert_tmp,                              &
@@ -1127,7 +1126,7 @@ contains
           call cat_enkf_increments(                                     &
                N_ens, N_obslH, N_catl, N_obs_param,                     &
                update_type, obs_param,                                  &
-               tile_grid_f, tile_coord_l, l2f,                          &
+               tile_coord_l, l2f,                                       &
                Observations_lH(1:N_obslH),                              &
                Obs_pred_lH(1:N_obslH,1:N_ens),                          &
                Obs_pert_tmp,                                            &
@@ -1720,7 +1719,7 @@ contains
        date_time, work_path, exp_id,                                         &
        N_obsl, N_obs_param, N_ens,                                           &
        N_catl, tile_coord_l,                                                 &
-       N_catf, tile_coord_f, tile_grid_f, tile_grid_g,                       &
+       N_catf, tile_coord_f, pert_grid_f, pert_grid_g,                       &
        N_catl_vec, low_ind, f2l, N_catg, f2g,                                &
        obs_param,                                                            &
        met_force, lai, cat_param, cat_progn, cat_progn_incr, mwRTM_param,    &
@@ -1748,8 +1747,8 @@ contains
     type(tile_coord_type),  dimension(:),     pointer :: tile_coord_l  ! input
     type(tile_coord_type),  dimension(:),     pointer :: tile_coord_f  ! input
 
-    type(grid_def_type),                              intent(in) :: tile_grid_f
-    type(grid_def_type),                              intent(in) :: tile_grid_g
+    type(grid_def_type),                              intent(in) :: pert_grid_f
+    type(grid_def_type),                              intent(in) :: pert_grid_g
 
     integer,                dimension(numprocs),      intent(in) :: N_catl_vec, low_ind
 
@@ -1810,7 +1809,7 @@ contains
             N_obs_param, N_ens,                                &
             N_catl, tile_coord_l,                              &
             N_catf, tile_coord_f, f2l,                         &
-            N_catl_vec, low_ind, tile_grid_g,                  &
+            N_catl_vec, low_ind, pert_grid_g,                  &
             obs_param,                                         &
             met_force, lai, cat_param, cat_progn, mwRTM_param, &
             N_obsl_tmp, Observations_l, Obs_pred_l )
@@ -1925,7 +1924,7 @@ contains
 
   subroutine output_smapL4SMaup( date_time, work_path, exp_id, dtstep_assim,    &
        N_ens, N_catl, N_catf, N_obsl, N_obsl_max,                               &
-       tile_coord_f, tile_coord_l, tile_grid_g, tile_grid_f,                    &
+       tile_coord_f, tile_coord_l, tile_grid_g, pert_grid_f,                    &
        N_catl_vec, low_ind, l2f, N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,    &
        N_obs_param, obs_param, Observations_l, cat_param, cat_progn )
 
@@ -1955,7 +1954,7 @@ contains
     type(tile_coord_type), dimension(:),     pointer :: tile_coord_l  ! input
 
     type(grid_def_type),                             intent(in) :: tile_grid_g
-    type(grid_def_type),                             intent(in) :: tile_grid_f
+    type(grid_def_type),                             intent(in) :: pert_grid_f
 
     integer,               dimension(numprocs),      intent(in) :: N_catl_vec
     integer,               dimension(numprocs),      intent(in) :: low_ind
@@ -2030,7 +2029,7 @@ contains
     call collect_obs(                                                            &
          work_path, exp_id, date_time, dtstep_assim,                             &
          N_catl, tile_coord_l,                                                   &
-         N_catf, tile_coord_f, tile_grid_f,                                      &
+         N_catf, tile_coord_f, pert_grid_f,                                      &
          N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,                             &
          N_catl_vec, low_ind, l2f,                                               &
          N_obs_param_tmp, obs_param_tmp(1:N_obs_param_tmp), N_obsl_max, .false., &
