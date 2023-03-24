@@ -329,9 +329,9 @@ COMMONLY USED boundary conditions (bcs):
 
 #### MERRA2
 ```
-  BCS_PATH : /discover/nobackup/ltakacs/bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/
+  BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/
 ```
-  Note: The same land bcs (for cube-shere only) are also in /discover/nobackup/ltakacs/bcs/Icarus/Icarus_MERRA-2/
+  Note: The same land bcs (for cube-shere only) are also in /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/Icarus_MERRA-2/
 
 
 #### SMAP Nature Run v03
@@ -351,7 +351,7 @@ COMMONLY USED boundary conditions (bcs):
 
 #### Icarus-NL ("New Land"), SMAP_Nature_v7.2
 ```
-  BCS_PATH : /discover/nobackup/ltakacs/bcs/Icarus-NL/Icarus-NL_[XXXX]/
+  BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NL/Icarus-NL_[XXXX]/
 ```
 
 Notes:
@@ -361,7 +361,7 @@ Notes:
 
 #### Icarus-NLv2, SMAP L4_SM Version 4
 ```
-  BCS_PATH : /discover/nobackup/ltakacs/bcs/Icarus-NLv2/Icarus-NLv2_[XXXX]/
+  BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_[XXXX]/
 ```
 
 Notes: 
@@ -370,7 +370,7 @@ Notes:
 	
 #### Icarus-NLv3, SMAP_Nature_v8.1
 ```
-  BCS_PATH : /discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_[XXXX]/
+  BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/Icarus-NLv3_[XXXX]/
 ```
 
 Notes: 

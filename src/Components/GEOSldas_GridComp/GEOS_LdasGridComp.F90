@@ -17,8 +17,8 @@ module GEOS_LdasGridCompMod
 
   use EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
-  use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type
-  use LDAS_TileCoordRoutines, only: get_tile_grid, get_ij_ind_from_latlon, io_domain_files
+  use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type, operator (==)
+  use LDAS_TileCoordRoutines, only: get_minExtent_grid, get_ij_ind_from_latlon, io_domain_files
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_PertRoutinesMod, only: get_pert_grid
   use LDAS_ensdrv_functions,ONLY:  get_io_filename 
@@ -406,9 +406,10 @@ contains
     integer :: N_catf
     integer :: LSM_CHOICE
 
-    type(grid_def_type) :: tile_grid_g
-    type(grid_def_type) :: tile_grid_f
-    type(grid_def_type) :: tile_grid_l
+    type(grid_def_type) :: tile_grid_g, pert_grid_g
+    type(grid_def_type) :: tile_grid_f, pert_grid_f
+    type(grid_def_type) :: tile_grid_l, pert_grid_l
+
     type(date_time_type):: start_time
     type(ESMF_Time)     :: CurrentTime
     !type(CubedSphereGridFactory) :: cubed_sphere_factory
@@ -619,39 +620,50 @@ contains
        close(10)
        call io_grid_def_type('w', logunit, tile_grid_f, 'tile_grid_f')
 
-       block 
-          type(grid_def_type) :: latlon_tmp_g
-          integer :: perturbations
+       ! get a grid for perturbations and EnKF:
+       !
+       !  tile grid                 !  pert grid
+       !  (defines tile space)      !  (used for perturbations and as "hash" grid in EnKF analysis)
+       ! ===========================================================================================================
+       !  lat/lon                   !  same as tile_grid (i.e., lat/lon)
+       ! -----------------------------------------------------------------------------------------------------------
+       !  EASEv[X]                  !  same as tile_grid (i.e., EASE)
+       ! -----------------------------------------------------------------------------------------------------------
+       !  cube-sphere               !  lat/lon grid of resolution similar to that of (cube-sphere) tile_grid
+       
+       pert_grid_g = get_pert_grid(tile_grid_g)
+       
+       if ( .not. (pert_grid_g==tile_grid_g) ) then
 
-          call MAPL_GetResource(MAPL, perturbations, 'PERTURBATIONS:', default=0, rc=status)
-          if(trim(grid_type) == "Cubed-Sphere" ) then
+          ! arrive here when tile_grid_g is cube-sphere and pert_grid_g is lat/lon after call to get_pert_grid() above
+ 
+          !1) get pert_i_indg, pert_j_indg for tiles in (full) domain relative to pert_grid_g
+          do i = 1, N_catf
+             call get_ij_ind_from_latlon(pert_grid_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
+              tile_coord_f(i)%pert_i_indg,tile_coord_f(i)%pert_j_indg)
+          enddo
+          !2) determine pert_grid_f
+          pert_grid_f = get_minExtent_grid(N_catf, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, &
+               tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
+               pert_grid_g)
 
-            _ASSERT(index(tile_grid_g%gridtype, 'c3') /=0, "tile_grid_g does not describe a cubed-sphere grid")
-            
-            !1) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
-            call get_pert_grid(tile_grid_g, latlon_tmp_g)
-            tile_grid_g = latlon_tmp_g
-            !2) get hash index
-            do i = 1, N_catf
-               call get_ij_ind_from_latlon(latlon_tmp_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
-                 tile_coord_f(i)%hash_i_indg,tile_coord_f(i)%hash_j_indg)
-            enddo
-            !3) re-generate tile_grid_f in Lat-Lon
-            call get_tile_grid(N_catf, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
-                 tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
-                 tile_grid_g, tile_grid_f)
-            
-          endif
-       end block 
+       else
+          
+          pert_grid_f = tile_grid_f
 
+          ! note that %pert_i_indg and %pert_j_indg were initialized to %i_indg and %j_indg
+          !   in io_tile_coord_type() when tile_coord was read via io_domain_files()
+          
+       endif
     endif
     
     call MPI_BCAST(N_catf,1,MPI_INTEGER,0,mpicomm,mpierr)
     if (.not. IamRoot) allocate(tile_coord_f(N_catf))
 
     call MPI_BCAST(tile_coord_f,N_catf,    MPI_tile_coord_type,0,mpicomm, mpierr)
+    call MPI_BCAST(pert_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
+    call MPI_BCAST(pert_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
     call MPI_BCAST(tile_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
-    call MPI_BCAST(tile_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
 
     block
       integer, allocatable :: f2tile_id(:), tile_id2f(:)
@@ -682,17 +694,16 @@ contains
 
     allocate(tcinternal%tile_coord_f,source = tile_coord_f)
     
-    call get_tile_grid(land_nt_local,                                            &
-         tcinternal%tile_coord%hash_i_indg, tcinternal%tile_coord%hash_j_indg,   &
+    pert_grid_l = get_minExtent_grid(land_nt_local,                             &
+         tcinternal%tile_coord%pert_i_indg, tcinternal%tile_coord%pert_j_indg,   &
          tcinternal%tile_coord%min_lon,     tcinternal%tile_coord%min_lat,       &
          tcinternal%tile_coord%max_lon,     tcinternal%tile_coord%max_lat,       &
-         tile_grid_g,tile_grid_l)
-   
-    ! re-arrange tile_coord_f
+         pert_grid_g)
 
-    tcinternal%grid_g = tile_grid_g
-    tcinternal%grid_f = tile_grid_f
-    tcinternal%grid_l = tile_grid_l
+    tcinternal%pgrid_g = pert_grid_g
+    tcinternal%pgrid_f = pert_grid_f
+    tcinternal%pgrid_l = pert_grid_l
+    tcinternal%tgrid_g = tile_grid_g
 
     do i = 1, NUM_ENSEMBLE
        call MAPL_GetObjectFromGC(gcs(METFORCE(i)), CHILD_MAPL, rc=status)
