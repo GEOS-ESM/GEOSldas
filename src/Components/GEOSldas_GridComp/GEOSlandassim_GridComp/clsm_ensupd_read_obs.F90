@@ -7449,26 +7449,14 @@ contains
            
         end if
         
-    case ('ASCAT_META_SM_A', 'ASCAT_META_SM_D','ASCAT_METB_SM_A', 'ASCAT_METB_SM_D' )
+    case ('ASCAT_META_SM_A', 'ASCAT_META_SM_D','ASCAT_METB_SM_A', 'ASCAT_METB_SM_D','ASCAT_METC_SM_A', 'ASCAT_METC_SM_D' )
       
-        call read_obs_sm_ASCAT_EUMET(                                        &
+        call read_obs_sm_ASCAT_EUMET(                                  &
              work_path, exp_id,                                        &
              date_time, dtstep_assim, N_catd, tile_coord,              &
              tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
              this_obs_param,                                           &
              found_obs, tmp_obs, tmp_std_obs )
-        ! Temporay hack to output if ascending/decending instead of tmp_std_obs
-        select case (trim(this_obs_param%descr))
-
-        case ('ASCAT_META_SM_A', 'ASCAT_METB_SM_A')
-          
-            tmp_std_obs(1:N_catd) = 1
-
-        case ('ASCAT_META_SM_D', 'ASCAT_METB_SM_D')
-
-           tmp_std_obs(1:N_catd) = 2
-
-        end select
  
         ! scale observations to model climatology
         
