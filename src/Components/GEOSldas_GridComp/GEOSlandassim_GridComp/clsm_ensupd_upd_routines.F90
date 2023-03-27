@@ -79,7 +79,7 @@ module clsm_ensupd_upd_routines
        get_tile_num_in_ellipse,                   &
        get_number_of_tiles_in_cell_ij,            &
        get_tile_num_in_cell_ij,                   &
-       get_tile_grid,                             &
+       get_minExtent_grid,                        &
        get_ij_ind_from_latlon
 
   use land_pert_routines,               ONLY:     &
@@ -1513,16 +1513,16 @@ contains
        
        ! determine tile_grid_lH from tile_coord_lH
        
-       call get_tile_grid( N_catlH, tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,               &
+       tile_grid_lH = get_minExtent_grid( N_catlH, tile_coord_lH%pert_i_indg, tile_coord_lH%pert_j_indg,&
             tile_coord_lH%min_lon, tile_coord_lH%min_lat, tile_coord_lH%max_lon, tile_coord_lH%max_lat, &
-            tile_grid_g, tile_grid_lH ) 
+            tile_grid_g) 
        
        allocate(N_tile_in_cell_ij_lH(tile_grid_lH%N_lon,tile_grid_lH%N_lat))
        
        ! first call: count how many tiles are in each tile_grid_lH cell
 
        call get_number_of_tiles_in_cell_ij( N_catlH,                                   &
-            tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,                      &
+            tile_coord_lH%pert_i_indg, tile_coord_lH%pert_j_indg,                      &
             tile_grid_lH, N_tile_in_cell_ij_lH )
        
        ! second call: find out which tiles are in each tile_grid_lH cell
@@ -1530,7 +1530,7 @@ contains
        !               to local halo ("lH") domain]
        
        call get_tile_num_in_cell_ij( N_catlH,                                          &
-            tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,                      &
+            tile_coord_lH%pert_i_indg, tile_coord_lH%pert_j_indg,                      &
             tile_grid_lH, maxval(N_tile_in_cell_ij_lH), tile_num_in_cell_ij_lH )
        
     end if
@@ -3375,7 +3375,7 @@ contains
   subroutine cat_enkf_increments(                               &
        N_ens, N_obs, N_catd, N_obs_param,                       &
        update_type, obs_param,                                  &
-       tile_grid_f, tile_coord, l2f,                            &
+       tile_coord, l2f,                                         &
        Observations, Obs_pred, Obs_pert,                        &
        cat_param,                                               &
        xcompact, ycompact, fcsterr_inflation_fac,               &
@@ -3414,8 +3414,6 @@ contains
     integer, intent(in) :: N_ens, N_obs, N_catd, N_obs_param, update_type
 
     type(obs_param_type), dimension(N_obs_param), intent(in) :: obs_param               
-
-    type(grid_def_type), intent(in) :: tile_grid_f
 
     type(tile_coord_type), dimension(:), pointer  :: tile_coord     ! input
 
@@ -4944,7 +4942,7 @@ contains
        ! In the obs readers, each obs is assigned to a single tile
        ! based on subroutine get_tile_num_from_latlon().  The assignment
        ! is such that the the obs lat/lon and the tile center-of-mass lat/lon
-       ! must always be within the same grid cell of the tile_grid.
+       ! must always be within the same grid cell of the tile_grid [or pert_grid??].
        ! Furthermore, the obs lat/lon 
        !  - must be within the min/max lat/lon boundaries of the tile
        !  OR
