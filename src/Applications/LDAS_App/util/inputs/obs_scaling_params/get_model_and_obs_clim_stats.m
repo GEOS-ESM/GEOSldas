@@ -719,21 +719,24 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
   % Get the actual obs/model at the center point (for debugging only!!)
 tmp_Nf = N_species*Nf; %Number of actual fields before debug information
 
-for i = 1:N_species
+for i = 1:N_species % New species loop
     rr = tmp_Nf+((i*2)-1);
     data_out(rr,:) = o_data(1,:,w_days-floor(w_days/2.0))./N_data(1,:,w_days-floor(w_days/2.0));
     rr = tmp_Nf+(i*2);
     data_out(rr,:) = m_data(1,:,w_days-floor(w_days/2.0))./N_data(1,:,w_days-floor(w_days/2.0));
-end
     
-  %d data_out(11,:,:) = o_data(1,:,:,w_days-floor(w_days/2.0))./N_data(1,:,:,w_days-floor(w_days/2.0));
-  %d data_out(12,:,:) = m_data(1,:,:,w_days-floor(w_days/2.0))./N_data(1,:,:,w_days-floor(w_days/2.0));
-  %d data_out(13,:,:) = o_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
-  %d data_out(14,:,:) = m_data(2,:,:,w_days-floor(w_days/2.0))./N_data(2,:,:,w_days-floor(w_days/2.0));
-
-  % Get rid of NaN before writing a file
+    startrow = ((i-1)*5)+1;
+    endrow = i*5;
+    
+    % Get rid of NaN before writing a file
 
   data_out(isnan(data_out)) = nodata;
+  
+   
+ startidx = strfind(fname_out_base, 'z_score_clim//');
+ endidx = startidx + length('z_score_clim//');
+
+ fname_out_base_s = [fname_out_base(1:startidx-1) 'z_score_clim/', char(species_names(i)),'_', fname_out_base(endidx:end)];
   %lon_out(isnan(lon_out))   = nodata;
   %lat_out(isnan(lat_out))   = nodata;
 
@@ -743,36 +746,24 @@ end
   date_time = augment_date_time( -floor(w_days*(24*60*60)/2.0), date_time );
 
   % always 365 files
-
   DOY      = date_time.dofyr;
-
   if(is_leap_year(date_time.year) && DOY>=59)
-
       DOY = DOY-1;
-
       error('This code should never hit a leap year');
-      
   end
 
   
-  fname_out = [fname_out_base, '_DOY', num2str(DOY,'%3.3d'), '.bin'];
+  fname_out = [fname_out_base_s, '_DOY', num2str(DOY,'%3.3d'), '.nc4'];
 
   % check whether output file exists
-
   if (exist(fname_out)==2 && overwrite) 
-
       disp(['output file exists. overwriting', fname_out])
-
   elseif (exist(fname_out)==2 && ~overwrite) 
-
       disp(['output file exists. not overwriting. returning'])
       disp(['writing ', fname_out])
       return
-
   else
-
       disp(['creating ', fname_out])
-
   end
   
   % compress data before writing in file. 
@@ -784,37 +775,30 @@ end
   %tile_coord_tile_id_write = tile_coord_tile_id(idx_keep);
   
   
-  % write output for each DOY, sorted by all tiles
-
-  if print_each_DOY
-        
-      write_seqbin_file(fname_out, lon_out, lat_out, ...
-                inc_angle, data_out(:,:), int_Asc, 0, ...  %instead of writing the version#, write Ndata_min=0
+  % write output for each DOY, sorted by all tile
+  if print_each_DOY     
+      write_netcdf_file(fname_out, lon_out, lat_out, ...
+                inc_angle, data_out(startrow:endrow,:), int_Asc, 0, ...  %instead of writing the version#, write Ndata_min=0
                 start_time, end_time, overwrite, ...
-                N_out_fields, write_ind_latlon, 'scaling',...
+                Nf, write_ind_latlon, 'scaling',...
                 tile_coord_tile_id)
   else
-      
       % if DOY is at middle of pentad, then copy the DOY to a pentad file
       % DOY = pentad*5 - 2; ==> pentad = (DOY + 2)/5;
-
       pentad = (DOY + 2)/5;
-      
       if mod((DOY + 2),5) == 0
-      
-        write_seqbin_file(fname_out, lon_out, lat_out, ...
-            inc_angle, data_out(:,:), int_Asc, 0, ...  
+        write_netcdf_file(fname_out, lon_out, lat_out, ...
+            inc_angle, data_out(startrow:endrow,:), int_Asc, 0, ...  
             start_time, end_time, overwrite, ...
-            N_out_fields, write_ind_latlon, 'scaling',...
+            Nf, write_ind_latlon, 'scaling',...
             tile_coord_tile_id)
-        
         fname_out_p = [fname_out_base_p, '_p', num2str(pentad,'%2.2d'), '.bin'];
-
         copyfile(fname_out,fname_out_p);
-
       end
       
   end
+  
+end % new species loop
   
   %clear idx_keep lon_out_write lat_out_write data_out_write tile_coord_tile_id_write
   

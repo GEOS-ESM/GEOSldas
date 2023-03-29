@@ -2,7 +2,7 @@
 
 function [i_ind,j_ind] = get_ij_ind_from_latlon( tile_grid, lat, lon)
 
-    if (strcmp(tile_grid.gridtype,'EASEv2_M36'))
+    if (strcmp(tile_grid.gridtype,'EASEv2-M36'))
         %row, col
         [j_indg,i_indg] = ...
             EASEv2_latlon2ind(lat,lon,'M36');

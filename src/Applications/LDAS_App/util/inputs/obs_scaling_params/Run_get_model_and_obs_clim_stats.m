@@ -13,25 +13,25 @@ addpath('../../shared/matlab/');
 
 run_months = [1:12 1:4]; %loop through 1:4 again to get complete pentads
 
-%exp_path = '/smap1/qliu/output/SMAP_Nature_v8.3/NRv8.3_innov_RTMv4/';
-%exp_run  = {'SMAP_NRv8.3inv_RTMv4'};
-%exp_path = '/hydro/qliu/WORK/output/L4_SM_SMAP/';
-%exp_run  = {'SPL4SM_OL4001'};
-%exp_path = '/smap1/qliu/output/SMAP_Nature_v8.3/NRv8.3_innov/S1/';
-%exp_run  = {'SMAP_NRv8.3_innov'};
-exp_path = '/discover/nobackup/amfox';
-exp_run  = {'SPL4SM_OL7000'};
-domain   = 'SMAP_EASEv2_M09_GLOBAL';
+% exp_path = '/discover/nobackup/amfox';
+% exp_run  = {'SPL4SM_OL7000'};
+% domain   = 'SMAP_EASEv2_M09_GLOBAL';
+
+exp_path = '/discover/nobackup/amfox/Experiments/ASCAT_3Y_v2';
+exp_run  = {'ASCAT_M36'};
+domain   = 'SMAP_EASEv2_M36_GLOBAL';
 
 %Start and end year for each month
-start_year = [repmat(2016,1,3) repmat(2015,1,9) repmat(2016,1,3) repmat(2015,1,1)]; %corresp to [1:12 1 2]
-end_year   = [repmat(2017,1,3) repmat(2016,1,9) repmat(2017,1,3) repmat(2016,1,1)]; %runs till end of run_months for end_year
+start_year = [repmat(2016,1,5) repmat(2015,1,7) repmat(2016,1,4)]; %corresp to [1:12 1 2]
+end_year   = [repmat(2017,1,5) repmat(2016,1,7) repmat(2017,1,4)]; %runs till end of run_months for end_year
+
 
 %d orbit    = [ 2]; %1=A, 2=D   !DO *NOT* USE ASC AND DESC TOGETHER!
 %d pol      = [ 1 2 ]; %1=H, 2=V
 %d inc_ang  = [ 40.0 ];
 
 prefix_out = 'L4SM_OL7000_SMAPL1CR17000_zscore_stats_';
+prefix_out = 'M36_zscore_stats_';
 
 dt_assim   = 3*60*60;    % [seconds] land analysis time step,
                          %             same as LANDASSIM_DT in GEOSldas)
@@ -42,13 +42,14 @@ t0_assim   =       0;    % [seconds] land analysis "reference" time (offset from
 %======
 
 obs_param_fname = [exp_path, '/', exp_run{1}, '/output/', domain, '/rc_out/', ...
-    '/Y2015/M04/',exp_run{1}, '.ldas_obsparam.20150401_0000z.txt'];
+    '/Y2016/M04/',exp_run{1}, '.ldas_obsparam.20160401_0000z.txt'];
 
 %d var_name = {'Tb'};
 
 % added to identify SMOS or SMAP from runs that include both
 species_names = {'SMAP_L1C_Tbh_A', 'SMAP_L1C_Tbv_A', 'SMAP_L1C_Tbh_D', 'SMAP_L1C_Tbv_D'};
-species_names = {'SMAP_L1C_Tbh_A'};
+species_names = {'ASCAT_META_SM_A','ASCAT_META_SM_D','ASCAT_METB_SM_A','ASCAT_METB_SM_D'};
+species_names = {'ASCAT_META_SM_A','ASCAT_META_SM_D'};
 
 %======
 %d if (length(orbit) > 1)
