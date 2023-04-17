@@ -48,11 +48,11 @@ clear tmp
 %even if re-ordered output from an LDASsa-run is used as input, the
 %resulting mwRTMparam.xxxx(:) is always monotonically increasingly sorted
 
-[row_M09,col_M09] = smapeasev2_latlon2ind(tile_coord.com_lat,tile_coord.com_lon,'M09');
+[row_M09,col_M09] = EASEv2_latlon2ind(tile_coord.com_lat,tile_coord.com_lon,'M09',1);
 row_M09 = row_M09 +1;
 col_M09 = col_M09 +1;
 
-[row_M36,col_M36] = smapeasev2_latlon2ind(tile_coord.com_lat,tile_coord.com_lon,'M36');
+[row_M36,col_M36] = EASEv2_latlon2ind(tile_coord.com_lat,tile_coord.com_lon,'M36',1);
 row_M36 = row_M36 + 1;
 col_M36 = col_M36 + 1;
 
