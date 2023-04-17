@@ -1556,7 +1556,7 @@ contains
        date_time, dtstep_assim, N_catd, tile_coord,              &
        tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
        this_obs_param,                                           &
-       found_obs, sm_ASCAT, std_sm_ASCAT )
+       found_obs, ASCAT_sm, ASCAT_sm_std , ASCAT_lon, ASCAT_lat, ASCAT_time)
     
     !---------------------------------------------------------------------
     ! 
@@ -1594,10 +1594,14 @@ contains
     type(obs_param_type), intent(in) :: this_obs_param
     
     ! outputs:
-    
-    real,    intent(out), dimension(N_catd) :: sm_ASCAT   ! wetness range 0-1
-    real,    intent(out), dimension(N_catd) :: std_sm_ASCAT
+   
     logical, intent(out)                    :: found_obs
+
+    real,    intent(out), dimension(N_catd) :: ASCAT_sm              ! wetness range 0-1
+    real,    intent(out), dimension(N_catd) :: ASCAT_sm_std
+    real,    intent(out), dimension(N_catd) :: ASCAT_lon, ASCAT_lat
+    real*8,  intent(out), dimension(N_catd) :: ASCAT_time            ! J2000 seconds
+   
     
     ! ---------------
     
@@ -1610,6 +1614,7 @@ contains
     ! Will need to be updated if using EUMETSAT BUFR files
 
     integer, parameter :: ae_time_offset = 3600   ! 60 minutes in seconds
+    character(4),      parameter :: J2000_epoch_id = 'TT12'    ! see date_time_util.F90
     
     character(4)   :: DDHH
     character(6)   :: YYYYMM
@@ -1632,12 +1637,14 @@ contains
     integer :: idate,iret,kk
     integer :: ireadmg,ireadsb
     character(8)  :: subset
-    real,  dimension(:),     allocatable  :: tmp1_lon, tmp1_lat, tmp1_obs
+    real,      dimension(:),     allocatable    :: tmp1_lon, tmp1_lat, tmp1_obs
+    real*8,    dimension(:),     allocatable    :: tmp1_jtime
 
-    real,    dimension(:), pointer :: tmp_obs, tmp_lat, tmp_lon
-    integer, dimension(:), pointer :: tmp_tile_num
+    real,      dimension(:),     pointer        :: tmp_obs, tmp_lat, tmp_lon
+    real*8,    dimension(:),     pointer        :: tmp_jtime
+    integer,   dimension(:),     pointer        :: tmp_tile_num
 
-    integer, dimension(N_catd) :: N_obs_in_tile    
+    integer,   dimension(N_catd) :: N_obs_in_tile    
 
     real, parameter :: tol = 1e-2
 
@@ -1646,7 +1653,7 @@ contains
 
     ! -------------------------------------------------------------------
     
-    nullify( tmp_obs, tmp_lat, tmp_lon, tmp_tile_num )    
+    nullify( tmp_obs, tmp_lat, tmp_lon, tmp_tile_num, tmp_jtime )    
     
     ! ---------------
     
@@ -1747,6 +1754,7 @@ contains
     allocate(tmp1_lon(max_rec))
     allocate(tmp1_lat(max_rec))
     allocate(tmp1_obs(max_rec))
+    allocate(tmp1_jtime(max_rec))
 
     if (N_files>0) then
        
@@ -1813,7 +1821,10 @@ contains
                  !call ufbint(lnbufr,tmp_data,1,1,iret,'SNOC') ! snow cover
                  !call ufbint(lnbufr,tmp_data,1,1,iret,'FLSF') ! frozen land fraction
 
-                 N_tmp = N_tmp + 1
+                 N_tmp = N_tmp + 1 ! Passed all QC
+
+                 tmp1_jtime(N_tmp) = datetime_to_J2000seconds( date_time_tmp, J2000_epoch_id )
+
                  call ufbint(lnbufr,tmp_vdata,4,1,iret,'CLATH CLONH SSOM EESSM')
                  tmp1_lat(N_tmp) = tmp_vdata(1) 
                  tmp1_lon(N_tmp) = tmp_vdata(2) 
@@ -1846,14 +1857,17 @@ contains
        
     end if
 
+    allocate(tmp_jtime(N_tmp))    
     allocate(tmp_lon(N_tmp))
     allocate(tmp_lat(N_tmp))
     allocate(tmp_obs(N_tmp))
 
+    tmp_jtime = tmp1_jtime(1:N_tmp)
     tmp_lon = tmp1_lon(1:N_tmp)
     tmp_lat = tmp1_lat(1:N_tmp)
     tmp_obs = tmp1_obs(1:N_tmp)
    
+    deallocate(tmp1_jtime)
     deallocate(tmp1_lon)
     deallocate(tmp1_lat)
     deallocate(tmp1_obs) 
@@ -1888,7 +1902,11 @@ contains
        ! 3.) compute super-obs for each tile from all obs w/in that tile
        !     (also eliminate observations that are not in domain)
        
-       sm_ASCAT = 0.
+       ASCAT_sm = 0.
+       ASCAT_lon = 0.
+       ASCAT_lat = 0.
+       ASCAT_time = 0.0D0
+
        N_obs_in_tile  = 0
        
        do i=1,N_tmp
@@ -1897,25 +1915,41 @@ contains
           
           if (ind>0) then         ! this step eliminates obs outside domain
              
-             sm_ASCAT(ind) = sm_ASCAT(ind) + tmp_obs(i)
+            ASCAT_sm(ind) = ASCAT_sm(ind) + tmp_obs(i)
+            ASCAT_lon(ind) = ASCAT_lon(ind) + tmp_lon(i)
+            ASCAT_lat(ind) = ASCAT_lat(ind) + tmp_lat(i)
+            ASCAT_time(ind) = ASCAT_time(ind) + tmp_jtime(i)
              
-             N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
+            N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
              
           end if
           
        end do
+
+              ! --------------------------------
+      
        
        ! normalize
        
        do i=1,N_catd
+
+         ! set observation error standard deviation
+         ASCAT_sm_std(i) = this_obs_param%errstd
           
           if (N_obs_in_tile(i)>1) then
              
-             sm_ASCAT(i) = sm_ASCAT(i)/real(N_obs_in_tile(i))
+            ASCAT_sm(i) = ASCAT_sm(i)/real(N_obs_in_tile(i))
+            ASCAT_lon(i) = ASCAT_lon(i)/real(N_obs_in_tile(i))
+            ASCAT_lat(i) = ASCAT_lat(i)/real(N_obs_in_tile(i))
+            ASCAT_time(i) = ASCAT_time(i)/real(N_obs_in_tile(i),kind(0.0D0))
           
           elseif (N_obs_in_tile(i)==0) then
              
-             sm_ASCAT(i) = this_obs_param%nodata
+            ASCAT_sm(i) = this_obs_param%nodata
+            ASCAT_lon(i) = this_obs_param%nodata
+            ASCAT_lat(i) = this_obs_param%nodata
+            ASCAT_time(i) = real(this_obs_param%nodata,kind(0.0D0))
+            ASCAT_sm_std(i) = this_obs_param%nodata
              
           end if
           
@@ -1924,15 +1958,6 @@ contains
        ! clean up
        
        if (associated(tmp_tile_num)) deallocate(tmp_tile_num)
-       
-       ! --------------------------------
-       
-       ! set observation error standard deviation
-
-         do i=1,N_catd
-	      std_sm_ASCAT(i) = this_obs_param%errstd
-         enddo
-       ! --------------------------------
        
        if (any(N_obs_in_tile>0)) then
         
@@ -1951,6 +1976,8 @@ contains
     if (associated(tmp_obs))      deallocate(tmp_obs)
     if (associated(tmp_lon))      deallocate(tmp_lon)
     if (associated(tmp_lat))      deallocate(tmp_lat)
+    if (associated(tmp_jtime))      deallocate(tmp_jtime)
+    
 
   end subroutine read_obs_sm_ASCAT_EUMET
 
@@ -7456,7 +7483,7 @@ contains
              date_time, dtstep_assim, N_catd, tile_coord,              &
              tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
              this_obs_param,                                           &
-             found_obs, tmp_obs, tmp_std_obs )
+             found_obs, tmp_obs, tmp_std_obs , tmp_lon, tmp_lat, tmp_time)
  
         ! scale observations to model climatology
         
