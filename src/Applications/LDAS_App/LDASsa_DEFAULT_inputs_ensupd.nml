@@ -2213,7 +2213,7 @@ obs_param_nml(52)%adapt          = 0
 
 ! --------------------------------------------------------------------
 !
-!  53 = ASCAT_METB_SM_A (ASCAT soil moisture ascending)
+!  53 = ASCAT_METC_SM_A (ASCAT soil moisture ascending)
 !
 ! https://navigator.eumetsat.int/product/EO:EUM:DAT:METOP:SOMO25
 
@@ -2250,7 +2250,7 @@ obs_param_nml(53)%adapt          = 0
 
 ! -------------------
 !
-!  54 = ASCAT_METB_SM_D (ASCAT soil moisture descending)
+!  54 = ASCAT_METC_SM_D (ASCAT soil moisture descending)
 !
 ! https://navigator.eumetsat.int/product/EO:EUM:DAT:METOP:SOMO25
 
