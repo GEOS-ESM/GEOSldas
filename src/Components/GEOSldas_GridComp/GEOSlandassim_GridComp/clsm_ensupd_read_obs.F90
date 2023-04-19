@@ -1556,7 +1556,7 @@ contains
        date_time, dtstep_assim, N_catd, tile_coord,              &
        tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
        this_obs_param,                                           &
-       found_obs, ASCAT_sm, ASCAT_sm_std , ASCAT_lon, ASCAT_lat, ASCAT_time)
+       found_obs, ASCAT_sm, ASCAT_sm_std, ASCAT_lon, ASCAT_lat, ASCAT_time)
     
     !---------------------------------------------------------------------
     ! 
@@ -1976,7 +1976,7 @@ contains
     if (associated(tmp_obs))      deallocate(tmp_obs)
     if (associated(tmp_lon))      deallocate(tmp_lon)
     if (associated(tmp_lat))      deallocate(tmp_lat)
-    if (associated(tmp_jtime))      deallocate(tmp_jtime)
+    if (associated(tmp_jtime))    deallocate(tmp_jtime)
     
 
   end subroutine read_obs_sm_ASCAT_EUMET
@@ -7483,7 +7483,7 @@ contains
              date_time, dtstep_assim, N_catd, tile_coord,              &
              tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
              this_obs_param,                                           &
-             found_obs, tmp_obs, tmp_std_obs , tmp_lon, tmp_lat, tmp_time)
+             found_obs, tmp_obs, tmp_std_obs, tmp_lon, tmp_lat, tmp_time)
  
         ! scale observations to model climatology
         
@@ -7491,8 +7491,8 @@ contains
 
            scaled_obs = .true.
 
-           call scale_obs_sfmc_cdf( N_catd, tile_coord, this_obs_param,   &
-                tmp_obs, tmp_std_obs )
+           call scale_obs_sfmc_zscore( N_catd, tile_coord, this_obs_param,   &
+                tmp_obs, tmp_std_obs, tmp_lon, tmp_lat, tmp_time )
            
         end if        
 
@@ -8108,6 +8108,184 @@ contains
     deallocate(sclprm_std_mod)      
     
   end subroutine scale_obs_tskin_zscore
+
+ 
+  ! *****************************************************************
+  
+  subroutine scale_obs_sfmc_zscore( N_catd, tile_coord,      &
+   date_time, this_obs_param, tmp_obs,                       &
+   tmp_std_obs, tmp_lon, tmp_lat, tmp_time)
+
+! scale tskin obs to model climatology via standard-normal-deviate (zscore)
+! scaling
+! 
+! use matlab functions "get_cdf_match_AMSR.m" and "get_model_and_obs_stats.m" 
+! to create input scaling files
+!
+! IMPORTANT: Make sure that model and obs data are in the SAME UNITS prior
+!            to generating the input scaling files with the matlab routines.  
+
+! reichle, 14 Oct 2005
+!
+! reichle, 22 Nov 2011 - renamed subroutine, minor clean-up, added comments
+
+implicit none
+
+integer, intent(in) :: N_catd
+
+real,    intent(in), dimension(N_catd) :: tmp_lon, tmp_lat
+real*8,  intent(in), dimension(N_catd) :: tmp_time            ! J2000 seconds
+    
+type(tile_coord_type), dimension(:), pointer :: tile_coord    ! input
+
+type(date_time_type), intent(in) :: date_time
+
+type(obs_param_type), intent(in) :: this_obs_param
+
+! inout
+
+real,    intent(inout), dimension(N_catd) :: tmp_obs
+real,    intent(inout), dimension(N_catd) :: tmp_std_obs
+
+! ----------------------------------------------------------
+
+! local variables
+
+real, parameter :: no_data_stats = -9999.
+
+real, parameter :: tol = 1e-2
+
+character(3), dimension(12) :: month_string = (/ &
+     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',   &
+     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' /)
+
+! -------------------
+
+character(300) :: fname
+
+character(2) :: tmpchar2
+
+integer :: i, ind, N_sclprm
+
+real :: tmpreal
+
+integer, dimension(:), allocatable :: sclprm_tile_id
+
+real, dimension(:), allocatable :: sclprm_lon,      sclprm_lat 
+real, dimension(:), allocatable :: sclprm_mean_obs, sclprm_std_obs
+real, dimension(:), allocatable :: sclprm_mean_mod, sclprm_std_mod
+
+character(len=*), parameter :: Iam = ' scale_obs_sfmc_zscore'
+character(len=400) :: err_msg
+
+! ------------------------------------------------------------------
+
+write (tmpchar2, '(i2.2)') date_time%hour
+
+! read scaling parameters from file
+
+fname = trim(this_obs_param%scalepath) // '/' // &
+     trim(this_obs_param%scalename)    //        &
+     month_string(date_time%  )     // '_' // &
+     tmpchar2 // 'z.bin'
+
+if (logit) write (logunit,*)        'scaling obs species ', this_obs_param%species, ':'
+if (logit) write (logunit,'(400A)') '  reading ', trim(fname)
+
+open(10, file=fname, form='unformatted',convert='big_endian', action='read')
+
+read(10) N_sclprm
+
+allocate(sclprm_tile_id(N_sclprm))    
+allocate(sclprm_lon(N_sclprm))     
+allocate(sclprm_lat(N_sclprm))          
+allocate(sclprm_mean_obs(N_sclprm))     
+allocate(sclprm_std_obs(N_sclprm))      
+allocate(sclprm_mean_mod(N_sclprm))     
+allocate(sclprm_std_mod(N_sclprm))      
+
+read(10) sclprm_tile_id
+read(10) sclprm_lon
+read(10) sclprm_lat 
+read(10) sclprm_mean_obs
+read(10) sclprm_std_obs
+read(10) sclprm_mean_mod
+read(10) sclprm_std_mod 
+
+close(10,status='keep')
+
+! minimal consistency check
+
+if (N_catd>N_sclprm) then
+   call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'something is wrong')
+end if
+
+! --------------------------------------------------------------
+
+! scale observations (at this point all obs are of type 
+! isccp_tskin_gswp2_v1 because of the way the subroutine is called
+! from subroutine read_obs())
+
+do i=1,N_catd
+   
+   ! check for no-data-values in observation (any neg Tskin is no_data)
+   
+   if (tmp_obs(i)>=0.) then
+      
+      ! find ind for current tile id in scaling parameters
+      
+      do ind=1,N_sclprm
+         
+         if (sclprm_tile_id(ind)==tile_coord(i)%tile_id)  exit
+         
+      end do
+      
+      ! sanity check (against accidental use of wrong tile space)
+      
+      if ( abs(tile_coord(i)%com_lat-sclprm_lat(ind))>tol  .or.             &
+           abs(tile_coord(i)%com_lon-sclprm_lon(ind))>tol        ) then
+         err_msg = 'something wrong'
+         call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+      end if
+      
+      ! check for no-data-values in observation and fit parameters
+      ! (any negative number could be no-data-value for observations)
+      
+      if ( sclprm_mean_obs(ind)>0.                       .and.          &
+           sclprm_mean_mod(ind)>0.                       .and.          &
+           sclprm_std_obs(ind)>=0.                       .and.          &
+           sclprm_std_mod(ind)>=0.                             ) then
+         
+         ! scale via standard normal deviates
+         
+         tmpreal = sclprm_std_mod(ind)/sclprm_std_obs(ind) 
+         
+         tmp_obs(i) = sclprm_mean_mod(ind)                       &
+              + tmpreal*(tmp_obs(i)-sclprm_mean_obs(ind)) 
+                      
+         ! scale observation error std
+         
+         tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
+         
+      else
+         
+         tmp_obs(i) = this_obs_param%nodata
+         
+      end if
+      
+   end if
+   
+end do
+
+deallocate(sclprm_tile_id)
+deallocate(sclprm_lon)     
+deallocate(sclprm_lat)          
+deallocate(sclprm_mean_obs)     
+deallocate(sclprm_std_obs)      
+deallocate(sclprm_mean_mod)     
+deallocate(sclprm_std_mod)      
+
+end subroutine scale_obs_sfmc_zscore
 
   ! ********************************************************************************
   
