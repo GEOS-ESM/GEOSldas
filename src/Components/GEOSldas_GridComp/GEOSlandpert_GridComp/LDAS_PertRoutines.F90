@@ -1160,6 +1160,13 @@ contains
                    ! replace _FillValue by zero
                    where (abs(std_force_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
                         std_force_pert(ivar,:,:) = 0.
+                   if (xcount*ycount >0) then ! if there are tiles
+                     if (all(std_force_pert(ivar,:,:) <=0 )) then
+                        print*, " No forcing perturbation std on some tiles. It is not allowed. "
+                        print*, " Make it as small as 10**(-6) if you dont want the perturbation"
+                        stop
+                     endif
+                   endif
                 end if
              end do
           end if
@@ -1911,15 +1918,11 @@ contains
 
     pert_select(1:N_pert_max) = 0
 
-    do k=1,N_pert_max
-       do i=1,pert_grid_l%N_lon
-          do j=1,pert_grid_l%N_lat
-
-             if (std_pert(k,i,j)>0.) pert_select(k) = 1
-
-          end do
+    if (pert_grid_l%N_lon * pert_grid_l%N_lat >0) then
+       do k=1,N_pert_max
+          if (maxval(std_pert(k,:,:)) >0.) pert_select(k) = 1
        end do
-    end do
+    endif
 
     call MPI_Allreduce(MPI_IN_PLACE, pert_select, N_pert_max , MPI_INTEGER, MPI_MAX, mpicomm, ierr )
 
