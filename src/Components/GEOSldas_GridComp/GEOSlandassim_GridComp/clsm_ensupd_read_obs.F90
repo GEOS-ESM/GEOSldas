@@ -7491,8 +7491,9 @@ contains
 
            scaled_obs = .true.
 
-           call scale_obs_sfmc_zscore( N_catd, tile_coord, this_obs_param,   &
-                tmp_obs, tmp_std_obs, tmp_lon, tmp_lat, tmp_time )
+           call scale_obs_sfmc_zscore( N_catd, tile_coord,            &
+                date_time, this_obs_param, tmp_obs,                   &
+                tmp_std_obs, tmp_lon, tmp_lat, tmp_time )
            
         end if        
 
@@ -8186,7 +8187,7 @@ write (tmpchar2, '(i2.2)') date_time%hour
 
 fname = trim(this_obs_param%scalepath) // '/' // &
      trim(this_obs_param%scalename)    //        &
-     month_string(date_time%  )     // '_' // &
+     month_string(date_time%month)     // '_' // &
      tmpchar2 // 'z.bin'
 
 if (logit) write (logunit,*)        'scaling obs species ', this_obs_param%species, ':'
