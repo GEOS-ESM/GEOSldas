@@ -8130,6 +8130,7 @@ contains
 !
 ! reichle, 22 Nov 2011 - renamed subroutine, minor clean-up, added comments
 
+use netcdf   
 implicit none
 
 integer, intent(in) :: N_catd
@@ -8149,6 +8150,16 @@ real,    intent(inout), dimension(N_catd) :: tmp_obs
 real,    intent(inout), dimension(N_catd) :: tmp_std_obs
 
 ! ----------------------------------------------------------
+    ! Grid and netcdf parameters (might want to read these from netCDF file?)
+    
+integer, parameter :: N_lon   = 1440
+integer, parameter :: N_lat   =  720
+real,    parameter :: ll_lon  = -180.0000
+real,    parameter :: ll_lat  =  -90.0000 
+real,    parameter :: dlon    =    0.25
+real,    parameter :: dlat    =    0.25
+
+! ----------------------------------------------------------
 
 ! local variables
 
@@ -8166,15 +8177,19 @@ character(300) :: fname
 
 character(2) :: tmpchar2
 
-integer :: i, ind, N_sclprm
+integer :: i, ind, pp
+integer :: ncid, varid, ierr
+integer :: pentad_dimid, lon_dimid, lat_dimid
+integer :: pentad_varid, o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
 
 real :: tmpreal
 
 integer, dimension(:), allocatable :: sclprm_tile_id
+integer, dimension(:), allocatable :: pentads
 
 real, dimension(:), allocatable :: sclprm_lon,      sclprm_lat 
-real, dimension(:), allocatable :: sclprm_mean_obs, sclprm_std_obs
-real, dimension(:), allocatable :: sclprm_mean_mod, sclprm_std_mod
+real, dimension(:,:), allocatable :: sclprm_mean_obs, sclprm_std_obs
+real, dimension(:,:), allocatable :: sclprm_mean_mod, sclprm_std_mod
 
 character(len=*), parameter :: Iam = ' scale_obs_sfmc_zscore'
 character(len=400) :: err_msg
@@ -8187,33 +8202,42 @@ write (tmpchar2, '(i2.2)') date_time%hour
 
 fname = trim(this_obs_param%scalepath) // '/' // &
      trim(this_obs_param%scalename)    //        &
-     month_string(date_time%month)     // '_' // &
-     tmpchar2 // 'z.bin'
+     // '.nc4'
 
 if (logit) write (logunit,*)        'scaling obs species ', this_obs_param%species, ':'
 if (logit) write (logunit,'(400A)') '  reading ', trim(fname)
 
-open(10, file=fname, form='unformatted',convert='big_endian', action='read')
+! What pentad do we want?
+pp = date_time%pentad
 
-read(10) N_sclprm
+! open the NetCDF file
+ierr = nf_open(fname, nf_nowrite, ncid)
 
-allocate(sclprm_tile_id(N_sclprm))    
-allocate(sclprm_lon(N_sclprm))     
-allocate(sclprm_lat(N_sclprm))          
-allocate(sclprm_mean_obs(N_sclprm))     
-allocate(sclprm_std_obs(N_sclprm))      
-allocate(sclprm_mean_mod(N_sclprm))     
-allocate(sclprm_std_mod(N_sclprm))      
+ierr = nf_inq_dimid(ncid, 'pentad', pentad_dimid)
+ierr = nf_inq_dimid(ncid, 'lon', lon_dimid)
+ierr = nf_inq_dimid(ncid, 'lat', lat_dimid)
 
-read(10) sclprm_tile_id
-read(10) sclprm_lon
-read(10) sclprm_lat 
-read(10) sclprm_mean_obs
-read(10) sclprm_std_obs
-read(10) sclprm_mean_mod
-read(10) sclprm_std_mod 
+ierr = nf_inq_varid(ncid, 'lon', lon_varid)
+ierr = nf_inq_varid(ncid, 'lat', lat_varid)
+ierr = nf_inq_varid(ncid, 'o_mean', o_mean_varid)
+ierr = nf_inq_varid(ncid, 'o_std', o_std_varid)
+ierr = nf_inq_varid(ncid, 'm_mean', m_mean_varid)
+ierr = nf_inq_varid(ncid, 'm_std', m_std_varid)
 
-close(10,status='keep')
+! read lon and lat variables
+allocate(sclprm_lon(lon_dimid), sclprm_lat(lat_dimid))
+ierr = nf_get_var(ncid, lon_varid, sclprm_lon)
+ierr = nf_get_var(ncid, lat_varid, sclprm_lat)
+
+allocate(sclprm_mean_obs(lon_dimid, lat_dimid), sclprm_std_obs(lon_dimid, lat_dimid), &
+sclprm_mean_mod(lon_dimid, lat_dimid), sclprm_std_mod(lon_dimid, lat_dimid))
+ierr = nf_get_var3(ncid, o_mean_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_mean_obs)
+ierr = nf_get_var3(ncid, o_std_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_std_obs)
+ierr = nf_get_var3(ncid, m_mean_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_mean_mod)
+ierr = nf_get_var3(ncid, m_std_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_std_mod)
+
+! close the netcdf file
+ierr = nf_close(ncid)
 
 ! minimal consistency check
 
