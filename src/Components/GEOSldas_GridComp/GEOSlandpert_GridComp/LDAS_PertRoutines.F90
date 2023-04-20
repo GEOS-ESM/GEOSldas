@@ -1160,13 +1160,6 @@ contains
                    ! replace _FillValue by zero
                    where (abs(std_force_pert(ivar,:,:)-nc4_fillval)<nodata_tolfrac_generic) &
                         std_force_pert(ivar,:,:) = 0.
-                   if (xcount*ycount >0) then ! if there are tiles
-                     if (all(std_force_pert(ivar,:,:) <=0 )) then
-                        print*, " No forcing perturbation std on some tiles. It is not allowed. "
-                        print*, " Make it as small as 10**(-6) if you dont want the perturbation"
-                        stop
-                     endif
-                   endif
                 end if
              end do
           end if
