@@ -8228,10 +8228,10 @@ ierr = nf90_get_var(ncid, lat_varid, sclprm_lat)
 
 allocate(sclprm_mean_obs(lon_dimid, lat_dimid), sclprm_std_obs(lon_dimid, lat_dimid), &
 sclprm_mean_mod(lon_dimid, lat_dimid), sclprm_std_mod(lon_dimid, lat_dimid))
-ierr = nf90_get_var3(ncid, o_mean_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_mean_obs)
-ierr = nf90_get_var3(ncid, o_std_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_std_obs)
-ierr = nf90_get_var3(ncid, m_mean_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_mean_mod)
-ierr = nf90_get_var3(ncid, m_std_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_std_mod)
+ierr = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, (/pp, 1, 1/), (/1, lon_dimid, lat_dimid/))
+ierr = nf90_get_var(ncid, o_std_varid, sclprm_std_obs, (/pp, 1, 1/), (/1, lon_dimid, lat_dimid/))
+ierr = nf90_get_var(ncid, m_mean_varid, sclprm_mean_mod, (/pp, 1, 1/), (/1, lon_dimid, lat_dimid/))
+ierr = nf90_get_var(ncid, m_std_varid, sclprm_std_mod, (/pp, 1, 1/), (/1, lon_dimid, lat_dimid/))
 
 ! close the netcdf file
 ierr = nf90_close(ncid)
