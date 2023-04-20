@@ -8175,12 +8175,11 @@ character(3), dimension(12) :: month_string = (/ &
 
 character(300) :: fname
 
-character(2) :: tmpchar2
-
 integer :: i, ind, pp
 integer :: ncid, varid, ierr
 integer :: pentad_dimid, lon_dimid, lat_dimid
-integer :: pentad_varid, o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
+integer :: pentad_varid, lon_varid, lat_varid
+integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
 
 real :: tmpreal
 
@@ -8196,8 +8195,6 @@ character(len=400) :: err_msg
 
 ! ------------------------------------------------------------------
 
-write (tmpchar2, '(i2.2)') date_time%hour
-
 ! read scaling parameters from file
 
 fname = trim(this_obs_param%scalepath) // '/' // &
@@ -8211,39 +8208,33 @@ if (logit) write (logunit,'(400A)') '  reading ', trim(fname)
 pp = date_time%pentad
 
 ! open the NetCDF file
-ierr = nf_open(fname, nf_nowrite, ncid)
+ierr = nf90_open(fname, nf90_nowrite, ncid)
 
-ierr = nf_inq_dimid(ncid, 'pentad', pentad_dimid)
-ierr = nf_inq_dimid(ncid, 'lon', lon_dimid)
-ierr = nf_inq_dimid(ncid, 'lat', lat_dimid)
+ierr = nf90_inq_dimid(ncid, 'pentad', pentad_dimid)
+ierr = nf90_inq_dimid(ncid, 'lon', lon_dimid)
+ierr = nf90_inq_dimid(ncid, 'lat', lat_dimid)
 
-ierr = nf_inq_varid(ncid, 'lon', lon_varid)
-ierr = nf_inq_varid(ncid, 'lat', lat_varid)
-ierr = nf_inq_varid(ncid, 'o_mean', o_mean_varid)
-ierr = nf_inq_varid(ncid, 'o_std', o_std_varid)
-ierr = nf_inq_varid(ncid, 'm_mean', m_mean_varid)
-ierr = nf_inq_varid(ncid, 'm_std', m_std_varid)
+ierr = nf90_inq_varid(ncid, 'lon', lon_varid)
+ierr = nf90_inq_varid(ncid, 'lat', lat_varid)
+ierr = nf90_inq_varid(ncid, 'o_mean', o_mean_varid)
+ierr = nf90_inq_varid(ncid, 'o_std', o_std_varid)
+ierr = nf90_inq_varid(ncid, 'm_mean', m_mean_varid)
+ierr = nf90_inq_varid(ncid, 'm_std', m_std_varid)
 
 ! read lon and lat variables
 allocate(sclprm_lon(lon_dimid), sclprm_lat(lat_dimid))
-ierr = nf_get_var(ncid, lon_varid, sclprm_lon)
-ierr = nf_get_var(ncid, lat_varid, sclprm_lat)
+ierr = nf90_get_var(ncid, lon_varid, sclprm_lon)
+ierr = nf90_get_var(ncid, lat_varid, sclprm_lat)
 
 allocate(sclprm_mean_obs(lon_dimid, lat_dimid), sclprm_std_obs(lon_dimid, lat_dimid), &
 sclprm_mean_mod(lon_dimid, lat_dimid), sclprm_std_mod(lon_dimid, lat_dimid))
-ierr = nf_get_var3(ncid, o_mean_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_mean_obs)
-ierr = nf_get_var3(ncid, o_std_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_std_obs)
-ierr = nf_get_var3(ncid, m_mean_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_mean_mod)
-ierr = nf_get_var3(ncid, m_std_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_std_mod)
+ierr = nf90_get_var3(ncid, o_mean_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_mean_obs)
+ierr = nf90_get_var3(ncid, o_std_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_std_obs)
+ierr = nf90_get_var3(ncid, m_mean_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_mean_mod)
+ierr = nf90_get_var3(ncid, m_std_varid, (/pp, 1, 1/), (/lon_dimid, lat_dimid/), sclprm_std_mod)
 
 ! close the netcdf file
-ierr = nf_close(ncid)
-
-! minimal consistency check
-
-if (N_catd>N_sclprm) then
-   call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'something is wrong')
-end if
+ierr = nf90_close(ncid)
 
 ! --------------------------------------------------------------
 
@@ -8259,50 +8250,49 @@ do i=1,N_catd
       
       ! find ind for current tile id in scaling parameters
       
-      do ind=1,N_sclprm
+      ! do ind=1,N_sclprm
          
-         if (sclprm_tile_id(ind)==tile_coord(i)%tile_id)  exit
+      !    if (sclprm_tile_id(ind)==tile_coord(i)%tile_id)  exit
          
-      end do
+      ! end do
       
-      ! sanity check (against accidental use of wrong tile space)
+      ! ! sanity check (against accidental use of wrong tile space)
       
-      if ( abs(tile_coord(i)%com_lat-sclprm_lat(ind))>tol  .or.             &
-           abs(tile_coord(i)%com_lon-sclprm_lon(ind))>tol        ) then
-         err_msg = 'something wrong'
-         call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-      end if
+      ! if ( abs(tile_coord(i)%com_lat-sclprm_lat(ind))>tol  .or.             &
+      !      abs(tile_coord(i)%com_lon-sclprm_lon(ind))>tol        ) then
+      !    err_msg = 'something wrong'
+      !    call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+      ! end if
       
-      ! check for no-data-values in observation and fit parameters
-      ! (any negative number could be no-data-value for observations)
+      ! ! check for no-data-values in observation and fit parameters
+      ! ! (any negative number could be no-data-value for observations)
       
-      if ( sclprm_mean_obs(ind)>0.                       .and.          &
-           sclprm_mean_mod(ind)>0.                       .and.          &
-           sclprm_std_obs(ind)>=0.                       .and.          &
-           sclprm_std_mod(ind)>=0.                             ) then
+      ! if ( sclprm_mean_obs(ind)>0.                       .and.          &
+      !      sclprm_mean_mod(ind)>0.                       .and.          &
+      !      sclprm_std_obs(ind)>=0.                       .and.          &
+      !      sclprm_std_mod(ind)>=0.                             ) then
          
-         ! scale via standard normal deviates
+      !    ! scale via standard normal deviates
          
-         tmpreal = sclprm_std_mod(ind)/sclprm_std_obs(ind) 
+      !    tmpreal = sclprm_std_mod(ind)/sclprm_std_obs(ind) 
          
-         tmp_obs(i) = sclprm_mean_mod(ind)                       &
-              + tmpreal*(tmp_obs(i)-sclprm_mean_obs(ind)) 
+      !    tmp_obs(i) = sclprm_mean_mod(ind)                       &
+      !         + tmpreal*(tmp_obs(i)-sclprm_mean_obs(ind)) 
                       
-         ! scale observation error std
+      !    ! scale observation error std
          
-         tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
+      !    tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
          
-      else
+      ! else
          
-         tmp_obs(i) = this_obs_param%nodata
+      !    tmp_obs(i) = this_obs_param%nodata
          
-      end if
+      ! end if
       
    end if
    
 end do
 
-deallocate(sclprm_tile_id)
 deallocate(sclprm_lon)     
 deallocate(sclprm_lat)          
 deallocate(sclprm_mean_obs)     
