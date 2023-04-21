@@ -24,7 +24,7 @@ module LDAS_PertRoutinesMod
        nodata_generic,                            &
        nodata_tolfrac_generic,                    &
        nodata_tol_generic
-
+  use LDAS_ensdrv_mpi, only: mpicomm,numprocs,myid
   use MAPL_ConstantsMod,                ONLY:     &
        Tzero => MAPL_TICE,                        &
        alhe  => MAPL_ALHL,                        &
@@ -291,8 +291,6 @@ contains
     character(len=*), parameter :: Iam = 'read_ens_prop_inputs'
 
     ! MPI variables
-    type(ESMF_VM) :: vm
-    integer :: mpicomm
     logical :: root_proc,f_exist
 
     ! -----------------------------------------------------------------
@@ -328,11 +326,7 @@ contains
          ccorr_force_pert
 
 
-    call ESMF_VmGetCurrent(vm, rc=status)
-    VERIFY_(status)
-    call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
-    VERIFY_(status)
-    root_proc = MAPL_Am_I_Root(vm)
+    root_proc = (myid ==0)
 
     ! ---------------------------------------------------------------------
     !
@@ -1005,17 +999,12 @@ contains
     character(len=*), parameter :: Iam = 'get_force_pert_inputs'
 
     ! MPI variables
-    type(ESMF_VM) :: vm
-    integer :: mpicomm, numprocs, myid, mpierr
+    integer :: mpierr
     logical :: root_proc
 
     ! -----------------------------------------------------------------
 
-    call ESMF_VmGetCurrent(vm, rc=status)
-    VERIFY_(status)
-    call ESMF_VMGet(VM, petCount=numprocs, localPet=myid, mpiCommunicator=mpicomm, rc=status)
-    VERIFY_(status)
-    root_proc = MAPL_Am_I_Root(vm)
+    root_proc = (myid==0)
 
     ! ---------
     !
@@ -1400,17 +1389,12 @@ contains
     character(len=*), parameter :: Iam = 'get_progn_pert_inputs'
 
     ! MPI variables
-    type(ESMF_VM) :: vm
-    integer :: mpicomm, numprocs, myid, mpierr
+    integer :: mpierr
     logical :: root_proc
 
     ! -----------------------------------------------------------------
 
-    call ESMF_VmGetCurrent(vm, rc=status)
-    VERIFY_(status)
-    call ESMF_VMGet(VM, petCount=numprocs, localPet=myid, mpiCommunicator=mpicomm, rc=status)
-    VERIFY_(status)
-    root_proc = MAPL_Am_I_Root(vm)
+    root_proc = (myid==0)
 
     ! -------
     !
@@ -1918,7 +1902,7 @@ contains
     !
     ! local variables
 
-    integer :: i,j,k
+    integer :: i,j,k, ierr
 
     ! ---------------------------------------------------------------
     !
@@ -1927,16 +1911,13 @@ contains
 
     pert_select(1:N_pert_max) = 0
 
-    do k=1,N_pert_max
-
-       do i=1,pert_grid_l%N_lon
-          do j=1,pert_grid_l%N_lat
-
-             if (std_pert(k,i,j)>0.) pert_select(k) = 1
-
-          end do
+    if (pert_grid_l%N_lon * pert_grid_l%N_lat >0) then
+       do k=1,N_pert_max
+          if (maxval(std_pert(k,:,:)) >0.) pert_select(k) = 1
        end do
-    end do
+    endif
+
+    call MPI_Allreduce(MPI_IN_PLACE, pert_select, N_pert_max , MPI_INTEGER, MPI_MAX, mpicomm, ierr )
 
     N_pert = sum( pert_select )
 
