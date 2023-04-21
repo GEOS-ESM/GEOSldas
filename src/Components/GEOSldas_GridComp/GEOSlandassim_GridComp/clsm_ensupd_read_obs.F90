@@ -8175,13 +8175,13 @@ character(3), dimension(12) :: month_string = (/ &
 
 character(300) :: fname
 
-integer :: i, ind, pp
+integer :: i, ind, pp, j_in, i_in
 integer :: ncid, varid, ierr
 integer :: pentad_dimid, lon_dimid, lat_dimid
 integer :: pentad_varid, lon_varid, lat_varid
 integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
 
-real :: tmpreal
+real :: tmpreal, this_lon, this_lat
 
 integer, dimension(:), allocatable :: sclprm_tile_id
 integer, dimension(:), allocatable :: pentads
@@ -8198,8 +8198,7 @@ character(len=400) :: err_msg
 ! read scaling parameters from file
 
 fname = trim(this_obs_param%scalepath) // '/' // &
-     trim(this_obs_param%scalename)    //        &
-     // '.nc4'
+     trim(this_obs_param%scalename) // '.nc4'
 
 if (logit) write (logunit,*)        'scaling obs species ', this_obs_param%species, ':'
 if (logit) write (logunit,'(400A)') '  reading ', trim(fname)
@@ -8248,46 +8247,49 @@ do i=1,N_catd
    
    if (tmp_obs(i)>=0.) then
       
-      ! find ind for current tile id in scaling parameters
+      ! ll_lon and ll_lat refer to lower left corner of grid cell
+      ! (as opposed to the grid point in the center of the grid cell)
+       
+      this_lon = tmp_lon(i)
+      this_lat = tmp_lat(i)
       
-      ! do ind=1,N_sclprm
-         
-      !    if (sclprm_tile_id(ind)==tile_coord(i)%tile_id)  exit
-         
-      ! end do
+      i_ind = (this_lon - ll_lon)/dlon 
+      j_ind = (this_lat - ll_lat)/dlat 
+      
+      ! find ind for current tile id in scaling parameters
       
       ! ! sanity check (against accidental use of wrong tile space)
       
-      ! if ( abs(tile_coord(i)%com_lat-sclprm_lat(ind))>tol  .or.             &
-      !      abs(tile_coord(i)%com_lon-sclprm_lon(ind))>tol        ) then
-      !    err_msg = 'something wrong'
-      !    call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-      ! end if
+      if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
+           abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol        ) then
+         err_msg = 'something wrong'
+         call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+      end if
       
       ! ! check for no-data-values in observation and fit parameters
       ! ! (any negative number could be no-data-value for observations)
       
-      ! if ( sclprm_mean_obs(ind)>0.                       .and.          &
-      !      sclprm_mean_mod(ind)>0.                       .and.          &
-      !      sclprm_std_obs(ind)>=0.                       .and.          &
-      !      sclprm_std_mod(ind)>=0.                             ) then
+      if ( sclprm_mean_obs(i_ind, j_ind)>0.     .and.          &
+           sclprm_mean_mod(i_ind, j_ind)>0.     .and.          &
+           sclprm_std_obs(i_ind, j_ind)>=0.     .and.          &
+           sclprm_std_mod(i_ind, j_ind)>=0. ) then
          
-      !    ! scale via standard normal deviates
+         ! scale via standard normal deviates
          
-      !    tmpreal = sclprm_std_mod(ind)/sclprm_std_obs(ind) 
+         tmpreal = sclprm_std_mod(i_ind, j_ind)/sclprm_std_obs(i_ind, j_ind) 
          
-      !    tmp_obs(i) = sclprm_mean_mod(ind)                       &
-      !         + tmpreal*(tmp_obs(i)-sclprm_mean_obs(ind)) 
+         tmp_obs(i) = sclprm_mean_mod(i_ind, j_ind)                       &
+              + tmpreal*(tmp_obs(i)-sclprm_mean_obs(i_ind, j_ind)) 
                       
-      !    ! scale observation error std
+         ! scale observation error std
          
-      !    tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
+         tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
          
-      ! else
+      else
          
-      !    tmp_obs(i) = this_obs_param%nodata
+         tmp_obs(i) = this_obs_param%nodata
          
-      ! end if
+      end if
       
    end if
    
