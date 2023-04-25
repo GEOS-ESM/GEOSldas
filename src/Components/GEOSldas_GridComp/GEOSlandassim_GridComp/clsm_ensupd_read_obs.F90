@@ -8152,8 +8152,8 @@ real,    intent(inout), dimension(N_catd) :: tmp_std_obs
 ! ----------------------------------------------------------
     ! Grid and netcdf parameters (might want to read these from netCDF file?)
     
-integer, parameter :: N_lon   = 1440
-integer, parameter :: N_lat   =  720
+! integer, parameter :: N_lon   = 1440
+! integer, parameter :: N_lat   =  720
 real,    parameter :: ll_lon  = -180.0000
 real,    parameter :: ll_lat  =  -90.0000 
 real,    parameter :: dlon    =    0.25
@@ -8165,7 +8165,7 @@ real,    parameter :: dlat    =    0.25
 
 real, parameter :: no_data_stats = -9999.
 
-real, parameter :: tol = 1e-2
+real, parameter :: tol = 0.99
 
 character(3), dimension(12) :: month_string = (/ &
      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',   &
@@ -8175,9 +8175,10 @@ character(3), dimension(12) :: month_string = (/ &
 
 character(300) :: fname
 
-integer :: i, ind, pp, j_in, i_in
+integer :: i, ind, pp, j_ind, i_ind
 integer :: ncid, varid, ierr
 integer :: pentad_dimid, lon_dimid, lat_dimid
+integer :: N_pentad, N_lon, N_lat
 integer :: pentad_varid, lon_varid, lat_varid
 integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
 
@@ -8213,6 +8214,10 @@ ierr = nf90_inq_dimid(ncid, 'pentad', pentad_dimid)
 ierr = nf90_inq_dimid(ncid, 'lon', lon_dimid)
 ierr = nf90_inq_dimid(ncid, 'lat', lat_dimid)
 
+ierr = nf90_inquire_dimension(ncid, pentad_dimid, len = N_pentad)
+ierr = nf90_inquire_dimension(ncid, lon_dimid, len = N_lon)
+ierr = nf90_inquire_dimension(ncid, lat_dimid, len = N_lat)
+
 ierr = nf90_inq_varid(ncid, 'lon', lon_varid)
 ierr = nf90_inq_varid(ncid, 'lat', lat_varid)
 ierr = nf90_inq_varid(ncid, 'o_mean', o_mean_varid)
@@ -8221,16 +8226,16 @@ ierr = nf90_inq_varid(ncid, 'm_mean', m_mean_varid)
 ierr = nf90_inq_varid(ncid, 'm_std', m_std_varid)
 
 ! read lon and lat variables
-allocate(sclprm_lon(lon_dimid), sclprm_lat(lat_dimid))
+allocate(sclprm_lon(N_lon), sclprm_lat(N_lat))
 ierr = nf90_get_var(ncid, lon_varid, sclprm_lon)
 ierr = nf90_get_var(ncid, lat_varid, sclprm_lat)
 
-allocate(sclprm_mean_obs(lon_dimid, lat_dimid), sclprm_std_obs(lon_dimid, lat_dimid), &
-sclprm_mean_mod(lon_dimid, lat_dimid), sclprm_std_mod(lon_dimid, lat_dimid))
-ierr = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, (/pp, 1, 1/), (/1, lon_dimid, lat_dimid/))
-ierr = nf90_get_var(ncid, o_std_varid, sclprm_std_obs, (/pp, 1, 1/), (/1, lon_dimid, lat_dimid/))
-ierr = nf90_get_var(ncid, m_mean_varid, sclprm_mean_mod, (/pp, 1, 1/), (/1, lon_dimid, lat_dimid/))
-ierr = nf90_get_var(ncid, m_std_varid, sclprm_std_mod, (/pp, 1, 1/), (/1, lon_dimid, lat_dimid/))
+allocate(sclprm_mean_obs(N_lon, N_lat), sclprm_std_obs(N_lon, N_lat), &
+sclprm_mean_mod(lon_dimid, lat_dimid), sclprm_std_mod(N_lon, N_lat))
+ierr = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, (/pp, 1, 1/), (/1, N_lon, N_lat/))
+ierr = nf90_get_var(ncid, o_std_varid, sclprm_std_obs, (/pp, 1, 1/), (/1, N_lon, N_lat/))
+ierr = nf90_get_var(ncid, m_mean_varid, sclprm_mean_mod, (/pp, 1, 1/), (/1, N_lon, N_lat/))
+ierr = nf90_get_var(ncid, m_std_varid, sclprm_std_mod, (/pp, 1, 1/), (/1, N_lon, N_lat/))
 
 ! close the netcdf file
 ierr = nf90_close(ncid)
@@ -8253,15 +8258,18 @@ do i=1,N_catd
       this_lon = tmp_lon(i)
       this_lat = tmp_lat(i)
       
-      i_ind = (this_lon - ll_lon)/dlon 
-      j_ind = (this_lat - ll_lat)/dlat 
-      
+      i_ind = ceiling((this_lon - ll_lon)/dlon) 
+      j_ind = ceiling((this_lat - ll_lat)/dlat) 
+     
       ! find ind for current tile id in scaling parameters
       
       ! ! sanity check (against accidental use of wrong tile space)
       
       if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
            abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol        ) then
+         if (logit) write (logunit,*) 'i = ', i  
+         if (logit) write (logunit,*) 'tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)', tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)
+         if (logit) write (logunit,*) 'tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)', tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)
          err_msg = 'something wrong'
          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
       end if
