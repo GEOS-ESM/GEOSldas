@@ -8176,11 +8176,13 @@ character(3), dimension(12) :: month_string = (/ &
 character(300) :: fname
 
 integer :: i, ind, pp, j_ind, i_ind
-integer :: ncid, varid, ierr
+integer :: ncid, varid, ierr, ierr2
 integer :: pentad_dimid, lon_dimid, lat_dimid
 integer :: N_pentad, N_lon, N_lat
 integer :: pentad_varid, lon_varid, lat_varid
 integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
+integer, dimension(3) :: start, icount
+
 
 real :: tmpreal, this_lon, this_lat
 
@@ -8230,12 +8232,17 @@ allocate(sclprm_lon(N_lon), sclprm_lat(N_lat))
 ierr = nf90_get_var(ncid, lon_varid, sclprm_lon)
 ierr = nf90_get_var(ncid, lat_varid, sclprm_lat)
 
-allocate(sclprm_mean_obs(N_lon, N_lat), sclprm_std_obs(N_lon, N_lat), &
-sclprm_mean_mod(N_lon, N_lat), sclprm_std_mod(N_lon, N_lat))
-ierr = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, (/1, 1, pp/), (/N_lon, N_lat, 1/))
-ierr = nf90_get_var(ncid, o_std_varid, sclprm_std_obs, (/1, 1, pp/), (/N_lon, N_lat, 1/))
-ierr = nf90_get_var(ncid, m_mean_varid, sclprm_mean_mod, (/1, 1, pp/), (/N_lon, N_lat, 1/))
-ierr = nf90_get_var(ncid, m_std_varid, sclprm_std_mod, (/1, 1, pp/), (/N_lon, N_lat, 1/))
+start = [1, 1, pp]
+icount = [N_lat, N_lon, 1]
+
+allocate(sclprm_mean_obs(N_lat, N_lon), sclprm_std_obs(N_lat, N_lon))
+allocate(sclprm_mean_mod(N_lat, N_lon), sclprm_std_mod(N_lat, N_lon))
+
+! ierr = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, (/1, 1, pp/), (/N_lon, N_lat, 1/))
+ierr2 = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, start, icount)
+ierr = nf90_get_var(ncid, o_std_varid, sclprm_std_obs, start, icount)
+ierr = nf90_get_var(ncid, m_mean_varid, sclprm_mean_mod, start, icount)
+ierr = nf90_get_var(ncid, m_std_varid, sclprm_std_mod, start, icount)
 
 ! close the netcdf file
 ierr = nf90_close(ncid)
@@ -8267,9 +8274,11 @@ do i=1,N_catd
       
       if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
            abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol        ) then
-         if (logit) write (logunit,*) 'i = ', i  
+         if (logit) write (logunit,*) 'ierr2, i = ', ierr2, i  
+         if (logit) write (logunit,*) 'start, icount', start, icount
          if (logit) write (logunit,*) 'tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)', tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)
          if (logit) write (logunit,*) 'tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)', tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)
+         if (logit) write (logunit,*) 'pp, sclprm_lon, sclprm_lat, sclprm_mean_obs(328:334,579) ', pp, sclprm_lon(1), sclprm_lat(1), sclprm_mean_obs(328:334, 579)
          err_msg = 'something wrong'
          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
       end if
@@ -8277,21 +8286,21 @@ do i=1,N_catd
       ! ! check for no-data-values in observation and fit parameters
       ! ! (any negative number could be no-data-value for observations)
       
-      if ( sclprm_mean_obs(i_ind, j_ind)>0.     .and.          &
-           sclprm_mean_mod(i_ind, j_ind)>0.     .and.          &
-           sclprm_std_obs(i_ind, j_ind)>=0.     .and.          &
-           sclprm_std_mod(i_ind, j_ind)>=0. ) then
+      if ( sclprm_mean_obs(j_ind, i_ind)>0.     .and.          &
+           sclprm_mean_mod(j_ind, i_ind)>0.     .and.          &
+           sclprm_std_obs(j_ind, i_ind)>=0.     .and.          &
+           sclprm_std_mod(j_ind, i_ind)>=0. ) then
          
          ! scale via standard normal deviates
          
-         if (mod(i, 10) == 0) then
-            write(logunit,*) i, tmp_obs(i), sclprm_mean_obs(i_ind, j_ind), sclprm_std_mod(i_ind, j_ind), sclprm_std_obs(i_ind, j_ind)
+         if (mod(i, 100) == 0) then
+            write(logunit,*) 'Found! ', i, pp, j_ind, i_ind, tmp_obs(i), sclprm_mean_obs(j_ind, i_ind), sclprm_std_mod(j_ind, i_ind), sclprm_std_obs(j_ind, i_ind)
          endif
 
-         tmpreal = sclprm_std_mod(i_ind, j_ind)/sclprm_std_obs(i_ind, j_ind) 
+         tmpreal = sclprm_std_mod(j_ind, i_ind)/sclprm_std_obs(j_ind, i_ind) 
          
-         tmp_obs(i) = sclprm_mean_mod(i_ind, j_ind)                       &
-              + tmpreal*(tmp_obs(i)-sclprm_mean_obs(i_ind, j_ind)) 
+         tmp_obs(i) = sclprm_mean_mod(j_ind, i_ind)                       &
+              + tmpreal*(tmp_obs(i)-sclprm_mean_obs(j_ind, i_ind)) 
                       
          ! scale observation error std
          
