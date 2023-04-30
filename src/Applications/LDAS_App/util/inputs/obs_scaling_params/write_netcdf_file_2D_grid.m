@@ -1,4 +1,4 @@
-    function [] = write_netcdf_file(fname, colind, rowind,...
+    function [] = write_netcdf_file_2D_grid(fname, colind, rowind,...
         lon_out, lat_out,... 
         av_angle_bin, data, asc_flag,...
         pentad, ...
@@ -71,10 +71,16 @@
     else
         N_pentad = 73;
     end
+    
+    N_lon = 1440;
+    N_lat = 720;
+    
+    ll_lons = linspace(-180, 179.75, 1440);
+    ll_lats  = linspace(-90, 89.75, 720);
 
     if (strcmp(write_ind_latlon,'latlon_id') && nargin == 14)
         if( size(obsnum,1) ~= N_grid )
-            error('tile_id dimensions ??')
+            error('tile_id dimensions ??')  
         end
         if ( size(obsnum,2) > 1)
             disp(['# subgridcells per gridcell: ',num2str(size(obsnum,2))]);
@@ -90,6 +96,8 @@ dimid_grid = netcdf.defDim(ncid, 'grid', N_grid);
 dimid_angle = netcdf.defDim(ncid, 'angle', N_angle);
 dimid_tile = netcdf.defDim(ncid, 'tile', size(obsnum,2));
 dimid_pentad = netcdf.defDim(ncid, 'pentad', N_pentad);
+dimid_lon = netcdf.defDim(ncid, 'lon', N_lon);
+dimid_lat = netcdf.defDim(ncid, 'lat', N_lat);
 
 % define variables
 varid_asc_flag = netcdf.defVar(ncid, 'asc_flag', int_precision, []);
@@ -114,18 +122,25 @@ varid_obsnum = netcdf.defVar(ncid, 'obs_num', int_precision, [dimid_grid dimid_t
 varid_av_angle_bin = netcdf.defVar(ncid, 'av_angle_bin', float_precision, [dimid_angle]);
 varid_colind = netcdf.defVar(ncid, 'colind', float_precision, [dimid_grid]);
 varid_rowind = netcdf.defVar(ncid, 'rowind', float_precision, [dimid_grid]);
-varid_lon = netcdf.defVar(ncid, 'lon', float_precision, [dimid_grid]);
-varid_lat = netcdf.defVar(ncid, 'lat', float_precision, [dimid_grid]);
+varid_lon = netcdf.defVar(ncid, 'lon', float_precision, [dimid_lon]);
+varid_lat = netcdf.defVar(ncid, 'lat', float_precision, [dimid_lat]);
 
 % Create a new group called 'data'
-groupname = 'data';
-grpid = netcdf.defGrp(ncid,groupname);
+% groupname = 'data';
+% grpid = netcdf.defGrp(ncid,groupname);
 
-varid_om = netcdf.defVar(grpid, 'o_mean', float_precision, [dimid_grid dimid_pentad]);
-varid_ov = netcdf.defVar(grpid, 'o_std', float_precision, [dimid_grid dimid_pentad]);
-varid_mm = netcdf.defVar(grpid, 'm_mean', float_precision, [dimid_grid dimid_pentad]);
-varid_mv =  netcdf.defVar(grpid, 'm_std', float_precision, [dimid_grid dimid_pentad]);
-varid_ndata =  netcdf.defVar(grpid, 'n_data', float_precision, [dimid_grid dimid_pentad]);
+% varid_om = netcdf.defVar(grpid, 'o_mean', float_precision, [dimid_lon dimid_lat dimid_pentad]);
+% varid_ov = netcdf.defVar(grpid, 'o_std', float_precision, [dimid_lon dimid_lat dimid_pentad]);
+% varid_mm = netcdf.defVar(grpid, 'm_mean', float_precision, [dimid_lon dimid_lat dimid_pentad]);
+% varid_mv =  netcdf.defVar(grpid, 'm_std', float_precision, [dimid_lon dimid_lat dimid_pentad]);
+% varid_ndata =  netcdf.defVar(grpid, 'n_data', float_precision, [dimid_lon dimid_lat dimid_pentad]);
+
+varid_om = netcdf.defVar(ncid, 'o_mean', float_precision, [dimid_lat dimid_lon dimid_pentad]);
+varid_ov = netcdf.defVar(ncid, 'o_std', float_precision, [dimid_lat dimid_lon dimid_pentad]);
+varid_mm = netcdf.defVar(ncid, 'm_mean', float_precision, [dimid_lat dimid_lon dimid_pentad]);
+varid_mv =  netcdf.defVar(ncid, 'm_std', float_precision, [dimid_lat dimid_lon dimid_pentad]);
+varid_ndata =  netcdf.defVar(ncid, 'n_data', float_precision, [dimid_lat dimid_lon dimid_pentad]);
+
 
 % end define mode
 netcdf.endDef(ncid);
@@ -151,33 +166,52 @@ netcdf.putVar(ncid, varid_av_angle_bin, squeeze(av_angle_bin(:)));
 
 netcdf.putVar(ncid, varid_colind, colind);
 netcdf.putVar(ncid, varid_rowind, rowind);
-netcdf.putVar(ncid, varid_lon, lon_out);
-netcdf.putVar(ncid, varid_lat, lat_out);
+netcdf.putVar(ncid, varid_lon, ll_lons);
+netcdf.putVar(ncid, varid_lat, ll_lats);
 
 if N_pentad ==1
-    netcdf.putVar(grpid,varid_om,data(1,:));
-    netcdf.putVar(grpid,varid_ov,data(2,:));
-    netcdf.putVar(grpid,varid_mm,data(3,:));
-    netcdf.putVar(grpid,varid_mv,data(4,:));
-    netcdf.putVar(grpid,varid_ndata,data(5,:));
+    
+    data_out = ones(5,N_lat, N_lon) * -999.0;
+    
+    for n = 1:5
+        for i = 1:length(colind)
+            data_out(n,rowind(i),colind(i)) = data(n,i);
+        end
+    end
+    
+    netcdf.putVar(ncid,varid_om,data_out(1, :, :));
+    netcdf.putVar(ncid,varid_ov,data_out(2, :, :));
+    netcdf.putVar(ncid,varid_mm,data_out(3, :, :));
+    netcdf.putVar(ncid,varid_mv,data_out(4, :, :));
+    netcdf.putVar(ncid,varid_ndata,data_out(5, :, :));
 else
-    netcdf.putVar(grpid,varid_om,data(1,:,:));
-    netcdf.putVar(grpid,varid_ov,data(2,:,:));
-    netcdf.putVar(grpid,varid_mm,data(3,:,:));
-    netcdf.putVar(grpid,varid_mv,data(4,:,:));
-    netcdf.putVar(grpid,varid_ndata,data(5,:,:));
+    
+    data_out = ones(5, N_lat,N_lon,N_pentad) * -999.0;
+    
+    for n = 1:5
+        for i = 1:length(colind)
+            data_out(n,rowind(i),colind(i),:) = data(n,i,:);
+        end
+    end
+    
+    netcdf.putVar(ncid,varid_om,data_out(1, :, :,:));
+    netcdf.putVar(ncid,varid_ov,data_out(2, :, :,:));
+    netcdf.putVar(ncid,varid_mm,data_out(3, :, :,:));
+    netcdf.putVar(ncid,varid_mv,data_out(4, :, :,:));
+    netcdf.putVar(ncid,varid_ndata,data_out(5, :, :,:));
 end
+ 
     else
         netcdf.putVar(ncid, varid_colind, 0.0);
         netcdf.putVar(ncid, varid_rowind, 0.0);
         netcdf.putVar(ncid, varid_lon, 0.0);
         netcdf.putVar(ncid, varid_lat, 0.0)
-
- netcdf.putVar(grpid,varid_om,-999.0);
-netcdf.putVar(grpid,varid_ov,-999.0);
-netcdf.putVar(grpid,varid_mm,-999.0);
-netcdf.putVar(grpid,varid_mv,-999.0);
-netcdf.putVar(grpid,varid_ndata,-999.0);
+        
+        netcdf.putVar(ncid,varid_om,-999.0);
+        netcdf.putVar(ncid,varid_ov,-999.0);
+        netcdf.putVar(ncid,varid_mm,-999.0);
+        netcdf.putVar(ncid,varid_mv,-999.0);
+        netcdf.putVar(ncid,varid_ndata,-999.0);
     end
 
 % close netCDF file
