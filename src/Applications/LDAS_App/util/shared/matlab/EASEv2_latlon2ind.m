@@ -60,7 +60,14 @@
 %  Steven Chan, 11/2011
 %  Email: steven.k.chan@jpl.nasa.gov
 
-function [row,col] = EASEv2_latlon2ind(lat,lon,gridid)
+function [row,col] = EASEv2_latlon2ind(lat,lon,gridid,return_rounded)
+
+% By design, [row, col] are real numbers, with the fractional portion indicating
+%   the position of the specified [lat, lon] coordinates between adjacent grid
+%   cell centers.  E.g., col=0.5 indicates that the input longitude is on the
+%   boundary between grid cells associated with col=0 and col=1.
+% If the [optional] input argument 'return_rounded' is present and ~=0, then 
+%   [row, col] are rounded to the nearest integer.
 
 % Constants returned by EASE2_GRID_INFO.PRO
 projection = gridid(1);
@@ -200,3 +207,12 @@ switch projection
     row(idx) = NaN;
     col(idx) = NaN;
 end
+
+if exist('return_rounded','var')
+  if return_rounded
+    col=round(col);
+    row=round(row);
+  end
+end
+
+% ========= EOF =========================================================
