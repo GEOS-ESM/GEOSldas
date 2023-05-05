@@ -193,7 +193,8 @@ contains
   ! ****************************************************************
 
   subroutine catch2mwRTM_vars( N_tile, vegcls_catch, poros_catch, poros_mwRTM, &
-       sfmc_catch, tsurf_catch, tp1_catch, sfmc_mwRTM, tsoil_mwRTM, tp1_in_Kelvin )
+       sfmc_catch, tsurf_catch, tp1_catch, sfmc_mwRTM, tsoil_mwRTM,  &
+       sfmc_cat2rtm_scale,sfmc_cat2rtm_offset, tp1_in_Kelvin )
     
     ! convert soil moisture, surface temperature, and soil temperature from the Catchment
     ! model into soil moisture and soil temperature inputs for the microwave radiative 
@@ -216,6 +217,8 @@ contains
     real,    dimension(N_tile), intent(out) :: sfmc_mwRTM,  tsoil_mwRTM
 
     logical,                    intent(in),  optional :: tp1_in_Kelvin
+    real, dimension(N_tile), intent(in),  optional :: sfmc_cat2rtm_scale 
+    real, dimension(N_tile), intent(in),  optional :: sfmc_cat2rtm_offset 
 
     ! local variables
     
@@ -230,6 +233,12 @@ contains
     
     sfmc_mwRTM  = sfmc_catch * poros_mwRTM / poros_catch
     
+    if (present(sfmc_cat2rtm_scale)) &
+        sfmc_mwRTM = sfmc_mwRTM * sfmc_cat2rtm_scale + sfmc_cat2rtm_offset
+
+    where (sfmc_mwRTM < 1.e-2) sfmc_mwRTM = 1.e-2
+    where (sfmc_mwRTM >= poros_mwRTM) sfmc_mwRTM = poros_mwRTM
+ 
     ! diagnose soil temperature to be used with mwRTM
     ! (change prompted by revision of Catchment model parameter CSOIL_2)
     ! - reichle, 23 Dec 2015
@@ -385,10 +394,12 @@ contains
           
           soiltemp_in_C = soiltemp(n) - MAPL_TICE
           
-          CALL DIELWANG (freq, soilmoist(n),   soiltemp_in_C,        &
-               mwp(n)%wang_wt, mwp(n)%wang_wp, mwp(n)%poros,         &
-               mwp(n)%sand,    mwp(n)%clay,    c_er            )
-          
+          !CALL DIELWANG (freq, soilmoist(n),   soiltemp_in_C,        &
+          !     mwp(n)%wang_wt, mwp(n)%wang_wp, mwp(n)%poros,         &
+          !     mwp(n)%sand,    mwp(n)%clay,    c_er            )
+         
+          CALL mironov(freq,soilmoist(n),mwp(n)%clay,c_er)
+ 
           ! soil reflectivity for smooth surface based on dielect const. (Fresnel)
           
           tmpc1 = SQRT(c_er - sin_inc**2)   
@@ -431,8 +442,8 @@ contains
           
           if (freq < 2.e9) then
              
-             Q = 0.   ! Q is assumed zero at low frequency
-             
+             !Q = 0.   ! Q is assumed zero at low frequency
+             Q = 0.1771 * h_mc   
           else         
              
              Q = 0.35 * (1.0 - exp(-0.6 * (mwp(n)%rgh_polmix**2) * (freq/1.e9) ))
@@ -441,9 +452,11 @@ contains
 
           ! rough surface reflectivity
 
-          rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrh) 
-          rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrv)
+          !rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrh) 
+          !rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrv)
           
+          rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**2) 
+          rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**2)
           
           ! -------------------------------------------------------------
           !
@@ -854,6 +867,84 @@ contains
    
    ! **********************************************************************
    
+   SUBROUTINE mironov(freq,mv,clayfrac,er_r)
+
+
+          IMPLICIT NONE
+          REAL, INTENT(IN)     :: freq   ! microwave frequency  [Hz]
+          REAL, INTENT(IN)     :: mv     ! volumetric soil water content [m3/m3]
+          REAL, INTENT(IN)     :: clayfrac ! clay fraction  [0-1]
+
+          COMPLEX, INTENT(OUT) :: er_r
+
+          !REAL, PARAMETER      :: PI = acos(-1.0)
+          REAL                 :: PI, f, C
+          REAL                 :: nd, kd, mvt, eps0b, eps0u, taub, tauu, sigb, sigu
+          REAL                 :: eps0, epsinf, epsb_real, epsu_real, epsb_imag, epsu_imag
+          REAL                 :: nb, kb, nu, ku
+          REAL                 :: nm, km
+          REAL                 :: er_r_real, er_r_imag
+
+          PI =  MAPL_PI 
+
+          f = freq  !*1e9                                                                      ! Section IV
+          C = clayfrac*100                                                                  ! Section VI
+
+       !! Mironov's regression expressions based on Curtis, Dobson, and Hallikainen datasets
+
+          nd = 1.634 - 0.539e-2 * C + 0.2748e-4 * C**2                                      ! Eqn 17
+          kd = 0.03952 - 0.04038e-2 * C                                                     ! Eqn 18
+          mvt = 0.02863 + 0.30673e-2 * C                                                    ! Eqn 19
+          eps0b = 79.8 - 85.4e-2 * C + 32.7e-4 * C**2                                       ! Eqn 20
+          taub = 1.062e-11 + 3.450e-12 * 1e-2 * C                                           ! Eqn 21
+          sigb = 0.3112 + 0.467e-2 * C                                                      ! Eqn 22
+          sigu = 0.3631 + 1.217e-2 * C                                                      ! Eqn 23
+          eps0u = 100                                                                       ! Eqn 24
+          tauu = 8.5e-12                                                                    ! Eqn 25
+
+       !! Debye relaxation equations for water as a function of frequency
+
+          eps0 = 8.854e-12                                                                  ! Vacuum permittivity
+          epsinf = 4.9                                                                      ! Section IV
+          epsb_real = epsinf + ( (eps0b - epsinf)/(1 + (2*PI*f*taub)**2) )                  ! Eqn 16
+          epsb_imag = (eps0b - epsinf)/(1 + (2*PI*f*taub)**2) * (2*PI*f*taub) + sigb/(2*PI*eps0*f)  ! Eqn 16
+          epsu_real = epsinf + ( (eps0u - epsinf)/(1 + (2*PI*f*tauu)**2) )                          ! Eqn 16
+          epsu_imag = (eps0u - epsinf)/(1 + (2*PI*f*tauu)**2) * (2*PI*f*tauu) + sigu/(2*PI*eps0*f)  ! Eqn 16
+
+       !! Refractive indices
+
+          nb = 1/sqrt(2.0) * sqrt( sqrt(epsb_real**2 + epsb_imag**2) + epsb_real )          ! Eqn 14
+          kb = 1/sqrt(2.0) * sqrt( sqrt(epsb_real**2 + epsb_imag**2) - epsb_real )          ! Eqn 14
+          nu = 1/sqrt(2.0) * sqrt( sqrt(epsu_real**2 + epsu_imag**2) + epsu_real )          ! Eqn 14
+          ku = 1/sqrt(2.0) * sqrt( sqrt(epsu_real**2 + epsu_imag**2) - epsu_real )          ! Eqn 14
+
+       !! n(*) are refractive indices, k(*) are normalized attenuation coefficients
+       !!   m: moist soil
+       !!   d: dry soil
+       !!   b: bound soil water (BSW)
+       !!   u: unbound (free) soil water (FSW)
+
+          IF (mv <= mvt) THEN
+
+              nm = nd + (nb - 1) * mv                                                       ! Eqn 12
+              km = kd + kb * mv                                                             ! Eqn 13
+              er_r_real = nm**2 - km**2                                                     ! Eqn 11
+              er_r_imag = 2 * nm * km                                                       ! Eqn 11
+
+          ELSE
+
+              nm = nd + (nb - 1) * mvt + (nu - 1) * (mv - mvt)                              ! Eqn 12
+              km = kd + kb * mvt + ku * (mv - mvt)                                          ! Eqn 13
+              er_r_real = nm**2 - km**2                                                     ! Eqn 11
+              er_r_imag = 2 * nm * km                                                       ! Eqn 11
+
+          ENDIF
+
+          er_r = CMPLX(er_r_real,er_r_imag)
+
+        END SUBROUTINE mironov
+
+   ! **********************************************************************
   
 end module mwRTM_routines
   
