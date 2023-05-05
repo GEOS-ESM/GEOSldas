@@ -1375,14 +1375,22 @@ contains
                 call mwRTM_get_Tb(                                              &
                      N_catl, freq, inc_angle, mwRTM_param, tile_coord_l%elev,   &
                      lai, smoist, stemp_l(:,n_e), SWE, met_force%Tair, .true.,  &
-                     Tb_h_vec, Tb_v_vec )
+                     'wang',Tb_h_vec, Tb_v_vec )
                 
              case (2)
                 
                 call mwRTM_get_Tb(                                              &
                      N_catl, freq, inc_angle, mwRTM_param, tile_coord_l%elev,   &
                      lai, smoist, stemp_l(:,n_e), SWE, met_force%Tair, .false., &
-                     Tb_h_vec, Tb_v_vec )
+                     'wang',Tb_h_vec, Tb_v_vec )
+
+             case (3)
+                
+                call mwRTM_get_Tb(                                              &
+                     N_catl, freq, inc_angle, mwRTM_param, tile_coord_l%elev,   &
+                     lai, smoist, stemp_l(:,n_e), SWE, met_force%Tair, .false., &
+                     'mironov',Tb_h_vec, Tb_v_vec )
+
                 
              case default
                 

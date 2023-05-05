@@ -193,8 +193,8 @@ contains
   ! ****************************************************************
 
   subroutine catch2mwRTM_vars( N_tile, vegcls_catch, poros_catch, poros_mwRTM, &
-       sfmc_catch, tsurf_catch, tp1_catch, sfmc_mwRTM, tsoil_mwRTM,  &
-       sfmc_cat2rtm_scale,sfmc_cat2rtm_offset, tp1_in_Kelvin )
+       sfmc_catch, tsurf_catch, tp1_catch, sfmc_mwRTM, tsoil_mwRTM, &
+       tp1_in_Kelvin )
     
     ! convert soil moisture, surface temperature, and soil temperature from the Catchment
     ! model into soil moisture and soil temperature inputs for the microwave radiative 
@@ -217,8 +217,6 @@ contains
     real,    dimension(N_tile), intent(out) :: sfmc_mwRTM,  tsoil_mwRTM
 
     logical,                    intent(in),  optional :: tp1_in_Kelvin
-    real, dimension(N_tile), intent(in),  optional :: sfmc_cat2rtm_scale 
-    real, dimension(N_tile), intent(in),  optional :: sfmc_cat2rtm_offset 
 
     ! local variables
     
@@ -232,13 +230,7 @@ contains
     !                       proper functioning of mwRTM calibration to SMOS obs
     
     sfmc_mwRTM  = sfmc_catch * poros_mwRTM / poros_catch
-    
-    if (present(sfmc_cat2rtm_scale)) &
-        sfmc_mwRTM = sfmc_mwRTM * sfmc_cat2rtm_scale + sfmc_cat2rtm_offset
 
-    where (sfmc_mwRTM < 1.e-2) sfmc_mwRTM = 1.e-2
-    where (sfmc_mwRTM >= poros_mwRTM) sfmc_mwRTM = poros_mwRTM
- 
     ! diagnose soil temperature to be used with mwRTM
     ! (change prompted by revision of Catchment model parameter CSOIL_2)
     ! - reichle, 23 Dec 2015
@@ -261,7 +253,7 @@ contains
  
   subroutine mwRTM_get_Tb( N_tile, freq, inc_angle, mwp, elev,             &
        LAI, soilmoist, soiltemp, SWE, Tair, incl_atm_terms,                &
-       Tb_h, Tb_v )
+       soildiel_model, Tb_h, Tb_v )
 
     !---------------------------------------------------
     !RTM adapted from Steven Chan
@@ -319,6 +311,7 @@ contains
     real,                   dimension(N_tile), intent(in)  :: Tair       ! [K]
 
     logical,                                   intent(in)  :: incl_atm_terms                          
+    character(len=*),                          intent(in)  :: soildiel_model                     
     
     real,                   dimension(N_tile), intent(out) :: Tb_h, Tb_v ! [K]
     
@@ -393,12 +386,21 @@ contains
           ! soil dielectric constant
           
           soiltemp_in_C = soiltemp(n) - MAPL_TICE
-          
-          !CALL DIELWANG (freq, soilmoist(n),   soiltemp_in_C,        &
-          !     mwp(n)%wang_wt, mwp(n)%wang_wp, mwp(n)%poros,         &
-          !     mwp(n)%sand,    mwp(n)%clay,    c_er            )
          
+          select case (soildiel_model) 
+
+          case('wang')
+ 
+          CALL DIELWANG (freq, soilmoist(n),   soiltemp_in_C,        &
+               mwp(n)%wang_wt, mwp(n)%wang_wp, mwp(n)%poros,         &
+               mwp(n)%sand,    mwp(n)%clay,    c_er            )
+           
+          case('mironov') 
           CALL mironov(freq,soilmoist(n),mwp(n)%clay,c_er)
+
+          case default 
+          CALL mironov(freq,soilmoist(n),mwp(n)%clay,c_er)
+          end select
  
           ! soil reflectivity for smooth surface based on dielect const. (Fresnel)
           
@@ -441,9 +443,21 @@ contains
           ! 2) polarization mixing, Q as defined in CMEM:
           
           if (freq < 2.e9) then
-             
-             !Q = 0.   ! Q is assumed zero at low frequency
+
+             select case (soildiel_model)
+
+             case('wang')
+ 
+             Q = 0.   ! Q is assumed zero at low frequency
+
+             case('mironov') 
              Q = 0.1771 * h_mc   
+ 
+             case default 
+             Q = 0.1771 * h_mc
+
+             end select
+
           else         
              
              Q = 0.35 * (1.0 - exp(-0.6 * (mwp(n)%rgh_polmix**2) * (freq/1.e9) ))
@@ -452,12 +466,24 @@ contains
 
           ! rough surface reflectivity
 
-          !rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrh) 
-          !rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrv)
-          
+          select case (soildiel_model)
+
+             case('wang')
+
+          rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrh) 
+          rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrv)
+
+         case('mironov')
+ 
           rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**2) 
           rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**2)
-          
+
+          case default
+
+          rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**2)
+          rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**2)
+          end select          
+
           ! -------------------------------------------------------------
           !
           ! Tb at top of vegetation (excl atmos contribution)  (tau-omega model)
