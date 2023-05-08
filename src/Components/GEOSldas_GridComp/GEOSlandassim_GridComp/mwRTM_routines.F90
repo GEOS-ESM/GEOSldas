@@ -9,9 +9,10 @@ module mwRTM_routines
   ! %RTM_ID = ID of radiative transfer model to use for Tb forward modeling
   !           (subroutine get_obs_pred()) 
   !           0 = none
-  !           1 = tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1)
-  !           2 = same as 1 but without Pellarin atmospheric corrections
-  !           3 = ...
+  !           1 = L-band tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1) (SMOS)
+  !           2 = same as 1 but without Pellarin atm corr (SMAP)
+  !           3 = same as 1 but with Mironov and SMAP L2_SM pol mixing (SMOS)
+  !           4 = same as 3 but without Pellarin atm corr (targeted for SMAP L4_SM Version 8)
   !
   ! reichle, 16 May 2011
   ! reichle, 31 Mar 2015 - added RTM_ID
@@ -193,8 +194,7 @@ contains
   ! ****************************************************************
 
   subroutine catch2mwRTM_vars( N_tile, vegcls_catch, poros_catch, poros_mwRTM, &
-       sfmc_catch, tsurf_catch, tp1_catch, sfmc_mwRTM, tsoil_mwRTM, &
-       tp1_in_Kelvin )
+       sfmc_catch, tsurf_catch, tp1_catch, sfmc_mwRTM, tsoil_mwRTM, tp1_in_Kelvin )
     
     ! convert soil moisture, surface temperature, and soil temperature from the Catchment
     ! model into soil moisture and soil temperature inputs for the microwave radiative 
@@ -252,8 +252,7 @@ contains
   ! ****************************************************************
  
   subroutine mwRTM_get_Tb( N_tile, freq, inc_angle, mwp, elev,             &
-       LAI, soilmoist, soiltemp, SWE, Tair, incl_atm_terms,                &
-       soildiel_model, Tb_h, Tb_v )
+       LAI, soilmoist, soiltemp, SWE, Tair, RTM_ID, Tb_h, Tb_v )
 
     !---------------------------------------------------
     !RTM adapted from Steven Chan
@@ -310,8 +309,7 @@ contains
     real,                   dimension(N_tile), intent(in)  :: SWE        ! [kg/m2] "mm"
     real,                   dimension(N_tile), intent(in)  :: Tair       ! [K]
 
-    logical,                                   intent(in)  :: incl_atm_terms                          
-    character(len=*),                          intent(in)  :: soildiel_model                     
+    integer,                                   intent(in)  :: RTM_ID
     
     real,                   dimension(N_tile), intent(out) :: Tb_h, Tb_v ! [K]
     
@@ -351,14 +349,27 @@ contains
     !if (logit) write(logunit,*) 'entering mwRTM_get_Tb...'
 
     ! check first element of elevation against no-data-value
-    ! (elevation is needed only when incl_atm_terms=.true.)
+    ! (elevation is only needed for RTMs with Pellarin atm corr)
 
-    if (incl_atm_terms) then
+    select case (RTM_ID)
+       
+    case(1,3)
+       
        if ( abs(elev(1)-nodata_generic)<nodata_tol_generic ) then
-          err_msg = 'mwRTM_get_Tb(): ERROR, elev is no-data-value'
+          err_msg = 'elev is no-data-value'
           call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        end if
-    end if
+
+    case(2,4)
+       
+       ! do nothing
+       
+    case default
+
+       err_msg = 'unknown RTM_ID (during check for elevation)'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       
+    end select
 
     ! pre-compute sine and cosine
     
@@ -387,19 +398,23 @@ contains
           
           soiltemp_in_C = soiltemp(n) - MAPL_TICE
          
-          select case (soildiel_model) 
-
-          case('wang')
+          select case (RTM_ID) 
+             
+          case(1,2)
  
-          CALL DIELWANG (freq, soilmoist(n),   soiltemp_in_C,        &
-               mwp(n)%wang_wt, mwp(n)%wang_wp, mwp(n)%poros,         &
-               mwp(n)%sand,    mwp(n)%clay,    c_er            )
-           
-          case('mironov') 
-          CALL mironov(freq,soilmoist(n),mwp(n)%clay,c_er)
+             CALL DIELWANG (freq, soilmoist(n),   soiltemp_in_C,        &
+                  mwp(n)%wang_wt, mwp(n)%wang_wp, mwp(n)%poros,         &
+                  mwp(n)%sand,    mwp(n)%clay,    c_er            )
+             
+          case(3,4) 
 
-          case default 
-          CALL mironov(freq,soilmoist(n),mwp(n)%clay,c_er)
+             CALL mironov(freq,soilmoist(n),mwp(n)%clay,c_er)
+
+          case default
+             
+             err_msg = 'unknown RTM_ID (during soil dielectric model)'
+             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+             
           end select
  
           ! soil reflectivity for smooth surface based on dielect const. (Fresnel)
@@ -444,20 +459,23 @@ contains
           
           if (freq < 2.e9) then
 
-             select case (soildiel_model)
+             select case (RTM_ID)
+                
+             case(1,2)
+                
+                Q = 0.   ! Q is assumed zero at low frequency
 
-             case('wang')
+             case(3,4)
  
-             Q = 0.   ! Q is assumed zero at low frequency
-
-             case('mironov') 
-             Q = 0.1771 * h_mc   
+                Q = 0.1771 * h_mc   
  
              case default 
-             Q = 0.1771 * h_mc
 
+                err_msg = 'unknown RTM_ID (during pol mixing)'
+                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+                
              end select
-
+             
           else         
              
              Q = 0.35 * (1.0 - exp(-0.6 * (mwp(n)%rgh_polmix**2) * (freq/1.e9) ))
@@ -466,23 +484,24 @@ contains
 
           ! rough surface reflectivity
 
-          select case (soildiel_model)
-
-             case('wang')
-
-          rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrh) 
-          rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrv)
-
-         case('mironov')
- 
-          rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**2) 
-          rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**2)
+          select case (RTM_ID)
+             
+          case(1,2)
+             
+             rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrh) 
+             rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**mwp(n)%rgh_nrv)
+             
+          case(3,4)
+             
+             rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**2) 
+             rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**2)
 
           case default
-
-          rsh = ( (1-Q) * roh + Q * rov) * EXP(-h_mc*cos_inc**2)
-          rsv = ( (1-Q) * rov + Q * roh) * EXP(-h_mc*cos_inc**2)
-          end select          
+            
+             err_msg = 'unknown RTM_ID (during rough reflectivity)'
+             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+             
+          end select
 
           ! -------------------------------------------------------------
           !
@@ -547,8 +566,10 @@ contains
           !
           ! GDL 23nov10      
 
-          if (incl_atm_terms) then
+          select case (RTM_ID)
              
+          case(1,3)
+       
              exptauh2 = exptauh * exptauh
              exptauv2 = exptauv * exptauv
              
@@ -571,8 +592,18 @@ contains
              Tb_h(n) = Tb_h(n) * exptau_atm + Tb_au  ! top-of-atmosphere Tb_h
              Tb_v(n) = Tb_v(n) * exptau_atm + Tb_au  ! top-of-atmosphere Tb_v
 
-          end if
-          
+
+          case(2,4)
+             
+             ! do nothing
+             
+          case default
+             
+             err_msg = 'unknown RTM_ID (during Pellarin atm corr)'
+             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+             
+          end select
+
        else ! snow present, soil frozen, or mwRTM params not available
           
           Tb_h(n) = nodata_generic
@@ -894,84 +925,124 @@ contains
    ! **********************************************************************
    
    SUBROUTINE mironov(freq,mv,clayfrac,er_r)
+     
+     ! Soil dielectric mixing model by Mironov et al IEEE TGRS 2009, doi:10.1109/TGRS.2008.2011631
+     !
+     !  8 May 2023: Implementation taken from SMAP L2_SM_P retrieval model; clean-up by reichle
+ 
+     IMPLICIT NONE
 
+     REAL,    INTENT(IN)  :: freq        ! microwave frequency  [Hz]
+     REAL,    INTENT(IN)  :: mv          ! volumetric soil water content [m3/m3]
+     REAL,    INTENT(IN)  :: clayfrac    ! clay fraction  [0-1]
+     
+     COMPLEX, INTENT(OUT) :: er_r        ! complex dielectric constant of moist soil
 
-          IMPLICIT NONE
-          REAL, INTENT(IN)     :: freq   ! microwave frequency  [Hz]
-          REAL, INTENT(IN)     :: mv     ! volumetric soil water content [m3/m3]
-          REAL, INTENT(IN)     :: clayfrac ! clay fraction  [0-1]
+     ! ------------------------------
 
-          COMPLEX, INTENT(OUT) :: er_r
+     REAL                 :: f, C, mvt
+     REAL                 :: nd, nb, nu, nm
+     REAL                 :: kd, kb, ku, km
+     REAL                 :: eps0b, taub, sigb, epsb_real, epsb_imag
+     REAL                 :: eps0u, tauu, sigu, epsu_real, epsu_imag
+     REAL                 :: er_r_real, er_r_imag
 
-          !REAL, PARAMETER      :: PI = acos(-1.0)
-          REAL                 :: PI, f, C
-          REAL                 :: nd, kd, mvt, eps0b, eps0u, taub, tauu, sigb, sigu
-          REAL                 :: eps0, epsinf, epsb_real, epsu_real, epsb_imag, epsu_imag
-          REAL                 :: nb, kb, nu, ku
-          REAL                 :: nm, km
-          REAL                 :: er_r_real, er_r_imag
+     REAL                 :: tmp2PIf, tmpeps0
 
-          PI =  MAPL_PI 
+     REAL                 :: tmptaub, tmptaub2plus1, tmpdiffepsb
+     REAL                 :: tmptauu, tmptauu2plus1, tmpdiffepsu
 
-          f = freq  !*1e9                                                                      ! Section IV
-          C = clayfrac*100                                                                  ! Section VI
+     REAL                 :: tmpreal, tmpepsbreal2, tmpepbsimag2
+     REAL                 ::          tmpepsureal2, tmpepbuimag2
+     
+     ! --------------------------------------------------------------------------------------
 
-       !! Mironov's regression expressions based on Curtis, Dobson, and Hallikainen datasets
+     f      = freq                                                              ! Section IV
+     C      = clayfrac*100                                                      ! Section VI
+     
+     !! Mironov's regression expressions based on Curtis, Dobson, and Hallikainen datasets
+     !!
+     !! mvt    : max bound water fraction 
+     !!
+     !! eps(*) : dielectric  constant (real part) and loss factor (imaginary part)
+     !! n(*)   : refractive index
+     !! k(*)   : normalized attenuation coefficient
+     !! tau(*) : relaxation constant
+     !! sig(*) : conductivity
+     !!
+     !!   m: moist soil
+     !!   d: dry soil
+     !!   b: bound soil water (BSW)
+     !!   u: unbound (free) soil water (FSW)
+     
+     nd    = 1.634     -  0.539e-2         * C +  0.2748e-4 * C**2              ! Eqn 17
+     kd    = 0.03952   -  0.04038e-2       * C                                  ! Eqn 18
+     mvt   = 0.02863   +  0.30673e-2       * C                                  ! Eqn 19
+     eps0b = 79.8      - 85.4e-2           * C + 32.7e-4    * C**2              ! Eqn 20
+     taub  = 1.062e-11 +  3.450e-12 * 1e-2 * C                                  ! Eqn 21
+     sigb  = 0.3112    +  0.467e-2         * C                                  ! Eqn 22
+     sigu  = 0.3631    +  1.217e-2         * C                                  ! Eqn 23
+     eps0u = 100.                                                               ! Eqn 24
+     tauu  = 8.5e-12                                                            ! Eqn 25
+     
+     !! Debye relaxation equations for water as a function of frequency         ! Eqn 16
+     
+     tmp2PIf       = 2.*MAPL_PI*f
 
-          nd = 1.634 - 0.539e-2 * C + 0.2748e-4 * C**2                                      ! Eqn 17
-          kd = 0.03952 - 0.04038e-2 * C                                                     ! Eqn 18
-          mvt = 0.02863 + 0.30673e-2 * C                                                    ! Eqn 19
-          eps0b = 79.8 - 85.4e-2 * C + 32.7e-4 * C**2                                       ! Eqn 20
-          taub = 1.062e-11 + 3.450e-12 * 1e-2 * C                                           ! Eqn 21
-          sigb = 0.3112 + 0.467e-2 * C                                                      ! Eqn 22
-          sigu = 0.3631 + 1.217e-2 * C                                                      ! Eqn 23
-          eps0u = 100                                                                       ! Eqn 24
-          tauu = 8.5e-12                                                                    ! Eqn 25
+     tmpeps0       = tmp2PIf*eps_0
+          
+     tmptaub       = tmp2PIf*taub
+     tmptauu       = tmp2PIf*tauu
+     
+     tmptaub2plus1 = 1. + tmptaub**2
+     tmptauu2plus1 = 1. + tmptauu**2
 
-       !! Debye relaxation equations for water as a function of frequency
+     tmpdiffepsb   = eps0b - diel_watinf
+     tmpdiffepsu   = eps0u - diel_watinf
+     
+     epsb_real = diel_watinf + tmpdiffepsb/tmptaub2plus1                                        
+     epsb_imag =               tmpdiffepsb/tmptaub2plus1 * tmptaub + sigb/tmpeps0
+     epsu_real = diel_watinf + tmpdiffepsu/tmptauu2plus1                                       
+     epsu_imag =               tmpdiffepsu/tmptauu2plus1 * tmptauu + sigu/tmpeps0
+     
+     !! Refractive indices and normalized attenuation coefficients                                                      
+          
+     tmpreal = 1/sqrt(2.0)
 
-          eps0 = 8.854e-12                                                                  ! Vacuum permittivity
-          epsinf = 4.9                                                                      ! Section IV
-          epsb_real = epsinf + ( (eps0b - epsinf)/(1 + (2*PI*f*taub)**2) )                  ! Eqn 16
-          epsb_imag = (eps0b - epsinf)/(1 + (2*PI*f*taub)**2) * (2*PI*f*taub) + sigb/(2*PI*eps0*f)  ! Eqn 16
-          epsu_real = epsinf + ( (eps0u - epsinf)/(1 + (2*PI*f*tauu)**2) )                          ! Eqn 16
-          epsu_imag = (eps0u - epsinf)/(1 + (2*PI*f*tauu)**2) * (2*PI*f*tauu) + sigu/(2*PI*eps0*f)  ! Eqn 16
+     tmpepsbreal2 = epsb_real**2
+     tmpepsbimag2 = epsb_imag**2
 
-       !! Refractive indices
+     tmpepsureal2 = epsu_real**2
+     tmpepsuimag2 = epsu_imag**2
 
-          nb = 1/sqrt(2.0) * sqrt( sqrt(epsb_real**2 + epsb_imag**2) + epsb_real )          ! Eqn 14
-          kb = 1/sqrt(2.0) * sqrt( sqrt(epsb_real**2 + epsb_imag**2) - epsb_real )          ! Eqn 14
-          nu = 1/sqrt(2.0) * sqrt( sqrt(epsu_real**2 + epsu_imag**2) + epsu_real )          ! Eqn 14
-          ku = 1/sqrt(2.0) * sqrt( sqrt(epsu_real**2 + epsu_imag**2) - epsu_real )          ! Eqn 14
+     nb = tmpreal * sqrt( sqrt(tmpepsbreal2 + tmpepsbimag2) + epsb_real )       ! Eqn 14
+     kb = tmpreal * sqrt( sqrt(tmpepsbreal2 + tmpepsbimag2) - epsb_real )       ! Eqn 15
+     nu = tmpreal * sqrt( sqrt(tmpepsureal2 + tmpepsuimag2) + epsu_real )       ! Eqn 14
+     ku = tmpreal * sqrt( sqrt(tmpepsureal2 + tmpepsuimag2) - epsu_real )       ! Eqn 15
+     
+     IF (mv <= mvt) THEN
+        
+        nm        = nd + (nb - 1.) * mv                                         ! Eqn 12
+        km        = kd +  kb       * mv                                         ! Eqn 13
+        
+     ELSE
+        
+        nm        = nd + (nb - 1.) * mvt + (nu - 1.) * (mv - mvt)               ! Eqn 12
+        km        = kd +  kb       * mvt +  ku       * (mv - mvt)               ! Eqn 13
 
-       !! n(*) are refractive indices, k(*) are normalized attenuation coefficients
-       !!   m: moist soil
-       !!   d: dry soil
-       !!   b: bound soil water (BSW)
-       !!   u: unbound (free) soil water (FSW)
+     ENDIF
 
-          IF (mv <= mvt) THEN
+     ! complex dielectric constant of moist soil
 
-              nm = nd + (nb - 1) * mv                                                       ! Eqn 12
-              km = kd + kb * mv                                                             ! Eqn 13
-              er_r_real = nm**2 - km**2                                                     ! Eqn 11
-              er_r_imag = 2 * nm * km                                                       ! Eqn 11
-
-          ELSE
-
-              nm = nd + (nb - 1) * mvt + (nu - 1) * (mv - mvt)                              ! Eqn 12
-              km = kd + kb * mvt + ku * (mv - mvt)                                          ! Eqn 13
-              er_r_real = nm**2 - km**2                                                     ! Eqn 11
-              er_r_imag = 2 * nm * km                                                       ! Eqn 11
-
-          ENDIF
-
-          er_r = CMPLX(er_r_real,er_r_imag)
-
-        END SUBROUTINE mironov
-
+     er_r_real = nm**2 - km**2                                                  ! Eqn 11
+     er_r_imag = 2. * nm * km                                                   ! Eqn 11
+     
+     er_r = CMPLX(er_r_real,er_r_imag)
+     
+   END SUBROUTINE mironov
+   
    ! **********************************************************************
-  
+   
 end module mwRTM_routines
   
 ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

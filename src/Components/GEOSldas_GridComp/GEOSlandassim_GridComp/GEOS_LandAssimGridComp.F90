@@ -115,6 +115,8 @@ module GEOS_LandAssimGridCompMod
   logical                                            :: mwRTM
   
   logical,                               allocatable :: tb_nodata(:)
+  
+  character(len=400)                                 :: err_msg
 
 contains
   
@@ -2248,7 +2250,7 @@ contains
     ! hard-coded SMAP Tb parameters
     real,    parameter :: freq           = 1.41e9     ! microwave frequency [Hz]
     real,    parameter :: inc_angle      = 40.        ! incidence angle [deg]
-    logical, parameter :: incl_atm_terms = .false.    ! no atmospheric correction, ie, get Tb at top-of-vegetation
+    integer, parameter :: RTM_ID         = 4          ! config of RTM - see obs_param (LDAS_DEFAULT_inputs_ensupd.nml)
 
     integer                      :: status
     character(len=ESMF_MAXSTR)   :: Iam='CALC_LAND_TB'
@@ -2375,23 +2377,34 @@ contains
     
     allocate(TB_h_tmp(N_catl), TB_v_tmp(N_catl))
     
-    if (.not. incl_atm_terms) then
+    select case (RTM_ID)
+       
+    case(2,4)
+
        allocate(dummy_real(N_catl))                   ! allocate needed for GNU compiler
+
        call mwRTM_get_Tb(                         &
             N_catl, freq, inc_angle, mwRTM_param, &   
-            dummy_real,                           &   ! intent(in), "elev", not used as long as "incl_atm_terms=.false."
+            dummy_real,                           &   ! intent(in), "elev", not used as long as RTM_ID=4 (formerly "incl_atm_terms=.false.")
             LAI,                                  &   
             sfmc_mwRTM,                           &   
             tsoil_mwRTM,                          &   
             SWE,                                  &   
             dummy_real,                           &   ! intent(in), "Tair", not used as long as "incl_atm_terms=.false." 
-            incl_atm_terms,                       &   
-            'mironov',                       &
+            RTM_ID,                               &
             Tb_h_tmp, Tb_v_tmp )                      ! intent(out) 'TB_LAND_1410MHZ_40DEG_HPOL',  'TB_LAND_1410MHZ_40DEG_VPOL'
        deallocate(dummy_real) 
-    else
-       _ASSERT(.false., "top-of-atmosphere Tb calculation not yet implemented (incl_atm_terms=.true.)")
-    end if
+
+    case(1,3)
+       
+       _ASSERT(.false., "top-of-atmosphere Tb calculation (requested per RTM_ID) not yet implemented")
+       
+    case default
+
+       err_msg = 'unknown RTM_ID (during CALC_LAND_TB)'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+         
+    end select
 
     if (collect_tb_counter == 0) then
        TB_H_enavg = 0.
