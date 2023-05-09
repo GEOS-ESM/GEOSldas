@@ -17,6 +17,8 @@ module GEOS_LandAssimGridCompMod
   use ESMF_CFIOMOD,              only: ESMF_CFIOstrTemplate
   use GEOS_ExportCatchIncrGridCompMod, only: ExportCatchIncrSetServices=>SetServices  
   use MAPL_ConstantsMod,         only: MAPL_TICE
+
+  use LDAS_exceptionsMod,        only: ldas_abort, LDAS_GENERIC_ERROR
     
   use LDAS_TileCoordType,        only: tile_coord_type
   use LDAS_TileCoordType,        only: grid_def_type
@@ -67,7 +69,6 @@ module GEOS_LandAssimGridCompMod
   use mwRTM_routines,            only: mwRTM_get_Tb, catch2mwRTM_vars
 
   use, intrinsic :: ieee_arithmetic    
-
 
   implicit none
 
