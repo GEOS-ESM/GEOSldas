@@ -952,8 +952,8 @@ contains
      REAL                 :: tmptaub, tmptaub2plus1, tmpdiffepsb
      REAL                 :: tmptauu, tmptauu2plus1, tmpdiffepsu
 
-     REAL                 :: tmpreal, tmpepsbreal2, tmpepbsimag2
-     REAL                 ::          tmpepsureal2, tmpepbuimag2
+     REAL                 :: tmpreal, tmpepsbreal2, tmpepsbimag2
+     REAL                 ::          tmpepsureal2, tmpepsuimag2
      
      ! --------------------------------------------------------------------------------------
 
