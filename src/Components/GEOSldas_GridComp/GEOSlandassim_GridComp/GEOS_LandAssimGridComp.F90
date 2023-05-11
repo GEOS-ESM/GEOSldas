@@ -2237,7 +2237,9 @@ contains
   ! ******************************************************************************
   
   ! subroutine to calculate Tb for HISTORY output
-  
+  !
+  ! IMPORTANT: hardwired mwRTM configuration for SMAP L-band Tb w/o Pellarin atm correction (RTM_ID=4)
+
   subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component

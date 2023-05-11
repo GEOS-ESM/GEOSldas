@@ -408,7 +408,7 @@ contains
              
           case(3,4) 
 
-             CALL mironov(freq,soilmoist(n),mwp(n)%clay,c_er)
+             CALL MIRONOV( freq, soilmoist(n), mwp(n)%clay, c_er )
 
           case default
              
@@ -924,11 +924,11 @@ contains
    
    ! **********************************************************************
    
-   SUBROUTINE mironov(freq,mv,clayfrac,er_r)
+   SUBROUTINE MIRONOV( freq, mv, clayfrac, er_r )
      
      ! Soil dielectric mixing model by Mironov et al IEEE TGRS 2009, doi:10.1109/TGRS.2008.2011631
      !
-     !  8 May 2023: Implementation taken from SMAP L2_SM_P retrieval model; clean-up by reichle
+     !  8 May 2023: Implementation taken from SMAP L2_SM_P retrieval model by qliu; clean-up by reichle
  
      IMPLICIT NONE
 
@@ -952,13 +952,12 @@ contains
      REAL                 :: tmptaub, tmptaub2plus1, tmpdiffepsb
      REAL                 :: tmptauu, tmptauu2plus1, tmpdiffepsu
 
-     REAL                 :: tmpreal, tmpepsbreal2, tmpepsbimag2
-     REAL                 ::          tmpepsureal2, tmpepsuimag2
+     REAL                 :: tmpreal, tmprealb, tmprealu
      
      ! --------------------------------------------------------------------------------------
 
-     f      = freq                                                              ! Section IV
-     C      = clayfrac*100                                                      ! Section VI
+     f      = freq                                                        ! Section IV
+     C      = clayfrac*100                                                ! Section VI
      
      !! Mironov's regression expressions based on Curtis, Dobson, and Hallikainen datasets
      !!
@@ -975,17 +974,17 @@ contains
      !!   b: bound soil water (BSW)
      !!   u: unbound (free) soil water (FSW)
      
-     nd    = 1.634     -  0.539e-2         * C +  0.2748e-4 * C**2              ! Eqn 17
-     kd    = 0.03952   -  0.04038e-2       * C                                  ! Eqn 18
-     mvt   = 0.02863   +  0.30673e-2       * C                                  ! Eqn 19
-     eps0b = 79.8      - 85.4e-2           * C + 32.7e-4    * C**2              ! Eqn 20
-     taub  = 1.062e-11 +  3.450e-12 * 1e-2 * C                                  ! Eqn 21
-     sigb  = 0.3112    +  0.467e-2         * C                                  ! Eqn 22
-     sigu  = 0.3631    +  1.217e-2         * C                                  ! Eqn 23
-     eps0u = 100.                                                               ! Eqn 24
-     tauu  = 8.5e-12                                                            ! Eqn 25
+     nd    = 1.634     -  0.539e-2         * C +  0.2748e-4 * C**2        ! Eqn 17
+     kd    = 0.03952   -  0.04038e-2       * C                            ! Eqn 18
+     mvt   = 0.02863   +  0.30673e-2       * C                            ! Eqn 19
+     eps0b = 79.8      - 85.4e-2           * C + 32.7e-4    * C**2        ! Eqn 20
+     taub  = 1.062e-11 +  3.450e-12 * 1e-2 * C                            ! Eqn 21
+     sigb  = 0.3112    +  0.467e-2         * C                            ! Eqn 22
+     sigu  = 0.3631    +  1.217e-2         * C                            ! Eqn 23
+     eps0u = 100.                                                         ! Eqn 24
+     tauu  = 8.5e-12                                                      ! Eqn 25
      
-     !! Debye relaxation equations for water as a function of frequency         ! Eqn 16
+     !! Debye relaxation equations for water as a function of frequency   ! Eqn 16
      
      tmp2PIf       = 2.*MAPL_PI*f
 
@@ -1007,35 +1006,32 @@ contains
      
      !! Refractive indices and normalized attenuation coefficients                                                      
           
-     tmpreal = 1/sqrt(2.0)
+     tmpreal  = 1/sqrt(2.0)
 
-     tmpepsbreal2 = epsb_real**2
-     tmpepsbimag2 = epsb_imag**2
+     tmprealb = sqrt( epsb_real**2 + epsb_imag**2 )
+     tmprealu = sqrt( epsu_real**2 + epsu_imag**2 )
 
-     tmpepsureal2 = epsu_real**2
-     tmpepsuimag2 = epsu_imag**2
-
-     nb = tmpreal * sqrt( sqrt(tmpepsbreal2 + tmpepsbimag2) + epsb_real )       ! Eqn 14
-     kb = tmpreal * sqrt( sqrt(tmpepsbreal2 + tmpepsbimag2) - epsb_real )       ! Eqn 15
-     nu = tmpreal * sqrt( sqrt(tmpepsureal2 + tmpepsuimag2) + epsu_real )       ! Eqn 14
-     ku = tmpreal * sqrt( sqrt(tmpepsureal2 + tmpepsuimag2) - epsu_real )       ! Eqn 15
+     nb = tmpreal * sqrt( tmprealb + epsb_real )                          ! Eqn 14
+     kb = tmpreal * sqrt( tmprealb - epsb_real )                          ! Eqn 15
+     nu = tmpreal * sqrt( tmprealu + epsu_real )                          ! Eqn 14
+     ku = tmpreal * sqrt( tmprealu - epsu_real )                          ! Eqn 15
      
      IF (mv <= mvt) THEN
         
-        nm        = nd + (nb - 1.) * mv                                         ! Eqn 12
-        km        = kd +  kb       * mv                                         ! Eqn 13
+        nm        = nd + (nb - 1.) * mv                                   ! Eqn 12
+        km        = kd +  kb       * mv                                   ! Eqn 13
         
      ELSE
         
-        nm        = nd + (nb - 1.) * mvt + (nu - 1.) * (mv - mvt)               ! Eqn 12
-        km        = kd +  kb       * mvt +  ku       * (mv - mvt)               ! Eqn 13
+        nm        = nd + (nb - 1.) * mvt + (nu - 1.) * (mv - mvt)         ! Eqn 12
+        km        = kd +  kb       * mvt +  ku       * (mv - mvt)         ! Eqn 13
 
      ENDIF
 
      ! complex dielectric constant of moist soil
 
-     er_r_real = nm**2 - km**2                                                  ! Eqn 11
-     er_r_imag = 2. * nm * km                                                   ! Eqn 11
+     er_r_real = nm**2 - km**2                                            ! Eqn 11
+     er_r_imag = 2. * nm * km                                             ! Eqn 11
      
      er_r = CMPLX(er_r_real,er_r_imag)
      
