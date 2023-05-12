@@ -33,6 +33,43 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
+[v17.13.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.13.0) - 2023-05-12
+------------------------------
+
+- 0-diff vs. v17.12.0 except:
+  - Not 0-diff for diagnostic (HISTORY) output when bit shaving is applied ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629)). 
+  - Not 0-diff for simulations with CatchCN when using `RESTART: 2` ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629)).
+
+- Science changes:
+  - Added options to microwave radiative transfer model: Mironov soil dielectric mixing model, SMAP L2_SM_P rough reflectivity parameters ([PR #644](https://github.com/GEOS-ESM/GEOSldas/pull/644)).
+  - Support for ensemble standard deviation output via HISTORY for selected variables ([PR #635](https://github.com/GEOS-ESM/GEOSldas/pull/635)).
+
+- GEOSgcm_GridComp:
+  - Updated to v2.1.0.
+  - Cleaned up CatchCN restart routines ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629)). 
+  - Updated paths to boundary conditions ([PR #634](https://github.com/GEOS-ESM/GEOSldas/pull/634)).
+  - Adjusted to restructured `./Raster` (makebcs) libraries ([PR #615](https://github.com/GEOS-ESM/GEOSldas/pull/615)).
+
+- Utilities:
+  - Added GEOS_Util repo v1.1.1 ([PR #623, [PR #645](https://github.com/GEOS-ESM/GEOSldas/pull/645)).
+  - Updated GMAO_Shared to v1.9.0 ([PR #645](https://github.com/GEOS-ESM/GEOSldas/pull/645)).
+  - Added matlab utilities for EASEv2 grid ([PR #622, [PR #640](https://github.com/GEOS-ESM/GEOSldas/pull/640)).
+
+- Infrastructure:
+  - Updated CMake, MAPL: 
+    - ESMA_cmake v3.24.0 ([PR #618](https://github.com/GEOS-ESM/GEOSldas/pull/618))
+    - MAPL v2.35.2 ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629))
+
+- Documentation: 
+  - Improved documentation for input of heterogenous perturbations standard deviation from file (#628](https://github.com/GEOS-ESM/GEOSldas/pull/628)).
+
+- Bug fixes and other minor changes:
+  - Fixed perturbations when root processor is not assigned any tiles ([PR #642](https://github.com/GEOS-ESM/GEOSldas/pull/642)).
+  - Added custom messages to Github label enforcers ([PR #616](https://github.com/GEOS-ESM/GEOSldas/pull/616)).
+  - Set unlimited stack size in `ldas_setup` ([PR #620](https://github.com/GEOS-ESM/GEOSldas/pull/620)).
+  - Cleaned up variable name (`pert_grid`) in perturbation and assimilation subroutines ([PR #637](https://github.com/GEOS-ESM/GEOSldas/pull/637)).
+
+------------------------------
 [v17.12.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.12.0) - 2022-12-16
 ------------------------------
 
