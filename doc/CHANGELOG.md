@@ -51,8 +51,8 @@ Overview of Git Releases:
   - Adjusted to restructured `./Raster` (makebcs) libraries ([PR #615](https://github.com/GEOS-ESM/GEOSldas/pull/615)).
 
 - Utilities:
-  - Added GEOS_Util repo v1.1.1 ([PR #623, [PR #645](https://github.com/GEOS-ESM/GEOSldas/pull/645)).
-  - Updated GMAO_Shared to v1.9.0 ([PR #645](https://github.com/GEOS-ESM/GEOSldas/pull/645)).
+  - Added GEOS_Util repo v1.1.1 ([PR #623, [PR #645](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Updated GMAO_Shared to v1.9.0 ([PR #645](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
   - Added matlab utilities for EASEv2 grid ([PR #622, [PR #640](https://github.com/GEOS-ESM/GEOSldas/pull/640)).
 
 - Infrastructure:
@@ -61,7 +61,7 @@ Overview of Git Releases:
     - MAPL v2.35.2 ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629))
 
 - Documentation: 
-  - Improved documentation for input of heterogenous perturbations standard deviation from file (#628](https://github.com/GEOS-ESM/GEOSldas/pull/628)).
+  - Improved documentation for input of heterogenous perturbations standard deviation from file ([PR #628](https://github.com/GEOS-ESM/GEOSldas/pull/628)).
 
 - Bug fixes and other minor changes:
   - Fixed perturbations when root processor is not assigned any tiles ([PR #642](https://github.com/GEOS-ESM/GEOSldas/pull/642)).
