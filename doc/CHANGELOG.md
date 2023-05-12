@@ -51,9 +51,9 @@ Overview of Git Releases:
   - Adjusted to restructured `./Raster` (makebcs) libraries ([PR #615](https://github.com/GEOS-ESM/GEOSldas/pull/615)).
 
 - Utilities:
-  - Added GEOS_Util repo v1.1.1 ([PR #623, [PR #645](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
-  - Updated GMAO_Shared to v1.9.0 ([PR #645](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
-  - Added matlab utilities for EASEv2 grid ([PR #622, [PR #640](https://github.com/GEOS-ESM/GEOSldas/pull/640)).
+  - Added GEOS_Util repo v1.1.1 ([PR #623](https://github.com/GEOS-ESM/GEOSldas/pull/623), [PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Updated GMAO_Shared to v1.9.0 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Added matlab utilities for EASEv2 grid ([PR #622](https://github.com/GEOS-ESM/GEOSldas/pull/622), [PR #640](https://github.com/GEOS-ESM/GEOSldas/pull/640)).
 
 - Infrastructure:
   - Updated CMake, MAPL: 
