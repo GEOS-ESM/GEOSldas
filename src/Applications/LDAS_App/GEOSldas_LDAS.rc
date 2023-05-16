@@ -25,8 +25,15 @@ CATCHMENT_OFFLINE: 1
 #    1 : Catchment model   (default)
 #    2 : CatchmentCN-CLM4.0
 #    3 : CatchmentCN-CLM4.5
-
+#
 LSM_CHOICE: 1
+
+# ---- Catchment/CatchmentCN spinup mode
+#
+#    0 : None (default)
+#    1 : Remove snow every Aug 1 (Northern Hemisphere) or Feb 1 (Southern Hemisphere)
+#
+CATCHMENT_SPINUP: 0
 
 
 # ---- Domain definition
