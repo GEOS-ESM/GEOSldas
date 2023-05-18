@@ -51,17 +51,14 @@ Overview of Git Releases:
   - Cleaned up CatchCN restart routines ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629)). 
 
 - Utilities:
-  - Updated ESMA_env to v4.9.1 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
-  - Updated ESMA_cmake to v3.28.0 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
   - Updated GMAO_Shared to v1.9.0 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
   - Added GEOS_Util repo v2.0.0 ([PR #623](https://github.com/GEOS-ESM/GEOSldas/pull/623), [PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
-  - Updated MAPL to v2.39.1 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
   - Added matlab utilities for EASEv2 grid ([PR #622](https://github.com/GEOS-ESM/GEOSldas/pull/622), [PR #640](https://github.com/GEOS-ESM/GEOSldas/pull/640)).
 
 - Infrastructure:
-  - Updated CMake, MAPL: 
-    - ESMA_cmake v3.24.0 ([PR #618](https://github.com/GEOS-ESM/GEOSldas/pull/618))
-    - MAPL v2.35.2 ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629))
+  - ESMA_env v4.9.1 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - ESMA_cmake v3.28.0 ([PR #618](https://github.com/GEOS-ESM/GEOSldas/pull/618), [PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Updated MAPL to v2.39.1 ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629), [PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
 
 - Documentation: 
   - Improved documentation for input of heterogenous perturbations standard deviation from file ([PR #628](https://github.com/GEOS-ESM/GEOSldas/pull/628)).
