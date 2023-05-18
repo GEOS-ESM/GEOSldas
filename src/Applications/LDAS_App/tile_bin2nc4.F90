@@ -399,16 +399,29 @@ PROGRAM tile_bin2nc4
 
     ! land assimilation forecast and analysis for Catchment model diagnostics
 
-    case ('SFMC_FCST');        LONG_NAME = 'soil_moisture_surface_forecast';                             UNITS = 'm3 m-3'
-    case ('RZMC_FCST');        LONG_NAME = 'soil_moisture_rootzone_forecast';                            UNITS = 'm3 m-3'
-    case ('PRMC_FCST');        LONG_NAME = 'soil_moisture_profile_forecast';                             UNITS = 'm3 m-3'
-    case ('TSURF_FCST');       LONG_NAME = 'ave_catchment_temp_incl_snw_forecast';                       UNITS = 'K'
-    case ('TSOIL1_FCST');      LONG_NAME = 'soil_temperatures_layer_1_forecast';                         UNITS = 'K'
-    case ('SFMC_ANA');         LONG_NAME = 'soil_moisture_surface_analysis';                             UNITS = 'm3 m-3'
-    case ('RZMC_ANA');         LONG_NAME = 'soil_moisture_rootzone_analysis';                            UNITS = 'm3 m-3'
-    case ('PRMC_ANA');         LONG_NAME = 'soil_moisture_profile_analysis';                             UNITS = 'm3 m-3'
-    case ('TSURF_ANA');        LONG_NAME = 'ave_catchment_temp_incl_snw_analysis';                       UNITS = 'K'
-    case ('TSOIL1_ANA');       LONG_NAME = 'soil_temperatures_layer_1_analysis';                         UNITS = 'K'
+    case ('SFMC_FCST');          LONG_NAME = 'soil_moisture_surface_forecast';                           UNITS = 'm3 m-3'
+    case ('RZMC_FCST');          LONG_NAME = 'soil_moisture_rootzone_forecast';                          UNITS = 'm3 m-3'
+    case ('PRMC_FCST');          LONG_NAME = 'soil_moisture_profile_forecast';                           UNITS = 'm3 m-3'
+    case ('TSURF_FCST');         LONG_NAME = 'ave_catchment_temp_incl_snw_forecast';                     UNITS = 'K'
+    case ('TSOIL1_FCST');        LONG_NAME = 'soil_temperatures_layer_1_forecast';                       UNITS = 'K'
+
+    case ('SFMC_FCST_ENSSTD');   LONG_NAME = 'soil_moisture_surface_forecast_ensstd';                    UNITS = 'm3 m-3'
+    case ('RZMC_FCST_ENSSTD');   LONG_NAME = 'soil_moisture_rootzone_forecast_ensstd';                   UNITS = 'm3 m-3'
+    case ('PRMC_FCST_ENSSTD');   LONG_NAME = 'soil_moisture_profile_forecast_ensstd';                    UNITS = 'm3 m-3'
+    case ('TSURF_FCST_ENSSTD');  LONG_NAME = 'ave_catchment_temp_incl_snw_forecast_ensstd';              UNITS = 'K'
+    case ('TSOIL1_FCST_ENSSTD'); LONG_NAME = 'soil_temperatures_layer_1_forecast_ensstd';                UNITS = 'K'
+
+    case ('SFMC_ANA');           LONG_NAME = 'soil_moisture_surface_analysis';                           UNITS = 'm3 m-3'
+    case ('RZMC_ANA');           LONG_NAME = 'soil_moisture_rootzone_analysis';                          UNITS = 'm3 m-3'
+    case ('PRMC_ANA');           LONG_NAME = 'soil_moisture_profile_analysis';                           UNITS = 'm3 m-3'
+    case ('TSURF_ANA');          LONG_NAME = 'ave_catchment_temp_incl_snw_analysis';                     UNITS = 'K'
+    case ('TSOIL1_ANA');         LONG_NAME = 'soil_temperatures_layer_1_analysis';                       UNITS = 'K'
+
+    case ('SFMC_ANA_ENSSTD');    LONG_NAME = 'soil_moisture_surface_analysis_ensstd';                    UNITS = 'm3 m-3'
+    case ('RZMC_ANA_ENSSTD');    LONG_NAME = 'soil_moisture_rootzone_analysis_ensstd';                   UNITS = 'm3 m-3'
+    case ('PRMC_ANA_ENSSTD');    LONG_NAME = 'soil_moisture_profile_analysis_ensstd';                    UNITS = 'm3 m-3'
+    case ('TSURF_ANA_ENSSTD');   LONG_NAME = 'ave_catchment_temp_incl_snw_analysis_ensstd';              UNITS = 'K'
+    case ('TSOIL1_ANA_ENSSTD');  LONG_NAME = 'soil_temperatures_layer_1_analysis_ensstd';                UNITS = 'K'
 
     ! other land assimilation fields
        

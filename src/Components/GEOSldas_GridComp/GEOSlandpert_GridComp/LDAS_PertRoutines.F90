@@ -24,7 +24,7 @@ module LDAS_PertRoutinesMod
        nodata_generic,                            &
        nodata_tolfrac_generic,                    &
        nodata_tol_generic
-
+  use LDAS_ensdrv_mpi, only: mpicomm,numprocs,myid
   use MAPL_ConstantsMod,                ONLY:     &
        Tzero => MAPL_TICE,                        &
        alhe  => MAPL_ALHL,                        &
@@ -291,8 +291,6 @@ contains
     character(len=*), parameter :: Iam = 'read_ens_prop_inputs'
 
     ! MPI variables
-    type(ESMF_VM) :: vm
-    integer :: mpicomm
     logical :: root_proc,f_exist
 
     ! -----------------------------------------------------------------
@@ -328,11 +326,7 @@ contains
          ccorr_force_pert
 
 
-    call ESMF_VmGetCurrent(vm, rc=status)
-    VERIFY_(status)
-    call ESMF_VmGet(vm, mpicommunicator=mpicomm, rc=status)
-    VERIFY_(status)
-    root_proc = MAPL_Am_I_Root(vm)
+    root_proc = (myid ==0)
 
     ! ---------------------------------------------------------------------
     !
@@ -630,18 +624,18 @@ contains
   end subroutine check_pert_dtstep
 
   ! *********************************************************************
-  subroutine get_pert_grid( tile_grid, pert_grid )
+  function get_pert_grid( tile_grid) result (pert_grid)
 
     ! reichle, 20 May 2010
     ! jiang,   03/10/2017
     implicit none
 
     type(grid_def_type), intent(in)  :: tile_grid
-    type(grid_def_type), intent(out) :: pert_grid
+    type(grid_def_type)              :: pert_grid
     character(len=30) :: latlon_gridname
     character(len=6) ::  lattmp,lontmp
 
-    type(grid_def_type)  :: tile_grid_g,tile_grid_tmp
+    type(grid_def_type)  :: latlon_grid_tmp
 
     integer :: n_x,i_off,j_off,n_lon,n_lat
 
@@ -651,27 +645,39 @@ contains
     !       perturbations in tile space from gridded perturbations fields
     !       (see calls to "grid2tile" in clsm_ensdrv_pert_routines.F90,  
     !        clsm_ensupd_upd_routines.F90, and clsm_adapt_routines.F90)
+    
     if(index(tile_grid%gridtype,"c3") ==0) then
+
+       ! If *not* cube-sphere tile space, then for perturbations use the grid that 
+       ! defines the tile space (a.k.a. "tile_grid").  E.g., if in EASE grid tile space, 
+       ! the pert grid is the EASE grid.
 
        pert_grid = tile_grid
 
     else ! cubed-sphere grid
-       !for cubed-sphere grid, global lat_lon grid
+    
+       ! For cubed-sphere tile space, use a global lat_lon pert grid with a resolution
+       ! similar to that of the grid that defines the tile space.
+       
        N_x=tile_grid%n_lon
-
+       
+       ! NOTE: The pert grid specification is hard-wired here.
+       ! If perturbation stddev is heterogeneous input from a file,  
+       ! then the input grid must match this hard-wired grid.  (sqz 2/2023)  
+       
        n_lon=4*N_x
        n_lat=3*N_x
        write(lattmp,'(I6.6)') n_lat
        write(lontmp,'(I6.6)') n_lon
        latlon_gridname = "DE"//lontmp//"x"//"PE"//lattmp
 
-       call LDAS_create_grid_g(latlon_gridname,n_lon,n_lat,tile_grid_g,i_off,j_off)
+       call LDAS_create_grid_g(latlon_gridname,n_lon,n_lat, latlon_grid_tmp,i_off,j_off)
 
-       pert_grid = tile_grid_g              
+       pert_grid = latlon_grid_tmp  
 
     endif
 
-  end subroutine get_pert_grid
+  end function get_pert_grid
 
   ! *********************************************************************
 
@@ -993,17 +999,12 @@ contains
     character(len=*), parameter :: Iam = 'get_force_pert_inputs'
 
     ! MPI variables
-    type(ESMF_VM) :: vm
-    integer :: mpicomm, numprocs, myid, mpierr
+    integer :: mpierr
     logical :: root_proc
 
     ! -----------------------------------------------------------------
 
-    call ESMF_VmGetCurrent(vm, rc=status)
-    VERIFY_(status)
-    call ESMF_VMGet(VM, petCount=numprocs, localPet=myid, mpiCommunicator=mpicomm, rc=status)
-    VERIFY_(status)
-    root_proc = MAPL_Am_I_Root(vm)
+    root_proc = (myid==0)
 
     ! ---------
     !
@@ -1111,9 +1112,13 @@ contains
        call MPI_BCAST(stdfilename_force_pert,300,MPI_CHARACTER,0,mpicomm,mpierr)
 
        nc4_file = stdfilename_force_pert
-
+       
+       ! NOTE: the input file is in netcdf format, with a group 'std_force_pert',
+       ! and the grid in the netcdf file must be the *global* pert grid 
+       ! (see subroutine get_pert_grid()) 
+       
        ! --compute-local-shape-first-
-       ! ASSUMPTION: data in file are on the *global* grid (tile_grid_g)
+       ! ASSUMPTION: data in file are on the *global* pert grid
        xstart = pert_grid_l%i_offg + 1
        xcount = pert_grid_l%N_lon
        ystart = pert_grid_l%j_offg + 1
@@ -1384,17 +1389,12 @@ contains
     character(len=*), parameter :: Iam = 'get_progn_pert_inputs'
 
     ! MPI variables
-    type(ESMF_VM) :: vm
-    integer :: mpicomm, numprocs, myid, mpierr
+    integer :: mpierr
     logical :: root_proc
 
     ! -----------------------------------------------------------------
 
-    call ESMF_VmGetCurrent(vm, rc=status)
-    VERIFY_(status)
-    call ESMF_VMGet(VM, petCount=numprocs, localPet=myid, mpiCommunicator=mpicomm, rc=status)
-    VERIFY_(status)
-    root_proc = MAPL_Am_I_Root(vm)
+    root_proc = (myid==0)
 
     ! -------
     !
@@ -1503,9 +1503,13 @@ contains
        call MPI_BCAST(stdfilename_progn_pert,300,MPI_CHARACTER,0,mpicomm,mpierr)
 
        nc4_file = stdfilename_progn_pert
+       
+       ! NOTE: the input file is in netcdf format, with a group 'std_force_pert',
+       ! and the grid in the netcdf file must be the *global* pert grid 
+       ! (see subroutine get_pert_grid()) 
 
        ! --compute-local-shape-first-
-       ! ASSUMPTION: data in file are on the *global* grid (tile_grid_g)
+       ! ASSUMPTION: data in file are on the *global* pert grid 
        xstart = pert_grid_l%i_offg + 1
        xcount = pert_grid_l%N_lon
        ystart = pert_grid_l%j_offg + 1
@@ -1549,10 +1553,10 @@ contains
                         std_progn_pert(ivar,:,:) = 0.
                 end if
              end do
+             ! close file
+             nc4_stat = nf90_close(nc4_id)
+             if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
           end if
-          ! close file
-          nc4_stat = nf90_close(nc4_id)
-          if (nc4_stat /= nf90_noerr) call handle_nc4_stat(nc4_stat)
        end do
        call MPI_Barrier(mpicomm, mpierr)
     end if
@@ -1898,7 +1902,7 @@ contains
     !
     ! local variables
 
-    integer :: i,j,k
+    integer :: i,j,k, ierr
 
     ! ---------------------------------------------------------------
     !
@@ -1907,16 +1911,13 @@ contains
 
     pert_select(1:N_pert_max) = 0
 
-    do k=1,N_pert_max
-
-       do i=1,pert_grid_l%N_lon
-          do j=1,pert_grid_l%N_lat
-
-             if (std_pert(k,i,j)>0.) pert_select(k) = 1
-
-          end do
+    if (pert_grid_l%N_lon * pert_grid_l%N_lat >0) then
+       do k=1,N_pert_max
+          if (maxval(std_pert(k,:,:)) >0.) pert_select(k) = 1
        end do
-    end do
+    endif
+
+    call MPI_Allreduce(MPI_IN_PLACE, pert_select, N_pert_max , MPI_INTEGER, MPI_MAX, mpicomm, ierr )
 
     N_pert = sum( pert_select )
 
