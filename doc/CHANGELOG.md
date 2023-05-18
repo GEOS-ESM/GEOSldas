@@ -46,11 +46,9 @@ Overview of Git Releases:
 
 - GEOSgcm_GridComp:
   - Updated to v2.1.1.
-    - Restructured make bcs ([GEOSgcm_GridComp PR#718](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/718), [GEOSgcm_GridComp PR#729](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/729)).
+    - Restructured `Raster/makebcs` and `mk_restarts` utilities: updated input paths, revised output directory tree ([PR #615](https://github.com/GEOS-ESM/GEOSldas/pull/615), [PR #634](https://github.com/GEOS-ESM/GEOSldas/pull/634), [GEOSgcm_GridComp PR#694](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/694), [GEOSgcm_GridComp PR#718](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/718), [GEOSgcm_GridComp PR#729](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/729)).
     - CatchmentCNCLM45 restart bug fixes (new optional restart variables) ([GEOSgcm_GridComp PR#657](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/657))
   - Cleaned up CatchCN restart routines ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629)). 
-  - Updated paths to boundary conditions ([PR #634](https://github.com/GEOS-ESM/GEOSldas/pull/634)).
-  - Adjusted to restructured `./Raster` (makebcs) libraries ([PR #615](https://github.com/GEOS-ESM/GEOSldas/pull/615)).
 
 - Utilities:
   - Updated ESMA_env to v4.9.1 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
