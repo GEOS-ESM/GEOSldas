@@ -33,7 +33,7 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
-[v17.13.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.13.0) - 2023-05-12
+[v17.13.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.13.0) - 2023-05-18
 ------------------------------
 
 - 0-diff vs. v17.12.0 except:
@@ -45,14 +45,19 @@ Overview of Git Releases:
   - Support for ensemble standard deviation output via HISTORY for selected variables ([PR #635](https://github.com/GEOS-ESM/GEOSldas/pull/635)).
 
 - GEOSgcm_GridComp:
-  - Updated to v2.1.0.
+  - Updated to v2.1.1.
+    - Restructured make bcs ([GEOSgcm_GridComp PR#718](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/718), [GEOSgcm_GridComp PR#729](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/729)).
+    - CatchmentCNCLM45 restart bug fixes (new optional restart variables) ([GEOSgcm_GridComp PR#657](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/657))
   - Cleaned up CatchCN restart routines ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629)). 
   - Updated paths to boundary conditions ([PR #634](https://github.com/GEOS-ESM/GEOSldas/pull/634)).
   - Adjusted to restructured `./Raster` (makebcs) libraries ([PR #615](https://github.com/GEOS-ESM/GEOSldas/pull/615)).
 
 - Utilities:
-  - Added GEOS_Util repo v1.1.1 ([PR #623](https://github.com/GEOS-ESM/GEOSldas/pull/623), [PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Updated ESMA_env to v4.9.1 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Updated ESMA_cmake to v3.28.0 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
   - Updated GMAO_Shared to v1.9.0 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Added GEOS_Util repo v2.0.0 ([PR #623](https://github.com/GEOS-ESM/GEOSldas/pull/623), [PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Updated MAPL to v2.39.1 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
   - Added matlab utilities for EASEv2 grid ([PR #622](https://github.com/GEOS-ESM/GEOSldas/pull/622), [PR #640](https://github.com/GEOS-ESM/GEOSldas/pull/640)).
 
 - Infrastructure:
