@@ -8274,11 +8274,6 @@ do i=1,N_catd
       
       if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
            abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol        ) then
-         if (logit) write (logunit,*) 'ierr2, i = ', ierr2, i  
-         if (logit) write (logunit,*) 'start, icount', start, icount
-         if (logit) write (logunit,*) 'tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)', tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)
-         if (logit) write (logunit,*) 'tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)', tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)
-         if (logit) write (logunit,*) 'pp, sclprm_lon, sclprm_lat, sclprm_mean_obs(328:334,579) ', pp, sclprm_lon(1), sclprm_lat(1), sclprm_mean_obs(328:334, 579)
          err_msg = 'something wrong'
          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
       end if
@@ -8293,10 +8288,6 @@ do i=1,N_catd
          
          ! scale via standard normal deviates
          
-         if (mod(i, 100) == 0) then
-            write(logunit,*) 'Found! ', i, pp, j_ind, i_ind, tmp_obs(i), sclprm_mean_obs(j_ind, i_ind), sclprm_std_mod(j_ind, i_ind), sclprm_std_obs(j_ind, i_ind)
-         endif
-
          tmpreal = sclprm_std_mod(j_ind, i_ind)/sclprm_std_obs(j_ind, i_ind) 
          
          tmp_obs(i) = sclprm_mean_mod(j_ind, i_ind)                       &
@@ -8305,7 +8296,7 @@ do i=1,N_catd
          ! scale observation error std
          
          tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
-         
+
       else
          
          tmp_obs(i) = this_obs_param%nodata
@@ -8319,7 +8310,7 @@ end do
 deallocate(sclprm_lon)     
 deallocate(sclprm_lat)          
 deallocate(sclprm_mean_obs)     
-deallocate(sclprm_std_obs)      
+deallocate(sclprm_std_obs)  
 deallocate(sclprm_mean_mod)     
 deallocate(sclprm_std_mod)      
 
