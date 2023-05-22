@@ -10,18 +10,17 @@ clear
 
 % add path to matlab functions in src/Applications/LDAS_App/util/shared/matlab/
 addpath('../../shared/matlab/');
+                                                                                                    
+%======                                                                 
+ run_months = [1:12 1:4]; %loop through 1:4 again to get complete pentads
 
-%======
-
-run_months = [1:12 1:4]; %loop through 1:4 again to get complete pentads
-
-exp_path = '/discover/nobackup/amfox/Experiments/ASCAT_3Y_v2';
+exp_path = '/discover/nobackup/amfox/Experiments/ASCAT_noscale_test_debug';
 exp_run  = {'ASCAT_M36'};
 domain   = 'SMAP_EASEv2_M36_GLOBAL';
 
 %Start and end year for each month
-start_year = [repmat(2016,1,5) repmat(2015,1,7) repmat(2016,1,4)]; %corresp to [1:12 1 2]
-end_year   = [repmat(2017,1,5) repmat(2016,1,7) repmat(2017,1,4)]; %runs till end of run_months for end_year
+start_year = [repmat(2016,1,6) repmat(2015,1,6) repmat(2016,1,4)]; %corresp to [1:12 1 2]
+end_year   = [repmat(2017,1,6) repmat(2016,1,6) repmat(2017,1,4)]; %runs till end of run_months for end_year
 
 prefix_out = 'M36_zscore_stats_';
 
@@ -52,7 +51,7 @@ hscale = 0.0;          % degrees lat/lon
 % Temporal sampling window(days), current hard coded and need to be divisive by 5 and be an odd number
 w_days    = 75;  
 
-Ndata_min = 20;
+Ndata_min = 5;
 
 %To limit M09 tiles to administering M36 tiles only (smaller files),
 %provide convert_grid

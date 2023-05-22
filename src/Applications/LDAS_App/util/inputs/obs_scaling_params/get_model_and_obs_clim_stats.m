@@ -274,10 +274,15 @@ if (exist('convert_grid'))
     %2) convert back to lat/lon at center of obs
     if (~isempty(strfind(convert_grid, 'M36')) && ~isempty(strfind(convert_grid, 'EASEv2')))
         gridid = 'M36';
+<<<<<<< HEAD
         [central_row,central_col] = EASEv2_latlon2ind(central_lat,central_lon,gridid);
         central_row = round(central_row); central_col = round(central_col);
+=======
+        [central_row,central_col] = EASEv2_latlon2ind(central_lat,central_lon,gridid,1);
+>>>>>>> develop
         [central_lat,central_lon] = EASEv2_ind2latlon(central_row,central_col,gridid);
     elseif (~isempty(strfind(convert_grid, 'M36')) && ~isempty(strfind(convert_grid, 'EASEv1')))
+       error('Must provide smapeasev1_latlon2ind() and smapeasev1_ind2latlon()!')
         gridid = 'M36';
         [central_row,central_col] = smapeasev1_latlon2ind(central_lat,central_lon,gridid);
         [central_lat,central_lon] = smapeasev1_ind2latlon(central_row,central_col,gridid);

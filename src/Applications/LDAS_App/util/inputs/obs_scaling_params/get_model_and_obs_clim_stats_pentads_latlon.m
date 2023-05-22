@@ -177,14 +177,12 @@ end
 fname_out_base = [ outpath, '/', prefix,   ...
           num2str(min(start_year)),'_doy',num2str(D(1)),'_',...
           num2str(max(end_year)),  '_doy',num2str(D(2)),...
-	      '_hscale_', num2str(hscale,'%2.2f'), '_',  ...
-	      'W_', num2str(w_days),'d_Nmin_', num2str(Ndata_min)];
+	      '_W_', num2str(w_days),'d_Nmin_', num2str(Ndata_min)];
       
 fname_out_base_p = [ outpath, '/', prefix,   ...
           num2str(min(start_year)),'_p',num2str(P(1)),'_',...
           num2str(max(end_year)),  '_p',num2str(P(2)),...
-	      '_hscale_', num2str(hscale,'%2.2f'), '_',  ...
-	      'W_', num2str(round(w_days/5)),'p_Nmin_', num2str(Ndata_min)];
+	      '_W_', num2str(round(w_days/5)),'p_Nmin_', num2str(Ndata_min)];
 
 %==============================================================
 % Some clunky code to maintain backwards compatibility with adding orbit
@@ -226,7 +224,7 @@ elseif d_count == numel(species_names)
     int_Asc = 2;
 elseif a_count > 0 && d_count > 0
     % There is a mix of "_A" and "_D"
-    disp('Spcies have a mix of "_A" and "_D"');
+    disp('Species have a mix of "_A" and "_D"');
     Orbit_tag = '_AD'; 
     int_Asc = 3;
 else
@@ -635,17 +633,6 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
   
   fname_out = [fname_out_base_s, '_DOY', num2str(DOY,'%3.3d'), '.nc4'];
 
-  % check whether output file exists
-  if (exist(fname_out)==2 && overwrite) 
-      disp(['output file exists. overwriting', fname_out])
-  elseif (exist(fname_out)==2 && ~overwrite) 
-      disp(['output file exists. not overwriting. returning'])
-      disp(['writing ', fname_out])
-      return
-  else
-      disp(['creating ', fname_out])
-  end
-  
   % compress data before writing in file. 
   
   %idx_keep = find(any(abs(data_out -nodata) > nodata_tol,1));
@@ -656,7 +643,17 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
   
   
   % write output for each DOY, sorted by all tile
-  if print_each_DOY     
+  if print_each_DOY
+      % check whether output file exists
+      if (exist(fname_out)==2 && overwrite)
+          disp(['output file exists. overwriting', fname_out])
+      elseif (exist(fname_out)==2 && ~overwrite) 
+           disp(['output file exists. not overwriting. returning'])
+           disp(['writing ', fname_out])
+           return
+      else
+            disp(['creating ', fname_out])
+      end
       write_netcdf_file_2D_grid(fname_out, i_out, j_out, lon_out, lat_out, ...
                 inc_angle, data2D, int_Asc, pentad, ...  %instead of writing the version#, write pentad
                 start_time, end_time, overwrite, ...
@@ -671,16 +668,25 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
           start_time_p(pentad) = start_time;
           end_time_p(pentad) = end_time;
           if print_each_pentad
+              fname_out = [fname_out_base_p, '_p', num2str(pentad,'%2.2d'), '.nc4'];
+              % check whether output file exists
+               if (exist(fname_out)==2 && overwrite)
+                   disp(['output file exists. overwriting', fname_out])
+               elseif (exist(fname_out)==2 && ~overwrite) 
+                   disp(['output file exists. not overwriting. returning'])
+                   disp(['writing ', fname_out])
+                   return
+               else
+                   disp(['creating ', fname_out])
+               end
               write_netcdf_file_2D_grid(fname_out, i_out, j_out, lon_out, lat_out, ...
                   inc_angle, data2D, int_Asc, pentad, ...  
                   start_time, end_time, overwrite, ...
                   Nf, write_ind_latlon, 'scaling',...
                   obsnum)
-             fname_out_p = [fname_out_base_p, '_p', num2str(pentad,'%2.2d'), '.nc4'];
-             copyfile(fname_out,fname_out_p);
           end
       end
-      
+  
   end
   
   %clear idx_keep lon_out_write lat_out_write data_out_write tile_coord_tile_id_write

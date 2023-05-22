@@ -407,29 +407,43 @@ COLLECTIONS:
 
 # For lndfcstana, *.frequency and *.ref_time must be consistent with the LDAS.rc resource
 # parameters LANDASSIM_DT and LANDASSIM_T0.
+# Output of the ensemble std-dev (ENSSTD) requires simultaneous output of the ensemble mean.  If the 
+# ensemble mean is not written out for a given field, that field's ENSSTD output will be MAPL_UNDEF.
 
-  inst3_1d_lndfcstana_Nt.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
+  inst3_1d_lndfcstana_Nt.descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble Land Forecast and Analysis Diagnostics',
   inst3_1d_lndfcstana_Nt.nbits:       12,
   inst3_1d_lndfcstana_Nt.template:    '%y4%m2%d2_%h2%n2z.bin',
   inst3_1d_lndfcstana_Nt.mode:        'instantaneous',
   inst3_1d_lndfcstana_Nt.frequency:   030000,
   inst3_1d_lndfcstana_Nt.ref_time:    000000,
-  inst3_1d_lndfcstana_Nt.fields:     'WCSF'        , 'ENSAVG'    , 'SFMC_FCST'       ,
-                                     'WCRZ'        , 'ENSAVG'    , 'RZMC_FCST'       ,
-                                     'WCPR'        , 'ENSAVG'    , 'PRMC_FCST'       ,
-                                     'TPSURF'      , 'ENSAVG'    , 'TSURF_FCST'      ,
-                                     'TSOIL1TILE'  , 'ENSAVG'    , 'TSOIL1_FCST'     ,
-                                     'WCSF_ANA'    , 'LANDASSIM' , 'SFMC_ANA'        ,
-                                     'WCRZ_ANA'    , 'LANDASSIM' , 'RZMC_ANA'        ,
-                                     'WCPR_ANA'    , 'LANDASSIM' , 'PRMC_ANA'        ,
-                                     'TPSURF_ANA'  , 'LANDASSIM' , 'TSURF_ANA'       ,
-                                     'TSOIL1_ANA'  , 'LANDASSIM' , 'TSOIL1_ANA'      ,
+  inst3_1d_lndfcstana_Nt.fields:     'WCSF'              , 'ENSAVG'    , 'SFMC_FCST'           ,
+                                     'WCRZ'              , 'ENSAVG'    , 'RZMC_FCST'           ,
+                                     'WCPR'              , 'ENSAVG'    , 'PRMC_FCST'           ,
+                                     'TPSURF'            , 'ENSAVG'    , 'TSURF_FCST'          ,
+                                     'TSOIL1TILE'        , 'ENSAVG'    , 'TSOIL1_FCST'         ,
+                                     'WCSF_ENSSTD'       , 'ENSAVG'    , 'SFMC_FCST_ENSSTD'    ,
+                                     'WCRZ_ENSSTD'       , 'ENSAVG'    , 'RZMC_FCST_ENSSTD'    ,
+                                     'WCPR_ENSSTD'       , 'ENSAVG'    , 'PRMC_FCST_ENSSTD'    ,
+                                     'TPSURF_ENSSTD'     , 'ENSAVG'    , 'TSURF_FCST_ENSSTD'   ,
+                                     'TSOIL1TILE_ENSSTD' , 'ENSAVG'    , 'TSOIL1_FCST_ENSSTD'  ,
+                                     'WCSF_ANA'          , 'LANDASSIM' , 'SFMC_ANA'            ,
+                                     'WCRZ_ANA'          , 'LANDASSIM' , 'RZMC_ANA'            ,
+                                     'WCPR_ANA'          , 'LANDASSIM' , 'PRMC_ANA'            ,
+                                     'TPSURF_ANA'        , 'LANDASSIM' , 'TSURF_ANA'           ,
+                                     'TSOIL1_ANA'        , 'LANDASSIM' , 'TSOIL1_ANA'          ,
+                                     'WCSF_ANA_ENSSTD'   , 'LANDASSIM' , 'SFMC_ANA_ENSSTD'     ,
+                                     'WCRZ_ANA_ENSSTD'   , 'LANDASSIM' , 'RZMC_ANA_ENSSTD'     ,
+                                     'WCPR_ANA_ENSSTD'   , 'LANDASSIM' , 'PRMC_ANA_ENSSTD'     ,
+                                     'TPSURF_ANA_ENSSTD' , 'LANDASSIM' , 'TSURF_ANA_ENSSTD'    ,
+                                     'TSOIL1_ANA_ENSSTD' , 'LANDASSIM' , 'TSOIL1_ANA_ENSSTD' 
                         ::
 
 # For lndfcstana, *.frequency and *.ref_time must be consistent with the LDAS.rc resource
 # parameters LANDASSIM_DT and LANDASSIM_T0.
+# Output of the ensemble std-dev (ENSSTD) requires simultaneous output of the ensemble mean.  If the 
+# ensemble mean is not written out for a given field, that field's ENSSTD output will be MAPL_UNDEF.
 
-  inst3_2d_lndfcstana_Nx.descr:       '2d,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble-Average Land Forecast and Analysis Diagnostics',
+  inst3_2d_lndfcstana_Nx.descr:       '2d,3-Hourly,Instantaneous,Single-Level,Assimilation,Ensemble Land Forecast and Analysis Diagnostics',
   inst3_2d_lndfcstana_Nx.nbits:       12,
   inst3_2d_lndfcstana_Nx.template:    '%y4%m2%d2_%h2%n2z.nc4',
   inst3_2d_lndfcstana_Nx.archive:     '%c/Y%y4',
@@ -441,16 +455,26 @@ COLLECTIONS:
   inst3_2d_lndfcstana_Nx.regrid_name: 'GRIDNAME',
   inst3_2d_lndfcstana_Nx.grid_label:  PC720x361-DC,
   inst3_2d_lndfcstana_Nx.deflate:     2,
-  inst3_2d_lndfcstana_Nx.fields:     'WCSF'        , 'ENSAVG'    , 'SFMC_FCST'       ,
-                                     'WCRZ'        , 'ENSAVG'    , 'RZMC_FCST'       ,
-                                     'WCPR'        , 'ENSAVG'    , 'PRMC_FCST'       ,
-                                     'TPSURF'      , 'ENSAVG'    , 'TSURF_FCST'      ,
-                                     'TSOIL1TILE'  , 'ENSAVG'    , 'TSOIL1_FCST'     ,
-                                     'WCSF_ANA'    , 'LANDASSIM' , 'SFMC_ANA'        ,
-                                     'WCRZ_ANA'    , 'LANDASSIM' , 'RZMC_ANA'        ,
-                                     'WCPR_ANA'    , 'LANDASSIM' , 'PRMC_ANA'        ,
-                                     'TPSURF_ANA'  , 'LANDASSIM' , 'TSURF_ANA'       ,
-                                     'TSOIL1_ANA'  , 'LANDASSIM' , 'TSOIL1_ANA'      ,
+  inst3_2d_lndfcstana_Nx.fields:     'WCSF'              , 'ENSAVG'    , 'SFMC_FCST'           ,
+                                     'WCRZ'              , 'ENSAVG'    , 'RZMC_FCST'           ,
+                                     'WCPR'              , 'ENSAVG'    , 'PRMC_FCST'           ,
+                                     'TPSURF'            , 'ENSAVG'    , 'TSURF_FCST'          ,
+                                     'TSOIL1TILE'        , 'ENSAVG'    , 'TSOIL1_FCST'         ,
+                                     'WCSF_ENSSTD'       , 'ENSAVG'    , 'SFMC_FCST_ENSSTD'    ,
+                                     'WCRZ_ENSSTD'       , 'ENSAVG'    , 'RZMC_FCST_ENSSTD'    ,
+                                     'WCPR_ENSSTD'       , 'ENSAVG'    , 'PRMC_FCST_ENSSTD'    ,
+                                     'TPSURF_ENSSTD'     , 'ENSAVG'    , 'TSURF_FCST_ENSSTD'   ,
+                                     'TSOIL1TILE_ENSSTD' , 'ENSAVG'    , 'TSOIL1_FCST_ENSSTD'  ,
+                                     'WCSF_ANA'          , 'LANDASSIM' , 'SFMC_ANA'            ,
+                                     'WCRZ_ANA'          , 'LANDASSIM' , 'RZMC_ANA'            ,
+                                     'WCPR_ANA'          , 'LANDASSIM' , 'PRMC_ANA'            ,
+                                     'TPSURF_ANA'        , 'LANDASSIM' , 'TSURF_ANA'           ,
+                                     'TSOIL1_ANA'        , 'LANDASSIM' , 'TSOIL1_ANA'          ,
+                                     'WCSF_ANA_ENSSTD'   , 'LANDASSIM' , 'SFMC_ANA_ENSSTD'     ,
+                                     'WCRZ_ANA_ENSSTD'   , 'LANDASSIM' , 'RZMC_ANA_ENSSTD'     ,
+                                     'WCPR_ANA_ENSSTD'   , 'LANDASSIM' , 'PRMC_ANA_ENSSTD'     ,
+                                     'TPSURF_ANA_ENSSTD' , 'LANDASSIM' , 'TSURF_ANA_ENSSTD'    ,
+                                     'TSOIL1_ANA_ENSSTD' , 'LANDASSIM' , 'TSOIL1_ANA_ENSSTD' 
                         ::
 
 # ========================== EOF ==============================================================
