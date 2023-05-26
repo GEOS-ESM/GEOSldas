@@ -103,9 +103,10 @@ fcsterr_inflation_fac = -9999.
 ! %RTM_ID         = ID of radiative transfer model to use for Tb forward modeling
 !                   (subroutine get_obs_pred()) 
 !                     0 = none
-!                     1 = tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1)
-!                     2 = same as 1 but without Pellarin atmospheric corrections
-!                     3 = ...
+!                     1 = L-band tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1) (SMOS)
+!                     2 = same as 1 but without Pellarin atm corr (SMAP)
+!                     3 = same as 1 but with Mironov and SMAP L2_SM pol mixing (SMOS)
+!                     4 = same as 3 but without Pellarin atm corr (targeted for SMAP L4_SM Version 8)
 ! %bias_Npar      = number of obs bias states tracked per day (integer)
 ! %bias_trel      = e-folding time scale of obs bias memory [s]
 ! %bias_tcut      = cutoff time for confident obs bias estimate [s]
