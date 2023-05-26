@@ -1,7 +1,7 @@
 
-function [] = get_model_and_obs_clim_stats( species_names,              ...
+function [] = get_model_and_obs_clim_stats_pentads_latlon( species_names,              ...
     run_months, exp_path, exp_run, domain, start_year, end_year,   ...
-    dt_assim, t0_assim, species, obs_param, ...
+    dt_assim, t0_assim, species, combine_species_stats, obs_param, ...
     hscale, w_days, Ndata_min, prefix, ...
     convert_grid , time_of_day_in_hours )
 
@@ -18,7 +18,9 @@ function [] = get_model_and_obs_clim_stats( species_names,              ...
 % One file with statistics is generated for every DOY (1,...,365).
 % The temporal smoothing/averaging window (w_days) is given in days.
 %
-% Stats output file in a similar format as the SMOS-data files 
+% We calcualte the bias correction factors and write on a regular 0.25 degree 
+% lat/lon grid as there is no regular grid for ASCAT observations
+
 %
 % ==HEADER==
 % N_tiles N_angles
@@ -104,33 +106,31 @@ nodata_tol = 1e-4;
 
 no_data_stats = -9999.;
 
-disp('ASSUMING EASEv2 M36 observations');
-
-if ~isempty(strfind(domain,'M36')) && isempty(strfind(obs_param(species(1)).descr, '_E'))
-    tol           = 1E-3;
-else
-    tol           = 2;
-end
+disp('ASSUMING ACAT observations/undefined observation grid');
 
 % output specs
 
 overwrite    =  1;
 
-N_species = length(species);
+if combine_species_stats
+    N_species = 1;
+else
+    N_species = length(species);
+end
 
-Nf = 5;                %5 fields per species
-N_out_fields = N_species*Nf + N_species * 2; %This includes the debugging fields to replicate SMAP code
+Nf = 5;                  %5 fields per species
+N_pentads = 73;
 
 write_ind_latlon = 'latlon_id'; %'latlon';
 
-%d N_angle = length(inc_angle);
-%d N_pol   = 2;
+% tmp_shift_lon    = 0.01;
+% tmp_shift_lat    = 0.005;
 
-tmp_shift_lon    = 0.01;
-tmp_shift_lat    = 0.005;
-
-store_all_M09inM36 = 0;
-print_each_DOY     = 0;
+% More user switches that could be moved
+store_all_025_latlon = 0;
+print_each_DOY = 0;
+print_each_pentad = 1;
+print_all_pentads = 1;
 
 % -------------------------------------------------------------------
 % end user-defined inputs
@@ -144,7 +144,6 @@ inpath  = [ exp_path, '/', exp_run, '/output/', domain ];
 outpath = [ inpath, '/stats/z_score_clim/'   ];
 
 % create outpath if it doesn't exist
-
 if exist(outpath)~=2
   eval(['!mkdir -p ', outpath]);
 end
@@ -178,15 +177,14 @@ end
 fname_out_base = [ outpath, '/', prefix,   ...
           num2str(min(start_year)),'_doy',num2str(D(1)),'_',...
           num2str(max(end_year)),  '_doy',num2str(D(2)),...
-	      '_hscale_', num2str(hscale,'%2.2f'), '_',  ...
-	      'W_', num2str(w_days),'d_Nmin_', num2str(Ndata_min)];
+	      '_W_', num2str(w_days),'d_Nmin_', num2str(Ndata_min)];
       
 fname_out_base_p = [ outpath, '/', prefix,   ...
           num2str(min(start_year)),'_p',num2str(P(1)),'_',...
           num2str(max(end_year)),  '_p',num2str(P(2)),...
-	      '_hscale_', num2str(hscale,'%2.2f'), '_',  ...
-	      'W_', num2str(round(w_days/5)),'p_Nmin_', num2str(Ndata_min)];
+	      '_W_', num2str(round(w_days/5)),'p_Nmin_', num2str(Ndata_min)];
 
+%==============================================================
 % Some clunky code to maintain backwards compatibility with adding orbit
 % tag
 
@@ -226,7 +224,7 @@ elseif d_count == numel(species_names)
     int_Asc = 2;
 elseif a_count > 0 && d_count > 0
     % There is a mix of "_A" and "_D"
-    disp('Spcies have a mix of "_A" and "_D"');
+    disp('Species have a mix of "_A" and "_D"');
     Orbit_tag = '_AD'; 
     int_Asc = 3;
 else
@@ -246,123 +244,61 @@ if exist( 'time_of_day_in_hours', 'var')
   
 end
 
-% -------------------------------------------------------------		  
-
-% load catchment coordinates
-
-fname = [inpath, '/rc_out/', exp_run, '.ldas_tilecoord.bin'];
-fnameg= [inpath, '/rc_out/', exp_run, '.ldas_tilegrids.bin'];
-
-[ tile_coord ] = read_tilecoord( fname );
-[ tile_grid ]  = read_tilegrids( fnameg );
-
-N_tile = length(tile_coord.tile_id);
+%======================================================
 
 % -------------------------------------------------------------
+% Define our 1/4 degree lat/lon grid
+n_lon = 1440;
+n_lat = 720;
+ll_lon = -180;
+ll_lat = -90;
+d_lon = 0.25;
+d_lat = 0.25;
+ll_lons = linspace(-180, 179.75, 1440);
+ll_lats  = linspace(-90, 89.75, 720);
+i_lon = (1:1440);
+j_lat =  (1:720);
 
-% determine tiles to whose statistics the current obs will contribute to
-
-disp('pre-computing index for regional averaging')
-
-central_lat        = tile_coord.com_lat;
-central_lon        = tile_coord.com_lon;
-tile_coord_tile_id = tile_coord.tile_id;
-
-if (exist('convert_grid'))
-    
-    %1) convert to M36 EASE indices
-    %2) convert back to lat/lon at center of obs
-    if (~isempty(strfind(convert_grid, 'M36')) && ~isempty(strfind(convert_grid, 'EASEv2')))
-        gridid = 'M36';
-        [central_row,central_col] = EASEv2_latlon2ind(central_lat,central_lon,gridid,1);
-    elseif (~isempty(strfind(convert_grid, 'M36')) && ~isempty(strfind(convert_grid, 'EASEv1')))
-       error('Must provide smapeasev1_latlon2ind() and smapeasev1_ind2latlon()!')
-        gridid = 'M36';
-        [central_row,central_col] = smapeasev1_latlon2ind(central_lat,central_lon,gridid);
-        [central_lat,central_lon] = smapeasev1_ind2latlon(central_row,central_col,gridid);
-    else
-        error(['Unable to convert to ',convert_grid])
+grid_idx = zeros(1036800,5);
+grid_idx(:,1) = (1:1036800);
+cnt = 0;
+for i = 1:n_lon
+    for j = 1:n_lat
+        cnt = cnt+1;
+        grid_idx(cnt,2) = i_lon(i);
+        grid_idx(cnt,3) = j_lat(j);
+        grid_idx(cnt,4) = ll_lons(i);
+        grid_idx(cnt,5) = ll_lats(j);        
     end
-    
-    row_col_tmp         = [central_row central_col];
-    [unique_rc, ia, ic] = unique(row_col_tmp,'rows');
-    
-    max_Hx_c = length(find(mode(ic)==ic));
-    
-    %know which exact M09 tiles are actually administering the obs 
-    %-------------------
-    tmp_lon = central_lon(ia)+tmp_shift_lon;
-    tmp_lat = central_lat(ia)+tmp_shift_lat;
-    
-    [N_tile_in_cell_ij, tile_num_in_cell_ij] = get_tile_num_in_cell_ij(...
-                    tile_coord, tile_grid);
-     
-    this_FOV = 20;
-    option   = 'FOV_in_km';
-    %overwrite ia with actual administering tile number            
-    [ia] = get_tile_num_for_obs(tile_coord, tile_grid,...
-                N_tile_in_cell_ij, tile_num_in_cell_ij,...
-                option, this_FOV, tmp_lat, tmp_lon);
-    
-    ia = ia(ia>0 & ~isnan(ia));
-    
-    obsnum     = NaN+zeros(length(ic),1);
-    obsnum(ia) = [1:length(ia)];        
-    
-    N_tile_obs = length(ia);
-    
-    %-------------------
-    
-    if store_all_M09inM36
-        
-        %Not maintained/elaborated
-        tile_coord_tile_id = zeros(N_tile_obs,max_Hx_c);
-
-        disp(['centralizing obs on ',convert_grid,' grid before doing stats: max ',num2str(max_Hx_c),'tiles per obs cell'])
-
-        for i=1:N_tile_obs
-
-            tmp_ind = find(row_col_tmp(:,1) == unique_rc(i,1)  & row_col_tmp(:,2) == unique_rc(i,2));
-            tile_coord_tile_id(i,1:length(tmp_ind)) = tile_coord.tile_id(tmp_ind);
-
-        end
-        
-    else
-        
-       tile_coord_tile_id = tile_coord.tile_id(ia); 
-        
-    end
-    
-else
-    
-    N_tile_obs = N_tile;
-    ia         = 1:N_tile;
-    ic         = 1:N_tile;
-    obsnum     = 1:N_tile;        
-    
 end
+        
+% -------------------------------------------------------------
 
-lon_out    = tile_coord.com_lon(ia); %NaN+zeros(N_tile,1);
-lat_out    = tile_coord.com_lat(ia); %NaN+zeros(N_tile,1);
+obsnum = grid_idx(:,1); 
+i_out = grid_idx(:,2);
+j_out = grid_idx(:,3);
+lon_out    = grid_idx(:,4);
+lat_out    = grid_idx(:,5);
+N_gridcells = length(grid_idx);
 
-
+% Not sure about this as aren't centering lat/lons
 if hscale>0
 
-    for i=1:N_tile_obs
+    for i=1:N_gridcells
 
         this_lat = lat_out(i);
         this_lon = lon_out(i);
 
         tmp_sq_distance =              ...
-        (central_lon - this_lon).^2 +  ...
-        (central_lat - this_lat).^2;
+        (lon_out - this_lon).^2 +  ...
+        (lat_out - this_lat).^2;
 
         hscale_ind{i} = find( tmp_sq_distance <= hscale^2 );
     end
 
 else 
 
-    hscale_ind = num2cell(ia);
+    hscale_ind = num2cell(obsnum);
 
 end
   
@@ -372,13 +308,14 @@ end
 %       N_pol and N_angle be specified here. Then subsample specifically
 %       when the files are written out.
 
-o_data     = NaN+zeros(N_species,N_tile_obs,w_days);
-m_data     = NaN+zeros(N_species,N_tile_obs,w_days);
-o_data2    = NaN+zeros(N_species,N_tile_obs,w_days);
-m_data2    = NaN+zeros(N_species,N_tile_obs,w_days);
-N_data     = NaN+zeros(N_species,N_tile_obs,w_days);
+o_data     = NaN+zeros(N_species, N_gridcells, w_days);
+m_data     = NaN+zeros(N_species, N_gridcells, w_days);
+o_data2    = NaN+zeros(N_species, N_gridcells, w_days);
+m_data2    = NaN+zeros(N_species, N_gridcells, w_days);
+N_data     = NaN+zeros(N_species, N_gridcells, w_days);
 
-data_out   = NaN+zeros(N_out_fields,N_tile_obs);
+data_out   = NaN+zeros(N_species, Nf, N_gridcells, N_pentads);
+data2D = NaN+zeros(Nf, N_gridcells);
 
 % -------------------------------------------------------------		  
 
@@ -445,19 +382,19 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
 
            fclose(ifp);
 
-           [date_time,              ...
-            obs_assim,              ...
-            obs_species,            ...
-            obs_tilenum,            ...
-            obs_lon,                ...
-            obs_lat,                ...
-            obs_obs,                ...
-            obs_obsvar,             ...
-            obs_fcst,               ...
-            obs_fcstvar,            ...
-            obs_ana,                ...
-            obs_anavar              ...
-                 ] =                      ...
+           [date_time,           ...
+            obs_assim,         ...
+            obs_species,      ...
+            obs_tilenum,      ...
+            obs_lon,              ...
+            obs_lat,               ...
+            obs_obs,             ...
+            obs_obsvar,        ...
+            obs_fcst,             ...
+            obs_fcstvar,       ...
+            obs_ana,             ...
+            obs_anavar        ...
+                 ] =                    ...
                 read_ObsFcstAna( fname );
             
           % remove tiles when there is no obs_fcst (obs_fcst == 0 in innov output when
@@ -479,16 +416,18 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
           % extract species of interest
           
           ind = [];
-          
-          scnt = 0;
 
-          for this_species = species
+          %for this_species = species
+          for scnt = 1:N_species
               
-              scnt = scnt + 1;
+              if combine_species_stats % We are  combining stats
+                  ind = find(ismember(obs_species, species));
+                  this_species = species(scnt); % Only first species in list. But only used in determining angle and pol for species, which shouldn't vary between species being combined
+              else
+                  ind = find( obs_species == this_species);
+              end
 
-            ind = find( obs_species == this_species);
-
-            if (~isempty(ind))
+             if (~isempty(ind))
 
                 obs_tilenum_i = obs_tilenum(ind); 
                 obs_obs_i     = obs_obs(ind);  
@@ -499,21 +438,16 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
                 % Check if any location receives more than 1 obs (or 1 species)
 
                 tmp = sort(obs_tilenum_i);
-                same_tile = find(diff(tmp)==0);
+                same_tile = find(diff(tmp)==0, 1);
 
-                if (~isempty(same_tile))
+                if (~isempty(same_tile) && combine_species_stats==0)
                     error('multiple obs of the same species at one location? - only last one in line is used');
                 end
 
                 % Organize the data in a big matrix
 
-                angle = obs_param(this_species == [obs_param.species]).ang;
                 pol   = obs_param(this_species == [obs_param.species]).pol;
-
-                %pol intrinsically gives an index
-                %now find the index for the angle
-                %d angle_i = find(angle(1) == inc_angle);
-
+              
                 % Only writes lat-lon at exact obs locations, but with
                 % hscale>0, these obs are spread outside their exact
                 % location. This allows to calculate stats at lan-lons 
@@ -527,17 +461,26 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
                 %in the tile_coord would not be identical.
                 %Still, they should be in the
                 %neighbourhood, so check here if that is true.
-                if (any(abs(tile_coord.com_lat(obs_tilenum_i)-obs_lat_i) > tol) || ...
-                    any(abs(tile_coord.com_lon(obs_tilenum_i)-obs_lon_i) > tol) )
-                    error('Something wrong with tile_lat/lon')
-                end
+%                 if (any(abs(tile_coord.com_lat(obs_tilenum_i)-obs_lat_i) > tol) || ...
+%                     any(abs(tile_coord.com_lon(obs_tilenum_i)-obs_lon_i) > tol) )
+%                     error('Something wrong with tile_lat/lon')
+%                 end
 
                 %map model tiles (e.g. all M09) to observation administering
                 %tiles (could be a reduced subset of all M09)
                 %--------------------------------------------------------
-                obs_i = obsnum(obs_tilenum_i); 
+%                 obs_i = obsnum(obs_tilenum_i); 
                 %--------------------------------------------------------
                 
+                % Put obs lat/lon on our grid and figure out obsnum/grid
+                % index
+                
+                i_idx = floor((obs_lon_i - ll_lon)/d_lon) + 1;
+                j_idx = floor((obs_lat_i - ll_lat)/d_lat) + 1;
+                [~, obs_idx] = ismember([i_idx, j_idx], [i_out, j_out], 'rows');
+                
+                obs_i = obsnum(obs_idx); 
+                        
                 if (hscale == 0)
 
                         %11 May 2015: sum the obs and fcst within each day;
@@ -618,115 +561,45 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
 
   % data_out = zeros(N_out_fields,1:N_tiles,N_angle);
   
-  for i = 0:N_species-1
-
-      pp = i*Nf;
-
-      N_hscale_window = nansum(N_data(1+i,:,1:w_days),3);
+  for i = 1:N_species
+      
+      N_hscale_window = nansum(N_data(i,:,1:w_days),3);
 
       if w_days == 95
-         N_hscale_inner_window = nansum(N_data(1+i,:,((w_days+1)/2-15):((w_days+1)/2+15)),3);
+         N_hscale_inner_window = nansum(N_data(i,:,((w_days+1)/2-15):((w_days+1)/2+15)),3);
       end
       
       % OBSERVATIONS
       %----------------
       %o_data is a sum over neighbouring obs above; 
       %here then take a sum over the time steps in the window
-      data_out(1+pp,:) = nansum(o_data(1+i,:,1:w_days),3);
+      data2D(1,:) = nansum(o_data(i,:,1:w_days),3);
 
       %then make the average, by dividing over the sum of the number of
       %timesteps and influencing obs at each location
-      data_out(1+pp,:) = data_out(1+pp,:)./N_hscale_window;   
+      data2D(1,:) = data2D(1,:)./N_hscale_window;   
 
       %stdv_H = sqrt(E[X^2] - E[X]^2)
-      data_out(2+pp,:) = nansum(o_data2(1+i,:,1:w_days),3);
-      data_out(2+pp,:) = data_out(2+pp,:)./N_hscale_window;
-      data_out(2+pp,:) = sqrt( data_out(2+pp,:) - data_out(1+pp,:).^2);
+      data2D(2,:) = nansum(o_data2(i,:,1:w_days),3);
+      data2D(2,:) = data2D(2,:)./N_hscale_window;
+      data2D(2,:) = sqrt( data2D(2,:) - data2D(1,:).^2);
 
       % MODEL
       %----------------
-      data_out(3+pp,:) = nansum(m_data(1+i,:,1:w_days),3);
-      data_out(3+pp,:) = data_out(3+pp,:)./N_hscale_window;            
+      data2D(3,:) = nansum(m_data(i,:,1:w_days),3);
+      data2D(3,:) = data2D(3,:)./N_hscale_window;            
 
-      data_out(4+pp,:) = nansum(m_data2(1+i,:,1:w_days),3);
-      data_out(4+pp,:) = data_out(4+pp,:)./N_hscale_window;
-      data_out(4+pp,:) = sqrt( data_out(4+pp,:) - data_out(3+pp,:).^2);
+      data2D(4,:) = nansum(m_data2(i,:,1:w_days),3);
+      data2D(4,:) = data2D(4,:)./N_hscale_window;
+      data2D(4,:) = sqrt( data2D(4,:) - data2D(4,:).^2);
 
-      data_out(5+pp,:) = N_hscale_window;
+      data2D(5,:) = N_hscale_window;
 
       % Toss out stats that are based on too little data
 
-      data_out([1:Nf]+pp,N_hscale_window<Ndata_min) = NaN;
-      
-      if w_days == 95
-          data_out([1:Nf]+pp,N_hscale_inner_window < (Ndata_min/2.5)) = NaN;
-      end
-      
-  end
+      data2D([1:Nf],N_hscale_window<Ndata_min) = NaN;
+        
 
-%   fill_M09basedonM36 = 0;
-%   %X
-%   if ~exist('convert_grid') && fill_M09basedonM36
-%       
-%       for kk = 1:size(data_out,1)
-%           
-%           idx = find(~isnan(data_out(kk,:)));
-%           for dd = 1:length(idx)
-%               
-%               this_lon = lon_out(idx(dd));
-%               this_lat = lat_out(idx(dd));
-%               this_data = data_out(kk, idx(dd));    
-%               
-%               
-%      
-%           [M36_row, M36_col] = smapeasev2_latlon2ind(this_lat,this_lon,'M36');
-%           
-%           M09_row =  (M36_row*4):((M36_row+1)*4-1);
-%           M09_col =  (M36_col*4):((M36_col+1)*4-1);
-%           
-%           [M09_col, M09_row] = meshgrid(M09_col, M09_row);
-%           
-%           [M09_lat, M09_lon] = smapeasev2_ind2latlon(M09_row(:), M09_col(:), 'M09');
-%           
-%           clear s_eff
-%           for ii = 1:length(M09_lat)
-%                tmp_sq_distance =              ...
-%                    (lon_out - M09_lon(ii)).^2 +  ...
-%                    (lat_out - M09_lat(ii)).^2;
-%  
-%                [tmp,s_eff(ii)] = min(tmp_sq_distance);
-%              
-%               
-%               %s_eff(ii) = intersect(find(lon_out>M09_lon(ii)-1e-4 & lon_out<M09_lon(ii)+1e-4),...
-%               %    find(lat_out>M09_lat(ii)-1e-4 & lat_out<M09_lat(ii)+1e-4));
-%               %s_eff(ii) = dsearchn([lon_out lat_out], [M09_lon(ii) M09_lat(ii)]);
-%           end
-%           s_eff = unique(s_eff);
-%           
-%           if (length(intersect(s_eff,idx)) > 1)
-%               disp('something is wrong, M36 might be overwritten')
-%               pause
-%           end
-%                     
-%           data_out(kk,s_eff) = repmat(this_data, 1, length(s_eff));
-%           
-%           end
-%       end
-%   end
-          
-         
-  % Get the actual obs/model at the center point (for debugging only!!)
-tmp_Nf = N_species*Nf; %Number of actual fields before debug information
-
-for i = 1:N_species % New species loop
-    rr = tmp_Nf+((i*2)-1);
-    data_out(rr,:) = o_data(1,:,w_days-floor(w_days/2.0))./N_data(1,:,w_days-floor(w_days/2.0));
-    rr = tmp_Nf+(i*2);
-    data_out(rr,:) = m_data(1,:,w_days-floor(w_days/2.0))./N_data(1,:,w_days-floor(w_days/2.0));
-    
-    startrow = ((i-1)*5)+1;
-    endrow = i*5;
-    
     % Get rid of NaN before writing a file
 
   data_out(isnan(data_out)) = nodata;
@@ -734,9 +607,15 @@ for i = 1:N_species % New species loop
    
  startidx = strfind(fname_out_base, 'z_score_clim//');
  endidx = startidx + length('z_score_clim//');
-
- fname_out_base_s = [fname_out_base(1:startidx-1) 'z_score_clim/', char(species_names(i)),'_', fname_out_base(endidx:end)];
-  %lon_out(isnan(lon_out))   = nodata;
+  
+ if combine_species_stats % We are  combining stats
+     fname_out_base_s = [fname_out_base(1:startidx-1) 'z_score_clim/combined_', fname_out_base(endidx:end)];
+ else
+     fname_out_base_s = [fname_out_base(1:startidx-1) 'z_score_clim/', char(species_names(i)),'_', fname_out_base(endidx:end)];
+ end
+  
+ 
+ %lon_out(isnan(lon_out))   = nodata;
   %lat_out(isnan(lat_out))   = nodata;
 
   % write output file 
@@ -754,17 +633,6 @@ for i = 1:N_species % New species loop
   
   fname_out = [fname_out_base_s, '_DOY', num2str(DOY,'%3.3d'), '.nc4'];
 
-  % check whether output file exists
-  if (exist(fname_out)==2 && overwrite) 
-      disp(['output file exists. overwriting', fname_out])
-  elseif (exist(fname_out)==2 && ~overwrite) 
-      disp(['output file exists. not overwriting. returning'])
-      disp(['writing ', fname_out])
-      return
-  else
-      disp(['creating ', fname_out])
-  end
-  
   % compress data before writing in file. 
   
   %idx_keep = find(any(abs(data_out -nodata) > nodata_tol,1));
@@ -775,29 +643,51 @@ for i = 1:N_species % New species loop
   
   
   % write output for each DOY, sorted by all tile
-  if print_each_DOY     
-      write_netcdf_file(fname_out, lon_out, lat_out, ...
-                inc_angle, data_out(startrow:endrow,:), int_Asc, 0, ...  %instead of writing the version#, write Ndata_min=0
+  if print_each_DOY
+      % check whether output file exists
+      if (exist(fname_out)==2 && overwrite)
+          disp(['output file exists. overwriting', fname_out])
+      elseif (exist(fname_out)==2 && ~overwrite) 
+           disp(['output file exists. not overwriting. returning'])
+           disp(['writing ', fname_out])
+           return
+      else
+            disp(['creating ', fname_out])
+      end
+      write_netcdf_file_2D_grid(fname_out, i_out, j_out, lon_out, lat_out, ...
+                inc_angle, data2D, int_Asc, pentad, ...  %instead of writing the version#, write pentad
                 start_time, end_time, overwrite, ...
                 Nf, write_ind_latlon, 'scaling',...
-                tile_coord_tile_id)
+                obsnum)
   else
       % if DOY is at middle of pentad, then copy the DOY to a pentad file
       % DOY = pentad*5 - 2; ==> pentad = (DOY + 2)/5;
       pentad = (DOY + 2)/5;
       if mod((DOY + 2),5) == 0
-        write_netcdf_file(fname_out, lon_out, lat_out, ...
-            inc_angle, data_out(startrow:endrow,:), int_Asc, 0, ...  
-            start_time, end_time, overwrite, ...
-            Nf, write_ind_latlon, 'scaling',...
-            tile_coord_tile_id)
-        fname_out_p = [fname_out_base_p, '_p', num2str(pentad,'%2.2d'), '.bin'];
-        copyfile(fname_out,fname_out_p);
+          data_out(i,:,:,pentad) = data2D;
+          start_time_p(pentad) = start_time;
+          end_time_p(pentad) = end_time;
+          if print_each_pentad
+              fname_out = [fname_out_base_p, '_p', num2str(pentad,'%2.2d'), '.nc4'];
+              % check whether output file exists
+               if (exist(fname_out)==2 && overwrite)
+                   disp(['output file exists. overwriting', fname_out])
+               elseif (exist(fname_out)==2 && ~overwrite) 
+                   disp(['output file exists. not overwriting. returning'])
+                   disp(['writing ', fname_out])
+                   return
+               else
+                   disp(['creating ', fname_out])
+               end
+              write_netcdf_file_2D_grid(fname_out, i_out, j_out, lon_out, lat_out, ...
+                  inc_angle, data2D, int_Asc, pentad, ...  
+                  start_time, end_time, overwrite, ...
+                  Nf, write_ind_latlon, 'scaling',...
+                  obsnum)
+          end
       end
-      
-  end
   
-end % new species loop
+  end
   
   %clear idx_keep lon_out_write lat_out_write data_out_write tile_coord_tile_id_write
   
@@ -815,12 +705,32 @@ end % new species loop
   m_data2(:,:,w_days) = NaN;
   N_data(:,:,w_days)  = NaN;
 
-  data_out = NaN+0.0.*data_out;      
+  data2D = NaN+0.0.*data2D;      
+  
+  end
   
   end
   
 end        % day
 end        % month
+
+if print_all_pentads
+    for i = 1:N_species
+        data_o = squeeze(data_out(i,:,:,:));
+        
+         if combine_species_stats % We are  combining stats
+             fname_out = [fname_out_base(1:startidx-1) 'z_score_clim/combined_all_pentads_', fname_out_base(endidx:end),'.nc4'];
+         else
+             fname_out = [fname_out_base(1:startidx-1) 'z_score_clim/', char(species_names(i)),'_all_pentads_', fname_out_base(endidx:end),'.nc4'];
+         end
+
+        write_netcdf_file_2D_grid(fname_out, i_out, j_out, lon_out, lat_out, ...
+                  inc_angle, data_o, int_Asc, [1:73], ...  
+                  start_time_p, end_time_p, overwrite, ...
+                  Nf, write_ind_latlon, 'scaling',...
+                  obsnum)
+    end
+end
 
 
 % ==================== EOF ==============================================
