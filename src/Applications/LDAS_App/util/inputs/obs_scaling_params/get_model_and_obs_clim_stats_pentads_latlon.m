@@ -591,7 +591,7 @@ for day = 1:days_in_month( 2014, month) %2014 = random non-leap year
 
       data2D(4,:) = nansum(m_data2(i,:,1:w_days),3);
       data2D(4,:) = data2D(4,:)./N_hscale_window;
-      data2D(4,:) = sqrt( data2D(4,:) - data2D(4,:).^2);
+      data2D(4,:) = sqrt( data2D(4,:) - data2D(3,:).^2);
 
       data2D(5,:) = N_hscale_window;
 
