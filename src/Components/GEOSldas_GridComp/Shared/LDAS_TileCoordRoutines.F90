@@ -306,7 +306,7 @@ contains
     i_indg_offset = 0
     j_indg_offset = 0
     
-    call init_grid_def_type(  )
+    call init_grid_def_type(tile_grid)
     
     tile_grid%N_lon = N_lon
     tile_grid%N_lat = N_lat
