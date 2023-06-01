@@ -1629,7 +1629,8 @@ contains
     type(date_time_type) :: date_time_upp
     
     integer :: i, ind, N_tmp, N_files
-    integer :: start_time, end_time, elapsed_time
+    integer :: clock_start, clock_end, clock_rate
+    real(8)    :: elapsed_time
 
     character(300), dimension(:), allocatable :: fnames
  
@@ -1661,7 +1662,8 @@ contains
     
     ! initialize
 
-    start_time = system_clock()
+    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
+    call system_clock(COUNT=clock_start) ! Start timing
     
     found_obs = .false.
 
@@ -1742,11 +1744,8 @@ contains
     
     close(10,status='delete')
 
-    ! Get the end time
-    end_time = system_clock()
-
-    ! Calculate the elapsed time in milliseconds
-    elapsed_time = (end_time - start_time) * 1000 / system_clock_rate()
+    call system_clock(COUNT=clock_end) ! Stop timing
+    elapsed_time=REAL((clock_end-clock_start)/clock_rate)
     
     write (logunit,*) 'Elapsed time file names: ', elapsed_time, ' milliseconds'
 
@@ -1762,8 +1761,8 @@ contains
     !
     ! 1.) read N_tmp observations and their lat/lon info from file
 
-
-    start_time = system_clock()
+    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
+    call system_clock(COUNT=clock_start) ! Start timing
 
     ! read and process data if files are found
     allocate(tmp1_lon(max_rec))
@@ -1887,11 +1886,8 @@ contains
     deallocate(tmp1_lat)
     deallocate(tmp1_obs) 
 
-    ! Get the end time
-    end_time = system_clock()
-
-    ! Calculate the elapsed time in milliseconds
-    elapsed_time = (end_time - start_time) * 1000 / system_clock_rate()
+    call system_clock(COUNT=clock_end) ! Stop timing
+    elapsed_time=REAL((clock_end-clock_start)/clock_rate)
     
     write (logunit,*) 'Elapsed time bufr read: ', elapsed_time, ' milliseconds'
 
@@ -1909,7 +1905,8 @@ contains
     !     a) determine grid cell that contains lat/lon
     !     b) determine tile within grid cell that contains lat/lon
 
-    start_time = system_clock()
+    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
+    call system_clock(COUNT=clock_start) ! Start timing
 
     if (N_tmp>0) then
        
@@ -1997,11 +1994,8 @@ contains
     end if
 
 
-        ! Get the end time
-    end_time = system_clock()
-
-    ! Calculate the elapsed time in milliseconds
-    elapsed_time = (end_time - start_time) * 1000 / system_clock_rate()
+    call system_clock(COUNT=clock_end) ! Stop timing
+    elapsed_time=REAL((clock_end-clock_start)/clock_rate)
     
     write (logunit,*) 'Elapsed time tile allocation: ', elapsed_time, ' milliseconds'
     
