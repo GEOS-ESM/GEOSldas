@@ -1629,8 +1629,8 @@ contains
     type(date_time_type) :: date_time_upp
     
     integer :: i, ind, N_tmp, N_files
-    integer :: clock_start, clock_end, clock_rate
-    real(8)    :: elapsed_time
+    integer :: clock_start, clock_start_sr, clock_end, clock_end_sr, clock_rate, clock_rate_sr
+    real(8) :: elapsed_time, elapsed_time_sr
 
     character(300), dimension(:), allocatable :: fnames
  
@@ -1661,11 +1661,10 @@ contains
     ! ---------------
     
     ! initialize
-
-    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
-    call system_clock(COUNT=clock_start) ! Start timing
     
     found_obs = .false.
+
+    call system_clock(clock_start_sr) ! Start timing
 
     ! find files that are within half-open interval 
     ! [date_time-dtstep_assim/2,date_time+dtstep_assim/2)
@@ -1744,10 +1743,9 @@ contains
     
     close(10,status='delete')
 
-    call system_clock(COUNT=clock_end) ! Stop timing
-    elapsed_time=REAL((clock_end-clock_start)/clock_rate)
-    
-    write (logunit,*) 'Elapsed time file names: ', elapsed_time, ' milliseconds'
+    call system_clock(clock_end, clock_rate) ! Stop timing
+    elapsed_time=(real(clock_end-clock_start_sr)/real(clock_rate))
+    write (logunit,*) 'Elapsed time filenames from start: ', elapsed_time, ' seconds'
 
     ! read observations:
     !
@@ -1761,8 +1759,8 @@ contains
     !
     ! 1.) read N_tmp observations and their lat/lon info from file
 
-    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
-    call system_clock(COUNT=clock_start) ! Start timing
+!    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
+!    call system_clock(COUNT=clock_start) ! Start timing
 
     ! read and process data if files are found
     allocate(tmp1_lon(max_rec))
@@ -1771,6 +1769,7 @@ contains
     allocate(tmp1_jtime(max_rec))
 
     if (N_files>0) then
+       call system_clock(clock_start)
        
        ! file loop
        N_tmp = 0
@@ -1886,10 +1885,10 @@ contains
     deallocate(tmp1_lat)
     deallocate(tmp1_obs) 
 
-    call system_clock(COUNT=clock_end) ! Stop timing
-    elapsed_time=REAL((clock_end-clock_start)/clock_rate)
-    
-    write (logunit,*) 'Elapsed time bufr read: ', elapsed_time, ' milliseconds'
+    call system_clock(clock_end, clock_rate) ! Stop timing
+    elapsed_time_sr=(real(clock_end-clock_start)/real(clock_rate))
+    write (logunit,*) 'Elapsed time bufr read from start: ', elapsed_time_sr, ' seconds'
+
 
     ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
@@ -1905,8 +1904,8 @@ contains
     !     a) determine grid cell that contains lat/lon
     !     b) determine tile within grid cell that contains lat/lon
 
-    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
-    call system_clock(COUNT=clock_start) ! Start timing
+!    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
+!    call system_clock(COUNT=clock_start) ! Start timing
 
     if (N_tmp>0) then
        
@@ -1949,7 +1948,9 @@ contains
        end do
 
               ! --------------------------------
-      
+       call system_clock(clock_end, clock_rate) ! Stop timing
+       elapsed_time=(real(clock_end-clock_start_sr)/real(clock_rate))
+       write (logunit,*) 'Elapsed time after n_obs_in_tile from start: ', elapsed_time, ' seconds'
        
        ! normalize
        
@@ -1976,7 +1977,12 @@ contains
           end if
           
        end do
-       
+      
+
+       call system_clock(clock_end, clock_rate) ! Stop timing
+       elapsed_time=(real(clock_end-clock_start_sr)/real(clock_rate))
+       write (logunit,*) 'Elapsed time 4 from start: ', elapsed_time, ' seconds'
+
        ! clean up
        
        if (associated(tmp_tile_num)) deallocate(tmp_tile_num)
@@ -1993,19 +1999,19 @@ contains
        
     end if
 
+    call system_clock(clock_end, clock_rate) ! Stop timing
+    elapsed_time=(real(clock_end-clock_start_sr)/real(clock_rate))
+    write (logunit,*) 'Elapsed time in read_obs_sm_ASCAT_EUMET: ', elapsed_time, ' seconds'
 
-    call system_clock(COUNT=clock_end) ! Stop timing
-    elapsed_time=REAL((clock_end-clock_start)/clock_rate)
-    
-    write (logunit,*) 'Elapsed time tile allocation: ', elapsed_time, ' milliseconds'
-    
+    elapsed_time = (elapsed_time_sr/elapsed_time)*100
+    write (logunit,*) 'We spent ', elapsed_time, '% of time in bufr read'
+
     ! clean up
     
     if (associated(tmp_obs))      deallocate(tmp_obs)
     if (associated(tmp_lon))      deallocate(tmp_lon)
     if (associated(tmp_lat))      deallocate(tmp_lat)
     if (associated(tmp_jtime))    deallocate(tmp_jtime)
-    
 
   end subroutine read_obs_sm_ASCAT_EUMET
 
@@ -8157,6 +8163,9 @@ contains
 ! reichle, 14 Oct 2005
 !
 ! reichle, 22 Nov 2011 - renamed subroutine, minor clean-up, added comments
+!
+! Modified for ASCAT observations A M Fox, April 2023,  
+
 
 use netcdf   
 implicit none
@@ -8211,6 +8220,8 @@ integer :: pentad_varid, lon_varid, lat_varid
 integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
 integer, dimension(3) :: start, icount
 
+integer :: clock_start, clock_end, clock_rate
+real(8) :: elapsed_time
 
 real :: tmpreal, this_lon, this_lat
 
@@ -8227,6 +8238,8 @@ character(len=400) :: err_msg
 ! ------------------------------------------------------------------
 
 ! read scaling parameters from file
+
+call system_clock(clock_start) ! Start timing
 
 fname = trim(this_obs_param%scalepath) // '/' // &
      trim(this_obs_param%scalename) // '.nc4'
@@ -8306,7 +8319,6 @@ do i=1,N_catd
          if (logit) write (logunit,*) 'start, icount', start, icount
          if (logit) write (logunit,*) 'tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)', tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)
          if (logit) write (logunit,*) 'tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)', tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)
-         if (logit) write (logunit,*) 'pp, sclprm_lon, sclprm_lat, sclprm_mean_obs(328:334,579) ', pp, sclprm_lon(1), sclprm_lat(1), sclprm_mean_obs(328:334, 579)
          err_msg = 'something wrong'
          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
       end if
@@ -8321,10 +8333,6 @@ do i=1,N_catd
          
          ! scale via standard normal deviates
          
-         if (mod(i, 100) == 0) then
-            write(logunit,*) 'Found! ', i, pp, j_ind, i_ind, tmp_obs(i), sclprm_mean_obs(j_ind, i_ind), sclprm_std_mod(j_ind, i_ind), sclprm_std_obs(j_ind, i_ind)
-         endif
-
          tmpreal = sclprm_std_mod(j_ind, i_ind)/sclprm_std_obs(j_ind, i_ind) 
          
          tmp_obs(i) = sclprm_mean_mod(j_ind, i_ind)                       &
@@ -8350,6 +8358,10 @@ deallocate(sclprm_mean_obs)
 deallocate(sclprm_std_obs)      
 deallocate(sclprm_mean_mod)     
 deallocate(sclprm_std_mod)      
+
+call system_clock(clock_end, clock_rate) ! Stop timing
+elapsed_time=(real(clock_end-clock_start)/real(clock_rate))
+write (logunit,*) 'Elapsed time in scale_obs_sfmc_zscore: ', elapsed_time, ' seconds'
 
 end subroutine scale_obs_sfmc_zscore
 
