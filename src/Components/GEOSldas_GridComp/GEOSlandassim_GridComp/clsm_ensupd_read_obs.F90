@@ -1614,13 +1614,16 @@ contains
 
     ! Will need to be updated if using EUMETSAT BUFR files
 
-    integer, parameter :: ae_time_offset = 3600   ! 60 minutes in seconds
+!    integer, parameter :: ae_time_offset = 3600   ! 60 minutes in seconds
+    integer, parameter :: N_fnames_max = 20
+
     character(4),      parameter :: J2000_epoch_id = 'TT12'    ! see date_time_util.F90
     
-    character(4)   :: DDHH
-    character(6)   :: YYYYMM
-    character(8)   :: date_string
-    character(10)  :: time_string
+    character(  4) :: DDHH
+    character(  6) :: YYYYMM
+    character(  8) :: date_string
+    character( 10) :: time_string
+    character( 80) :: fname_of_fname_list
     character(300) :: tmpfname, tmpfname2
     character(400) :: cmd
 
@@ -1629,6 +1632,7 @@ contains
     type(date_time_type) :: date_time_upp
     
     integer :: i, ind, N_tmp, N_files
+    integer :: N_fnames, N_fnames_tmp
     integer :: clock_start, clock_end, clock_rate
     real(8)    :: elapsed_time
 
@@ -1640,6 +1644,9 @@ contains
     integer :: idate,iret,kk
     integer :: ireadmg,ireadsb
     character(8)  :: subset
+
+    character(100), dimension(2*N_fnames_max)   :: fname_list  ! max 2 days of files
+
     real,      dimension(:),     allocatable    :: tmp1_lon, tmp1_lat, tmp1_obs
     real*8,    dimension(:),     allocatable    :: tmp1_jtime
 
@@ -1675,74 +1682,113 @@ contains
     date_time_upp = date_time    
     call augment_date_time(  (dtstep_assim/2), date_time_upp)
 
-    ! for ASCAT file name stamp
-    date_time_tmp = date_time 
-    call augment_date_time( -(dtstep_assim/2 + ae_time_offset), date_time_tmp )
-    
-    ! get tmp file name and remove file if it exists
-    
-    call date_and_time(date_string, time_string)  ! f90 intrinsic function
-    
-    tmpfname = trim(work_path) // '/' // 'tmp.' // trim(exp_id) &
-         // '.' // date_string // time_string
+! read file with list of ASCAT file names for first day
 
-    cmd = '/bin/rm -f ' // tmpfname 
+    fname_of_fname_list = 'dummy' ! Make sure its in the obs_param nml
     
-    call Execute_command_line(trim(cmd))
+    call read_obs_SMAP_fnames( date_time_low, this_obs_param,                      &
+         fname_of_fname_list, N_fnames_max,                                    &
+         N_fnames, fname_list(1:N_fnames_max) )
     
-    ! identify all files within current assimilation interval
-    ! (list all files within hourly intervals)
-   
-    ! Every EUMETSTA BUFR contains data over ~2 hr sensing period. it's necessary to
-    ! search additional files for obs. 
-    do i=1,(dtstep_assim/3600)+2
+    ! if needed, read file with list of ASCAT file names for second day and add
+    !  file names into "fname_list"
+    
+    if (date_time_low%day /= date_time_upp%day) then
        
-       write (YYYYMM,'(i6.6)') date_time_tmp%year*100 + date_time_tmp%month
-       write (DDHH,  '(i4.4)') date_time_tmp%day *100 + date_time_tmp%hour
+       call read_obs_SMAP_fnames( date_time_upp, this_obs_param,                   &
+            fname_of_fname_list, N_fnames_max,                                 &
+            N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_fnames_max)) )
        
-       ! EUMETSAT BUFR
-       cmd = 'ls ' // trim(this_obs_param%path) // '/Y' // YYYYMM(1:4) // &
-            '/M' // YYYYMM(5:6) // '/' // trim(this_obs_param%name) // '*-'&
-            // YYYYMM // DDHH // '*Z-*.bfr' 
-       
-       cmd = trim(cmd) // ' >> ' // trim(tmpfname)
-       
-       call Execute_command_line(trim(cmd))
-       
-       call augment_date_time( 3600, date_time_tmp )
-       
-    end do
-    
-    ! find out how many need to be read
-    
-    tmpfname2 = trim(tmpfname) // '.wc'
-    
-    cmd = 'wc -w ' // trim(tmpfname) // ' > ' // trim(tmpfname2)
-    
-    call Execute_command_line(trim(cmd))
-    
-    open(10, file=tmpfname2, form='formatted', action='read')
-    
-    read(10,*) N_files
-    
-    close(10,status='delete')
-    
-    ! load file names into "fnames"
-    
-    open(10, file=tmpfname,  form='formatted', action='read')
-    
-    if (N_files>0) then
-       
-       allocate(fnames(N_files))
-       
-       do i=1,N_files
-          read(10,'(a)') fnames(i)
-          write(logunit,*) trim(fnames(i))
-       end do
+       N_fnames = N_fnames + N_fnames_tmp
        
     end if
+
+    fnames = fname_list
+    N_files = N_fnames
+
+    do kk = 1,N_files
+      tmpfname = fnames(kk)
+      ! Remove the '/D03/' from the directory part as using "read_obs_SMAP_fnames" 
+      ind = scan(tmpfname, "/D03/")
+      if (ind > 0) then
+         tmpfname2 = tmpfname(1:ind-1) // tmpfname(ind+5:)
+      end if
+      fnames(kk) = trim(this_obs_param%path) // '/' // trim(tmpfname2)
+   end do
+
+   write (logunit,*) 'File names from list: ', fnames
+
+    ! Find files with obs within the assimilation window (need to check this AMF)
+
+
+   !  ! for ASCAT file name stamp
+   !  date_time_tmp = date_time 
+   !  call augment_date_time( -(dtstep_assim/2 + ae_time_offset), date_time_tmp )
     
-    close(10,status='delete')
+   !  ! get tmp file name and remove file if it exists
+    
+   !  call date_and_time(date_string, time_string)  ! f90 intrinsic function
+    
+   !  tmpfname = trim(work_path) // '/' // 'tmp.' // trim(exp_id) &
+   !       // '.' // date_string // time_string
+
+   !  cmd = '/bin/rm -f ' // tmpfname 
+    
+   !  call Execute_command_line(trim(cmd))
+    
+   !  ! identify all files within current assimilation interval
+   !  ! (list all files within hourly intervals)
+   
+   !  ! Every EUMETSTA BUFR contains data over ~2 hr sensing period. it's necessary to
+   !  ! search additional files for obs. 
+   !  do i=1,(dtstep_assim/3600)+2
+       
+   !     write (YYYYMM,'(i6.6)') date_time_tmp%year*100 + date_time_tmp%month
+   !     write (DDHH,  '(i4.4)') date_time_tmp%day *100 + date_time_tmp%hour
+       
+   !     ! EUMETSAT BUFR
+   !     cmd = 'ls ' // trim(this_obs_param%path) // '/Y' // YYYYMM(1:4) // &
+   !          '/M' // YYYYMM(5:6) // '/' // trim(this_obs_param%name) // '*-'&
+   !          // YYYYMM // DDHH // '*Z-*.bfr' 
+       
+   !     cmd = trim(cmd) // ' >> ' // trim(tmpfname)
+       
+   !     call Execute_command_line(trim(cmd))
+       
+   !     call augment_date_time( 3600, date_time_tmp )
+       
+   !  end do
+    
+   !  ! find out how many need to be read
+    
+   !  tmpfname2 = trim(tmpfname) // '.wc'
+    
+   !  cmd = 'wc -w ' // trim(tmpfname) // ' > ' // trim(tmpfname2)
+    
+   !  call Execute_command_line(trim(cmd))
+    
+   !  open(10, file=tmpfname2, form='formatted', action='read')
+    
+   !  read(10,*) N_files
+    
+   !  close(10,status='delete')
+    
+   !  ! load file names into "fnames"
+    
+   !  open(10, file=tmpfname,  form='formatted', action='read')
+    
+   !  if (N_files>0) then
+       
+   !     allocate(fnames(N_files))
+       
+   !     do i=1,N_files
+   !        read(10,'(a)') fnames(i)
+   !        write(logunit,*) trim(fnames(i))
+   !     end do
+       
+   !  end if
+    
+   !  close(10,status='delete')
 
     call system_clock(COUNT=clock_end) ! Stop timing
     elapsed_time=REAL((clock_end-clock_start)/clock_rate)
