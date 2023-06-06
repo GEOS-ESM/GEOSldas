@@ -1,5 +1,5 @@
 function [] = write_seqbin_file(fname, colind, rowind,...
-    av_angle_bin, data, asc_flag,...
+    av_angle_bin, data, asc_flag, ...
     version, ...
     start_time, end_time, overwrite, N_out_fields, ...
     write_ind_latlon, data_product,...
@@ -111,14 +111,14 @@ ifp = fopen( fname, 'w', 'b' );
 N_grid = size(data,2);
 N_angle= 1;
 
-% if (length(size(data)) == 3)
-%   N_angle = size(data,3);
-%   data_org = data;
-%   if (N_angle ~= length(av_angle_bin))
-%     disp(['ERROR in N_angle'])
-%     return
-%   end
-% end
+if (length(size(data)) == 3)
+  N_angle = size(data,3);
+  data_org = data;
+  if (N_angle ~= length(av_angle_bin))
+    disp(['ERROR in N_angle'])
+    return
+  end
+end
 
 if (strcmp(write_ind_latlon,'latlon_id') && nargin == 14)
     
@@ -220,9 +220,20 @@ if (N_grid >= 1)
   fortran_tag = N_grid*4; 
 
   for i=1:N_out_fields
-      count = fwrite( ifp, fortran_tag,    int_precision );
-      count = fwrite( ifp, data(i,:), float_precision );
-      count = fwrite( ifp, fortran_tag,    int_precision );
+      
+      for j=1:N_angle
+          
+          if (N_angle > 1)
+              data = squeeze(data_org(:,:,j));
+          end
+          
+          count = fwrite( ifp, fortran_tag,    int_precision );
+          count = fwrite( ifp, data(i,:), float_precision );
+          count = fwrite( ifp, fortran_tag,    int_precision );
+          
+          
+      end
+      
   end
 
 else
@@ -276,9 +287,15 @@ else
   end
 
   for i=1:N_out_fields
-      count = fwrite( ifp, fortran_tag,    int_precision );
-      count = fwrite( ifp, -999.0, float_precision );
-      count = fwrite( ifp, fortran_tag,    int_precision );
+      
+      for j=1:N_angle
+          
+          count = fwrite( ifp, fortran_tag,    int_precision );
+          count = fwrite( ifp, -999.0, float_precision );
+          count = fwrite( ifp, fortran_tag,    int_precision );
+          
+      end
+      
   end
   
 end

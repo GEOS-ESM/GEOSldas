@@ -13,25 +13,25 @@ addpath('../../shared/matlab/');
 
 run_months = [1:12 1:4]; %loop through 1:4 again to get complete pentads
 
-% exp_path = '/discover/nobackup/amfox';
-% exp_run  = {'SPL4SM_OL7000'};
-% domain   = 'SMAP_EASEv2_M09_GLOBAL';
-
-exp_path = '/discover/nobackup/amfox/Experiments/ASCAT_3Y_v2';
-exp_run  = {'ASCAT_M36'};
-domain   = 'SMAP_EASEv2_M36_GLOBAL';
+%exp_path = '/smap1/qliu/output/SMAP_Nature_v8.3/NRv8.3_innov_RTMv4/';
+%exp_run  = {'SMAP_NRv8.3inv_RTMv4'};
+%exp_path = '/hydro/qliu/WORK/output/L4_SM_SMAP/';
+%exp_run  = {'SPL4SM_OL4001'};
+%exp_path = '/smap1/qliu/output/SMAP_Nature_v8.3/NRv8.3_innov/S1/';
+%exp_run  = {'SMAP_NRv8.3_innov'};
+exp_path = '/home/qliu/smap/SMAP_Nature/';
+exp_run  = {'SPL4SM_OL7000'};
+domain   = 'SMAP_EASEv2_M09_GLOBAL';
 
 %Start and end year for each month
-start_year = [repmat(2016,1,5) repmat(2015,1,7) repmat(2016,1,4)]; %corresp to [1:12 1 2]
-end_year   = [repmat(2017,1,5) repmat(2016,1,7) repmat(2017,1,4)]; %runs till end of run_months for end_year
+start_year = [repmat(2016,1,3) repmat(2015,1,9) repmat(2016,1,3) repmat(2015,1,1)]; %corresp to [1:12 1 2]
+end_year   = [repmat(2022,1,3) repmat(2021,1,9) repmat(2022,1,3) repmat(2021,1,1)]; %runs till end of run_months for end_year
 
-
-%d orbit    = [ 2]; %1=A, 2=D   !DO *NOT* USE ASC AND DESC TOGETHER!
-%d pol      = [ 1 2 ]; %1=H, 2=V
-%d inc_ang  = [ 40.0 ];
+orbit    = [ 2]; %1=A, 2=D   !DO *NOT* USE ASC AND DESC TOGETHER!
+pol      = [ 1 2 ]; %1=H, 2=V
+inc_ang  = [ 40.0 ];
 
 prefix_out = 'L4SM_OL7000_SMAPL1CR17000_zscore_stats_';
-prefix_out = 'M36_zscore_stats_';
 
 dt_assim   = 3*60*60;    % [seconds] land analysis time step,
                          %             same as LANDASSIM_DT in GEOSldas)
@@ -42,22 +42,20 @@ t0_assim   =       0;    % [seconds] land analysis "reference" time (offset from
 %======
 
 obs_param_fname = [exp_path, '/', exp_run{1}, '/output/', domain, '/rc_out/', ...
-    '/Y2016/M04/',exp_run{1}, '.ldas_obsparam.20160401_0000z.txt'];
+    '/Y2015/M04/',exp_run{1}, '.ldas_obsparam.20150401_0000z.txt'];
 
-%d var_name = {'Tb'};
+var_name = {'Tb'};
 
 % added to identify SMOS or SMAP from runs that include both
-species_names = {'SMAP_L1C_Tbh_A', 'SMAP_L1C_Tbv_A', 'SMAP_L1C_Tbh_D', 'SMAP_L1C_Tbv_D'};
-species_names = {'ASCAT_META_SM_A','ASCAT_META_SM_D','ASCAT_METB_SM_A','ASCAT_METB_SM_D'};
-species_names = {'ASCAT_META_SM_A','ASCAT_META_SM_D'};
+descr = 'SMAP_L1C' ; % 'SMOS_fit'
 
 %======
-%d if (length(orbit) > 1)
- %d    error('ONLY pick one orbit!'
-%d end
+if (length(orbit) > 1)
+    error('ONLY pick one orbit!')
+end
 
-%d if (orbit(1) == 1) int_Asc = 1; end %Asc
-%d if (orbit(1) == 2) int_Asc = 0; end %Desc
+if (orbit(1) == 1) int_Asc = 1; end %Asc
+if (orbit(1) == 2) int_Asc = 0; end %Desc
 
 %======
 %TO GO FROM SMOS TO SMAP ONLY!!!
@@ -92,25 +90,20 @@ end
 
 species =[];
 
-% for oo=1:length(orbit)
-%     for pp=1:length(pol)
-%         for aa=1:length(inc_ang)
-%                         
-%             add_species = obs_param(strcmp(var_name,{obs_param.varname}) & ...
-%                 orbit(oo) == [obs_param.orbit] & ...
-%                 inc_ang(aa) == [obs_param.ang] & ...
-%                 pol(pp) == [obs_param.pol] & ...
-%                 ~cellfun(@isempty, strfind({obs_param.descr},descr))).species;
-%                                      
-%             species = union(species,add_species);
-%             
-%         end
-%     end
-% end
-
-for i = 1:length(species_names)
-    add_species = obs_param(strcmp(species_names(i),{obs_param.descr})).species;
-    species = union(species,add_species);
+for oo=1:length(orbit)
+    for pp=1:length(pol)
+        for aa=1:length(inc_ang)
+                        
+            add_species = obs_param(strcmp(var_name,{obs_param.varname}) & ...
+                orbit(oo) == [obs_param.orbit] & ...
+                inc_ang(aa) == [obs_param.ang] & ...
+                pol(pp) == [obs_param.pol] & ...
+                ~cellfun(@isempty, strfind({obs_param.descr},descr))).species;
+                                     
+            species = union(species,add_species);
+            
+        end
+    end
 end
 
 species
@@ -127,11 +120,11 @@ for n=1:length(exp_run)
                 
                 for k=1:length(run_months)
                     
-                    get_model_and_obs_clim_stats( species_names,               ...
+                    get_model_and_obs_clim_stats( var_name,               ...
                         run_months{k}, exp_path, exp_run{n}, domain,     ...
                         start_year, end_year, ...
                         dt_assim, t0_assim, species, obs_param, ...
-                        hscale, w_days, Ndata_min, prefix_out,...
+                        hscale, inc_ang, int_Asc, w_days, Ndata_min, prefix_out,...
                         convert_grid, time_of_day_in_hours(j)  );
                     
                 end
@@ -140,10 +133,10 @@ for n=1:length(exp_run)
             
         else
             
-            get_model_and_obs_clim_stats( species_names,                              ...
+            get_model_and_obs_clim_stats( var_name,                              ...
                 run_months, exp_path, exp_run{n}, domain, start_year, end_year, ...
                 dt_assim, t0_assim, species, obs_param, ...
-                hscale, w_days, Ndata_min, prefix_out,...
+                hscale, inc_ang, int_Asc, w_days, Ndata_min, prefix_out,...
                 convert_grid );
             
         end
@@ -156,11 +149,11 @@ for n=1:length(exp_run)
                 
                 for k=1:length(run_months)
                     
-                    get_model_and_obs_clim_stats( species_names,               ...
+                    get_model_and_obs_clim_stats( var_name,               ...
                         run_months{k}, exp_path, exp_run{n}, domain,     ...
                         start_year, end_year, ...
                         dt_assim, t0_assim, species, obs_param, ...
-                        hscale, w_days, Ndata_min, prefix_out,...
+                        hscale, inc_ang, int_Asc, w_days, Ndata_min, prefix_out,...
                         time_of_day_in_hours(j)  );
                     
                 end
@@ -169,10 +162,10 @@ for n=1:length(exp_run)
             
         else
             
-            get_model_and_obs_clim_stats( species_names,                              ...
+            get_model_and_obs_clim_stats( var_name,                              ...
                 run_months, exp_path, exp_run{n}, domain, start_year, end_year, ...
                 dt_assim, t0_assim, species, obs_param, ...
-                hscale, w_days, Ndata_min, prefix_out);
+                hscale, inc_ang, int_Asc, w_days, Ndata_min, prefix_out);
             
         end
         
