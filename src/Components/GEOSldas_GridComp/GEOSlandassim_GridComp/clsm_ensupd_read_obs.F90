@@ -7425,6 +7425,9 @@ contains
     character(len=*), parameter :: Iam = 'read_obs'
     character(len=400) :: err_msg
 
+    integer :: clock_start, clock_end, clock_rate
+    real(8) :: elapsed_time
+
     ! -------------------------------------------------------------
 
     scaled_obs = .false.  ! initialize
@@ -7511,6 +7514,8 @@ contains
         end if
         
     case ('ASCAT_META_SM_A', 'ASCAT_META_SM_D','ASCAT_METB_SM_A', 'ASCAT_METB_SM_D','ASCAT_METC_SM_A', 'ASCAT_METC_SM_D' )
+
+        call system_clock(clock_start) ! Start timing
       
         call read_obs_sm_ASCAT_EUMET(                                  &
              work_path, exp_id,                                        &
@@ -7530,6 +7535,12 @@ contains
                 tmp_std_obs, tmp_lon, tmp_lat, tmp_time )
            
         end if        
+
+
+        call system_clock(clock_end, clock_rate) ! Stop timing
+        elapsed_time=(real(clock_end-clock_start)/real(clock_rate))
+        write (logunit,*) '**** Elapsed time in obs_read: ', elapsed_time, ' seconds ****'
+
 
     case ('isccp_tskin_gswp2_v1')
        
@@ -7704,6 +7715,8 @@ contains
          'SMAP_L2AP_Tbh_A',    'SMAP_L2AP_Tbv_A',       &
          'SMAP_L2AP_Tbh_D',    'SMAP_L2AP_Tbv_D' )
        
+       call system_clock(clock_start)
+
        call read_obs_SMAP_halforbit_Tb(                                     &
             date_time, N_catd, this_obs_param,                              &
             dtstep_assim, tile_coord, tile_grid_d,                          &
@@ -7720,7 +7733,11 @@ contains
                this_obs_param, tmp_obs, tmp_std_obs, tmp_assim )
 
        end if
-       
+
+       call system_clock(clock_end, clock_rate) ! Stop timi
+       elapsed_time=(real(clock_end-clock_start)/real(clock_rate))
+       write (logunit,*) '**** Elapsed time in obs_read: ', elapsed_time, ' seconds ****'
+      
     case('LaRC_tskin-GOESW', 'LaRC_tskin-GOESE', 'LaRC_tskin-MET09',  & 
          'LaRC_tskin-FY2E-', 'LaRC_tskin-MTST2')
               
