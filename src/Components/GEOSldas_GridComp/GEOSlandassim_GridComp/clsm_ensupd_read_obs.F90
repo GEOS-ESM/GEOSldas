@@ -1633,8 +1633,8 @@ contains
     
     integer :: i, ind, N_tmp, N_files
     integer :: N_fnames, N_fnames_tmp
-    integer :: clock_start, clock_end, clock_rate
-    real(8)    :: elapsed_time
+    integer :: clock_start, clock_end, clock_rate, clock_start_sr, clock_end_sr, clock_rate_sr
+    real(8)    :: elapsed_time, elapsed_time_sr
 
     character(300), dimension(:), allocatable :: fnames
  
@@ -1702,20 +1702,27 @@ contains
        
     end if
 
-    fnames = fname_list
+    fnames = fname_list(1:N_fnames)
     N_files = N_fnames
+    
+    write (logunit,*) 'File names from list (1): ', fnames
 
     do kk = 1,N_files
       tmpfname = fnames(kk)
+      write (logunit,*) 'tmpfname: ', tmpfname
       ! Remove the '/D03/' from the directory part as using "read_obs_SMAP_fnames" 
-      ind = scan(tmpfname, "/D03/")
+      ind = index(tmpfname, "/D")
+      write (logunit,*) 'ind: ', ind
       if (ind > 0) then
-         tmpfname2 = tmpfname(1:ind-1) // tmpfname(ind+5:)
+         write (logunit,*) 'tmpfname(1:ind): ', tmpfname(1:ind)
+         write (logunit,*) 'tmpfname(ind+5:): ', tmpfname(ind+5:)
+         tmpfname2 = tmpfname(1:ind) // tmpfname(ind+5:)
+         write (logunit,*) 'tmpfname2: ', tmpfname2
       end if
       fnames(kk) = trim(this_obs_param%path) // '/' // trim(tmpfname2)
    end do
 
-   write (logunit,*) 'File names from list: ', fnames
+   write (logunit,*) 'File names from list (2): ', fnames
 
     ! Find files with obs within the assimilation window (need to check this AMF)
 
@@ -1760,8 +1767,8 @@ contains
     
    ! close(10,status='delete')
 
-    call system_clock(COUNT=clock_end) ! Stop timing
-    elapsed_time=REAL((clock_end-clock_start)/clock_rate)
+    call system_clock(clock_end, clock_rate) ! Stop timing
+    elapsed_time=REAL((clock_end-clock_start_sr)/clock_rate)
     
     write (logunit,*) 'Elapsed time file names: ', elapsed_time, ' milliseconds'
 
@@ -1904,8 +1911,8 @@ contains
     deallocate(tmp1_obs) 
 
     call system_clock(clock_end, clock_rate) ! Stop timing
-    elapsed_time_sr=(real(clock_end-clock_start)/real(clock_rate))
-    write (logunit,*) 'Elapsed time bufr read from start: ', elapsed_time_sr, ' seconds'
+    elapsed_time=(real(clock_end-clock_start)/real(clock_rate))
+    write (logunit,*) 'Elapsed time bufr read from start: ', elapsed_time, ' seconds'
 
 
     ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1921,9 +1928,6 @@ contains
     ! 2.) for each observation
     !     a) determine grid cell that contains lat/lon
     !     b) determine tile within grid cell that contains lat/lon
-
-!    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
-!    call system_clock(COUNT=clock_start) ! Start timing
 
     if (N_tmp>0) then
        
@@ -1966,9 +1970,6 @@ contains
        end do
 
               ! --------------------------------
-       call system_clock(clock_end, clock_rate) ! Stop timing
-       elapsed_time=(real(clock_end-clock_start_sr)/real(clock_rate))
-       write (logunit,*) 'Elapsed time after n_obs_in_tile from start: ', elapsed_time, ' seconds'
        
        ! normalize
        
@@ -1995,11 +1996,6 @@ contains
           end if
           
        end do
-      
-
-       call system_clock(clock_end, clock_rate) ! Stop timing
-       elapsed_time=(real(clock_end-clock_start_sr)/real(clock_rate))
-       write (logunit,*) 'Elapsed time 4 from start: ', elapsed_time, ' seconds'
 
        ! clean up
        
@@ -2018,10 +2014,10 @@ contains
     end if
 
     call system_clock(clock_end, clock_rate) ! Stop timing
-    elapsed_time=(real(clock_end-clock_start_sr)/real(clock_rate))
+    elapsed_time_sr=(real(clock_end-clock_start_sr)/real(clock_rate))
     write (logunit,*) 'Elapsed time in read_obs_sm_ASCAT_EUMET: ', elapsed_time, ' seconds'
 
-    elapsed_time = (elapsed_time_sr/elapsed_time)*100
+    elapsed_time = (elapsed_time/elapsed_time_sr)*100
     write (logunit,*) 'We spent ', elapsed_time, '% of time in bufr read'
 
     ! clean up
@@ -7243,7 +7239,7 @@ contains
     
     if (istat/=0) then
        err_msg = 'cannot open file ' // trim(fname)
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       ! call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
         
     if (logit) write(logunit,'(400A)') 'reading file ' // trim(fname)
