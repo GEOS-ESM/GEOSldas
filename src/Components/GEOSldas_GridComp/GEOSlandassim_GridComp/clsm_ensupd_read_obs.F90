@@ -1622,26 +1622,25 @@ contains
     character(  4) :: DDHH
     character(  6) :: YYYYMM
     character(  8) :: date_string
-    character( 10) :: time_string
+    character( 10) :: time_stringi
+    character( 15) :: str_date_time
     character( 80) :: fname_of_fname_list
     character(300) :: tmpfname, tmpfname2
     character(400) :: cmd
 
     type(date_time_type) :: date_time_tmp
-    type(date_time_type) :: date_time_low
-    type(date_time_type) :: date_time_upp
+    type(date_time_type) :: date_time_low, date_time_low_fname
+    type(date_time_type) :: date_time_up
     
-    integer :: i, ind, N_tmp, N_files
+    integer :: i, ind, N_tmp, N_files, kk
     integer :: N_fnames, N_fnames_tmp
-    integer :: clock_start, clock_end, clock_rate, clock_start_sr, clock_end_sr, clock_rate_sr
-    real(8)    :: elapsed_time, elapsed_time_sr
 
-    character(300), dimension(:), allocatable :: fnames
+    character(300), dimension(:), allocatable :: fnames, tmpfnames
  
     real(8) :: tmp_data, tmp_vdata(4), tmp_time(6) 
     integer, parameter :: lnbufr = 50
     integer, parameter :: max_rec = 200000 
-    integer :: idate,iret,kk
+    integer :: idate,iret
     integer :: ireadmg,ireadsb
     character(8)  :: subset
 
@@ -1671,30 +1670,33 @@ contains
     
     found_obs = .false.
 
-    call system_clock(clock_start_sr) ! Start timing
-
     ! find files that are within half-open interval 
     ! [date_time-dtstep_assim/2,date_time+dtstep_assim/2)
 
     date_time_low = date_time    
     call augment_date_time( -(dtstep_assim/2), date_time_low)
-    date_time_upp = date_time    
-    call augment_date_time(  (dtstep_assim/2), date_time_upp)
+    date_time_up = date_time    
+    call augment_date_time(  (dtstep_assim/2), date_time_up)
+    
+    ! Calculate an "extra" date_time_low to catch files with time stamps before window but containing relevant obs
 
-! read file with list of ASCAT file names for first day
+    date_time_low_fname = date_time
+    call augment_date_time( -(dtstep_assim), date_time_low)
+
+    ! read file with list of ASCAT file names for first day
 
     fname_of_fname_list = 'dummy' ! Make sure its in the obs_param nml
     
-    call read_obs_SMAP_fnames( date_time_low, this_obs_param,                      &
+    call read_obs_SMAP_fnames( date_time_low_fname, this_obs_param,            &
          fname_of_fname_list, N_fnames_max,                                    &
          N_fnames, fname_list(1:N_fnames_max) )
     
     ! if needed, read file with list of ASCAT file names for second day and add
     !  file names into "fname_list"
     
-    if (date_time_low%day /= date_time_upp%day) then
+    if (date_time_low_fname%day /= date_time_up%day) then
        
-       call read_obs_SMAP_fnames( date_time_upp, this_obs_param,                   &
+       call read_obs_SMAP_fnames( date_time_up, this_obs_param,                &
             fname_of_fname_list, N_fnames_max,                                 &
             N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_fnames_max)) )
        
@@ -1702,90 +1704,38 @@ contains
        
     end if
 
-    fnames = fname_list(1:N_fnames)
-    N_files = N_fnames
-    
-    write (logunit,*) 'File names from list (1): ', fnames
+    tmpfnames = fname_list(1:N_fnames)
 
-    do kk = 1,N_files
-      tmpfname = fnames(kk)
-      write (logunit,*) 'tmpfname: ', tmpfname
+    N_tmp = 0   
+
+    do kk = 1,N_fnames
+      tmpfname = fname_list(kk)
+      ! Are we in the required assimilation window?
+      !e.g. Y2019/M07/D02/M01-ASCA-ASCSMO02-NA-5.0-20190702075700.000000000Z-20190702084627-1350204.bfr
+      str_date_time = tmpfname(40:53)
+      
+      read(str_date_time(1:4), *) date_time_tmp%year
+      read(str_date_time(5:6), *) date_time_tmp%month
+      read(str_date_time(7:8), *) date_time_tmp%day
+      read(str_date_time(9:10), *) date_time_tmp%hour
+      read(str_date_time(11:12), *) date_time_tmp%min
+      read(str_date_time(13:14), *) date_time_tmp%sec
+  
+      if ( datetime_lt_refdatetime( date_time_low_fname, date_time_tmp ) .and.        &
+            datetime_le_refdatetime( date_time_tmp, date_time_up )) then 
+      N_tmp = N_tmp + 1
       ! Remove the '/D03/' from the directory part as using "read_obs_SMAP_fnames" 
       ind = index(tmpfname, "/D")
-      write (logunit,*) 'ind: ', ind
+      
       if (ind > 0) then
-         write (logunit,*) 'tmpfname(1:ind): ', tmpfname(1:ind)
-         write (logunit,*) 'tmpfname(ind+5:): ', tmpfname(ind+5:)
          tmpfname2 = tmpfname(1:ind) // tmpfname(ind+5:)
-         write (logunit,*) 'tmpfname2: ', tmpfname2
       end if
-      fnames(kk) = trim(this_obs_param%path) // '/' // trim(tmpfname2)
-   end do
-
-   write (logunit,*) 'File names from list (2): ', fnames
-
-    ! Find files with obs within the assimilation window (need to check this AMF)
-
-
-   !  ! for ASCAT file name stamp
-   !  date_time_tmp = date_time 
-   !  call augment_date_time( -(dtstep_assim/2 + ae_time_offset), date_time_tmp )
-    
-   !  ! get tmp file name and remove file if it exists
-    
-   !  call date_and_time(date_string, time_string)  ! f90 intrinsic function
-    
-   !  tmpfname = trim(work_path) // '/' // 'tmp.' // trim(exp_id) &
-   !       // '.' // date_string // time_string
-
-   !  cmd = '/bin/rm -f ' // tmpfname 
-    
-   !  call Execute_command_line(trim(cmd))
-    
-   !  ! identify all files within current assimilation interval
-   !  ! (list all files within hourly intervals)
+      tmpfnames(N_tmp) = trim(this_obs_param%path) // '/' // trim(tmpfname2)
+      end if
+     end do
    
-   !  ! Every EUMETSTA BUFR contains data over ~2 hr sensing period. it's necessary to
-   !  ! search additional files for obs. 
-   !  do i=1,(dtstep_assim/3600)+2
-       
-   !     write (YYYYMM,'(i6.6)') date_time_tmp%year*100 + date_time_tmp%month
-   !     write (DDHH,  '(i4.4)') date_time_tmp%day *100 + date_time_tmp%hour
-       
-   !     ! EUMETSAT BUFR
-   !     cmd = 'ls ' // trim(this_obs_param%path) // '/Y' // YYYYMM(1:4) // &
-   !          '/M' // YYYYMM(5:6) // '/' // trim(this_obs_param%name) // '*-'&
-   !          // YYYYMM // DDHH // '*Z-*.bfr' 
-       
-   !     cmd = trim(cmd) // ' >> ' // trim(tmpfname)
-       
-   !     call Execute_command_line(trim(cmd))
-       
-   !     call augment_date_time( 3600, date_time_tmp )
-       
-   !  end do
-    
-   ! close(10,status='delete')
-
-    call system_clock(clock_end, clock_rate) ! Stop timing
-    elapsed_time=REAL((clock_end-clock_start_sr)/clock_rate)
-    
-    write (logunit,*) 'Elapsed time file names: ', elapsed_time, ' milliseconds'
-
-    ! read observations:
-    !
-    ! 1.) read N_tmp observations and their lat/lon info from file
-    ! 2.) for each observation
-    !     a) determine grid cell that contains lat/lon
-    !     b) determine tile within grid cell that contains lat/lon
-    ! 3.) compute super-obs for each tile from all obs w/in that tile
-    !
-    ! ----------------------------------------------------------------
-    !
-    ! 1.) read N_tmp observations and their lat/lon info from file
-
-!    call system_clock(COUNT_RATE=clock_rate) ! Find the rate
-!    call system_clock(COUNT=clock_start) ! Start timing
+    fnames = tmpfnames(1:N_tmp)
+    N_files = N_tmp
 
     ! read and process data if files are found
     allocate(tmp1_lon(max_rec))
@@ -1794,7 +1744,6 @@ contains
     allocate(tmp1_jtime(max_rec))
 
     if (N_files>0) then
-       call system_clock(clock_start)
        
        ! file loop
        N_tmp = 0
@@ -1817,10 +1766,11 @@ contains
                  date_time_tmp.hour = int(tmp_time(4))
                  date_time_tmp.min = int(tmp_time(5))
                  date_time_tmp.sec = int(tmp_time(6))
+
                  ! skip if record outside of current assim window
-                 if ( datetime_lt_refdatetime( date_time_low, date_time_tmp ) .and.        &
-                      datetime_le_refdatetime( date_time_tmp, date_time_upp )) cycle loop_report
-                 
+                 if ( datetime_lt_refdatetime( date_time_tmp, date_time_low ) .and.        &
+                      datetime_le_refdatetime( date_time_up, date_time_tmp )) cycle loop_report
+                
                  ! skip if record contain no valid soil moisture value
                  call ufbint(lnbufr,tmp_data,1,1,iret,'SSOM')
                  if(tmp_data > 100. .or. tmp_data < 0.) cycle loop_report
@@ -1909,11 +1859,6 @@ contains
     deallocate(tmp1_lon)
     deallocate(tmp1_lat)
     deallocate(tmp1_obs) 
-
-    call system_clock(clock_end, clock_rate) ! Stop timing
-    elapsed_time=(real(clock_end-clock_start)/real(clock_rate))
-    write (logunit,*) 'Elapsed time bufr read from start: ', elapsed_time, ' seconds'
-
 
     ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
@@ -2013,12 +1958,12 @@ contains
        
     end if
 
-    call system_clock(clock_end, clock_rate) ! Stop timing
-    elapsed_time_sr=(real(clock_end-clock_start_sr)/real(clock_rate))
-    write (logunit,*) 'Elapsed time in read_obs_sm_ASCAT_EUMET: ', elapsed_time, ' seconds'
+!    call system_clock(clock_end, clock_rate) ! Stop timing
+!    elapsed_time_sr=(real(clock_end-clock_start_sr)/real(clock_rate))
+!    write (logunit,*) 'Elapsed time in read_obs_sm_ASCAT_EUMET: ', elapsed_time, ' seconds'
 
-    elapsed_time = (elapsed_time/elapsed_time_sr)*100
-    write (logunit,*) 'We spent ', elapsed_time, '% of time in bufr read'
+!    elapsed_time = (elapsed_time/elapsed_time_sr)*100
+!    write (logunit,*) 'We spent ', elapsed_time, '% of time in bufr read'
 
     ! clean up
     
