@@ -1680,8 +1680,8 @@ contains
     
     ! Calculate an "extra" date_time_low to catch files with time stamps before window but containing relevant obs
 
-    date_time_low_fname = date_time
-    call augment_date_time( -(dtstep_assim), date_time_low)
+    date_time_low_fname = date_time_low
+    call augment_date_time( -(110*60), date_time_low_fname)
 
     ! read file with list of ASCAT file names for first day
 
