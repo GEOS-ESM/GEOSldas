@@ -1637,9 +1637,9 @@ contains
 
     character(300), dimension(:), allocatable :: fnames, tmpfnames
  
-    real(8) :: tmp_data, tmp_vdata(4), tmp_time(6) 
+    real(8) :: tmp_data(7), tmp_vdata(4), tmp_time(6) 
     integer, parameter :: lnbufr = 50
-    integer, parameter :: max_rec = 200000 
+    integer, parameter :: max_rec = 20000 
     integer :: idate,iret
     integer :: ireadmg,ireadsb
     character(8)  :: subset
@@ -1737,14 +1737,16 @@ contains
     fnames = tmpfnames(1:N_tmp)
     N_files = N_tmp
 
-    ! read and process data if files are found
-    allocate(tmp1_lon(max_rec))
-    allocate(tmp1_lat(max_rec))
-    allocate(tmp1_obs(max_rec))
-    allocate(tmp1_jtime(max_rec))
-
     if (N_files>0) then
+
+
+       ! read and process data if files are found
+       allocate(tmp1_lon(max_rec))
+       allocate(tmp1_lat(max_rec))
+       allocate(tmp1_obs(max_rec))
+       allocate(tmp1_jtime(max_rec))
        
+       call MTINFO( trim(this_obs_param%path) // '/BUFR_mastertable/', 51, 52)
        ! file loop
        N_tmp = 0
        do kk = 1,N_files
@@ -1756,7 +1758,7 @@ contains
           call MTINFO( trim(this_obs_param%path) // '/BUFR_mastertable/', 51, 52)
           call datelen(10)
          
-          msg_report: do while(ireadmg(lnbufr,subset,idate) ==0)  
+          msg_report: do while(ireadmg(lnbufr,subset,idate) ==0)
             loop_report: do while(ireadsb(lnbufr) == 0)
             ! extract sensing time information 
                  call ufbint(lnbufr,tmp_time,6,1,iret,'YEAR MNTH DAYS HOUR MINU SECO')
@@ -1770,10 +1772,14 @@ contains
                  ! skip if record outside of current assim window
                  if ( datetime_lt_refdatetime( date_time_tmp, date_time_low ) .and.        &
                       datetime_le_refdatetime( date_time_up, date_time_tmp )) cycle loop_report
+
+
+                  call ufbint(lnbufr,tmp_data,7,1,iret,'SSOM DOMO SMPF SMCF ALFR TPCX IWFR') 
+
                 
                  ! skip if record contain no valid soil moisture value
-                 call ufbint(lnbufr,tmp_data,1,1,iret,'SSOM')
-                 if(tmp_data > 100. .or. tmp_data < 0.) cycle loop_report
+!                 call ufbint(lnbufr,tmp_data,1,1,iret,'SSOM')
+                 if(tmp_data(1) > 100. .or. tmp_data(1) < 0.) cycle loop_report
 
                  ! EUMETSAT file contains data of both ascending and descending orbits. 
                  ! DOMO - “Direction of motion of moving observing platform” is used to seperate Asc and Desc
@@ -1781,31 +1787,31 @@ contains
                  ! according to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk 
                  ! "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
                  ! of the orbit … when it is between 270 and 360 degrees, it is the ascending part"
-                 call ufbint(lnbufr,tmp_data,1,1,iret,'DOMO')
-                 if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data < 270 .or. tmp_data > 360)) cycle loop_report
-                 if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data < 180 .or. tmp_data >= 270)) cycle loop_report
+!                 call ufbint(lnbufr,tmp_data,1,1,iret,'DOMO')
+                 if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data(2) < 270 .or. tmp_data(2) > 360)) cycle loop_report
+                 if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data(2) < 180 .or. tmp_data(2) >= 270)) cycle loop_report
                   
                  ! skip if processing flag is set               
-                 call ufbint(lnbufr,tmp_data,1,1,iret,'SMPF')
-                 if(int(tmp_data) /= 0) cycle loop_report
+!                 call ufbint(lnbufr,tmp_data,1,1,iret,'SMPF')
+                 if(int(tmp_data(3)) /= 0) cycle loop_report
 
                  ! skip if correction flag is set               
-                 call ufbint(lnbufr,tmp_data,1,1,iret,'SMCF')
-                 if (.not. (int(tmp_data) == 0 .or. int(tmp_data) == 4)) cycle loop_report
+!                 call ufbint(lnbufr,tmp_data,1,1,iret,'SMCF')
+                 if (.not. (int(tmp_data(4)) == 0 .or. int(tmp_data(4)) == 4)) cycle loop_report
                  ! if(int(tmp_data) /= 0) cycle loop_report
 
                  ! skip if land fraction is missing or < 0.9
-                 call ufbint(lnbufr,tmp_data,1,1,iret,'ALFR')
-                 if(tmp_data >1 .or. tmp_data < 0.9 ) cycle loop_report
+!                 call ufbint(lnbufr,tmp_data,1,1,iret,'ALFR')
+                 if(tmp_data(5) >1 .or. tmp_data(5) < 0.9 ) cycle loop_report
 
                  ! additioanal QC varibles from file               
                  ! skip if topographic complexity > 10%
-                 call ufbint(lnbufr,tmp_data,1,1,iret,'TPCX') ! topo complexity
-                 if(tmp_data > 10.) cycle loop_report
+!                 call ufbint(lnbufr,tmp_data,1,1,iret,'TPCX') ! topo complexity
+                 if(tmp_data(6) > 10.) cycle loop_report
                  
                  ! skip if inudatation and wetland faction > 10%
-                 call ufbint(lnbufr,tmp_data,1,1,iret,'IWFR') ! Inundation And Wetland Fraction
-                 if(tmp_data > 10.) cycle loop_report
+!                 call ufbint(lnbufr,tmp_data,1,1,iret,'IWFR') ! Inundation And Wetland Fraction
+                 if(tmp_data(7) > 10.) cycle loop_report
                  !call ufbint(lnbufr,tmp_data,1,1,iret,'SNOC') ! snow cover
                  !call ufbint(lnbufr,tmp_data,1,1,iret,'FLSF') ! frozen land fraction
 
@@ -1822,6 +1828,7 @@ contains
             end do loop_report
 
           end do msg_report
+
           call closbf(lnbufr)
           close(lnbufr)
 
@@ -1840,25 +1847,27 @@ contains
        end if
 
        deallocate(fnames)
-    else
-       N_tmp = 0
-       
-    end if
 
-    allocate(tmp_jtime(N_tmp))    
-    allocate(tmp_lon(N_tmp))
-    allocate(tmp_lat(N_tmp))
-    allocate(tmp_obs(N_tmp))
+       allocate(tmp_jtime(N_tmp))    
+       allocate(tmp_lon(N_tmp))
+       allocate(tmp_lat(N_tmp))
+       allocate(tmp_obs(N_tmp))
 
-    tmp_jtime = tmp1_jtime(1:N_tmp)
-    tmp_lon = tmp1_lon(1:N_tmp)
-    tmp_lat = tmp1_lat(1:N_tmp)
-    tmp_obs = tmp1_obs(1:N_tmp)
+       tmp_jtime = tmp1_jtime(1:N_tmp)
+       tmp_lon = tmp1_lon(1:N_tmp)
+       tmp_lat = tmp1_lat(1:N_tmp)
+       tmp_obs = tmp1_obs(1:N_tmp)
    
-    deallocate(tmp1_jtime)
-    deallocate(tmp1_lon)
-    deallocate(tmp1_lat)
-    deallocate(tmp1_obs) 
+       deallocate(tmp1_jtime)
+       deallocate(tmp1_lon)
+       deallocate(tmp1_lat)
+       deallocate(tmp1_obs) 
+
+     else
+       N_tmp = 0
+ 
+     end if
+
 
     ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !
@@ -7181,10 +7190,10 @@ contains
     fname = trim(fpath_tmp) // '/' // YYYYMMDDdir // trim(fname_tmp)
     
     open( 10, file=fname, form='formatted', action='read', iostat=istat)
-    
+   
     if (istat/=0) then
        err_msg = 'cannot open file ' // trim(fname)
-       ! call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
     end if
         
     if (logit) write(logunit,'(400A)') 'reading file ' // trim(fname)
