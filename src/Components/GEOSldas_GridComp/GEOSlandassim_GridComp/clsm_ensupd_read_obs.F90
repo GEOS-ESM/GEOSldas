@@ -1606,15 +1606,11 @@ contains
     
     ! ---------------
     
-    ! Each obs file contains about 1 hour 40 minutes observations
+    ! Each obs file contains about 100 - 110 minutes of observations. Code as dt_ASCAT_obsfile
     ! file name indicates the start time of the swaths.  
-    ! "ae_time_offset" is used to find the mean time of the the interval
-    ! which is approximately the time of the equator overpass.
-    ! This time is assigned to all observations of the swath.
 
-    ! Will need to be updated if using EUMETSAT BUFR files
+    integer,   parameter :: dt_ASCAT_obsfile   = 110*60 ! seconds
 
-!    integer, parameter :: ae_time_offset = 3600   ! 60 minutes in seconds
     integer, parameter :: N_fnames_max = 20
 
     character(4),      parameter :: J2000_epoch_id = 'TT12'    ! see date_time_util.F90
@@ -1681,7 +1677,7 @@ contains
     ! Calculate an "extra" date_time_low to catch files with time stamps before window but containing relevant obs
 
     date_time_low_fname = date_time_low
-    call augment_date_time( -(110*60), date_time_low_fname)
+    call augment_date_time( -dt_ASCAT_obsfile, date_time_low_fname)
 
     ! read file with list of ASCAT file names for first day
 
