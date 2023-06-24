@@ -33,6 +33,18 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
+[v17.13.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.13.1) - 2023-06-26
+------------------------------
+
+- 0-diff vs. v17.13.0.
+
+- Infrastructure:
+  - GEOS_Util v2.0.1 ([PR #657](https://github.com/GEOS-ESM/GEOSldas/pull/657), [PR #658](https://github.com/GEOS-ESM/GEOSldas/pull/658)).
+
+- Bug fixes:
+  - Fixed error in remapping of restarts with GEOSldas (GEOSgcm_Util [PR#23](https://github.com/GEOS-ESM/GEOSgcm_Util/pull/23)).
+
+------------------------------
 [v17.13.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.13.0) - 2023-05-18
 ------------------------------
 
