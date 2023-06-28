@@ -788,7 +788,7 @@ class LDASsetup:
            os.symlink(bc,myBC)
 
         if ("catchcn" in self.catch):
-           os.symlink('/discover/nobackup/projects/gmao/bcs_shared/make_bcs_inputs/land/CO2/v1/CO2_MonthlyMean_DiurnalCycle.nc4', \
+           os.symlink(self.rqdExeInp['BCS_PATH']+'../land/shared/CO2_MonthlyMean_DiurnalCycle.nc4', \
                        self.inpdir+'/CO2_MonthlyMean_DiurnalCycle.nc4')
 
         # create and link restart 
