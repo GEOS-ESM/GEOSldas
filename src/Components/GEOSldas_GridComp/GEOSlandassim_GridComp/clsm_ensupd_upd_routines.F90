@@ -1364,49 +1364,26 @@ contains
           
           do j=1,N_TbuniqFreqAngRTMid
              
-             freq       = Tb_freq_ang_RTMid(j,1)
-             inc_angle  = Tb_freq_ang_RTMid(j,2)
-             RTM_id     = Tb_freq_ang_RTMid(j,3)
+             freq       =      Tb_freq_ang_RTMid(j,1)
+             inc_angle  =      Tb_freq_ang_RTMid(j,2)
+             RTM_id     = nint(Tb_freq_ang_RTMid(j,3))
 
              ! Select a specific configuration of the RTM via the field 
              ! "RTM_ID" in the "obs_param" type. 
              !
              ! %RTM_ID = ID of radiative transfer model to use for Tb forward modeling
              !           (subroutine get_obs_pred()) 
-             !           0 = none
-             !           1 = tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1)
-             !           2 = same as 1 but without Pellarin atmospheric corrections
-             !           3 = ...
+             !       0 = none
+             !       1 = L-band tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1) (SMOS)
+             !       2 = same as 1 but without Pellarin atm corr (SMAP)
+             !       3 = same as 1 but with Mironov and SMAP L2_SM pol mixing (SMOS)
+             !       4 = same as 3 but without Pellarin atm corr (targeted for SMAP L4_SM Version 8)
              
-             select case (RTM_id)
-                
-             case (1)
-                
-                ! bug fix: previously, mwRTM_get_Tb() was called without specifying the
-                !          sub-array of "stemp_l" that corresponds to ensemble member n_e
-                !          - reichle, 11 Dec 2013  
-                
-                call mwRTM_get_Tb(                                              &
-                     N_catl, freq, inc_angle, mwRTM_param, tile_coord_l%elev,   &
-                     lai, smoist, stemp_l(:,n_e), SWE, met_force%Tair, .true.,  &
-                     Tb_h_vec, Tb_v_vec )
-                
-             case (2)
-                
-                call mwRTM_get_Tb(                                              &
-                     N_catl, freq, inc_angle, mwRTM_param, tile_coord_l%elev,   &
-                     lai, smoist, stemp_l(:,n_e), SWE, met_force%Tair, .false., &
-                     Tb_h_vec, Tb_v_vec )
-                
-             case default
-                
-                write (tmpstring10,*) RTM_ID
-                
-                err_msg = 'unknown or inconsistent RTM_ID=' // tmpstring10
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                
-             end select
-
+             call mwRTM_get_Tb(                                              &
+                  N_catl, freq, inc_angle, mwRTM_param, tile_coord_l%elev,   &
+                  lai, smoist, stemp_l(:,n_e), SWE, met_force%Tair, RTM_ID,  &
+                  Tb_h_vec, Tb_v_vec )
+             
              Tb_h_l(:,j,n_e) = Tb_h_vec
              Tb_v_l(:,j,n_e) = Tb_v_vec
              
