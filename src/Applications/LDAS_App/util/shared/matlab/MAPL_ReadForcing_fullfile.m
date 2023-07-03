@@ -12,10 +12,10 @@ function [tile_data,N_tile,start_time,end_time] = ...
 %
 % check whether no-data variables are available on input 
 
-if ~exist('nodata'),          nodata         = 1.e15;  end   % default: MAPL_UNDEF
-if ~exist('nodata_tolfrac'),  nodata_tolfrac = 1.e-4;  end
+if ~exist('nodata',         'var'),  nodata         = 1.e15;  end   % default: MAPL_UNDEF
+if ~exist('nodata_tolfrac', 'var'),  nodata_tolfrac = 1.e-4;  end
 
-nodata_tol = abs( nodata*nodata_tol_frac ); 
+nodata_tol = abs( nodata*nodata_tolfrac ); 
 
 % -------------------------------------------------------------------------
 
