@@ -4,7 +4,7 @@
 
 program LDAS_Main
 
-  
+
    ! !USES:
    use MAPL
    use GEOS_LDASGridCompMod, only:  ROOT_SetServices => SetServices
@@ -19,9 +19,8 @@ program LDAS_Main
 !EOP
 !----------------------------------------------------------------------
 !BOC
-  
-   cap_options = FlapCLI(description = 'GEOS LDAS', &
-                      authors     = 'GMAO')
+
+   cap_options = FargparseCLI()
    cap_options%egress_file = 'EGRESS.ldas'
 
    cap = MAPL_Cap('LDAS', ROOT_SetServices, cap_options = cap_options)
@@ -29,5 +28,5 @@ program LDAS_Main
 
    !call MAPL_CAP(ROOT_SetServices, FinalFile='EGRESS.ldas', rc=status)
    !VERIFY_(status)
-  
+
 end program LDAS_Main
