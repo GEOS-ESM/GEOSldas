@@ -17,7 +17,7 @@ module clsm_ensupd_enkf_update
 
   USE CATCH_CONSTANTS,                  ONLY :    &
        N_gt           => CATCH_N_GT,              &
-       N_snow         => CATCH_N_SNOW              !added jpark50 (07/19/21) 
+       N_snow         => CATCH_N_SNOW              
 
   use catchment_model,                  ONLY:     &
        catch_calc_tsurf
@@ -1423,22 +1423,8 @@ contains
 
        cat_progn_has_changed = .true.
      
-     case(11) select_update_type ! snow update !jpark50
-           if (logit) write (logunit,*) 'applying Snow data increments'
-
-       !if ( date_time%hour /= 0 .and. &
-       !     date_time%min  /= 0 .and. &
-       !     date_time%sec  /= 0         ) then
-
-       !   if (logit) write (logunit,*) 'no application of increments at this time'
-       !   cat_progn_has_changed = .false.
-       !   return
-
-       !end if
-
-       if (logit) write (logunit,*) 'apply_enkf_increments(): applying asnow increments'
-       if (logit) write (logunit,*) 'entering do loop'
-
+     case(11) select_update_type ! MODIS SCF update
+       
       !Rule-based snow SCF update
        do n=1,N_catd       ! for each tile
 

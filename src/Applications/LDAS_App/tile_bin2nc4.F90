@@ -250,12 +250,12 @@ PROGRAM tile_bin2nc4
     case ('TB_LAND_1410MHZ_40DEG_VPOL');       LONG_NAME = 'brightness_temperature_land_1410MHz_40deg_Vpol';                   UNITS = 'K' 
  
     ! Done for SM_L4
- 
+
     case ('Tair');       LONG_NAME = 'air_temperature_at_RefH';                                          UNITS = 'K' 
     case ('TA');         LONG_NAME = 'air_temperature_at_RefH';                                          UNITS = 'K' 
     case ('Qair');       LONG_NAME = 'specific_humidity_at_RefH';                                        UNITS = 'kg kg-1'
     case ('QA');         LONG_NAME = 'specific_humidity_at_RefH';                                        UNITS = 'kg kg-1'
-    case ('LWdown');     LONG_NAME = 'downward_longwave_radiation"';                                     UNITS = 'W m-2'
+    case ('LWdown');     LONG_NAME = 'downward_longwave_radiation';                                      UNITS = 'W m-2'
     case ('LWDNSRF');    LONG_NAME = 'perturbed_surface_downwelling_longwave_flux';                      UNITS = 'W m-2'
     case ('SWdown');     LONG_NAME = 'downward_shortwave_radiation';                                     UNITS = 'W m-2'
     case ('Wind');       LONG_NAME = 'wind_speed_at_RefH';                                               UNITS = 'm s-1'
@@ -275,6 +275,16 @@ PROGRAM tile_bin2nc4
     case ('WESNN1');     LONG_NAME = 'snow_mass_layer_1';                                                UNITS = 'kg m-2'
     case ('WESNN2');     LONG_NAME = 'snow_mass_layer_2';                                                UNITS = 'kg m-2'
     case ('WESNN3');     LONG_NAME = 'snow_mass_layer_3';                                                UNITS = 'kg m-2'
+    case ('HTSNNN1');    LONG_NAME = 'heat_content_snow_layer_1';                                        UNITS = 'J m-2'
+    case ('HTSNNN2');    LONG_NAME = 'heat_content_snow_layer_2';                                        UNITS = 'J m-2'
+    case ('HTSNNN3');    LONG_NAME = 'heat_content_snow_layer_3';                                        UNITS = 'J m-2'
+    case ('SNDZN1');     LONG_NAME = 'snow_depth_layer_1';                                               UNITS = 'm'
+    case ('SNDZN2');     LONG_NAME = 'snow_depth_layer_2';                                               UNITS = 'm'
+    case ('SNDZN3');     LONG_NAME = 'snow_depth_layer_3';                                               UNITS = 'm'
+    case ('ALBVR');      LONG_NAME = 'surface_albedo_visible_beam';                                      UNITS = '1'
+    case ('ALBVF');      LONG_NAME = 'surface_albedo_visible_diffuse';                                   UNITS = '1'
+    case ('ALBNR');      LONG_NAME = 'surface_albedo_near_infared_beam';                                 UNITS = '1'
+    case ('ALBNF');      LONG_NAME = 'surface_albedo_near_infrared_diffuse';                             UNITS = '1'
     case ('HLWUP');      LONG_NAME = 'surface_outgoing_longwave_flux';                                   UNITS = 'W m-2'
     case ('GWETPROF');   LONG_NAME = 'ave_prof_soil_wetness';                                            UNITS = '1'
     case ('GWETROOT');   LONG_NAME = 'root_zone_soil_wetness';                                           UNITS = '1'

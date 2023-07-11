@@ -13,7 +13,7 @@ module clsm_ensupd_upd_routines
        MAPL_TICE,                                 &
        MAPL_RADIUS,                               &
        MAPL_PI,                                   &
-       MAPL_ALHF                                  !jpark50
+       MAPL_ALHF                                  
 
   use LDAS_ensdrv_Globals,              ONLY:     &
        logit,                                     &
@@ -103,13 +103,15 @@ module clsm_ensupd_upd_routines
   use catch_constants,                  ONLY:     &
        N_snow => CATCH_N_SNOW,                    &
        N_gt   => CATCH_N_GT,                      &
+       CATCH_DZ1MAX,                              &
        PEATCLSM_POROS_THRESHOLD
-!       N_CONSTIT => CATCH_N_CONSTIT                 !LCA needed for relayer2
 
   use STIEGLITZSNOW, ONLY: &
       StieglitzSnow_calc_asnow,                   &
-      relayer2,                                   &   !LCA needed for snow da
-      N_constit
+      relayer2,                                   &   
+      N_constit                                  
+      !topthick,                &
+      !thickdist 
 
   use LDAS_ensdrv_mpi,                  ONLY:     &
        numprocs,                                  &
@@ -1346,7 +1348,7 @@ contains
           
        end if
         
-       if (get_asnow_l) then !jpark50
+       if (get_asnow_l) then
            call StieglitzSnow_calc_asnow( N_snow, N_catl,                         &
                 catprogn2wesn(N_catl,cat_progn(:,n_e)),                           &
                 asnow_l)
@@ -1452,12 +1454,10 @@ contains
 #ifdef LDAS_MPI
     
     ! count number of fields that need to be communicated (N_fields), allocate as needed
-    ! added get_asnow_lH at the function jpark50
     call get_obs_pred_comm_helper( N_catl, N_ens, N_TbuniqFreqAngRTMid,          &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_asnow_lH, get_Tb_lH, N_fields)
     
     ! allocate and assemble tile_data_l
-    ! added get_asnow_lH at the function jpark50
     if (allocated(tile_data_l))  deallocate(tile_data_l)
     allocate(tile_data_l(N_catl,N_fields,N_ens))
 
@@ -1473,7 +1473,6 @@ contains
          N_catlH, tile_data_lH=tile_data_lH )    
     
     ! read out sfmc, rzmc, etc. from tile_data_lH    
-    ! addded asnow option at here
     call get_obs_pred_comm_helper( N_catlH, N_ens, N_TbuniqFreqAngRTMid,         &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_asnow_lH, get_Tb_lH, N_fields, &
          option=2, tile_data=tile_data_lH,                                       &
@@ -1490,7 +1489,7 @@ contains
     if (get_rzmc_lH)   rzmc_lH  = rzmc_l
     if (get_tsurf_lH)  tsurf_lH = tsurf_l
     if (get_FT_lH)     FT_lH    = FT_l
-    if (get_asnow_lH)  asnow_lH = asnow_l !jpark50
+    if (get_asnow_lH)  asnow_lH = asnow_l 
     if (get_Tb_lH)     stemp_lH = stemp_l
     if (get_Tb_lH)     Tb_h_lH  = Tb_h_l
     if (get_Tb_lH)     Tb_v_lH  = Tb_v_l
@@ -1857,7 +1856,7 @@ contains
     if (get_rzmc_lH)        deallocate(rzmc_lH) 
     if (get_tsurf_lH)       deallocate(tsurf_lH)
     if (get_FT_lH)          deallocate(FT_lH)
-    if (get_asnow_lH)       deallocate(asnow_lH) !jpark50
+    if (get_asnow_lH)       deallocate(asnow_lH)
     if (get_Tb_lH)          deallocate(stemp_lH)           
     if (get_Tb_lH)          deallocate(Tb_h_lH) 
     if (get_Tb_lH)          deallocate(Tb_v_lH) 
@@ -1979,8 +1978,7 @@ contains
 
     integer, intent(in)    :: N_cat, N_ens, N_Tb
     
-    logical, intent(in)    :: get_sfmc, get_rzmc, get_tsurf, get_FT, get_Tb 
-    logical, intent(in)    :: get_asnow !jpark50
+    logical, intent(in)    :: get_sfmc, get_rzmc, get_tsurf, get_FT, get_Tb, get_asnow 
     
     integer, intent(inout) :: N_fields
     
@@ -1989,7 +1987,7 @@ contains
     real, dimension(N_cat,N_fields,N_ens), intent(inout), optional :: tile_data
     
     real, dimension(N_cat,         N_ens), intent(inout), optional :: sfmc, rzmc
-    real, dimension(N_cat,         N_ens), intent(inout), optional :: tsurf, FT, asnow, stemp !jpark50
+    real, dimension(N_cat,         N_ens), intent(inout), optional :: tsurf, FT, asnow, stemp
     real, dimension(N_cat,N_Tb,    N_ens), intent(inout), optional :: Tb_h, Tb_v
     
     ! -----------------------------------
@@ -2020,7 +2018,7 @@ contains
        if ( ((get_sfmc ) .and. (.not. present(sfmc )))    .or.            &
             ((get_rzmc ) .and. (.not. present(rzmc )))    .or.            &
             ((get_tsurf) .and. (.not. present(tsurf)))    .or.            &
-            ((get_asnow) .and. (.not. present(asnow)))    .or.            & !jpark50
+            ((get_asnow) .and. (.not. present(asnow)))    .or.            & 
             ((get_FT)    .and. (.not. present(FT   )))    .or.            &
             ((get_Tb)    .and. (.not. present(stemp)))    .or.            &
             ((get_Tb)    .and. (.not. present(Tb_h )))    .or.            &
@@ -2080,7 +2078,7 @@ contains
                             
     end if
 
-    if (get_asnow)     then  !jpark50
+    if (get_asnow)     then 
 
        k = k+1
 
@@ -3519,16 +3517,13 @@ contains
     ! -------------------------------------------------------------------
     ! Need to clean up and pull these two hardwired numbers from GCM GridComp or MAPL, reichle 20221007 (TO DO)
     real, dimension(N_snow), parameter    :: DZMAX = (/0.08, 0.5, 0.5/)  ! target thickness for relayer2()           ! needs to be pulled from Catch GC; would fail with N_snow /= 3; 
-    real,                   parameter     :: cpw   = 2065.22             ! ice specific heat capacity @ 0C [J/kg/K]  ! already defined in StieglitzSnow.F90;  needs to be added to MAPL (or at least pulled from StieglitzSnow.F90 )
+     
     ! -------------------------------------------------------------------
 
-    ! design parameters for 1d snow cover analysis (Toure et al. 2018)
-
-    ! TO DO: RENAME SO THE USE OF THESE VARIABLES IN SCA ANALYSIS IS MORE OBVIOUS, reichle 20221007 
-
-    real, parameter:: alpha_threshold = 0.40   ! dimensionless    DEPENDS ON WEMIN (and might be wrong in Toure et al!!!!) - NEEDS VERIFICATION & CLEANUP
-    real, parameter:: beta_threshold  = 0.40   ! dimensionless
-    real, parameter:: max_incr_swe    = 5.0    ! kg m-2 
+    ! design parameters for 1d snow cover analysis modified from  Toure et al. 2018
+    real, parameter:: modis_scf_alpha_threshold = 0.60   ! dimensionless, Obs_scf *  scf_alpha_threshold below which snow is added
+    real, parameter:: modis_scf_beta_threshold  = 0.55   ! dimensionless, Obs threshold below which to remove snow
+    real, parameter:: modis_max_incr_swe    = 5.0    ! kg m-2 
     real, parameter:: smallfcstswe    = 0.01   ! kg m-2  threshold for "no snow" below which the ratio of swe_ana/swe_fcst tends to be unreasonable
 
     ! -----------------------------------------------------------------------
@@ -4469,7 +4464,7 @@ contains
        
        ! make sure maximum SWE increment is less than WEMIN (adding more snow than WEMIN makes no sense)
 
-       if (max_incr_swe>WEMIN)  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'must use max_incr_swe<=WEMIN')
+       if (modis_max_incr_swe>WEMIN)  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'must use max_incr_swe<=WEMIN')
        
        !identify the species ID number of interest       
        N_select_varnames  = 1      
@@ -4510,18 +4505,18 @@ contains
                 
                 ! 2. Calculate SWE increment based on Toure et al (2018) eq 1
 
-                if     (asnow_fcst .lt. Observations(ind_obs(1))%obs * alpha_threshold) then
+                if     (asnow_fcst .lt. Observations(ind_obs(1))%obs * modis_scf_alpha_threshold) then
                    
                    ! ADD SNOW: SCA of model is less than observed SCA
                    
                    swe_incr(kk,n_e)                                                                     &
-                        = max_incr_swe * (Observations(ind_obs(1))%obs - asnow_fcst/alpha_threshold)
+                        = modis_max_incr_swe * (Observations(ind_obs(1))%obs - asnow_fcst/modis_scf_alpha_threshold)
                    
-                elseif (Observations(ind_obs(1))%obs .lt. beta_threshold) then
+                elseif (Observations(ind_obs(1))%obs .lt. modis_scf_beta_threshold) then
                    
                    ! REMOVE SNOW: IF SCA of model is greater than observed SCA
                    
-                   swe_incr(kk,n_e) = (-1.) *  max_incr_swe * asnow_fcst * (1. - Observations(ind_obs(1))%obs/beta_threshold)
+                   swe_incr(kk,n_e) = (-1.) *  modis_max_incr_swe * asnow_fcst * (1. - Observations(ind_obs(1))%obs/modis_scf_beta_threshold)
                    
                 else 
                    
@@ -4540,9 +4535,7 @@ contains
                    swe_ratio = swe_ana / swe_fcst 
                 else
                    swe_ratio = 1.  ! set to neutral just in case, but should not be used if swe_fcst<smallfcstswe
-                end if
-                
-!                if (logit) write (logunit, *) '!!!!   swe_ratio = ' , swe_ana, swe_fcst, swe_ratio, '!!!!'
+                end if 
                 
                 ! loop through snow layers and compute SWE, snow heat content, and snow depth analysis for each layer
                 
@@ -4555,31 +4548,30 @@ contains
                       tmp_wesn(kk, n_e, isnow)    = 0.0
                       tmp_htsn(kk, n_e, isnow)    = 0.0
                       tmp_sndz(kk, n_e, isnow)    = 0.0 
-
-                      if (logit) write (logunit, *) '%%%%%% asnow_ana = 0.0' 
-                      
-                   elseif (swe_fcst < smallfcstswe) then
+        
+                    elseif (swe_fcst < smallfcstswe) then
                       
                       ! no snow in forecast, added snow has generic properties
                       
                       tmp_wesn(kk, n_e, isnow)    = swe_ana / N_snow                            ! distribute SWE evenly across layers
-                      tmp_htsn(kk, n_e, isnow)    = (0.0 - MAPL_ALHF)*tmp_wesn(kk,n_e,isnow)    ! assign heat content for snow at 0 deg C and without liquid water content
+                      tmp_htsn(kk, n_e, isnow)    = (0.0 - MAPL_ALHF)*tmp_wesn(kk,n_e,isnow)    ! assign heat content for snow at 0 deg C and without liquid water content (100% frozen) based on StieglitzSnow (htsn = (cpw*tsnow - fice*MAPL_ALHF)*swe
                       tmp_sndz(kk ,n_e, isnow)    = (WEMIN / RHOFS) / N_snow                    ! assign snow depth consistent with freshly fallen snow (must have max_incr<=WEMIN)
                       
-                      if (logit) write (logunit, *) '%%%%%%  asnow_fcst = 0 ; asnow_ana < 1.0'
+                   
                       
                    else
                       
                       ! snow in forecast and analysis, derive properties of added snow from properties of forecast snow
                       
                       tmp_wesn(kk, n_e, isnow)    = cat_progn(kk, n_e)%wesn(isnow) * swe_ratio
-                      tmp_htsn(kk, n_e, isnow)    = cat_progn(kk, n_e)%htsn(isnow) * swe_ratio  ! What if fcst snow is at 0 deg C and contains liquid water?  TBD reichle 20221007
+                      tmp_htsn(kk, n_e, isnow)    = cat_progn(kk, n_e)%htsn(isnow) * swe_ratio  ! What if fcst snow is at 0 deg C and contains liquid water?  TBD reichle 20221007, could update as:
+                      !tmp_htsn(kk, n_e, isnow)   = (cpw * tpsn(kkm n_e, isnow)  - fices(kk, n_e, isnow) * MAPL_ALHF) * tmp_wesn(kk, n_e, isnow)
                       
                       if (asnow_ana < 1.) then
                          
                          tmp_sndz(kk, n_e, isnow) = cat_progn(kk, n_e)%sndz(isnow)              ! snow depth remains constant b/c swe_ana<1.
 
-                         if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana < 1.0'
+                   
                          
                       else
 
@@ -4587,7 +4579,7 @@ contains
 
                          tmp_sndz(kk, n_e, isnow) =  tmp_wesn(kk, n_e, isnow) / (cat_progn(kk, n_e)%wesn(isnow) / cat_progn(kk, n_e)%sndz(isnow))
                          
-                         if (logit) write (logunit, *) '%%%%%%  asnow_fcst > 0 ; asnow_ana = 1.0'
+                   
                          
                       end if
                    end if
@@ -4596,7 +4588,7 @@ contains
                 ! 4. Relayer to balance the snow column 
                 
                 call relayer2( N_snow, N_constit ,     &
-                     DZMAX(1), DZMAX(2:N_snow),        &
+                     CATCH_DZ1MAX, DZMAX(2:N_snow),        &
                      tmp_htsn(kk, n_e, 1:N_snow),      &
                      tmp_wesn(kk, n_e, 1:N_snow),      &
                      tmp_sndz(kk, n_e, 1:N_snow),      &

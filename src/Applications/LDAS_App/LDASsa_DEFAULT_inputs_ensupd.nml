@@ -1157,10 +1157,10 @@ obs_param_nml(24)%adapt          = 0
 
 ! --------------------------------------------------------------------
 !
-!  21 = MODIS SCF
+!  25 = MODIS SCF
 !
-! TO DO: which platform? 
-! TO DO: figure out orbit (day!)
+! platform: SCF assimilation is currently set up to use MOD10C1.061 (MODIS/Terra 0.05deg CMG, V61) 
+! specs: The assimilation occurs at +/-3h passover time (10:30am local). The assimilation only contains a single member.
  
 obs_param_nml(25)%descr          = 'MODIS_SCF'
 obs_param_nml(25)%orbit          = 0
@@ -1179,13 +1179,13 @@ obs_param_nml(25)%bias_tcut      = 432000
 obs_param_nml(25)%nodata         = -9999.	
 obs_param_nml(25)%varname        = 'asnow'
 obs_param_nml(25)%units          = 'm2/m2'
-obs_param_nml(25)%path           = ''	
+obs_param_nml(25)%path           = '/discover/nobackup/projects/S2SHMA/MODIS/MOD10C1_C61/'	
 obs_param_nml(25)%name           = ''
 obs_param_nml(25)%scalepath      = ''
 obs_param_nml(25)%scalename      = ''
 obs_param_nml(25)%flistpath      = ''
 obs_param_nml(25)%flistname      = ''
-obs_param_nml(25)%errstd         = .0
+obs_param_nml(25)%errstd         = 0.0004
 obs_param_nml(25)%std_normal_max = 2.5
 obs_param_nml(25)%zeromean       = .true.
 obs_param_nml(25)%coarsen_pert   = .false.
