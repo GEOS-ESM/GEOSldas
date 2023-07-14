@@ -401,6 +401,7 @@ contains
           ! extract species into obs_param
           
           N_tmp = max( obs_param_nml(i)%N_ang, 1 )
+
           do k=1,N_tmp
              
              j = j + 1
@@ -760,6 +761,7 @@ contains
     type(cat_progn_type), dimension(N_catd,N_ens), intent(in) :: cat_progn
     
     type(cat_progn_type), dimension(N_catd), intent(out) :: cat_progn_ensavg
+
     ! locals
     
     integer :: i, n_e
@@ -880,7 +882,7 @@ contains
                 ! bug fix
                 ! GDL+reichle, 17 Oct 2014
                 !Obs_cov(i,j) = Observations(i)%obsvar * fac
-                !Obs_cov(i,j) = Observations(i)%obsvar * fac
+
                 Obs_cov(i,j) = sqrt(Observations(i)%obsvar * Observations(j)%obsvar) * fac
                 
                 Obs_cov(j,i) = Obs_cov(i,j)
@@ -957,7 +959,8 @@ contains
     
     real,                   dimension(:,:),   pointer :: Obs_pred_l            ! output
     
-    logical,                intent(in),    dimension(N_obsl), optional :: obsbias_ok       
+    logical,                intent(in),    dimension(N_obsl), optional :: obsbias_ok    
+   
     real,                   intent(in),                       optional :: fcsterr_inflation_fac      
     
     ! --------------------------------------------------------------------------------
@@ -995,7 +998,7 @@ contains
     logical                                 :: get_tp_l
     logical                                 :: get_Tb_l,     get_Tb_lH
     logical                                 :: get_FT_l,     get_FT_lH
-    logical                                 :: get_asnow_l,  get_asnow_lH     !jpark50 
+    logical                                 :: get_asnow_l,  get_asnow_lH
     type(grid_def_type)                     :: tile_grid_lH        
     
     integer, dimension(N_obs_param)         :: ind_obsparam2Tbspecies
@@ -1110,7 +1113,7 @@ contains
     get_tp_l     = .false.
     get_FT_l     = .false.
     get_Tb_l     = .false.
-    get_asnow_l  = .false. !jpark50 Snow cover assimilation
+    get_asnow_l  = .false.
 
     ! get_*_lH : directly match observed fields
     
@@ -1119,7 +1122,7 @@ contains
     get_tsurf_lH = .false.
     get_FT_lH    = .false.
     get_Tb_lH    = .false.
-    get_asnow_lH = .false. !jpark50 Snow cover assimilation
+    get_asnow_lH = .false.
 
     ! loop through obs_param b/c obs on local proc may not reflect all obs
     
@@ -1174,7 +1177,8 @@ contains
           
           get_Tb_lH    = .true.
           
-       case('asnow')   !jpark50 Snow cover assimilation
+       case('asnow')
+
          get_asnow_l   = .true.
          get_asnow_lH  = .true.
          
@@ -1336,7 +1340,7 @@ contains
           
           call StieglitzSnow_calc_asnow( N_snow, N_catl,                         &
                catprogn2wesn(N_catl,cat_progn(:,n_e)),                           &
-               asnow)
+               asnow )
           
           call catch_calc_tsurf_excl_snow( N_catl,                               &
                cat_progn(:,n_e)%tc1, cat_progn(:,n_e)%tc2, cat_progn(:,n_e)%tc4, &
@@ -1349,9 +1353,11 @@ contains
        end if
         
        if (get_asnow_l) then
-           call StieglitzSnow_calc_asnow( N_snow, N_catl,                         &
-                catprogn2wesn(N_catl,cat_progn(:,n_e)),                           &
-                asnow_l)
+          
+          call StieglitzSnow_calc_asnow( N_snow, N_catl,                         &
+               catprogn2wesn(N_catl,cat_progn(:,n_e)),                           &
+               asnow_l(:,n_e) )
+          
        end if
  
        if (get_Tb_l) then
@@ -1951,7 +1957,7 @@ contains
        end do
 
     end if
-    !if(logit) write(logunit,*) 'Ending get_obs_pred'
+
     ! ----------------------------------------------------------------
     
   end subroutine get_obs_pred
@@ -3134,6 +3140,7 @@ contains
     ! -----------------------------------------------------------------
     
     nullify(obs_pert_param)
+
     ! determine pert_grid_lH 
     !  - pert_grid_lH is the local grid for which perturbations are needed
     !  - pert_grid_lH is larger than pert_grid_l by the "halo"
@@ -3374,14 +3381,13 @@ contains
 
     !call check_obs_pert( N_ens, N_catd, N_obs, cat_param, Observations, &
     !     Obs_pert )
-    !if(logit) write(logunit, *) 'exit get_obs_pert' 
  
   end subroutine get_obs_pert
   
   ! *********************************************************************
 
   subroutine cat_enkf_increments(                               &
-       N_ens, N_obs, N_catd,  N_obs_param,                      &
+       N_ens, N_obs, N_catd, N_obs_param,                       &
        update_type, obs_param,                                  &
        tile_coord, l2f,                                         &
        Observations, Obs_pred, Obs_pert,                        &
@@ -3395,10 +3401,14 @@ contains
     ! reichle, 27 Jul 2005
     ! reichle, 18 Oct 2005 - return increments (instead of updated cat_progn)
     ! reichle, 17 Oct 2011 - added "l2f" for revised (MPI) analysis
-    ! jpark50, 28 Jul 2020 - added met_force at the subroutine for 1D snow assimilation
+    ! jpark50, 28 Jul 2020 - added met_force to argument list for MODIS SCF assimilation
     ! reichle, 20 Feb 2022 - modified update_type 10 for PEATCLSM
     !
     ! --------------------------------------------------------------
+
+    ! IMPORTANT:
+    ! on input, cat_progn must contain cat_progn_minus(1:N_catd,1:N_ens)
+    ! on output, cat_progn_incr contains INCREMENTS
     
     ! type of update is selected by "update_type"
     
@@ -3538,8 +3548,6 @@ contains
           cat_progn_incr(kk,n_e) = 0.
        end do
     end do
-
-    ! reichle_15Dec2021: removed redundant initialization of cat_progn_incr
      
     ! avoid unnecessary work or subroutine calls
 
@@ -3637,10 +3645,12 @@ contains
     asnow_ensavg = 0.
 
     do n_e=1,N_ens
+
        SWE_ensavg   = SWE_ensavg   + SWE(    :,n_e)
        tsurf_ensavg = tsurf_ensavg + tsurf(  :,n_e)
        tp1_ensavg   = tp1_ensavg   + tp(   1,:,n_e)
        asnow_ensavg = asnow_ensavg + asnow(  :,n_e)
+
     end do
     
     SWE_ensavg   = SWE_ensavg   /real(N_ens)
@@ -4028,6 +4038,7 @@ contains
        end do
        
        ! ----------------------------------
+
     case (7) select_update_type   ! 3d Tskin/ght(1) analysis; tskin obs 
        
        ! update each tile separately using all observations within 
@@ -4588,7 +4599,7 @@ contains
                 ! 4. Relayer to balance the snow column 
                 
                 call relayer2( N_snow, N_constit ,     &
-                     CATCH_DZ1MAX, DZMAX(2:N_snow),        &
+                     CATCH_DZ1MAX, DZMAX(2:N_snow),    &
                      tmp_htsn(kk, n_e, 1:N_snow),      &
                      tmp_wesn(kk, n_e, 1:N_snow),      &
                      tmp_sndz(kk, n_e, 1:N_snow),      &
@@ -4640,7 +4651,6 @@ contains
     ! NO checks of prognostics after update, this is now done after 
     ! increments have been applied.
     ! - reichle, 18 Oct 2005
-    if (logit) write(logunit,*) 'Cat_enkf_increment completed'
 
   end subroutine cat_enkf_increments
   
@@ -4664,7 +4674,7 @@ contains
     type(obs_param_type), dimension(N_obs_param),       intent(in)  :: obs_param        
     
     integer,                                            intent(out) :: N_select_species
-    integer,                 dimension(N_obs_param),       intent(out) :: select_species
+    integer,              dimension(N_obs_param),       intent(out) :: select_species
     
     ! local variables
     
@@ -4680,13 +4690,7 @@ contains
 
     if (N_select_varnames > 0) then
 
-       !if(logit) write(logunit,*) 'N_obs_param:', N_obs_param
-       !if(logit) write(logunit,*) 'Select_varnames:', select_varnames
-
        do ii=1,N_obs_param
-     
-          !if(logit) write(logunit,*) obs_param(ii)%varname
-          !if(logit) write(logunit,*) select_varnames          
           
           if (any(trim(obs_param(ii)%varname)==select_varnames)) then
              
@@ -4806,8 +4810,7 @@ contains
 
           if ( any(Observations(i)%tilenum == select_tilenum) .and.         &
                any(Observations(i)%species == select_species)       ) then
-          if(logit) write(logunit,*) '********Found matching point*********'
- 
+             
              k          = k+1
              ind_obs(k) = i
              
@@ -5343,8 +5346,6 @@ contains
   
   ! ******************************************************************
 
-  ! reichle_15Dec2021: undid deletion of ~half of the old, commented-out subroutine below
-  
 ! abandoned during changes for obs halo
 ! to reinstate, need to MPI_Gather "cat_param_f"
 !

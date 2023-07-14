@@ -521,11 +521,6 @@ contains
 
           if (allocated(obsbias_ok)) deallocate(obsbias_ok)
 
-          !if(logit) write(logunit,*) 'N_obs_l after obs_pred', N_obsl
-          !if(logit) write(logunit,*) 'Observations_l length', size(Observations_l)
-          !if(logit) write(logunit,*) 'Observations_l',Observations_l%ana
-          !if(logit) write(logunit,*) 'Obs_pred_l', Obs_pred_l
-
           ! IF NEEDED, INCLUDE WITHHOLDING SUBROUTINE HERE.
           ! SUCH A SUBROUTINE SHOULD CHANGE Observations(i)%assim TO FALSE
           ! IF THE OBSERVATION IS TO BE WITHHELD

@@ -2,12 +2,11 @@
 ! this file contains subroutines for reading and processing observations 
 ! for the GEOS5 land EnKF update algorithm
 !
-! reichle, 27 Jan 2005
-! reichle, 10 Jan 2011 - replaced "UVA" with "LPRM"
-! reichle,  1 Jul 2015 - clarified definition of obs time stamp 
+! reichle,  27 Jan 2005
+! reichle,  10 Jan 2011 - replaced "UVA" with "LPRM"
+! reichle,   1 Jul 2015 - clarified definition of obs time stamp 
 !                          (J2000 seconds w/ 'TT12' epoch)
-
-!lcandre2, 10 Jul 2021 - confirmed and cleaned up MODIS obs
+! lcandre2, 10 Jul 2021 - confirmed and cleaned up MODIS obs
 
 ! added work_path to inputs of many subroutines so that "tmpfname"
 ! (needed several times for reading AMSR-E hdf files) is distinct for each job
@@ -87,9 +86,10 @@ module clsm_ensupd_read_obs
 contains
  
   ! ***************************************************************** 
+
   subroutine read_ae_l2_sm_hdf( &
        N_files, fnames, N_data, lon, lat, ae_l2_sm, ease_col, ease_row )
-   
+ 
     ! read soil moisture data from one or more AMSR-E Land hdf files
     !
     ! return ONLY valid data points (ie. excluding no-data-values)
@@ -195,6 +195,7 @@ contains
     do j=1,N_files
        
        ! open and "start" hdf file 
+
        file_id(j) = hopen( fnames(j), DFACC_READ, num_dds_block )  
        
        status = vfstart(file_id(j))
@@ -383,7 +384,7 @@ contains
     ! -------------------------------------
     !
     ! eliminate no-data-values and data that fail initial QC
- 
+    
     j = 0
     
     do i=1,N_data
@@ -4587,11 +4588,9 @@ contains
 
   ! *****************************************************************
 
-
- subroutine read_MODISscf_hdf( N_files, date_time, N_data, fnames, &
+  subroutine read_MODISscf_hdf( N_files, date_time, N_data, fnames, &
                                lon, lat, MODIS_SCF)
 
-    !subroutine read_MODISscf_hdf routine description
     ! Purpose: read preprocessed (renamed) snow cover data from daily MODIS Terra MOD10C1, version 6.1 (https://nsidc.org/data/mod10c1/versions/61) 
     !   - Data currently located at /discover/nobackup/projects/S2SHMA/MODIS/MOD10C1_V61/ (2010-2022)
     !   - Daily dataset with spatial resolution of 0.05 deg on CMG grid, missing days 2016 d. 50-58
@@ -4891,11 +4890,11 @@ contains
     deallocate(Snow_QA)
     deallocate(MODIS_SCf_raw)
 
- end subroutine read_MODISscf_hdf  
+  end subroutine read_MODISscf_hdf
 
   ! *****************************************************************
 
- subroutine read_obs_MODISscf(                                          &
+  subroutine read_obs_MODISscf(                                         &
             work_path, date_time, dtstep_assim, N_catd, tile_coord,     &
             tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,        &
             this_obs_param, found_obs, MODIS_obs, std_MODIS_obs)
@@ -5100,9 +5099,7 @@ contains
   
   end subroutine read_obs_MODISscf
 
-
   ! *****************************************************************
-
   
   subroutine read_obs_SMAP_FT( date_time, N_catd, this_obs_param,            &
        dtstep_assim, tile_coord, tile_grid_d,                                &
@@ -7459,6 +7456,7 @@ contains
     logical,              intent(in) :: write_obslog
 
     ! outputs:
+
     real,    intent(out), dimension(N_catd) :: tmp_obs
     real,    intent(out), dimension(N_catd) :: tmp_std_obs
     real,    intent(out), dimension(N_catd) :: tmp_lon
@@ -8730,15 +8728,7 @@ contains
           if (scaled_obs)  any_scaled_obs = .true.
 
        end if
-         
-          !if(logit) write(logunit,*) 'length of obs after finishing read_obs', size(tmp_obs_f)
-          !if(logit) write(logunit,*) 'tmp_obs_f after finishing read_obs', tmp_obs_f
-          !if(logit) write(logunit,*) 'length of lon after finishing read_obs', size(tmp_lon_f)
-          !if(logit) write(logunit,*) 'length of lat after finishing read_obs', size(tmp_lat_f)
-          !if(logit) write(logunit,*) 'N_catf', N_catf
-          !if(logit) write(logunit,*) 'tile_coord_f', tile_coord_f
-          !if(logit) write(logunit,*) 'found_obs (after read_obs)=', found_obs
-      
+       
        ! put "tmp_obs" (in "tile" space) into "compressed" vector "Observations_l"
        !
        ! each observation is "managed" ("administered") by the processor that 
@@ -8769,22 +8759,11 @@ contains
           
 
           ! NOTE: "Observations" here are l(ocal) obs only
-         !if(logit) write(logunit,*), 'N_obsl_max:', N_obsl_max
-         !if(logit) write(logunit,*), 'N_catl:', N_catl
-         !if(logit) write(logunit,*), 'l2f:', l2f
-         !if(logit) write(logunit,*), 'tmp_obs', tmp_obs
-         !if(logit) write(logunit,*), 'size tmp_obs', size(tmp_obs)
-         !if(logit) write(logunit,*), 'size tmp_lat', size(tmp_lat)
-         !if(logit) write(logunit,*), 'size tmp_lon', size(tmp_lon)
-         !if(logit) write(logunit,*), 'obs_count', obs_count
- 
+          
           call put_into_Observations( obs_param(species), N_obsl_max, N_catl, l2f,  &
                tmp_obs, tmp_std_obs, tmp_lon, tmp_lat, tmp_time, tmp_assim,         &
                obs_count, Observations_l )
-         !if(logit) write(logunit,*), 'obs_count (after subroutine):', obs_count
-         !if(logit) write(logunit,*), 'Observations_l:', size(Observations_l)
-         !if(logit) write(logunit,*), 'Observation_l%obs', Observations_l%obs
-         !if(logit) write(logunit,*), 'Observations_l%tilenum', Observations_l%tilenum
+          
        end if
        
     end do
@@ -8794,7 +8773,7 @@ contains
     call MPI_BCAST(any_scaled_obs, 1, MPI_LOGICAL, 0,mpicomm, mpierr)
 
 #endif
-    !if(logit) write(logunit,*) 'N_obsl:', obs_count 
+
     N_obsl = obs_count
 
     ! -----------------------------------------------------------------
@@ -8830,7 +8809,6 @@ contains
        do ii=2,N_obsl
           
           this_tilenum_new = Observations_l(ii)%tilenum
-          !if(logit) write(logunit,*) 'tilenum', this_tilenum_new
 
           if ( (this_tilenum_new/=this_tilenum) .or. (ii==N_obsl) ) then
              
@@ -8848,12 +8826,10 @@ contains
              !  of (local) obs with the same tilenum
              
              N_tmp   = ind_end - ind_start + 1
-             !if(logit) write(logunit,*) 'N_tmp', 'N_tmp'
 
              if (N_tmp>1) then
                 
                 tmp_species(1:N_tmp) = Observations_l(ind_start:ind_end)%species
-                !if(logit) write(logunit,*) 'tmp_species', tmp_species
  
                 ! get index vector for sorting by species (see NOTES above!)
                 
@@ -9021,15 +8997,10 @@ contains
     
     ! ------------------------------------------------------
    
-    if(logit) write(logunit,*) 'Entering put_into_Observations'
- 
     nodatavalue = this_obs_param%nodata
     
     tol = abs(nodatavalue*nodata_tolfrac_generic)
    
-    !if(logit) write(logunit,*) 'tol:', tol
-    !if(logit) write(logunit,*) 'N_catd:', N_catd
- 
     do i=1,N_catd
 
        if (abs(tmp_obs(i)-nodatavalue) > tol) then  ! check for no-data-value
