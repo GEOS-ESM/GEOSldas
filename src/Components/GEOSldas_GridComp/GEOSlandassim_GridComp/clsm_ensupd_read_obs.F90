@@ -4983,11 +4983,27 @@ contains
  
     write (logunit, *) 'Obs time: ', YYYY, MM 
     write (logunit, *) 'DOY: ', DDD
-    
-    tmpfname1 = trim(this_obs_param%path) //  YYYY // '/MOD10C1.A' // YYYY // DDD // &
-                   '.061.hdf' !note the MODIS data version included here       
 
-    if (logit) write (logunit, *) 'Reading  data from', trim(tmpfname1)
+    ! In the ensupd nml file, specify the file "name" according to the following template:
+    !   
+    !     %name = 'MOD10C1.Ayyyyddd.061.hdf'
+    !
+    !                       1         2
+    !              123456789012345678901234
+    ! 
+    !       MOD10C1 = MODIS product name
+    !       .A      = "acquisition time" indicator
+    !       yyyyddd = placeholder for year/day-of-year 
+    !       .061    = version (Collection) indicator
+    !       .hdf    = file name extension 
+    !
+    ! Assuming the MODIS file naming convention remains unchanged, the version can then
+    !  be specified in the nml file.
+    
+    tmpfname1 = trim(this_obs_param%path) // '/' // YYYY // '/'                    &
+         // this_obs_param%name(1:9) // YYYY // DDD // this_obs_param%name(17:24)
+    
+    if (logit) write (logunit, *) 'Reading data from', trim(tmpfname1)
 
     inquire(file=trim(tmpfname1), exist=file_exists)
     if (logit) write (logunit, *), file_exists
