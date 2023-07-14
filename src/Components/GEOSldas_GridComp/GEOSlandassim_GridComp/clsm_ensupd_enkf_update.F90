@@ -302,9 +302,12 @@ contains
     integer                            :: nTiles_ana, nTilesAna_vec(numprocs)
     integer, dimension(:), allocatable :: indTiles_l, indTiles_f, indTiles_ana
     type(varLenIntArr)                 :: indTilesAna_vec(numprocs)
+
     type(tile_coord_type), dimension(:), pointer    :: tile_coord_ana  ! input to cat_enkf_increment() is a pointer
+
     type(met_force_type), dimension(:), allocatable :: met_force_f,         met_force_ana
     type(cat_param_type), dimension(:), allocatable :: cat_param_f,         cat_param_ana
+
     type(cat_progn_type), allocatable               :: cat_progn_f(:),      cat_progn_ana(:,:)
     type(cat_progn_type), allocatable               :: tmp_cat_progn_ana(:)
     type(cat_progn_type), allocatable               :: cat_progn_incr_f(:), cat_progn_incr_ana(:,:)
@@ -405,7 +408,7 @@ contains
                tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg,               &
                pert_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
        else
-          allocate(N_tile_in_cell_ij_f(0,0)) !for debugging
+          allocate(N_tile_in_cell_ij_f(0,0))  ! for debugging
        end if
 
        ! *********************************************************************
@@ -706,7 +709,7 @@ contains
           if (root_proc) then
             allocate(indTiles_f(nTiles_f), source=-99)
           else
-            allocate(indTiles_f(0)) ! for debugging mode
+            allocate(indTiles_f(0))  ! for debugging mode
           endif
   
           if (root_proc) then
@@ -841,7 +844,7 @@ contains
           Obs_ana = Obs_f_assim(indObs_ana(1:nObs_ana))
           if (allocated(Obs_f_assim)) deallocate(Obs_f_assim)
 
-          ! step 4b: tile_coord_ana
+          ! Step 4b: tile_coord_ana
           allocate(tile_coord_ana(nTiles_ana))
           tile_coord_ana = tile_coord_f(indTiles_ana)
 
@@ -849,7 +852,7 @@ contains
           if (root_proc) then
              allocate(met_force_f(N_catf))
           else
-             allocate(met_force_f(0)) !for debugging mode
+             allocate(met_force_f(0))  ! for debugging mode
           endif
           call MPI_Gatherv(                                             &
                met_force,   N_catl,                MPI_met_force_type,  &
@@ -878,7 +881,7 @@ contains
           if (root_proc) then
              allocate(cat_param_f(N_catf))
           else
-             allocate(cat_param_f(0)) !for debugging mode
+             allocate(cat_param_f(0))  ! for debugging mode
           endif
           call MPI_Gatherv(                                             &
                cat_param,   N_catl,                MPI_cat_param_type,  &
@@ -908,7 +911,7 @@ contains
           if (root_proc) then
              allocate(cat_progn_f(N_catf))
           else
-             allocate(cat_progn_f(0)) ! for debugging mode
+             allocate(cat_progn_f(0))  ! for debugging mode
           endif
 
           allocate(cat_progn_ana(nTiles_ana,N_ens))
@@ -960,7 +963,7 @@ contains
           if (root_proc) then
              allocate(Obs_pred_f_assim(N_obsf_assim))
           else
-             allocate(Obs_pred_f_assim(0)) ! for debugging mode
+             allocate(Obs_pred_f_assim(0))  ! for debugging mode
           endif
           allocate(Obs_pred_ana(nObs_ana,N_ens), source=0.)
           if (root_proc) then
@@ -1074,21 +1077,6 @@ contains
 #ifdef LDAS_MPI
           allocate(cat_progn_incr_ana(nTiles_ana,N_ens))
 
-          !if(logit) write(logunit,*) 'Entering cat_enkf_increments'
-          !if(logit) write(logunit,*) 'length of Obs_ana: ',           size(Obs_ana)
-          !if(logit) write(logunit,*) 'length of Obs_pred_ana: ',      size(Obs_pred_ana)
-          !if(logit) write(logunit,*) 'length of Obs_pert_tmp: ',      size(Obs_pert_tmp)
-          !if(logit) write(logunit,*) 'length of tile_coord_ana: ',    size(tile_coord_ana)
-          !if(logit) write(logunit,*) 'Obs_ana: ',                     Obs_ana
-          !if(logit) write(logunit,*) 'Obs_ana%species: ',             Obs_ana%species
-          !if(logit) write(logunit,*) 'Obs_ana%tilenum: ',             Obs_ana%tilenum
-          !if(logit) write(logunit,*) 'Obs_ana%lat: ',                 Obs_ana%lat
-          !if(logit) write(logunit,*) 'Obs_ana%lon: ',                 Obs_ana%lon
-          !if(logit) write(logunit,*) 'Obs_ana%obs: ',                 Obs_ana%obs
-          !if(logit) write(logunit,*) 'Obs_pred_ana: ',                Obs_pred_ana
-          !if(logit) write(logunit,*) 'Obs_pert_tmp: ',                Obs_pert_tmp
-          !if(logit) write(logunit,*) 'tile_corrd_ana: ',              tile_coord_ana
-
           call cpu_time(t_start)
           call cat_enkf_increments(                       &
                N_ens, nObs_ana, nTiles_ana, N_obs_param,  &
@@ -1142,7 +1130,7 @@ contains
              allocate(cat_progn_incr_f(N_catf))
              allocate(recvBuf(maxval(nTilesAna_vec))) ! temp storage of incoming data
           else
-             allocate(cat_progn_incr_f(0)) ! for debugging
+             allocate(cat_progn_incr_f(0))  ! for debugging
           end if
           do iEns=1,N_ens
              ! cat_progn_incr_ana -> cat_progn_incr_f
@@ -1425,7 +1413,7 @@ contains
 
           do n_e=1,N_ens    ! for each ensemble member 
 
-             do ii=1,N_SNOW   ! for each snow layer
+             do ii=1,N_snow   ! for each snow layer
 
                 cat_progn(n,n_e)%wesn(ii) =                                         &
                      cat_progn(n,n_e)%wesn(ii) + cat_progn_incr(n,n_e)%wesn(ii)
@@ -1435,8 +1423,8 @@ contains
 
                 cat_progn(n,n_e)%htsn(ii) =                                         &
                      cat_progn(n,n_e)%htsn(ii) + cat_progn_incr(n,n_e)%htsn(ii)
-          end do
 
+             end do
           end do
        end do
 

@@ -882,7 +882,6 @@ contains
                 ! bug fix
                 ! GDL+reichle, 17 Oct 2014
                 !Obs_cov(i,j) = Observations(i)%obsvar * fac
-
                 Obs_cov(i,j) = sqrt(Observations(i)%obsvar * Observations(j)%obsvar) * fac
                 
                 Obs_cov(j,i) = Obs_cov(i,j)
@@ -1460,13 +1459,14 @@ contains
 #ifdef LDAS_MPI
     
     ! count number of fields that need to be communicated (N_fields), allocate as needed
+
     call get_obs_pred_comm_helper( N_catl, N_ens, N_TbuniqFreqAngRTMid,          &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_asnow_lH, get_Tb_lH, N_fields)
     
     ! allocate and assemble tile_data_l
+
     if (allocated(tile_data_l))  deallocate(tile_data_l)
     allocate(tile_data_l(N_catl,N_fields,N_ens))
-
     call get_obs_pred_comm_helper( N_catl, N_ens, N_TbuniqFreqAngRTMid,          &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_asnow_lH, get_Tb_lH, N_fields, &
          option=1, tile_data=tile_data_l,                                        &
@@ -1474,11 +1474,13 @@ contains
          Tb_h=Tb_h_l, Tb_v=Tb_v_l, asnow=asnow_l )
     
     ! communicate tile_data_l as needed and get tile_data_lH
+
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
          N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
          N_catlH, tile_data_lH=tile_data_lH )    
     
     ! read out sfmc, rzmc, etc. from tile_data_lH    
+
     call get_obs_pred_comm_helper( N_catlH, N_ens, N_TbuniqFreqAngRTMid,         &
          get_sfmc_lH, get_rzmc_lH, get_tsurf_lH, get_FT_lH, get_asnow_lH, get_Tb_lH, N_fields, &
          option=2, tile_data=tile_data_lH,                                       &
@@ -3393,7 +3395,7 @@ contains
        Observations, Obs_pred, Obs_pert,                        &
        met_force, cat_param,                                    &
        xcompact, ycompact, fcsterr_inflation_fac,               &
-       cat_progn, cat_progn_incr)
+       cat_progn, cat_progn_incr )
     
     ! get increments for Catchment prognostic variables
     !
