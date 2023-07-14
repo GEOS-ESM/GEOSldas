@@ -877,7 +877,7 @@ contains
   !
   ! INTERNAL STATE
   !
-  
+
   call MAPL_AddInternalSpec(GC                 ,&
       LONG_NAME   = 'L-band Microwave RTM: Vegetation class. Type is Unsigned32'   ,&
       UNITS       = '1'                         ,&
@@ -1926,7 +1926,7 @@ contains
     if (fresh_incr) then
        ! apply EnKF increments (incl. call to catch_calc_soil_moist but not to recompute_diagS())
        call apply_enkf_increments( N_catl, NUM_ENSEMBLE, update_type, cat_param, &
-            cat_progn_incr, cat_progn)
+            cat_progn_incr, cat_progn )
        
     end if ! fresh_incr
     
@@ -2503,14 +2503,13 @@ contains
      _VERIFY(status)
      call esmf2ldas(ModelTimeCur, start_time, rc=status)
      _VERIFY(status)
-    
+
      call get_mwrtm_param(MAPL, clock, N_catl, INTERNAL, rc=status)
      _VERIFY(status)
 
      call GEOS_output_smapL4SMlmc( GC, start_time, trim(out_path), trim(exp_id), &
             N_catl, tile_coord_l, cat_param, mwRTM_param )
-        first_time = .false.
-
+     first_time = .false.
 
      _RETURN(_SUCCESS)
 
