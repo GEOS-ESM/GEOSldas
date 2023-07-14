@@ -158,7 +158,7 @@ contains
        cat_progn_incr, fresh_incr,                                       &
        N_obsf, N_obsl, Observations_l,                                   &
        N_adapt_R, obs_pert_adapt_param, Pert_adapt_R,                    &
-       Obs_pert)
+       Obs_pert )
 
     ! -------------------------------------------------------------
 
@@ -310,7 +310,7 @@ contains
     type(cat_progn_type), allocatable               :: cat_progn_incr_f(:), cat_progn_incr_ana(:,:)
     type(cat_progn_type), allocatable               :: recvBuf(:)
     
-! Obs related
+    ! obs related
     integer                                         :: nObs_ana
     integer                                         :: nObsAna_vec(numprocs)
     integer                                         :: N_obsf_assim, N_obsl_assim
@@ -319,7 +319,7 @@ contains
     integer, dimension(:), allocatable, target      :: ind_obsl_assim
     integer, dimension(:), pointer                  :: ptr2indx => null()
     type(varLenIntArr)                              :: indObsAna_vec(numprocs)
-    integer, dimension(:), allocatable                 :: tmp_ind_obs
+    integer, dimension(:), allocatable              :: tmp_ind_obs
     type(obs_type), dimension(:), allocatable       :: Obs_f_assim, Obs_ana  ! collect obs before distributing for ana
     real, allocatable                               :: Obs_pred_f_assim(:), Obs_pred_ana(:,:)
 
@@ -331,8 +331,8 @@ contains
 
     character(12)      :: tmpstr12
 
-    character(len=*), parameter :: Iam = 'get_enkf_increments'
-    character(len=400) :: err_msg
+    character(len=*),   parameter :: Iam = 'get_enkf_increments'
+    character(len=400)            :: err_msg
 
     ! **********************************************************************
     !
@@ -438,7 +438,7 @@ contains
 
 
        ! --------------------------------------------------------------------
-       if (logit) write(logunit,*) 'found_obs_f', found_obs_f
+       
        if (found_obs_f) then
 
           ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -475,7 +475,7 @@ contains
 
       ! B1. Adjust observations to remove the obs bias
       !     and set obsbias_ok flag
-           if(logit) write(logunit,*) 'entering obs_bias_corr_obs'
+
              call obs_bias_corr_obs(date_time, N_catl, N_catf,           &
                   N_obsl , N_obs_param, N_obsbias_max, f2l, obs_param,   &
                   obs_bias, Observations_l, obsbias_ok)
@@ -520,6 +520,7 @@ contains
                fcsterr_inflation_fac )
 
           if (allocated(obsbias_ok)) deallocate(obsbias_ok)
+
           !if(logit) write(logunit,*) 'N_obs_l after obs_pred', N_obsl
           !if(logit) write(logunit,*) 'Observations_l length', size(Observations_l)
           !if(logit) write(logunit,*) 'Observations_l',Observations_l%ana
@@ -534,7 +535,6 @@ contains
 
           ! count observations across all processors that are left after
           !  model-based QC (done within get_obs_pred())
-
   
 #ifdef LDAS_MPI
 
@@ -545,6 +545,7 @@ contains
 #else
           N_obsf = N_obsl
 #endif
+
           ! check whether any "assim" flag is set in obs_param
 
 	  ! CSD - if want to skip cat_enkf_incr and apply_incr blocks
@@ -565,6 +566,7 @@ contains
           ! Obs bias
           !
           ! B2. Update obs_bias and Observations with the obs bias increment
+
 	  if ( (N_obsl>0) .and. (N_obsbias_max>0) )                              &
                call obs_bias_upd_bias_and_Obs(date_time, N_catl, N_catf,           &
                N_obsl, N_ens,  N_obs_param, N_obsbias_max, f2l, obs_param,         &
@@ -651,8 +653,7 @@ contains
 
           !-AnaLoadBal-Prereq-starts-here-
           ! Step 1a: identify obs w/ obs%assim==.true.
-          allocate(ind_obsl_assim(N_obsl), source=-99)
-        
+          allocate(ind_obsl_assim(N_obsl), source=-99)   
           call get_ind_obs_assim(N_obsl, Observations_l%assim, N_obsl_assim, ind_obsl_assim)
           ! its easier to write ptr2indx than ind_obsl_assim(1:N_obsl_assim)
           ptr2indx => ind_obsl_assim(1:N_obsl_assim)
@@ -680,7 +681,7 @@ contains
                Obs_f_assim,              N_obsl_assim_vec, tmp_low_ind-1, MPI_obs_type, &
                mpicomm, mpierr)
           !-AnaLoadBal-Prereq-ends-here-
-          !if(logit) write(logunit,*) 'Obs_f_assim', Obs_f_assim
+
           !-AnaLodaBal-Decomposition-starts-here
           ! Step 2a: compute nTiles_l, indTiles_l, nTilesl_vec (on root), nTiles_f (on root)
           ! NOTE: loop over tile_coord_l, if tile has nnz obs, store the 'full' index
@@ -782,7 +783,6 @@ contains
           allocate(indObs_ana(N_obsf_assim), source=-99)
           allocate(tmp_ind_obs(N_obsf_assim), source=-99)
           nObs_ana = 0
-          
           do ctr=1,nTiles_ana
              iTile = indTiles_ana(ctr) ! 'full' index
              halo = get_halo_around_tile(tile_coord_f(iTile), xcompact, ycompact)
@@ -1028,7 +1028,6 @@ contains
                tile_coord_l, xcompact, ycompact,                             &
                N_obslH, Observations_lH, Obs_pred_lH )
 
-
 #endif
 
           ! get observations perturbations for all ensemble members
@@ -1079,20 +1078,22 @@ contains
 
 #ifdef LDAS_MPI
           allocate(cat_progn_incr_ana(nTiles_ana,N_ens))
+
           !if(logit) write(logunit,*) 'Entering cat_enkf_increments'
-          !if(logit) write(logunit,*) 'length of Obs_ana', size(Obs_ana)
-          !if(logit) write(logunit,*) 'length of Obs_pred_ana', size(Obs_pred_ana)
-          !if(logit) write(logunit,*) 'length of Obs_pert_tmp', size(Obs_pert_tmp)
-          !if(logit) write(logunit,*) 'length of tile_coord_ana', size(tile_coord_ana)
-          !if(logit) write(logunit,*) 'Obs_ana', Obs_ana
-          !if(logit) write(logunit,*) 'Obs_ana%species', Obs_ana%species
-          !if(logit) write(logunit,*) 'Obs_ana%tilenum', Obs_ana%tilenum
-          !if(logit) write(logunit,*) 'Obs_ana%lat', Obs_ana%lat
-          !if(logit) write(logunit,*) 'Obs_ana%lon', Obs_ana%lon
-          !if(logit) write(logunit,*) 'Obs_ana%obs', Obs_ana%obs
-          !if(logit) write(logunit,*) 'Obs_pred_ana', Obs_pred_ana
-          !if(logit) write(logunit,*) 'Obs_pert_tmp', Obs_pert_tmp
-          !if(logit) write(logunit,*) 'tile_corrd_ana', tile_coord_ana
+          !if(logit) write(logunit,*) 'length of Obs_ana: ',           size(Obs_ana)
+          !if(logit) write(logunit,*) 'length of Obs_pred_ana: ',      size(Obs_pred_ana)
+          !if(logit) write(logunit,*) 'length of Obs_pert_tmp: ',      size(Obs_pert_tmp)
+          !if(logit) write(logunit,*) 'length of tile_coord_ana: ',    size(tile_coord_ana)
+          !if(logit) write(logunit,*) 'Obs_ana: ',                     Obs_ana
+          !if(logit) write(logunit,*) 'Obs_ana%species: ',             Obs_ana%species
+          !if(logit) write(logunit,*) 'Obs_ana%tilenum: ',             Obs_ana%tilenum
+          !if(logit) write(logunit,*) 'Obs_ana%lat: ',                 Obs_ana%lat
+          !if(logit) write(logunit,*) 'Obs_ana%lon: ',                 Obs_ana%lon
+          !if(logit) write(logunit,*) 'Obs_ana%obs: ',                 Obs_ana%obs
+          !if(logit) write(logunit,*) 'Obs_pred_ana: ',                Obs_pred_ana
+          !if(logit) write(logunit,*) 'Obs_pert_tmp: ',                Obs_pert_tmp
+          !if(logit) write(logunit,*) 'tile_corrd_ana: ',              tile_coord_ana
+
           call cpu_time(t_start)
           call cat_enkf_increments(                       &
                N_ens, nObs_ana, nTiles_ana, N_obs_param,  &
@@ -1301,7 +1302,7 @@ contains
   ! ********************************************************************
 
   subroutine apply_enkf_increments( N_catd, N_ens, update_type, &
-       cat_param, cat_progn_incr, cat_progn)
+       cat_param, cat_progn_incr, cat_progn )
 
     implicit none
 
@@ -1317,10 +1318,10 @@ contains
     type(cat_progn_type), dimension(N_catd,N_ens), intent(in)    :: cat_progn_incr
 
     type(cat_progn_type), dimension(N_catd,N_ens), intent(inout) :: cat_progn
- 
+
     ! -----------------
 
-    integer :: n, n_e, i
+    integer :: n, n_e, ii
 
     logical :: cat_progn_has_changed
 
@@ -1330,7 +1331,7 @@ contains
     ! ----------------------------------------------------------------
     !
     ! apply increments
-    if(logit) write(logunit,*) "apply increment"
+
     cat_progn_has_changed = .true.     ! conservative initialization
 
     select_update_type: select case (update_type)
@@ -1423,30 +1424,28 @@ contains
 
        cat_progn_has_changed = .true.
      
-     case(11) select_update_type ! MODIS SCF update
+     case(11) select_update_type ! empirical MODIS SCF update
        
-      !Rule-based snow SCF update
        do n=1,N_catd       ! for each tile
 
           do n_e=1,N_ens    ! for each ensemble member 
 
-             do i=1,N_SNOW   ! for each snow layer
+             do ii=1,N_SNOW   ! for each snow layer
 
-                cat_progn(n,n_e)%wesn(i) =  &
-                     cat_progn(n,n_e)%wesn(i) + cat_progn_incr(n,n_e)%wesn(i)
+                cat_progn(n,n_e)%wesn(ii) =                                         &
+                     cat_progn(n,n_e)%wesn(ii) + cat_progn_incr(n,n_e)%wesn(ii)
 
-                cat_progn(n,n_e)%sndz(i) =  &
-                     cat_progn(n,n_e)%sndz(i) + cat_progn_incr(n,n_e)%sndz(i)
+                cat_progn(n,n_e)%sndz(ii) =                                         &
+                     cat_progn(n,n_e)%sndz(ii) + cat_progn_incr(n,n_e)%sndz(ii)
 
-                cat_progn(n,n_e)%htsn(i) =  &
-                     cat_progn(n,n_e)%htsn(i)+ cat_progn_incr(n,n_e)%htsn(i)
+                cat_progn(n,n_e)%htsn(ii) =                                         &
+                     cat_progn(n,n_e)%htsn(ii) + cat_progn_incr(n,n_e)%htsn(ii)
           end do
 
           end do
        end do
+
        cat_progn_has_changed = .true.
-
-
 
     case default
 
