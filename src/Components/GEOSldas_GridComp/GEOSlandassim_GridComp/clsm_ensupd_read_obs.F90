@@ -7722,17 +7722,15 @@ contains
                this_obs_param, tmp_obs, tmp_std_obs, tmp_assim )
           
        end if
-
-  case ('MODIS_SCF')
-
-      call read_obs_MODISscf(                                        &
-           work_path, date_time, dtstep_assim, N_catd, tile_coord,   &
-           tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
-           this_obs_param, found_obs, tmp_obs, tmp_std_obs)
-
-           !scaled_obs = .false.
+       
+    case ('MODIS_SCF')
+       
+       call read_obs_MODISscf(                                        &
+            work_path, date_time, dtstep_assim, N_catd, tile_coord,   &
+            tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
+            this_obs_param, found_obs, tmp_obs, tmp_std_obs)
    
-   case('SMAP_L1C_Tbh_A',     'SMAP_L1C_Tbv_A',        &
+    case('SMAP_L1C_Tbh_A',     'SMAP_L1C_Tbv_A',        &
          'SMAP_L1C_Tbh_D',     'SMAP_L1C_Tbv_D',        &
          'SMAP_L1C_Tbh_E09_A', 'SMAP_L1C_Tbv_E09_A',    &
          'SMAP_L1C_Tbh_E09_D', 'SMAP_L1C_Tbv_E09_D',    &
