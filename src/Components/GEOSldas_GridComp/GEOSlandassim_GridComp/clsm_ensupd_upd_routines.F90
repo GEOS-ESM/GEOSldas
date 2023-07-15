@@ -1457,7 +1457,7 @@ contains
     if (get_rzmc_lH)   allocate(rzmc_lH( N_catlH,                     N_ens))
     if (get_tsurf_lH)  allocate(tsurf_lH(N_catlH,                     N_ens))
     if (get_FT_lH)     allocate(FT_lH(   N_catlH,                     N_ens))
-    if (get_asnow_lH)  allocate(asnow_lH(N_catlH,                     N_ens)) !jpark50
+    if (get_asnow_lH)  allocate(asnow_lH(N_catlH,                     N_ens))
     if (get_Tb_lH)     allocate(stemp_lH(N_catlH,                     N_ens))
     if (get_Tb_lH)     allocate(Tb_h_lH( N_catlH,N_TbuniqFreqAngRTMid,N_ens))
     if (get_Tb_lH)     allocate(Tb_v_lH( N_catlH,N_TbuniqFreqAngRTMid,N_ens))
@@ -3531,7 +3531,7 @@ contains
     real, dimension(N_catd,N_ens)         :: swe_incr
     real, dimension(N_catd,N_ens,N_snow)  :: tmp_wesn, tmp_htsn, tmp_sndz
 
-    real, dimenions(N_snow)               :: targetthick                       ! for snow model relayer
+    real, dimension(N_snow)               :: targetthick                       ! for snow model relayer
     real, dimension(N_snow,N_constit)     :: rconstit
 
     ! -----------------------------------------------------------------------

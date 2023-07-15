@@ -36,6 +36,10 @@ module clsm_ensupd_glob_param
   public :: FT_ANA_LOWERBOUND_ASNOW
   public :: FT_ANA_LOWERBOUND_TEFF
   public :: FT_ANA_UPPERBOUND_TEFF
+  public :: SCF_ANA_ALPHA     
+  public :: SCF_ANA_BETA      
+  public :: SCF_ANA_MAXINCRSWE
+  public :: SCF_ANA_MINFCSTSWE
 
   public :: echo_clsm_ensupd_glob_param
 
@@ -106,10 +110,10 @@ module clsm_ensupd_glob_param
   !
   ! parameters for snow cover area fraction (SCF) analysis (modified from Toure et al. 2018)
   
-  real, parameter    :: SCF_ANA_ALPHA      = 0.60  ! [-]     add snow    if asnow_fcst < asnow_obs*SCF_ANA_alpha ("bias" adjustment for obs)
-  real, parameter    :: SCF_ANA_BETA       = 0.55  ! [-]     remove snow if asnow_fcst > asnow_obs*SCF_ANA_alpha .AND. asnow_obs < SCF_ANA_beta
+  real, parameter    :: SCF_ANA_ALPHA      = 0.60  ! [-] add snow    if asnow_fcst < asnow_obs*SCF_ANA_alpha (w/ "bias" adjustment for obs)
+  real, parameter    :: SCF_ANA_BETA       = 0.55  ! [-] remove snow if asnow_fcst > asnow_obs*SCF_ANA_alpha .AND. asnow_obs < SCF_ANA_beta
   real, parameter    :: SCF_ANA_MAXINCRSWE = 5.0   ! [kg/m2] max total SWE increment
-  real, parameter    :: SCF_ANA_MINFCSTSWE = 0.01  ! [kg/m2] threshold below which the ratio of swe_ana/swe_fcst tends to be unreasonable
+  real, parameter    :: SCF_ANA_MINFCSTSWE = 0.01  ! [kg/m2] threshold below which the ratio of swe_ana/swe_fcst becomes unreasonable
   
   ! ----------------------------------------------------------------
 
