@@ -4476,13 +4476,11 @@ contains
 
        if (SCF_ANA_MAXINCRSWE>WEMIN)  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'must use SCF_ANA_MAXINCRSWE<=WEMIN')
        
-       ! get target for snow layer thickness 
+       ! get target for snow layer thickness (as used in Catchment over land tiles)
        
-       targetthick(1) = CATCH_DZ1MAX
+       targetthick(1)        = CATCH_DZ1MAX
        
-       do i=2,N_snow
-          targetthick(i)=1./(N_snow-1.)
-       end do
+       targetthick(2:N_snow) = 1./(N_snow-1.)
        
        ! identify the obs species of interest       
 
