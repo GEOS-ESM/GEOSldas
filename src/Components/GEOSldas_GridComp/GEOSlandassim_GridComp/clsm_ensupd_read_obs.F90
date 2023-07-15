@@ -4661,7 +4661,7 @@ contains
     integer                      :: start(2), edges(2), stride(2)
     character(100)               :: var_name
 
-    integer                      :: status, n_read, record_pos
+    integer                      :: status
     
     integer,           parameter :: DFACC_READ     =  1 ! from hdf.inc
     integer,           parameter :: DFNT_UINT8     = 21
@@ -4899,22 +4899,21 @@ contains
     deallocate(CI_Index)
     deallocate(Cloud_Index)
     deallocate(Snow_QA)
-    deallocate(MODIS_SCf_raw)
+    deallocate(SCF_raw)
 
   end subroutine read_MODISscf_hdf
 
   ! *****************************************************************
   
   subroutine read_obs_MODISscf(                                    &
-       work_path, date_time, dtstep_assim, N_catd, tile_coord,     &
+       date_time, dtstep_assim, N_catd, tile_coord,                &
        tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,        &
        this_obs_param, found_obs, MODIS_obs, std_MODIS_obs )
     
     implicit none
 
-    !inputs
+    ! inputs
 
-    character(*),         intent(in) :: work_path
     type(date_time_type), intent(in) :: date_time
 
     integer,              intent(in) :: dtstep_assim, N_catd
@@ -4944,9 +4943,7 @@ contains
     character(3)   :: DDD         ! Day of Year 
     character(300) :: tmpfname1
     
-    integer, dimension(N_catd) :: tmp_tile_id
-
-    integer :: i, ind, N_files, N_tmp
+    integer        :: i, ind, N_files, N_tmp
 
     integer, parameter :: dtstep_assim_threshold = 10800  ! restricting dtstep_assim to 3 hours
  
@@ -7740,7 +7737,7 @@ contains
     case ('MODIS_SCF')
        
        call read_obs_MODISscf(                                        &
-            work_path, date_time, dtstep_assim, N_catd, tile_coord,   &
+            date_time, dtstep_assim, N_catd, tile_coord,              &
             tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
             this_obs_param, found_obs, tmp_obs, tmp_std_obs)
    
