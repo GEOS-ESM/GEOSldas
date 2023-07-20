@@ -1628,14 +1628,15 @@ contains
     type(date_time_type) :: date_time_low, date_time_low_fname
     type(date_time_type) :: date_time_up
     
-    integer :: i, ind, N_tmp, N_files, kk
+    integer :: i, ind, N_tmp, N_files, kk, N_obs
     integer :: N_fnames, N_fnames_tmp
 
     character(300), dimension(:), allocatable :: fnames, tmpfnames
  
-    real(8) :: tmp_data(7), tmp_vdata(4), tmp_time(6) 
+    real*8, dimension(15) :: tmp_vdata 
     integer, parameter :: lnbufr = 50
-    integer, parameter :: max_rec = 20000 
+    integer, parameter :: max_rec = 20000
+    integer, parameter :: max_obs = 250000 
     integer :: idate,iret
     integer :: ireadmg,ireadsb
     character(8)  :: subset
@@ -1644,6 +1645,7 @@ contains
 
     real,      dimension(:),     allocatable    :: tmp1_lon, tmp1_lat, tmp1_obs
     real*8,    dimension(:),     allocatable    :: tmp1_jtime
+    real*8,    dimension(:,:),   allocatable    :: tmp_data
 
     real,      dimension(:),     pointer        :: tmp_obs, tmp_lat, tmp_lon
     real*8,    dimension(:),     pointer        :: tmp_jtime
@@ -1729,7 +1731,7 @@ contains
       tmpfnames(N_tmp) = trim(this_obs_param%path) // '/' // trim(tmpfname2)
       end if
      end do
-   
+
     fnames = tmpfnames(1:N_tmp)
     N_files = N_tmp
 
@@ -1741,85 +1743,27 @@ contains
        allocate(tmp1_lat(max_rec))
        allocate(tmp1_obs(max_rec))
        allocate(tmp1_jtime(max_rec))
-       
-       call MTINFO( trim(this_obs_param%path) // '/BUFR_mastertable/', 51, 52)
-       ! file loop
-       N_tmp = 0
-       do kk = 1,N_files
 
+       allocate(tmp_data(max_obs, 15))
+       
+       ! file loop
+       N_obs = 0
+
+       do kk = 1,N_files
+          
           ! open on bufr file
           call closbf(lnbufr)
           open(lnbufr, file=trim(fnames(kk)), action='read',form='unformatted')
           call openbf(lnbufr,'SEC3', lnbufr)
-          call MTINFO( trim(this_obs_param%path) // '/BUFR_mastertable/', 51, 52)
+          call mtinfo( trim(this_obs_param%path) // '/BUFR_mastertable/', 51, 52)
           call datelen(10)
          
           msg_report: do while(ireadmg(lnbufr,subset,idate) ==0)
-            loop_report: do while(ireadsb(lnbufr) == 0)
-            ! extract sensing time information 
-                 call ufbint(lnbufr,tmp_time,6,1,iret,'YEAR MNTH DAYS HOUR MINU SECO')
-                 date_time_tmp.year = int(tmp_time(1))
-                 date_time_tmp.month = int(tmp_time(2)) 
-                 date_time_tmp.day = int(tmp_time(3))
-                 date_time_tmp.hour = int(tmp_time(4))
-                 date_time_tmp.min = int(tmp_time(5))
-                 date_time_tmp.sec = int(tmp_time(6))
+              loop_report: do while(ireadsb(lnbufr) == 0)
 
-                 ! skip if record outside of current assim window
-                 if ( datetime_lt_refdatetime( date_time_tmp, date_time_low ) .and.        &
-                      datetime_le_refdatetime( date_time_up, date_time_tmp )) cycle loop_report
-
-
-                  call ufbint(lnbufr,tmp_data,7,1,iret,'SSOM DOMO SMPF SMCF ALFR TPCX IWFR') 
-
-                
-                 ! skip if record contain no valid soil moisture value
-!                 call ufbint(lnbufr,tmp_data,1,1,iret,'SSOM')
-                 if(tmp_data(1) > 100. .or. tmp_data(1) < 0.) cycle loop_report
-
-                 ! EUMETSAT file contains data of both ascending and descending orbits. 
-                 ! DOMO - “Direction of motion of moving observing platform” is used to seperate Asc and Desc
-                 ! because the file doesn't contain any explicit orbit indicator variable.
-                 ! according to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk 
-                 ! "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
-                 ! of the orbit … when it is between 270 and 360 degrees, it is the ascending part"
-!                 call ufbint(lnbufr,tmp_data,1,1,iret,'DOMO')
-                 if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data(2) < 270 .or. tmp_data(2) > 360)) cycle loop_report
-                 if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data(2) < 180 .or. tmp_data(2) >= 270)) cycle loop_report
-                  
-                 ! skip if processing flag is set               
-!                 call ufbint(lnbufr,tmp_data,1,1,iret,'SMPF')
-                 if(int(tmp_data(3)) /= 0) cycle loop_report
-
-                 ! skip if correction flag is set               
-!                 call ufbint(lnbufr,tmp_data,1,1,iret,'SMCF')
-                 if (.not. (int(tmp_data(4)) == 0 .or. int(tmp_data(4)) == 4)) cycle loop_report
-                 ! if(int(tmp_data) /= 0) cycle loop_report
-
-                 ! skip if land fraction is missing or < 0.9
-!                 call ufbint(lnbufr,tmp_data,1,1,iret,'ALFR')
-                 if(tmp_data(5) >1 .or. tmp_data(5) < 0.9 ) cycle loop_report
-
-                 ! additioanal QC varibles from file               
-                 ! skip if topographic complexity > 10%
-!                 call ufbint(lnbufr,tmp_data,1,1,iret,'TPCX') ! topo complexity
-                 if(tmp_data(6) > 10.) cycle loop_report
-                 
-                 ! skip if inudatation and wetland faction > 10%
-!                 call ufbint(lnbufr,tmp_data,1,1,iret,'IWFR') ! Inundation And Wetland Fraction
-                 if(tmp_data(7) > 10.) cycle loop_report
-                 !call ufbint(lnbufr,tmp_data,1,1,iret,'SNOC') ! snow cover
-                 !call ufbint(lnbufr,tmp_data,1,1,iret,'FLSF') ! frozen land fraction
-
-                 N_tmp = N_tmp + 1 ! Passed all QC
-
-                 tmp1_jtime(N_tmp) = datetime_to_J2000seconds( date_time_tmp, J2000_epoch_id )
-
-                 call ufbint(lnbufr,tmp_vdata,4,1,iret,'CLATH CLONH SSOM EESSM')
-                 tmp1_lat(N_tmp) = tmp_vdata(1) 
-                 tmp1_lon(N_tmp) = tmp_vdata(2) 
-                 tmp1_obs(N_tmp) = tmp_vdata(3)/100.  ! change value from 0-100 to 0-1
-                 !tmp_obserr(N_tmp) = tmp_vdata(4)
+              call ufbint(lnbufr,tmp_vdata,15,1,iret,'YEAR MNTH DAYS HOUR MINU SECO SSOM DOMO SMPF SMCF ALFR TPCX IWFR CLATH CLONH')
+              N_obs = N_obs + 1
+              tmp_data(N_obs,:) = tmp_vdata
 
             end do loop_report
 
@@ -1829,6 +1773,58 @@ contains
           close(lnbufr)
 
        end do ! end file loop
+
+       N_tmp = 0 
+
+       do kk = 1,N_obs
+
+         date_time_tmp%year  = int(tmp_data(kk, 1))
+         date_time_tmp%month = int(tmp_data(kk, 2))
+         date_time_tmp%day   = int(tmp_data(kk, 3))
+         date_time_tmp%hour  = int(tmp_data(kk, 4))
+         date_time_tmp%min   = int(tmp_data(kk, 5))
+         date_time_tmp%sec   = int(tmp_data(kk, 6))
+
+         ! skip if record outside of current assim window
+         if ( datetime_lt_refdatetime( date_time_tmp, date_time_low ) .and.        &
+              datetime_le_refdatetime( date_time_up, date_time_tmp )) cycle
+
+         ! skip if record contain no valid soil moisture value
+         if(tmp_data(kk, 7) > 100. .or. tmp_data(kk, 7) < 0.) cycle     
+         
+         ! EUMETSAT file contains data of both ascending and descending orbits. 
+         ! DOMO - “Direction of motion of moving observing platform” is used to seperate Asc and Desc
+         ! because the file doesn't contain any explicit orbit indicator variable.
+         ! according to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk 
+         ! "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
+         ! of the orbit … when it is between 270 and 360 degrees, it is the ascending part"
+         if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data(kk, 8) < 270 .or. tmp_data(kk, 8) > 360)) cycle
+         if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data(kk, 8) < 180 .or. tmp_data(kk, 8) >= 270)) cycle
+
+         ! skip if processing flag is set
+         if(int(tmp_data(kk, 9)) /= 0) cycle
+
+         ! skip if correction flag is set
+         if (.not. (int(tmp_data(kk, 10)) == 0 .or. int(tmp_data(kk, 10)) == 4)) cycle
+
+         ! skip if land fraction is missing or < 0.9
+         if(tmp_data(kk, 11) >1 .or. tmp_data(kk, 11) < 0.9 ) cycle
+
+         ! skip if topographic complexity > 10%
+         if(tmp_data(kk, 12) > 10.) cycle
+                 
+         ! skip if inudatation and wetland faction > 10%
+         if(tmp_data(kk, 13) > 10.) cycle
+
+         N_tmp = N_tmp + 1 ! Passed all QC
+         
+         tmp1_jtime(N_tmp) = datetime_to_J2000seconds( date_time_tmp, J2000_epoch_id )
+
+         tmp1_lat(N_tmp) = tmp_data(kk, 14)            
+         tmp1_lon(N_tmp) = tmp_data(kk, 15)
+         tmp1_obs(N_tmp) = tmp_data(kk, 7)/100.  ! change value from 0-100 to 0-1
+
+       end do
 
        if (logit) then
           
@@ -1857,7 +1853,8 @@ contains
        deallocate(tmp1_jtime)
        deallocate(tmp1_lon)
        deallocate(tmp1_lat)
-       deallocate(tmp1_obs) 
+       deallocate(tmp1_obs)
+       deallocate(tmp_data) 
 
      else
        N_tmp = 0
@@ -9392,4 +9389,3 @@ end program test
 
 ! *******  EOF *************************************************************
 
-  
