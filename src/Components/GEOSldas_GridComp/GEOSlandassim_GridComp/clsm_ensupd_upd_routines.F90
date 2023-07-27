@@ -4477,11 +4477,11 @@ contains
                   
                   if (N_selected_obs>0) then
                      
-                     if (N_state_max==7 .and. cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
+                     if ((N_state_max==7 .and. cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD)) then
                         
                         N_state = 7   ! srfexc, rzexc, catdef, tc1, tc2, tc4, ght1
                         
-                     elseif (N_state_max==7 .and. cat_param(kk)%poros=<PEATCLSM_POROS_THRESHOLD)
+                     elseif ((N_state_max==7 .and. cat_param(kk)%poros<PEATCLSM_POROS_THRESHOLD)) then
                         
                         N_state = 6   ! srfexc, rzexc,         tc1, tc2, tc4, ght1
                         
@@ -4545,7 +4545,7 @@ contains
                      
                      ! assemble cat_progn increments
                      
-                     if (N_state==3)
+                     if (N_state==3) then
                      
                         cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                         cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
