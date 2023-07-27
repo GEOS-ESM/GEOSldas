@@ -4416,6 +4416,11 @@ contains
          if (logit) write (logunit,*) 'Get increments for all observation types in obs_param'
 
          N_select_varnames  = 1
+         N_state_max = 7                    ! Needs to be constant size for applying increment, potential for lots of zeros
+
+         allocate( State_incr(N_state_max,N_ens)) 
+         allocate( State_lon( N_state_max      ))
+         allocate( State_lat( N_state_max      ))
 
          if (any(obs_param%varname == 'Tb')) then
             N_varnames = N_varnames + 1
@@ -4432,21 +4437,7 @@ contains
             call get_select_species(                                           &
             N_select_varnames, select_varnames(ii),      &
             N_obs_param, obs_param, N_select_species, select_species )
-
-            if (select_varnames(ii)=='Tb') then
-               N_state_max = 7
-            elseif (select_varnames(ii)=='sfds') then
-               N_state_max = 3
-               N_state = 3
-            else
-               err_msg = 'Dont know what state to use with this observation type.'
-               call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-            end if
-
-            allocate( State_incr(N_state_max,N_ens)) 
-            allocate( State_lon( N_state_max      ))
-            allocate( State_lat( N_state_max      ))
-            
+           
             do kk=1,N_catd       
                
                ! compute increments only snow-free and non-frozen tiles
@@ -4476,17 +4467,18 @@ contains
                      N_selected_obs,   ind_obs )
                   
                   if (N_selected_obs>0) then
-                     
-                     if ((N_state_max==7 .and. cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD)) then
-                        
-                        N_state = 7   ! srfexc, rzexc, catdef, tc1, tc2, tc4, ght1
-                        
-                     elseif ((N_state_max==7 .and. cat_param(kk)%poros<PEATCLSM_POROS_THRESHOLD)) then
-                        
-                        N_state = 6   ! srfexc, rzexc,         tc1, tc2, tc4, ght1
-                        
+
+                     if (select_varnames(ii)=='Tb' .and. cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
+                        N_state = 7
+                     elseif (select_varnames(ii)=='Tb' .and. cat_param(kk)%poros<PEATCLSM_POROS_THRESHOLD) then
+                        N_state = 6
+                     elseif (select_varnames(ii)=='sfds') then
+                        N_state = 3
+                     else
+                        err_msg = 'Dont know what state to use with this observation type.'
+                        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
                      end if
-                     
+                                         
                      ! assemble State_minus
                      ! (on input, cat_progn contains cat_progn_minus)
                      
@@ -4501,7 +4493,6 @@ contains
                         State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
                         State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
                         State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef   ! catdef in State
-                        
                         State_incr(4,:) = cat_progn( kk,:)%tc1   /scale_temp
                         State_incr(5,:) = cat_progn( kk,:)%tc2   /scale_temp
                         State_incr(6,:) = cat_progn( kk,:)%tc4   /scale_temp
@@ -4511,7 +4502,6 @@ contains
                         
                         State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
                         State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
-                        
                         State_incr(3,:) = cat_progn( kk,:)%tc1   /scale_temp
                         State_incr(4,:) = cat_progn( kk,:)%tc2   /scale_temp
                         State_incr(5,:) = cat_progn( kk,:)%tc4   /scale_temp
@@ -4529,7 +4519,7 @@ contains
                      
                      ! EnKF update
                      
-                     call enkf_increments(                                        &
+                     call enkf_increments(                                      &
                         N_state, N_selected_obs, N_ens,                         &
                         Observations(ind_obs(1:N_selected_obs)),                &
                         Obs_pred(ind_obs(1:N_selected_obs),:),                  &
@@ -4555,8 +4545,7 @@ contains
                         
                         cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                         cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                        cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State
-                        
+                        cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State                        
                         cat_progn_incr(kk,:)%tc1    = State_incr(4,:)*scale_temp
                         cat_progn_incr(kk,:)%tc2    = State_incr(5,:)*scale_temp
                         cat_progn_incr(kk,:)%tc4    = State_incr(6,:)*scale_temp
@@ -4565,8 +4554,7 @@ contains
                      else
                         
                         cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
-                        cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                        
+                        cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc                      
                         cat_progn_incr(kk,:)%tc1    = State_incr(3,:)*scale_temp
                         cat_progn_incr(kk,:)%tc2    = State_incr(4,:)*scale_temp
                         cat_progn_incr(kk,:)%tc4    = State_incr(5,:)*scale_temp

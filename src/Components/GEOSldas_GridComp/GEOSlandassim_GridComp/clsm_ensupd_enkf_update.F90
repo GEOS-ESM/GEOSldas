@@ -1337,9 +1337,10 @@ contains
 
        cat_progn_has_changed = .false.
 
-    case (6,8,9,10) select_update_type    ! soil moisture and temperature update
+    case (6,8,9,10,13) select_update_type    ! soil moisture and temperature update
 
-       ! for update_type 10, catdef increments may be zero by design       
+      ! for update_type 10, catdef increments may be zero by design     
+      ! for updagte_type 13, could be multiple zero increments  
        
        if (logit) write (logunit,*) &
             'apply_enkf_increments(): applying soil moisture and Tskin/ght1 increments'
