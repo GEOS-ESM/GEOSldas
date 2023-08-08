@@ -7,9 +7,9 @@
 #
 #rm_name                 : SLURM
 account                 : s2641
-walltime                : 12:00:00
-ntasks_model            : 200
-ntasks-per-node         : 28
+walltime                : 01:00:00
+ntasks_model            : 46
+ntasks-per-node         : 46
 
 #
 # OPTIONAL inputs
@@ -21,4 +21,4 @@ ntasks-per-node         : 28
 #
 #job_name                :
 #constraint              :
-#qos                     : debug
+qos                     : debug

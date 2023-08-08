@@ -1,0 +1,8 @@
+&domain_inputs
+MINLON  =       180.
+MAXLON  =       -180.
+MINLAT  =       90.
+MAXLAT  =       -90.
+EXCLUDE_FILE  = ''''
+INCLUDE_FILE  = '/discover/nobackup/trobinet/GEOSldas_pso_g1_ksat/GEOSldas/src/Applications/LDAS_App/include'
+/

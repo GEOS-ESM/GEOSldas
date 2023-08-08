@@ -17,25 +17,18 @@ import tarfile
 exp_dir = sys.argv[1]
 
 # set important parameters
-from_restart = False
-pso_restart_dir = '/discover/nobackup/trobinet/pso_restarts/GEOSldas_CN45_ens_ind_2003_2006'
-convergence_threshold = 5 #num iterations with no change to global_best to converge
+convergence_threshold = 8 #num iterations with no change to global_best to converge
 max_iterations = 1000
 restart_every = 1
-nparticles = 10
-nparameters = 10
+nparticles = 10 #fits architecture of NCCS?
+nparameters = 5
 spinup_iterations = 0
 o_file = os.path.join(exp_dir,'run/output.txt')
-#parameter 1: aj in g1 EF for forests
-#parameter 2: aj in g1 EF for croplands
-#parameter 3: aj in g1 EF for grasslands
-#parameter 4: aj in g1 EF for savannas
-#parameter 5: aj in g1 EF for shrublands
-#parameter 6: alpha in Ksat EF
-#parameter 7: beta in Ksat EF
-#parameter 8: constant_1 in Ksat EF
-#parameter 9: constant_2 in Ksat EF
-#parameter 10: sand_exp in Ksat EF
+#parameter 1: j for forests
+#parameter 2: j for croplands
+#parameter 3: j for grasslands
+#parameter 4: j for savannas
+#parameter 5: j for shrublands
 
 # do PSO calculations
 #PSO parameters
@@ -48,71 +41,26 @@ r2 = np.random.random()/2 + 0.75 #adds randomness to social weight; between 0.75
 #check if we need to initialize
 #check_exists = exp_dir+'run/position_vals.csv'
 if exists(os.path.join(exp_dir,'../','position_vals.csv')) == False:
-    if from_restart == False:
-        #positions = np.random.random((2,65))*2 #all random values between 0 and 2
-        #velocities = np.random.random((2,65))
-        positions = 0.25 + np.random.random((nparticles,nparameters))*3.75 #all random values between 0.25 and 4
-        velocities = 0.5 - np.random.random((nparticles,nparameters))*1 #all random values between -0.5 and 0.5
-        num_iterations = 0
-        num_without_restart = 0
-        iterations_without_change = 0
-        best_positions = positions
-        #best_positions_objective = np.zeros((2))
-        best_positions_objective = np.zeros((nparticles))
-        best_positions_objective[:] = float('inf')
-        global_best_positions = np.zeros((nparameters))
-        global_best_positions[:] = float('inf')
-        global_best_objective = [float('inf')]
+    #positions = np.random.random((2,65))*2 #all random values between 0 and 2
+    #velocities = np.random.random((2,65))
+    positions = 0.25 + np.random.random((nparticles,nparameters))*3.75 #all random values between 0.25 and 4
+    velocities = 0.5 - np.random.random((nparticles,nparameters))*1 #all random values between -0.5 and 0.5
+    num_iterations = 0
+    num_without_restart = 0
+    iterations_without_change = 0
+    best_positions = positions
+    #best_positions_objective = np.zeros((2))
+    best_positions_objective = np.zeros((nparticles))
+    best_positions_objective[:] = float('inf')
+    global_best_positions = np.zeros((nparameters))
+    global_best_positions[:] = float('inf')
+    global_best_objective = [float('inf')]
 
-        iteration_track = pd.DataFrame({})
-        iteration_track['iterations'] = [num_iterations]
-        iteration_track['num_without_restart'] = [num_without_restart]
-        iteration_track['iterations_without_change'] = [iterations_without_change]
-        save_to = os.path.join(exp_dir,'run/iteration_track.csv')
-    elif from_restart == True:
-        iteration_track = pd.read_csv(
-            os.path.join(
-                pso_restart_dir,'iteration_track.csv'
-            )
-        )
-        positions = np.genfromtxt(
-            os.path.join(
-                pso_restart_dir,'position_vals.csv'
-            )
-            ,delimiter=','
-        )
-        velocities = np.genfromtxt(
-            os.path.join(
-                pso_restart_dir,'velocity_vals.csv'
-            )
-            ,delimiter=','
-        )
-        best_positions = np.genfromtxt(
-            os.path.join(
-                pso_restart_dir,'best_positions.csv'
-            )
-            ,delimiter=','
-        )
-        best_positions_objective = np.genfromtxt(
-            os.path.join(
-                pso_restart_dir,'best_positions_objective.csv'
-            )
-            ,delimiter=','
-        )
-        global_best_positions = np.genfromtxt(
-            os.path.join(
-                pso_restart_dir,'global_best_positions.csv'
-            )
-            ,delimiter=','
-        )
-        global_best_objective = np.genfromtxt(
-            os.path.join(
-                pso_restart_dir,'global_best_objective.csv'
-            )
-            ,delimiter=','
-        )
-    
-    # now save these
+    iteration_track = pd.DataFrame({})
+    iteration_track['iterations'] = [num_iterations]
+    iteration_track['num_without_restart'] = [num_without_restart]
+    iteration_track['iterations_without_change'] = [iterations_without_change]
+    save_to = os.path.join(exp_dir,'run/iteration_track.csv')
     iteration_track.to_csv(
         os.path.join(
             exp_dir,'../','iteration_track.csv'
@@ -277,11 +225,11 @@ else:
         )
         global_best_objective_last = np.copy(global_best_objective)
         
-        #with open(o_file,'a') as f:
-        #    f.write('loaded positions')
-        #    f.write('\n')
-        #    f.write(str(positions))
-        #    f.write('\n')
+        with open(o_file,'a') as f:
+            f.write('positions just after loading')
+            f.write('\n')
+            f.write(str(positions))
+            f.write('\n')
     
         #objective function
         objective_result = compute_objective(
@@ -410,21 +358,13 @@ else:
             f.write('\n')
             f.write(str(iterations_without_change))
             f.write('\n')
-            f.write(str('velocities_last_iteration'))
-            f.write('\n')
-            f.write(str(velocities))
-            f.write('\n')
-            f.write(str('velocities_this_iteration'))
-            f.write('\n')
-            f.write(str(velocity_next))
-            f.write('\n')
-            f.write(str('positions_this_iteration'))
+            f.write(str('positions'))
             f.write('\n')
             f.write(str(positions))
             f.write('\n')
-            f.write(str('positions_next_iteration'))
+            f.write(str('velocities'))
             f.write('\n')
-            f.write(str(positions_next))
+            f.write(str(velocities))
             f.write('\n')
             f.write(str('objective_result'))
             f.write('\n')
@@ -441,10 +381,6 @@ else:
             f.write(str('best_positions'))
             f.write('\n')
             f.write(str(best_positions))
-            f.write('\n')
-            f.write(str('best_positions_objective'))
-            f.write('\n')
-            f.write(str(best_positions_objective))
             f.write('\n')
 
     print(convergence)

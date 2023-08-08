@@ -78,6 +78,7 @@ contains
     integer                     :: ncid, ndim, nvar, natt, unlid, varid, len1, len2 ! identifiers used by nf90
     character(400)              :: varname ! name of variable, used by nf90
     double precision, allocatable, dimension(:,:)    :: values  ! values read in by nf90
+    integer, dimension(2) :: met_shape
 
 
 
@@ -140,6 +141,7 @@ contains
     !write(*,*) 'inq dimension 2'
     call check(nf90_inquire_dimension(ncid,2,len=len2))
     !write(*,*) 'allocate statements'
+    met_shape = shape(met_force_new%Tair)
     if (.not. allocated(met_force_new%Tair)) then 
         allocate(met_force_new%Tair(len1,len2))
         allocate(met_force_new%Qair(len1,len2)) 
@@ -155,6 +157,40 @@ contains
         allocate(met_force_new%RefH(len1,len2))
         allocate(met_force_new%date_int(len1,len2))
         allocate(met_force_new%tile_num(len1,len2))
+    else
+        deallocate(met_force_new%Tair)
+        allocate(met_force_new%Tair(len1,len2))
+        deallocate(met_force_new%Qair)
+        allocate(met_force_new%Qair(len1,len2)) 
+        deallocate(met_force_new%Psurf)
+        allocate(met_force_new%Psurf(len1,len2))
+        deallocate(met_force_new%Rainf_C)
+        allocate(met_force_new%Rainf_C(len1,len2))
+        deallocate(met_force_new%Rainf)
+        allocate(met_force_new%Rainf(len1,len2))
+        deallocate(met_force_new%Snowf)
+        allocate(met_force_new%Snowf(len1,len2))
+        deallocate(met_force_new%LWdown)
+        allocate(met_force_new%LWdown(len1,len2))
+        deallocate(met_force_new%SWdown)
+        allocate(met_force_new%SWdown(len1,len2))  
+        deallocate(met_force_new%PARdrct)
+        allocate(met_force_new%PARdrct(len1,len2))
+        deallocate(met_force_new%PARdffs)
+        allocate(met_force_new%PARdffs(len1,len2))
+        deallocate(met_force_new%Wind)
+        allocate(met_force_new%Wind(len1,len2))
+        deallocate(met_force_new%RefH)
+        allocate(met_force_new%RefH(len1,len2))
+        deallocate(met_force_new%date_int)
+        allocate(met_force_new%date_int(len1,len2))
+        deallocate(met_force_new%tile_num)
+        allocate(met_force_new%tile_num(len1,len2))
+    endif
+    if (.not. allocated(values)) then
+        allocate(values(len1,len2))
+    else
+        deallocate(values)
         allocate(values(len1,len2))
     endif
     call check(nf90_inq_varid(ncid,'Tair',varid))

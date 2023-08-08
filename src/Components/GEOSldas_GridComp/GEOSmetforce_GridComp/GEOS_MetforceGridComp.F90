@@ -24,6 +24,7 @@ module GEOS_MetforceGridCompMod
   use LDAS_DriverTypes, only: met_force_type, assignment(=)
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_InterpMod, only: LDAS_TInterpForcing=>metforcing_tinterp
+  use LDAS_ExceptionsMod, only: ldas_abort, LDAS_GENERIC_ERROR
   use LDAS_Point_ForceMod 
   use global_forcing_mod
   use daily_forcing_mod
@@ -678,10 +679,10 @@ contains
 
     call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", &
          DEFAULT=0, RC=STATUS)
-
+   
     call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
     VERIFY_(STATUS)
-
+    
     if(trim(grid_type) == "Cubed-Sphere" ) then
        call ESMF_GridCompGet(gc, grid=agrid, rc=status)
        VERIFY_(status)
@@ -689,11 +690,11 @@ contains
        VERIFY_(STATUS)
        im_world_cs = dims(1)
     endif
-
+    
     call MAPL_GetResource(MAPL, gridname,Label="GEOSldas.GRIDNAME:",RC=STATUS)
     VERIFY_(STATUS)
     if( index(trim(gridname), 'EASE') /=0) call set_neighbor_offset(0.0001) 
-
+    
     ! Get MetForcing values and put them in Ldas' internal state
     ! Get resources needed to call LDAS_ForceMod::get_forcing()
     ! - hinterp=1 => Bilinear Interpolation -
@@ -742,6 +743,7 @@ contains
     call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1,       RC=STATUS)
     VERIFY_(STATUS)
     ensemble_forcing = (trim(ENS_FORCING_STR) == 'YES') 
+    
     if (ensemble_forcing .and. NUM_ENSEMBLE > 1) then
       ! note: comp_name ends in "_eXXXX"; for GEOS ADAS forcing, extract hard-coded 3-digit ens id string
       k = len(trim(comp_name))
@@ -853,7 +855,20 @@ contains
              internal%mf%DataNxt, internal%mf%DataPrv )
     
     endif     
-    !write(*,*) 'finished initialize'
+    
+    if (point_forcing_read == 1) then
+        if (allocated(internal%mf%zenav)) then
+           deallocate(internal%mf%zenav)
+        end if
+        if (associated(internal%mf%DataPrv)) then
+           deallocate(internal%mf%DataPrv)
+        end if
+        if (associated(internal%mf%DataNxt)) then
+           deallocate(internal%mf%DataNxt)
+        end if 
+    end if
+    
+    write(*,*) 'finished initialize'
 
     ! Turn timer off
     call MAPL_TimerOff(MAPL, "Initialize")
@@ -1106,12 +1121,6 @@ contains
            !write (*,*) force_time_nxt%sec
 
 
-
-
-
-
-
-
            call LDAS_GetForcing(                                                    &
                 force_time_nxt,                                                     &
                 fdtstep,                                                            &
@@ -1351,7 +1360,7 @@ contains
           !write (*,*) force_time_prv
           !write (*,*) 'land_nt_local:'
           !write (*,*) land_nt_local
-          filename = '/discover/nobackup/projects/medComplex/point_forcing_data/'//YYYY//'_point_forcing_data.nc4'
+          filename = '/discover/nobackup/projects/medComplex/pf/'//YYYY//'_point_forcing_data.nc4'
           filename = trim(filename)
           write(*,*) filename
           !write(*,*) local_id
@@ -1606,7 +1615,9 @@ contains
                 ! However, I am not sure how to do this so I will leave this for later discussion
            !     write(*,*) 'root has been discovered'
            met_tag = '/discover/nobackup/projects/medComplex/' &
-           //'pf/'//YYYY//'_point_forcing_data.nc4'
+           //'pf_pso/'//YYYY//'_point_forcing_data.nc4'
+           write(*,*) 'met_tag'
+           write(*,*) met_tag
            !write(*,*) 'before calling get_forcing_point'
            call get_forcing_point(met_tag,model_time_cur,local_id)
                 !
@@ -1690,12 +1701,20 @@ contains
            allocate(global_force_time(curr_shape(2)))
            allocate(var_curr(curr_shape(1),1))
            allocate(tile_ind(land_nt_local))
+       else
+           deallocate(global_force_time)
+           allocate(global_force_time(curr_shape(2)))
+           deallocate(var_curr)
+           allocate(var_curr(curr_shape(1),1)) 
        endif
        !write(*,*) 'assigning global force time'
        global_force_time = met_force_new%date_int(1,:)
        all_tiles = met_force_new%tile_num(:,1)
        do i=1,land_nt_local
           this_tile_ind = findloc(met_force_new%tile_num(:,1),local_id(i))
+          if (this_tile_ind(1) == 0) then
+             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'Tile not in point forcing file!')
+          endif
           tile_ind(i) = this_tile_ind(1)
        enddo
        time_ind = findloc(global_force_time,VALUE=model_time_double)
@@ -1853,7 +1872,14 @@ contains
     type(METFORCE_WRAP) :: wrap
     type(ESMF_Alarm) :: MetForcing
     !external :: GEOS_closefile
+
+    ! Point forcing variables
+    integer :: point_forcing_write
+    integer :: point_forcing_read
+
     ! Begin...
+    point_forcing_write = 0
+    point_forcing_read = 1
 
     ! Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -1864,22 +1890,19 @@ contains
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
 
-    ! Get component's internal private state
-    call ESMF_UserCompGetInternalState(gc, 'METFORCE_state', wrap, status)
-    VERIFY_(status)
-    internal => wrap%ptr
-
     call FileOpenedHash%free(GEOS_closefile,.true.)
 
     ! Clean-up private internal state
-    if (allocated(internal%mf%zenav)) then
-       deallocate(internal%mf%zenav)
-    end if
-    if (associated(internal%mf%DataPrv)) then
-       deallocate(internal%mf%DataPrv)
-    end if
-    if (associated(internal%mf%DataNxt)) then
-       deallocate(internal%mf%DataNxt)
+    if (point_forcing_read == 0) then
+        if (allocated(internal%mf%zenav)) then
+           deallocate(internal%mf%zenav)
+        end if
+        if (associated(internal%mf%DataPrv)) then
+           deallocate(internal%mf%DataPrv)
+        end if
+        if (associated(internal%mf%DataNxt)) then
+           deallocate(internal%mf%DataNxt)
+        end if
     end if
 
     ! Destroy MetForcingAlarm

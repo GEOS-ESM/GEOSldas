@@ -1281,7 +1281,7 @@ class LDASsetup:
         status = False
 
         os.chdir(self.rundir)
-        lenkf=self.blddir+'/../src/Applications/LDAS_App/lenkf.j.template.PSO'
+        lenkf=self.blddir+'/../src/Applications/LDAS_App/lenkf.j.template.original'
         shutil.copy(lenkf,'lenkf.j')
 
         pso=self.blddir+'/../src/Applications/LDAS_App/PSO_v2_objective.py'
@@ -1289,6 +1289,9 @@ class LDASsetup:
 
         obj=self.blddir+'/../src/Applications/LDAS_App/compute_objective_v2.py'
         shutil.copy(obj,'compute_objective_v2.py')
+
+        con=self.blddir+'/../src/Applications/LDAS_App/check_continue.py'
+        shutil.copy(con,'check_continue.py')
 
         my_qos='allnccs'
         if 'qos' in self.optRmInp :

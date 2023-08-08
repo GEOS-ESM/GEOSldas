@@ -14,11 +14,11 @@
 #                                                          #
 ############################################################
 
-EXP_ID:  GEOSldas_CN45_quick
+EXP_ID: 0
 EXP_DOMAIN:SMAP_EASEv2_M36
-NUM_LDAS_ENSEMBLE: 2
-BEG_DATE: 20050101 000000
-END_DATE: 20050802 000000
+NUM_LDAS_ENSEMBLE: 1
+BEG_DATE: 19800101 000000
+END_DATE: 20220101 000000
 
 ############################################################
 #                                                          #
@@ -86,7 +86,7 @@ END_DATE: 20050802 000000
 ############################################################
 
 RESTART: 1
-RESTART_ID: GEOSldas_CN45_restarts_pointforcing
+RESTART_ID: GEOSldas_CN45_res_pf_g1_ksat
 RESTART_PATH: /discover/nobackup/trobinet/exps/
 RESTART_DOMAIN: SMAP_EASEv2_M36
 
@@ -164,7 +164,7 @@ LSM_CHOICE: 3
 #      (May leave blank.)
 #
 # EXCLUDE_FILE: '' 
- INCLUDE_FILE: /discover/nobackup/trobinet/GEOSldas_EFPH_develop/GEOSldas/install/bin/include
+ INCLUDE_FILE: /discover/nobackup/trobinet/GEOSldas_pso_g1_ksat/GEOSldas/src/Applications/LDAS_App/include
 
 
 # ---- Surface meteorological forcing: Horizonal interpolation 
@@ -227,7 +227,7 @@ FIRST_ENS_ID: 0
 #      Default is the entire simulation period (END_DATE minus BEG_DATE).
 #      Format:            yyyymmdd hhmmss
 #
- JOB_SGMT: 00010000 000000
+# JOB_SGMT: 00050000 000000
 
 # ---- Job segments: Number
 #
@@ -236,7 +236,7 @@ FIRST_ENS_ID: 0
 #      Low values for NUM_SGMT are recommended for run-time and storage efficiency.
 #      Default is 1.
 #
- NUM_SGMT: 1
+# NUM_SGMT: 1
 
 
 # ---- CHECKPOINT file output
@@ -245,9 +245,9 @@ FIRST_ENS_ID: 0
 #      Restart files can also be written before exiting GEOSldas.x. 
 #      The following resource parameters specify the frequency and reference time and date.
 #
-# RECORD_FREQUENCY: 7200000              # hhhmmss          (can be greater than 1 day!)
+# RECORD_FREQUENCY: 9990000              # hhhmmss          (can be greater than 1 day!)
 # RECORD_REF_TIME:   000000              #  hhmmss          (reference time-of-day)
-# RECORD_REF_DATE:  19800201 000000      # yyyymmdd hhmmss  (date/time after which checkpoints are written)
+# RECORD_REF_DATE:  20050101 000000      # yyyymmdd hhmmss  (date/time after which checkpoints are written)
 
 
 # ---- Output: Write log file (YES/NO)?
@@ -259,7 +259,7 @@ LDAS_logit: YES
 #      User-defined path and filename of output (HISTORY) specification file.
 #      If empty, ldas_setup will generate a default HISTORY.rc file.
 #
-# HISTRC_FILE: ''
+#HISTRC_FILE: /discover/nobackup/trobinet/GEOSldas_pso_ind/GEOSldas/src/Applications/LDAS_App/HISTORY.rc
 
 # ---- Concatenate sub-daily nc4 files into daily nc4 files and write monthly-mean output?
 #
