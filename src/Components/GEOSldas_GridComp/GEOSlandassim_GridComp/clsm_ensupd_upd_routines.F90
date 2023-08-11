@@ -5142,7 +5142,7 @@ contains
             Iam // '(): reset for 1d update_type: ycompact = ', ycompact
        if (logit) write (logunit,*)
        
-    case (2,7,8,10)  ! "3d" updates, check consistency of xcompact, ycompact
+    case (2,7,8,10, 13)  ! "3d" updates, check consistency of xcompact, ycompact
        
        ! check xcompact/ycompact against corr scales of model error
        
