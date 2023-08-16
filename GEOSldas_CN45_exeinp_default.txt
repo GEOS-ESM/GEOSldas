@@ -87,7 +87,7 @@ END_DATE: 20220101 000000
 
 RESTART: 1
 RESTART_ID: GEOSldas_CN45_res_pf_g1_ksat
-RESTART_PATH: /discover/nobackup/trobinet/exps/
+RESTART_PATH: /shared/exps/
 RESTART_DOMAIN: SMAP_EASEv2_M36
 
 
@@ -113,7 +113,7 @@ FORCE_DTSTEP: 3600
 #                                                          #
 ############################################################
 
-BCS_PATH: /discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_EASE/
+BCS_PATH: /shared/bcs/
 BCS_RESOLUTION: SMAP_EASEv2_M36
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#

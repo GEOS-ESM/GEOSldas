@@ -12,6 +12,7 @@ set (SRCS
   )
 
 find_package(HDF5 REQUIRED COMPONENTS Fortran)
+message("INC_HDF5: ${INC_HDF5}")
 
 esma_add_library (${this}
   SRCS ${SRCS}

@@ -1,7 +1,6 @@
 GEOSldas:
   fixture: true
   develop: develop
-  branch: EF_PH
 
 env:
   local: ./@env

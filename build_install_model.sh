@@ -2,10 +2,10 @@
 # run from /path/to/GEOSldas/ to install the just-built directory
 
 # to be set by the user
-model_dir_gen="/discover/nobackup/trobinet/GEOSldas_pso_g1_ksat/GEOSldas"
-exp_dir_gen="/discover/nobackup/trobinet/exps"
+model_dir_gen="/shared/models/GEOSldas_pso_g1_ksat/GEOSldas"
+exp_dir_gen="/shared/exps"
 exp_name="GEOSldas_CN45_med_default"
-include_name="/discover/nobackup/trobinet/pso/step_1_choose_tiles/outputs/include"
+include_name="/shared/pso/step_1_choose_tiles/outputs/include"
 num_members=1
 # directly based off of user input (shouldn't need to edit)
 exeinp="${model_dir_gen}/GEOSldas_CN45_exeinp_default.txt"
@@ -18,7 +18,7 @@ include_to_place="${model_dir_gen}/src/Applications/LDAS_App/include"
 
 # use variables to set up
 num_mems_idx=$(($num_members-1))
-yes n | ./parallel_build.csh
+./manual_build.sh
 read -p "Are you sure? " -n 1 -r
 echo    # (optional) move to a new line
 if [[ ! $REPLY =~ ^[Yy]$ ]]

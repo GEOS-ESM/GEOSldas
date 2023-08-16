@@ -1360,7 +1360,7 @@ contains
           !write (*,*) force_time_prv
           !write (*,*) 'land_nt_local:'
           !write (*,*) land_nt_local
-          filename = '/discover/nobackup/projects/medComplex/pf/'//YYYY//'_point_forcing_data.nc4'
+          filename = '/shared/point_forcing_huc6/'//YYYY//'_point_forcing_data.nc4'
           filename = trim(filename)
           write(*,*) filename
           !write(*,*) local_id
@@ -1614,8 +1614,7 @@ contains
                 ! MET TAG NEEDS TO BE UPDATED TO WORK WITH THE HISTORY.RC FILE
                 ! However, I am not sure how to do this so I will leave this for later discussion
            !     write(*,*) 'root has been discovered'
-           met_tag = '/discover/nobackup/projects/medComplex/' &
-           //'pf_pso/'//YYYY//'_point_forcing_data.nc4'
+           met_tag = '/shared/point_forcing_huc6/'//YYYY//'_point_forcing_data.nc4'
            write(*,*) 'met_tag'
            write(*,*) met_tag
            !write(*,*) 'before calling get_forcing_point'
