@@ -5016,7 +5016,7 @@ contains
     !tmpfname1 = trim(this_obs_param%path) // '/' // YYYY // '/' &
     !     // this_obs_param%name(1:9) // YYYY // DDD // this_obs_param%name(17:24)
     
-    tmpfname1 = trim(this_obs_param%path) //  YYYY // '/MOD10C1.A' // YYYY // DDD // &
+    tmpfname1 = trim(this_obs_param%path) // '/' // YYYY // '/MOD10C1.A' // YYYY // DDD // &
                    '.061.hdf' !note the MODIS data version included here  
 
     if (logit) write (logunit,*) 'Reading data from ', trim(tmpfname1)
