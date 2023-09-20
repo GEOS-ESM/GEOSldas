@@ -1551,34 +1551,31 @@ contains
   
   ! ****************************************************************************
 
-  subroutine read_obs_sm_ASCAT_EUMET(                            &
-       work_path, exp_id,                                        &
-       date_time, dtstep_assim, N_catd, tile_coord,              &
-       tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
-       this_obs_param,                                           &
-       found_obs, ASCAT_sm, ASCAT_sm_std, ASCAT_lon, ASCAT_lat, ASCAT_time)
+  subroutine read_obs_sm_ASCAT_EUMET(                                         &
+       date_time, dtstep_assim, N_catd, tile_coord,                           &
+       tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,                   &
+       this_obs_param,                                                        &
+       found_obs, ASCAT_sm, ASCAT_sm_std, ASCAT_lon, ASCAT_lat, ASCAT_time )
     
     !---------------------------------------------------------------------
     ! 
-    ! Routine to read in ASCAT surface degree of saturation obs. 
-    ! Output is found_obs, sm_ASCAT, std_sm_ASCAT 
+    ! Routine to read in ASCAT surface degree of saturation (sfds) obs. 
     !
-    ! Read in the EUMETSAT level 2 soil mositure product 25 km (SMO), PPF software version 5.0 
-    ! the data correspond to re-sampled (spatially averaged) sigma0 values, on a 25 km
-    ! orbit swath grid. The input data files are in BUFR file format.
+    ! Read in EUMETSAT level 2 soil moisture product 25 km (SMO), PPF software version 5.0.
+    ! Data correspond to re-sampled (spatially averaged) backscatter (sigma0) values
+    ! on a 25-km orbit swath grid.  Input data files are in BUFR file format.
     !
-    !  Q. Liu, Nov. 2019.  
-    ! based on read_obs_sm_ASCAT
-    ! Minor updates A. Fox, march 2023   
+    ! ASCAT_sm and ASCAT_sm_std outputs are in wetness fraction (i.e., 0-1) units!
+    !
+    ! Q. Liu,          Nov 2019 - based on read_obs_sm_ASCAT
+    ! A. Fox, reichle, Sep 2023 - updated
+    !
     ! --------------------------------------------------------------------
         
     implicit none
     
     ! inputs:
     
-    character(*), intent(in) :: work_path
-    character(*),  intent(in) :: exp_id
-
     type(date_time_type), intent(in) :: date_time
     
     integer, intent(in) :: dtstep_assim, N_catd
@@ -1598,65 +1595,65 @@ contains
    
     logical, intent(out)                    :: found_obs
 
-    real,    intent(out), dimension(N_catd) :: ASCAT_sm              ! wetness range 0-1
-    real,    intent(out), dimension(N_catd) :: ASCAT_sm_std
+    real,    intent(out), dimension(N_catd) :: ASCAT_sm              ! sfds obs          [fraction]  (i.e., 0-1)
+    real,    intent(out), dimension(N_catd) :: ASCAT_sm_std          ! sfds obs err std  [fraction]  (i.e., 0-1)
     real,    intent(out), dimension(N_catd) :: ASCAT_lon, ASCAT_lat
     real*8,  intent(out), dimension(N_catd) :: ASCAT_time            ! J2000 seconds
-   
     
     ! ---------------
     
-    ! Each obs file contains about 100 - 110 minutes of observations. Code as dt_ASCAT_obsfile
-    ! file name indicates the start time of the swaths.  
-
-    integer,   parameter :: dt_ASCAT_obsfile   = 110*60 ! seconds
-
-    integer, parameter :: N_fnames_max = 20
-
-    character(4),      parameter :: J2000_epoch_id = 'TT12'    ! see date_time_util.F90
+    ! Each obs file contains ~100-110 minutes (1 full orbit?) of observations (dt_ASCAT_obsfile).
+    ! File name indicates start time of swath.  
     
-    character(  4) :: DDHH
-    character(  6) :: YYYYMM
-    character(  8) :: date_string
-    character( 10) :: time_stringi
+    integer,      parameter :: dt_ASCAT_obsfile = 110*60    ! seconds
+    
+    integer,      parameter :: N_fnames_max     = 15        ! max number of files per day
+
+    character(4), parameter :: J2000_epoch_id   = 'TT12'    ! see date_time_util.F90
+    
     character( 15) :: str_date_time
     character( 80) :: fname_of_fname_list
     character(300) :: tmpfname, tmpfname2
-    character(400) :: cmd
 
     type(date_time_type) :: date_time_tmp
     type(date_time_type) :: date_time_low, date_time_low_fname
     type(date_time_type) :: date_time_up
     
-    integer :: i, ind, N_tmp, N_files, kk, N_obs
-    integer :: N_fnames, N_fnames_tmp
-
+    integer :: ii, ind, N_tmp, N_files, kk, N_obs, N_fnames, N_fnames_tmp
+    
     character(300), dimension(:), allocatable :: fnames, tmpfnames
- 
-    real*8, dimension(15) :: tmp_vdata 
-    integer, parameter :: lnbufr = 50
-    integer, parameter :: max_rec = 20000
-    integer, parameter :: max_obs = 250000 
-    integer :: idate,iret
-    integer :: ireadmg,ireadsb
-    character(8)  :: subset
+    
+    ! --------------------
+    !
+    ! variables for BUFR read
+
+    real*8, dimension(15) :: tmp_vdata
+
+    integer, parameter :: lnbufr  =     50       ! BUFR file unit number
+    integer, parameter :: max_rec =  20000       ! max number of obs after QC
+    integer, parameter :: max_obs = 250000       ! max number of obs read by subroutine
+
+    integer :: idate, iret, ireadmg, ireadsb
+
+    character(8) :: subset
+
+    ! --------------------
 
     character(100), dimension(2*N_fnames_max)   :: fname_list  ! max 2 days of files
 
-    real,      dimension(:),     allocatable    :: tmp1_lon, tmp1_lat, tmp1_obs
+    real,      dimension(:),     allocatable    :: tmp1_obs, tmp1_lat, tmp1_lon
     real*8,    dimension(:),     allocatable    :: tmp1_jtime
     real*8,    dimension(:,:),   allocatable    :: tmp_data
 
-    real,      dimension(:),     pointer        :: tmp_obs, tmp_lat, tmp_lon
+    real,      dimension(:),     pointer        :: tmp_obs,  tmp_lat,  tmp_lon
     real*8,    dimension(:),     pointer        :: tmp_jtime
+
     integer,   dimension(:),     pointer        :: tmp_tile_num
 
-    integer,   dimension(N_catd) :: N_obs_in_tile    
+    integer,   dimension(N_catd)                :: N_obs_in_tile    
 
-    real, parameter :: tol = 1e-2
-
-    character(len=*), parameter :: Iam = 'read_obs_sm_ASCAT_EUMET'
-    character(len=400) :: err_msg
+    character(len=*),  parameter :: Iam = 'read_obs_sm_ASCAT_EUMET'
+    character(len=400)           :: err_msg
 
     ! -------------------------------------------------------------------
     
@@ -1667,30 +1664,33 @@ contains
     ! initialize
     
     found_obs = .false.
-
+    
     ! find files that are within half-open interval 
-    ! [date_time-dtstep_assim/2,date_time+dtstep_assim/2)
+    !   [date_time-dtstep_assim/2,date_time+dtstep_assim/2)
 
     date_time_low = date_time    
     call augment_date_time( -(dtstep_assim/2), date_time_low)
     date_time_up = date_time    
     call augment_date_time(  (dtstep_assim/2), date_time_up)
     
-    ! Calculate an "extra" date_time_low to catch files with time stamps before window but containing relevant obs
-
+    ! calculate "extra" date_time_low to catch files w/ time swath start stamps before window 
+    !   but containing relevant obs
+    
     date_time_low_fname = date_time_low
     call augment_date_time( -dt_ASCAT_obsfile, date_time_low_fname)
-
+    
+    ! ----------------------------------------------------------------
+    !
     ! read file with list of ASCAT file names for first day
-
-    fname_of_fname_list = 'dummy' ! Make sure its in the obs_param nml
+    
+    fname_of_fname_list = 'dummy'  ! make sure it is properly defined in obs_param nml
     
     call read_obs_SMAP_fnames( date_time_low_fname, this_obs_param,            &
          fname_of_fname_list, N_fnames_max,                                    &
          N_fnames, fname_list(1:N_fnames_max) )
     
     ! if needed, read file with list of ASCAT file names for second day and add
-    !  file names into "fname_list"
+    !   file names into "fname_list"
     
     if (date_time_low_fname%day /= date_time_up%day) then
        
@@ -1701,174 +1701,198 @@ contains
        N_fnames = N_fnames + N_fnames_tmp
        
     end if
-
+    
     tmpfnames = fname_list(1:N_fnames)
-
+    
+    ! ----------------------------------------------------------------
+    !
+    ! find files that have obs within assimilation window
+    
     N_tmp = 0   
-
+    
     do kk = 1,N_fnames
-      tmpfname = fname_list(kk)
-      ! Are we in the required assimilation window?
-      !e.g. Y2019/M07/D02/M01-ASCA-ASCSMO02-NA-5.0-20190702075700.000000000Z-20190702084627-1350204.bfr
-      str_date_time = tmpfname(40:53)
-      
-      read(str_date_time(1:4), *) date_time_tmp%year
-      read(str_date_time(5:6), *) date_time_tmp%month
-      read(str_date_time(7:8), *) date_time_tmp%day
-      read(str_date_time(9:10), *) date_time_tmp%hour
-      read(str_date_time(11:12), *) date_time_tmp%min
-      read(str_date_time(13:14), *) date_time_tmp%sec
-  
-      if ( datetime_lt_refdatetime( date_time_low_fname, date_time_tmp ) .and.        &
-            datetime_le_refdatetime( date_time_tmp, date_time_up )) then 
-      N_tmp = N_tmp + 1
-      ! Remove the '/D03/' from the directory part as using "read_obs_SMAP_fnames" 
-      ind = index(tmpfname, "/D")
-      
-      if (ind > 0) then
-         tmpfname2 = tmpfname(1:ind) // tmpfname(ind+5:)
-      end if
-      tmpfnames(N_tmp) = trim(this_obs_param%path) // '/' // trim(tmpfname2)
-      end if
-     end do
 
-    fnames = tmpfnames(1:N_tmp)
+       tmpfname = fname_list(kk)
+
+       ! Are we in the required assimilation window?
+       !
+       ! e.g. Y2019/M07/M01-ASCA-ASCSMO02-NA-5.0-20190702075700.000000000Z-20190702084627-1350204.bfr
+       !
+       !      12345678901234567890123456789012345678901234567890123456789012345678901234567890 
+       !               1         2         3         4         5         6         7
+
+       str_date_time = tmpfname(40:53)
+      
+       read(str_date_time( 1: 4), *) date_time_tmp%year
+       read(str_date_time( 5: 6), *) date_time_tmp%month
+       read(str_date_time( 7: 8), *) date_time_tmp%day
+       read(str_date_time( 9:10), *) date_time_tmp%hour
+       read(str_date_time(11:12), *) date_time_tmp%min
+       read(str_date_time(13:14), *) date_time_tmp%sec
+       
+       if ( datetime_lt_refdatetime( date_time_low_fname, date_time_tmp ) .and.          &
+            datetime_le_refdatetime( date_time_tmp,       date_time_up  )       ) then 
+
+          N_tmp = N_tmp + 1
+          
+          ! Remove the '/D03/' from the directory part as using "read_obs_SMAP_fnames" 
+          
+          ind = index(tmpfname, "/D")
+          
+          if (ind > 0) then
+             tmpfname2 = tmpfname(1:ind) // tmpfname(ind+5:)
+          end if
+
+          tmpfnames(N_tmp) = trim(this_obs_param%path) // '/' // trim(tmpfname2)
+          
+       end if
+       
+    end do
+    
+    fnames  = tmpfnames(1:N_tmp)
     N_files = N_tmp
-
+    
+    ! ----------------------------------------------------------------
+    !
+    ! loop through files and read obs + metadata into tmp_data
+    
     if (N_files>0) then
 
-
        ! read and process data if files are found
-       allocate(tmp1_lon(max_rec))
-       allocate(tmp1_lat(max_rec))
-       allocate(tmp1_obs(max_rec))
-       allocate(tmp1_jtime(max_rec))
 
-       allocate(tmp_data(max_obs, 15))
+       allocate(tmp1_lon(  max_rec   ))
+       allocate(tmp1_lat(  max_rec   ))
+       allocate(tmp1_obs(  max_rec   ))
+       allocate(tmp1_jtime(max_rec   ))
        
-       ! file loop
+       allocate(tmp_data(  max_obs,15))
+       
        N_obs = 0
-
+       
        do kk = 1,N_files
           
-          ! open on bufr file
-          call closbf(lnbufr)
-          open(lnbufr, file=trim(fnames(kk)), action='read',form='unformatted')
-          call openbf(lnbufr,'SEC3', lnbufr)
-          call mtinfo( trim(this_obs_param%path) // '/BUFR_mastertable/', 51, 52)
+          ! open bufr file
+          
+          call closbf(lnbufr)  ! if a file with unit number lnbufr is open in (or "linked" with) BUFR, close it
+          open(lnbufr, file=trim(fnames(kk)), action='read', form='unformatted')
+          call openbf(lnbufr, 'SEC3', lnbufr) 
+          call mtinfo( trim(this_obs_param%path) // '/BUFR_mastertable/', lnbufr+1, lnbufr+2)
           call datelen(10)
-         
-          msg_report: do while(ireadmg(lnbufr,subset,idate) ==0)
-              loop_report: do while(ireadsb(lnbufr) == 0)
+          
+          msg_report: do while( ireadmg(lnbufr,subset,idate) == 0 )
+             
+             loop_report: do while( ireadsb(lnbufr) == 0 )
+                
+                ! columns of tmp_data:                  1    2    3    4    5    6    7    8    9    10   11   12   13   14    15
 
-              call ufbint(lnbufr,tmp_vdata,15,1,iret,'YEAR MNTH DAYS HOUR MINU SECO SSOM DOMO SMPF SMCF ALFR TPCX IWFR CLATH CLONH')
-              N_obs = N_obs + 1
-              tmp_data(N_obs,:) = tmp_vdata
+                call ufbint(lnbufr,tmp_vdata,15,1,iret,'YEAR MNTH DAYS HOUR MINU SECO SSOM DOMO SMPF SMCF ALFR TPCX IWFR CLATH CLONH')
 
-            end do loop_report
+                N_obs = N_obs + 1
 
+                tmp_data(N_obs,:) = tmp_vdata
+                
+             end do loop_report
           end do msg_report
-
+          
           call closbf(lnbufr)
           close(lnbufr)
-
+          
        end do ! end file loop
 
+       ! ----------------------------------------------------------------
+       !
+       ! select obs within assimilation window and from desired orbit direction; apply basic QC based on obs info
+       
        N_tmp = 0 
-
+       
        do kk = 1,N_obs
-
-         date_time_tmp%year  = int(tmp_data(kk, 1))
-         date_time_tmp%month = int(tmp_data(kk, 2))
-         date_time_tmp%day   = int(tmp_data(kk, 3))
-         date_time_tmp%hour  = int(tmp_data(kk, 4))
-         date_time_tmp%min   = int(tmp_data(kk, 5))
-         date_time_tmp%sec   = int(tmp_data(kk, 6))
-
-         ! skip if record outside of current assim window
-         if ( datetime_lt_refdatetime( date_time_tmp, date_time_low ) .and.        &
-              datetime_le_refdatetime( date_time_up, date_time_tmp )) cycle
-
-         ! skip if record contain no valid soil moisture value
-         if(tmp_data(kk, 7) > 100. .or. tmp_data(kk, 7) < 0.) cycle     
+          
+          date_time_tmp%year  = int(tmp_data(kk, 1))
+          date_time_tmp%month = int(tmp_data(kk, 2))
+          date_time_tmp%day   = int(tmp_data(kk, 3))
+          date_time_tmp%hour  = int(tmp_data(kk, 4))
+          date_time_tmp%min   = int(tmp_data(kk, 5))
+          date_time_tmp%sec   = int(tmp_data(kk, 6))
+          
+          ! skip if record outside of current assim window
+          if ( datetime_lt_refdatetime( date_time_tmp, date_time_low ) .and.           &
+               datetime_le_refdatetime( date_time_up, date_time_tmp )         ) cycle
+          
+          ! skip if record contains invalid soil moisture value
+          if ( tmp_data(kk, 7) > 100. .or. tmp_data(kk, 7) < 0. ) cycle     
+          
+          ! EUMETSAT file contains data of both ascending and descending half-orbits. 
+          ! DOMO ("Direction of motion of moving observing platform") is used to separate Asc and Desc
+          !   because the file doesn't contain any explicit orbit indicator variable.
+          ! According to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk:
+          !   "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
+          !    of the orbit.  When it is between 270 and 360 degrees, it is the ascending part."
+          if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data(kk, 8) < 270 .or. tmp_data(kk, 8) >  360)) cycle
+          if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data(kk, 8) < 180 .or. tmp_data(kk, 8) >= 270)) cycle
+          
+          ! skip if processing flag is set
+          if(int(tmp_data(kk, 9)) /= 0) cycle
+          
+          ! skip if correction flag is set ("good" values are 0 and 4)
+          if (.not. ( (int(tmp_data(kk, 10)) == 0) .or. (int(tmp_data(kk, 10)) == 4)) ) cycle
+          
+          ! skip if land fraction is missing or < 0.9
+          if(tmp_data(kk, 11) > 1. .or. tmp_data(kk, 11) < 0.9 ) cycle
+          
+          ! skip if topographic complexity > 10%
+          if(tmp_data(kk, 12) > 10.) cycle
+          
+          ! skip if inundation and wetland fraction > 10%
+          if(tmp_data(kk, 13) > 10.) cycle
+          
+          N_tmp = N_tmp + 1  ! passed all QC
          
-         ! EUMETSAT file contains data of both ascending and descending orbits. 
-         ! DOMO - “Direction of motion of moving observing platform” is used to seperate Asc and Desc
-         ! because the file doesn't contain any explicit orbit indicator variable.
-         ! according to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk 
-         ! "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
-         ! of the orbit … when it is between 270 and 360 degrees, it is the ascending part"
-         if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data(kk, 8) < 270 .or. tmp_data(kk, 8) > 360)) cycle
-         if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data(kk, 8) < 180 .or. tmp_data(kk, 8) >= 270)) cycle
+          tmp1_jtime(N_tmp) = datetime_to_J2000seconds( date_time_tmp, J2000_epoch_id )
+          
+          tmp1_lat(  N_tmp) = tmp_data(kk, 14)            
+          tmp1_lon(  N_tmp) = tmp_data(kk, 15)
 
-         ! skip if processing flag is set
-         if(int(tmp_data(kk, 9)) /= 0) cycle
-
-         ! skip if correction flag is set
-         if (.not. (int(tmp_data(kk, 10)) == 0 .or. int(tmp_data(kk, 10)) == 4)) cycle
-
-         ! skip if land fraction is missing or < 0.9
-         if(tmp_data(kk, 11) >1 .or. tmp_data(kk, 11) < 0.9 ) cycle
-
-         ! skip if topographic complexity > 10%
-         if(tmp_data(kk, 12) > 10.) cycle
-                 
-         ! skip if inudatation and wetland faction > 10%
-         if(tmp_data(kk, 13) > 10.) cycle
-
-         N_tmp = N_tmp + 1 ! Passed all QC
-         
-         tmp1_jtime(N_tmp) = datetime_to_J2000seconds( date_time_tmp, J2000_epoch_id )
-
-         tmp1_lat(N_tmp) = tmp_data(kk, 14)            
-         tmp1_lon(N_tmp) = tmp_data(kk, 15)
-         tmp1_obs(N_tmp) = tmp_data(kk, 7)/100.  ! change value from 0-100 to 0-1
-
+          tmp1_obs(  N_tmp) = tmp_data(kk,  7)/100.  ! change units from percent (0-100) to fraction (0-1)
+          
        end do
 
        if (logit) then
           
-          write (logunit,*) 'read_obs_sm_ASCAT_EUMET: read ', N_tmp,  &
-               ' at date_time = ', date_time, ' from '
-          do i=1,N_files
-             write (logunit,*) trim(fnames(i))
+          write (logunit,*) 'read_obs_sm_ASCAT_EUMET: read ', N_tmp, ' at date_time = ', date_time, ' from:'
+          do ii=1,N_files
+             write (logunit,*) trim(fnames(ii))
           end do
           write (logunit,*) '----------'
-          write (logunit,*) 'max(obs)=',maxval(tmp1_obs(1:N_tmp)), 'min(obs)=',minval(tmp1_obs(1:N_tmp)), &
-               ' avg(obs)=',sum(tmp1_obs(1:N_tmp))/N_tmp
+          write (logunit,*) 'max(obs)=',maxval(tmp1_obs(1:N_tmp)), ',  min(obs)=',minval(tmp1_obs(1:N_tmp)), &
+               ',  avg(obs)=',sum(tmp1_obs(1:N_tmp))/N_tmp
+          
        end if
-
+       
        deallocate(fnames)
 
+       ! copy "good" obs with lat/lon/time into tmp_* (pointers)
+
        allocate(tmp_jtime(N_tmp))    
-       allocate(tmp_lon(N_tmp))
-       allocate(tmp_lat(N_tmp))
-       allocate(tmp_obs(N_tmp))
+       allocate(tmp_lon(  N_tmp))
+       allocate(tmp_lat(  N_tmp))
+       allocate(tmp_obs(  N_tmp))
 
        tmp_jtime = tmp1_jtime(1:N_tmp)
-       tmp_lon = tmp1_lon(1:N_tmp)
-       tmp_lat = tmp1_lat(1:N_tmp)
-       tmp_obs = tmp1_obs(1:N_tmp)
+       tmp_lon   = tmp1_lon(  1:N_tmp)
+       tmp_lat   = tmp1_lat(  1:N_tmp)
+       tmp_obs   = tmp1_obs(  1:N_tmp)
    
        deallocate(tmp1_jtime)
        deallocate(tmp1_lon)
        deallocate(tmp1_lat)
        deallocate(tmp1_obs)
        deallocate(tmp_data) 
-
-     else
+       
+    else
+       
        N_tmp = 0
- 
-     end if
-
-
-    ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !
-    ! SOME QC SHOULD BE DONE HERE!!!
-    !
-    ! MAKE SURE no-data-values ARE DEALT WITH
-    !
-    ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       
+    end if
     
     ! ----------------------------------------------------------------
     !
@@ -1885,65 +1909,68 @@ contains
             N_tmp, tmp_lat, tmp_lon,                                 &
             this_obs_param,                                          &
             tmp_tile_num )
- 
+       
        
        ! ----------------------------------------------------------------
        !
        ! 3.) compute super-obs for each tile from all obs w/in that tile
        !     (also eliminate observations that are not in domain)
        
-       ASCAT_sm = 0.
-       ASCAT_lon = 0.
-       ASCAT_lat = 0.
+       ASCAT_sm   = 0.
+       ASCAT_lon  = 0.
+       ASCAT_lat  = 0.
        ASCAT_time = 0.0D0
-
-       N_obs_in_tile  = 0
        
-       do i=1,N_tmp
+       N_obs_in_tile = 0
+       
+       do ii=1,N_tmp
           
-          ind = tmp_tile_num(i)   ! 1<=tmp_tile_num<=N_catd (unless nodata)
+          ind = tmp_tile_num(ii)   ! 1<=tmp_tile_num<=N_catd (unless nodata)
           
           if (ind>0) then         ! this step eliminates obs outside domain
              
-            ASCAT_sm(ind) = ASCAT_sm(ind) + tmp_obs(i)
-            ASCAT_lon(ind) = ASCAT_lon(ind) + tmp_lon(i)
-            ASCAT_lat(ind) = ASCAT_lat(ind) + tmp_lat(i)
-            ASCAT_time(ind) = ASCAT_time(ind) + tmp_jtime(i)
+             ASCAT_sm(  ind) = ASCAT_sm(  ind) + tmp_obs(  ii)
+             ASCAT_lon( ind) = ASCAT_lon( ind) + tmp_lon(  ii)
+             ASCAT_lat( ind) = ASCAT_lat( ind) + tmp_lat(  ii)
+             ASCAT_time(ind) = ASCAT_time(ind) + tmp_jtime(ii)
              
-            N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
+             N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
              
           end if
           
        end do
-
-              ! --------------------------------
        
        ! normalize
        
-       do i=1,N_catd
-
-         ! set observation error standard deviation
-         ASCAT_sm_std(i) = this_obs_param%errstd
+       do ii=1,N_catd
           
-          if (N_obs_in_tile(i)>1) then
-             
-            ASCAT_sm(i) = ASCAT_sm(i)/real(N_obs_in_tile(i))
-            ASCAT_lon(i) = ASCAT_lon(i)/real(N_obs_in_tile(i))
-            ASCAT_lat(i) = ASCAT_lat(i)/real(N_obs_in_tile(i))
-            ASCAT_time(i) = ASCAT_time(i)/real(N_obs_in_tile(i),kind(0.0D0))
+          ! set observation error standard deviation
           
-          elseif (N_obs_in_tile(i)==0) then
+          ASCAT_sm_std(ii) = this_obs_param%errstd/100.    ! change units from percent (0-100) to fraction (0-1) 
+          
+          if (N_obs_in_tile(ii)>1) then
              
-            ASCAT_sm(i) = this_obs_param%nodata
-            ASCAT_lon(i) = this_obs_param%nodata
-            ASCAT_lat(i) = this_obs_param%nodata
-            ASCAT_time(i) = real(this_obs_param%nodata,kind(0.0D0))
-            ASCAT_sm_std(i) = this_obs_param%nodata
+             ASCAT_sm(  ii) = ASCAT_sm(  ii)/real(N_obs_in_tile(ii))
+             ASCAT_lon( ii) = ASCAT_lon( ii)/real(N_obs_in_tile(ii))
+             ASCAT_lat( ii) = ASCAT_lat( ii)/real(N_obs_in_tile(ii))
+             ASCAT_time(ii) = ASCAT_time(ii)/real(N_obs_in_tile(ii),kind(0.0D0))
+             
+          elseif (N_obs_in_tile(ii)==0) then
+             
+             ASCAT_sm(    ii) = this_obs_param%nodata
+             ASCAT_lon(   ii) = this_obs_param%nodata
+             ASCAT_lat(   ii) = this_obs_param%nodata
+             ASCAT_time(  ii) = real(this_obs_param%nodata,kind(0.0D0))
+             ASCAT_sm_std(ii) = this_obs_param%nodata
+             
+          else
+             
+             ! nothing to do if N_obs_in_tile(ii)==1 (and assuming N_obs_in_tile is never negative)
              
           end if
           
        end do
-
+       
        ! clean up
        
        if (associated(tmp_tile_num)) deallocate(tmp_tile_num)
@@ -1959,23 +1986,23 @@ contains
        end if
        
     end if
-
-!    call system_clock(clock_end, clock_rate) ! Stop timing
-!    elapsed_time_sr=(real(clock_end-clock_start_sr)/real(clock_rate))
-!    write (logunit,*) 'Elapsed time in read_obs_sm_ASCAT_EUMET: ', elapsed_time, ' seconds'
-
-!    elapsed_time = (elapsed_time/elapsed_time_sr)*100
-!    write (logunit,*) 'We spent ', elapsed_time, '% of time in bufr read'
-
+    
+    !    call system_clock(clock_end, clock_rate) ! Stop timing
+    !    elapsed_time_sr=(real(clock_end-clock_start_sr)/real(clock_rate))
+    !    write (logunit,*) 'Elapsed time in read_obs_sm_ASCAT_EUMET: ', elapsed_time, ' seconds'
+    
+    !    elapsed_time = (elapsed_time/elapsed_time_sr)*100
+    !    write (logunit,*) 'We spent ', elapsed_time, '% of time in bufr read'
+    
     ! clean up
     
     if (associated(tmp_obs))      deallocate(tmp_obs)
     if (associated(tmp_lon))      deallocate(tmp_lon)
     if (associated(tmp_lat))      deallocate(tmp_lat)
     if (associated(tmp_jtime))    deallocate(tmp_jtime)
-
+    
   end subroutine read_obs_sm_ASCAT_EUMET
-
+  
   ! ***************************************************************************
 
   subroutine read_sm_ASCAT_bin( &
@@ -7479,7 +7506,6 @@ contains
         call system_clock(clock_start) ! Start timing
       
         call read_obs_sm_ASCAT_EUMET(                                  &
-             work_path, exp_id,                                        &
              date_time, dtstep_assim, N_catd, tile_coord,              &
              tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
              this_obs_param,                                           &
