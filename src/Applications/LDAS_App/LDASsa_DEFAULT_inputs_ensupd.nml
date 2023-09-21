@@ -90,8 +90,8 @@ fcsterr_inflation_fac = -9999.
 !                     1 = horizontal
 !                     2 = vertical 
 !                     3 = ...
-! %N_ang          = # angles in species (for radiance data)
-! %ang            = vector of angles
+! %N_ang          = # satellite viewing angles in species (radiance obs only)
+! %ang            = vector of satellite viewing angles
 ! %freq           = frequency [Hz]
 ! %FOV            = field-of-view *radius*, see NOTES below
 !                   (if FOV==0. equate obs footprint w/ tile)
