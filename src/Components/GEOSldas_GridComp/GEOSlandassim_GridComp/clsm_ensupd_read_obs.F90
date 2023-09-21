@@ -1619,7 +1619,7 @@ contains
     type(date_time_type) :: date_time_low, date_time_low_fname
     type(date_time_type) :: date_time_up
     
-    integer :: ii, ind, N_tmp, N_files, kk, N_obs, N_fnames, N_fnames_tmp
+    integer :: ii, ind, N_tmp, N_files, kk, N_obs, N_fnames, N_fnames_tmp, obs_dir_hier
     
     character(300), dimension(:), allocatable :: fnames, tmpfnames
     
@@ -1630,8 +1630,8 @@ contains
     real*8, dimension(15) :: tmp_vdata
 
     integer, parameter :: lnbufr  =     50       ! BUFR file unit number
-    integer, parameter :: max_rec =  20000       ! max number of obs after QC
-    integer, parameter :: max_obs = 250000       ! max number of obs read by subroutine
+    integer, parameter :: max_rec =  20000       ! max number of obs after QC (expecting < 6 hr assim window)
+    integer, parameter :: max_obs = 250000       ! max number of obs read by subroutine (expecting < 6 hr assim window)
 
     integer :: idate, iret, ireadmg, ireadsb
 
@@ -1666,7 +1666,7 @@ contains
     found_obs = .false.
     
     ! find files that are within half-open interval 
-    !   [date_time-dtstep_assim/2,date_time+dtstep_assim/2)
+    !   (date_time-dtstep_assim/2,date_time+dtstep_assim/2]
 
     date_time_low = date_time    
     call augment_date_time( -(dtstep_assim/2), date_time_low)
@@ -1684,19 +1684,21 @@ contains
     ! read file with list of ASCAT file names for first day
     
     fname_of_fname_list = 'dummy'  ! make sure it is properly defined in obs_param nml
+
+    obs_dir_hier = 1
     
-    call read_obs_SMAP_fnames( date_time_low_fname, this_obs_param,            &
+    call read_obs_fnames( date_time_low_fname, this_obs_param,            &
          fname_of_fname_list, N_fnames_max,                                    &
-         N_fnames, fname_list(1:N_fnames_max) )
+         N_fnames, fname_list(1:N_fnames_max), obs_dir_hier )
     
     ! if needed, read file with list of ASCAT file names for second day and add
     !   file names into "fname_list"
     
     if (date_time_low_fname%day /= date_time_up%day) then
        
-       call read_obs_SMAP_fnames( date_time_up, this_obs_param,                &
+       call read_obs_fnames( date_time_up, this_obs_param,                &
             fname_of_fname_list, N_fnames_max,                                 &
-            N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_fnames_max)) )
+            N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_fnames_max)), obs_dir_hier )
        
        N_fnames = N_fnames + N_fnames_tmp
        
@@ -1721,7 +1723,7 @@ contains
        !      12345678901234567890123456789012345678901234567890123456789012345678901234567890 
        !               1         2         3         4         5         6         7
 
-       str_date_time = tmpfname(40:53)
+       str_date_time = tmpfname(36:49)
       
        read(str_date_time( 1: 4), *) date_time_tmp%year
        read(str_date_time( 5: 6), *) date_time_tmp%month
@@ -1734,16 +1736,8 @@ contains
             datetime_le_refdatetime( date_time_tmp,       date_time_up  )       ) then 
 
           N_tmp = N_tmp + 1
-          
-          ! Remove the '/D03/' from the directory part as using "read_obs_SMAP_fnames" 
-          
-          ind = index(tmpfname, "/D")
-          
-          if (ind > 0) then
-             tmpfname2 = tmpfname(1:ind) // tmpfname(ind+5:)
-          end if
 
-          tmpfnames(N_tmp) = trim(this_obs_param%path) // '/' // trim(tmpfname2)
+          tmpfnames(N_tmp) = trim(this_obs_param%path) // '/' // trim(tmpfname)
           
        end if
        
@@ -1789,6 +1783,11 @@ contains
 
                 N_obs = N_obs + 1
 
+                if (N_obs > max_obs) then
+                  err_msg = 'Attempting to read too many obs - how long is your assimilation window?'
+                  call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+                end if
+
                 tmp_data(N_obs,:) = tmp_vdata
                 
              end do loop_report
@@ -1819,7 +1818,7 @@ contains
                datetime_le_refdatetime( date_time_up, date_time_tmp )         ) cycle
           
           ! skip if record contains invalid soil moisture value
-          if ( tmp_data(kk, 7) > 100. .or. tmp_data(kk, 7) < 0. ) cycle     
+          if ( tmp_data(kk, 7) > 100. .or. tmp_data(kk, 7) < 0. ) cycle
           
           ! EUMETSAT file contains data of both ascending and descending half-orbits. 
           ! DOMO ("Direction of motion of moving observing platform") is used to separate Asc and Desc
@@ -1944,16 +1943,15 @@ contains
        
        do ii=1,N_catd
           
-          ! set observation error standard deviation
-          
-          ASCAT_sm_std(ii) = this_obs_param%errstd/100.    ! change units from percent (0-100) to fraction (0-1) 
+          ! set observation error standard deviation 
           
           if (N_obs_in_tile(ii)>1) then
              
-             ASCAT_sm(  ii) = ASCAT_sm(  ii)/real(N_obs_in_tile(ii))
-             ASCAT_lon( ii) = ASCAT_lon( ii)/real(N_obs_in_tile(ii))
-             ASCAT_lat( ii) = ASCAT_lat( ii)/real(N_obs_in_tile(ii))
-             ASCAT_time(ii) = ASCAT_time(ii)/real(N_obs_in_tile(ii),kind(0.0D0))
+             ASCAT_sm(    ii) = ASCAT_sm(  ii)/real(N_obs_in_tile(ii))
+             ASCAT_lon(   ii) = ASCAT_lon( ii)/real(N_obs_in_tile(ii))
+             ASCAT_lat(   ii) = ASCAT_lat( ii)/real(N_obs_in_tile(ii))
+             ASCAT_time(  ii) = ASCAT_time(ii)/real(N_obs_in_tile(ii),kind(0.0D0))
+             ASCAT_sm_std(ii) = this_obs_param%errstd/100.    ! change units from percent (0-100) to fraction (0-1)
              
           elseif (N_obs_in_tile(ii)==0) then
              
@@ -5275,7 +5273,7 @@ contains
         
     ! read file with list of SMAP file names for first day
     
-    call read_obs_SMAP_fnames( date_time_low_fname, this_obs_param,                &
+    call read_obs_fnames( date_time_low_fname, this_obs_param,                &
          fname_of_fname_list, N_halforbits_max,                                    &
          N_fnames, fname_list(1:N_halforbits_max) )
     
@@ -5284,7 +5282,7 @@ contains
     
     if (date_time_low_fname%day /= date_time_upp%day) then
        
-       call read_obs_SMAP_fnames( date_time_upp, this_obs_param,                   &
+       call read_obs_fnames( date_time_upp, this_obs_param,                   &
             fname_of_fname_list, N_halforbits_max,                                 &
             N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_halforbits_max)) )
        
@@ -6111,7 +6109,7 @@ contains
         
     ! read file with list of SMAP file names for first day
     
-    call read_obs_SMAP_fnames( date_time_low_fname, this_obs_param,                &
+    call read_obs_fnames( date_time_low_fname, this_obs_param,                &
          fname_of_fname_list, N_halforbits_max,                                    &
          N_fnames, fname_list(1:N_halforbits_max) )
     
@@ -6120,7 +6118,7 @@ contains
     
     if (date_time_low_fname%day /= date_time_upp%day) then
        
-       call read_obs_SMAP_fnames( date_time_upp, this_obs_param,                   &
+       call read_obs_fnames( date_time_upp, this_obs_param,                   &
             fname_of_fname_list, N_halforbits_max,                                 &
             N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_halforbits_max)) )
        
@@ -7148,8 +7146,8 @@ contains
   
   ! *****************************************************************
   
-  subroutine read_obs_SMAP_fnames( date_time, this_obs_param,         &
-       fname_of_fname_list, N_max, N_fnames, fname_list )
+  subroutine read_obs_fnames( date_time, this_obs_param,         &
+       fname_of_fname_list, N_max, N_fnames, fname_list, obs_dir_hier )
     
     ! read the file within a SMAP Yyyyy/Mmm/Ddd directory that lists
     !  the SMAP h5 file names; preface file names with "Yyyyy/Mmm/Ddd"
@@ -7165,13 +7163,15 @@ contains
     
     type(obs_param_type),             intent(in)  :: this_obs_param
     
-    character( *),                   intent(in)  :: fname_of_fname_list
+    character( *),                    intent(in)  :: fname_of_fname_list
 
     integer,                          intent(in)  :: N_max
 
     integer,                          intent(out) :: N_fnames
 
     character(100), dimension(N_max), intent(out) :: fname_list
+
+    integer, optional,                intent(in)  :: obs_dir_hier
     
     ! local variables
     
@@ -7181,12 +7181,13 @@ contains
     character( 80)       :: tmpstr80
 
     character( 14)       :: YYYYMMDDdir
+    character( 10)       :: YYYYMMdir
     character(  4)       :: YYYY
     character(  2)       :: MM, DD
 
     integer              :: ii, istat
 
-    character(len=*), parameter :: Iam = 'read_obs_SMAP_fnames'
+    character(len=*), parameter :: Iam = 'read_obs_fnames'
     character(len=400) :: err_msg
 
     ! ---------------------------------------------------------------------
@@ -7196,6 +7197,7 @@ contains
     write (DD  ,'(i2.2)') date_time%day
     
     YYYYMMDDdir = 'Y' // YYYY // '/M' // MM // '/D' // DD // '/'
+    YYYYMMdir =   'Y' // YYYY // '/M' // MM // '/'
 
     ! initialize default values
 
@@ -7236,9 +7238,23 @@ contains
              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
           end if
 
-          ! preface file names with "Yyyyy/Mmm/Ddd"
+          if (present(obs_dir_hier) .and. obs_dir_hier == 1) then
+            
+            ! preface file names with "Yyyyy/Mmm"
+            
+            fname_list(ii) = YYYYMMdir // trim(tmpstr80)
 
-          fname_list(ii) = YYYYMMDDdir // trim(tmpstr80)
+          elseif (present(obs_dir_hier) .and. obs_dir_hier /= 1) then
+            
+            err_msg = 'Unrecognized obs_dir_hier #'
+            call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+
+          else
+            ! preface file names with "Yyyyy/Mmm/Ddd" Default for SMAP obs
+            
+            fname_list(ii) = YYYYMMDDdir // trim(tmpstr80)
+          
+          end if
           
        else
           
@@ -7252,7 +7268,7 @@ contains
 
     N_fnames = ii
 
-  end subroutine read_obs_SMAP_fnames
+  end subroutine read_obs_fnames
 
   ! *****************************************************************
 
