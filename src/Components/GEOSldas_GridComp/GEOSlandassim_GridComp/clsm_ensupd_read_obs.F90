@@ -1759,7 +1759,7 @@ contains
        allocate(tmp1_obs(  max_rec   ))
        allocate(tmp1_jtime(max_rec   ))
        
-       allocate(tmp_data(  max_obs,15))
+       allocate(tmp_data(  max_obs,14))
        
        N_obs = 0
        
@@ -1777,9 +1777,9 @@ contains
              
              loop_report: do while( ireadsb(lnbufr) == 0 )
                 
-                ! columns of tmp_data:                  1    2    3    4    5    6    7    8    9    10   11   12   13   14    15
+                ! columns of tmp_data:                  1    2    3    4    5    6    7    8    9    10   11   12   13    14
 
-                call ufbint(lnbufr,tmp_vdata,15,1,iret,'YEAR MNTH DAYS HOUR MINU SECO SSOM DOMO SMPF SMCF ALFR TPCX IWFR CLATH CLONH')
+                call ufbint(lnbufr,tmp_vdata,15,1,iret,'YEAR MNTH DAYS HOUR MINU SECO SSOM SMPF SMCF ALFR TPCX IWFR CLATH CLONH')
 
                 N_obs = N_obs + 1
 
@@ -1826,30 +1826,35 @@ contains
           ! According to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk:
           !   "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
           !    of the orbit.  When it is between 270 and 360 degrees, it is the ascending part."
-          if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data(kk, 8) < 270 .or. tmp_data(kk, 8) >  360)) cycle
-          if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data(kk, 8) < 180 .or. tmp_data(kk, 8) >= 270)) cycle
+          ! if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data(kk, 8) < 270 .or. tmp_data(kk, 8) >  360)) cycle
+          ! if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data(kk, 8) < 180 .or. tmp_data(kk, 8) >= 270)) cycle
           
           ! skip if processing flag is set
-          if(int(tmp_data(kk, 9)) /= 0) cycle
+          if(int(tmp_data(kk, 8)) /= 0) cycle
           
           ! skip if correction flag is set ("good" values are 0 and 4)
-          if (.not. ( (int(tmp_data(kk, 10)) == 0) .or. (int(tmp_data(kk, 10)) == 4)) ) cycle
+          if (.not. ( (int(tmp_data(kk, 9)) == 0) .or. (int(tmp_data(kk, 9)) == 4)) ) cycle
           
           ! skip if land fraction is missing or < 0.9
-          if(tmp_data(kk, 11) > 1. .or. tmp_data(kk, 11) < 0.9 ) cycle
+          if(tmp_data(kk, 10) > 1. .or. tmp_data(kk, 10) < 0.9 ) cycle
           
           ! skip if topographic complexity > 10%
-          if(tmp_data(kk, 12) > 10.) cycle
+          if(tmp_data(kk, 11) > 10.) cycle
           
           ! skip if inundation and wetland fraction > 10%
-          if(tmp_data(kk, 13) > 10.) cycle
+          if(tmp_data(kk, 12) > 10.) cycle
           
           N_tmp = N_tmp + 1  ! passed all QC
+
+          if (N_tmp > max_rec) then
+            err_msg = 'Too many obs have passed QC - how long is your assimilation window?'
+            call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+          end if
          
           tmp1_jtime(N_tmp) = datetime_to_J2000seconds( date_time_tmp, J2000_epoch_id )
           
-          tmp1_lat(  N_tmp) = tmp_data(kk, 14)            
-          tmp1_lon(  N_tmp) = tmp_data(kk, 15)
+          tmp1_lat(  N_tmp) = tmp_data(kk, 13)            
+          tmp1_lon(  N_tmp) = tmp_data(kk, 14)
 
           tmp1_obs(  N_tmp) = tmp_data(kk,  7)/100.  ! change units from percent (0-100) to fraction (0-1)
           
@@ -1984,13 +1989,6 @@ contains
        end if
        
     end if
-    
-    !    call system_clock(clock_end, clock_rate) ! Stop timing
-    !    elapsed_time_sr=(real(clock_end-clock_start_sr)/real(clock_rate))
-    !    write (logunit,*) 'Elapsed time in read_obs_sm_ASCAT_EUMET: ', elapsed_time, ' seconds'
-    
-    !    elapsed_time = (elapsed_time/elapsed_time_sr)*100
-    !    write (logunit,*) 'We spent ', elapsed_time, '% of time in bufr read'
     
     ! clean up
     
@@ -7429,9 +7427,6 @@ contains
     character(len=*), parameter :: Iam = 'read_obs'
     character(len=400) :: err_msg
 
-    integer :: clock_start, clock_end, clock_rate
-    real(8) :: elapsed_time
-
     ! -------------------------------------------------------------
 
     scaled_obs = .false.  ! initialize
@@ -7517,10 +7512,8 @@ contains
            
         end if
         
-    case ('ASCAT_META_SM_A', 'ASCAT_META_SM_D','ASCAT_METB_SM_A', 'ASCAT_METB_SM_D','ASCAT_METC_SM_A', 'ASCAT_METC_SM_D' )
+    case ('ASCAT_META_SM','ASCAT_METB_SM','ASCAT_METC_SM' )
 
-        call system_clock(clock_start) ! Start timing
-      
         call read_obs_sm_ASCAT_EUMET(                                  &
              date_time, dtstep_assim, N_catd, tile_coord,              &
              tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
@@ -7538,12 +7531,6 @@ contains
                 tmp_std_obs, tmp_lon, tmp_lat, tmp_time )
            
         end if        
-
-
-        call system_clock(clock_end, clock_rate) ! Stop timing
-        elapsed_time=(real(clock_end-clock_start)/real(clock_rate))
-        write (logunit,*) '**** Elapsed time in obs_read: ', elapsed_time, ' seconds ****'
-
 
     case ('isccp_tskin_gswp2_v1')
        
@@ -7717,8 +7704,6 @@ contains
          'SMAP_L1C_Tbh_E27_D', 'SMAP_L1C_Tbv_E27_D',    &
          'SMAP_L2AP_Tbh_A',    'SMAP_L2AP_Tbv_A',       &
          'SMAP_L2AP_Tbh_D',    'SMAP_L2AP_Tbv_D' )
-       
-       call system_clock(clock_start)
 
        call read_obs_SMAP_halforbit_Tb(                                     &
             date_time, N_catd, this_obs_param,                              &
@@ -7736,10 +7721,6 @@ contains
                this_obs_param, tmp_obs, tmp_std_obs, tmp_assim )
 
        end if
-
-       call system_clock(clock_end, clock_rate) ! Stop timi
-       elapsed_time=(real(clock_end-clock_start)/real(clock_rate))
-       write (logunit,*) '**** Elapsed time in obs_read: ', elapsed_time, ' seconds ****'
       
     case('LaRC_tskin-GOESW', 'LaRC_tskin-GOESE', 'LaRC_tskin-MET09',  & 
          'LaRC_tskin-FY2E-', 'LaRC_tskin-MTST2')
@@ -8240,26 +8221,21 @@ integer :: pentad_varid, lon_varid, lat_varid
 integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
 integer, dimension(3) :: start, icount
 
-integer :: clock_start, clock_end, clock_rate
-real(8) :: elapsed_time
-
 real :: tmpreal, this_lon, this_lat
 
 integer, dimension(:), allocatable :: sclprm_tile_id
 integer, dimension(:), allocatable :: pentads
 
-real, dimension(:), allocatable :: sclprm_lon,      sclprm_lat 
-real, dimension(:,:), allocatable :: sclprm_mean_obs, sclprm_std_obs
-real, dimension(:,:), allocatable :: sclprm_mean_mod, sclprm_std_mod
+real, dimension(:),   allocatable  :: sclprm_lon,      sclprm_lat 
+real, dimension(:,:), allocatable  :: sclprm_mean_obs, sclprm_std_obs
+real, dimension(:,:), allocatable  :: sclprm_mean_mod, sclprm_std_mod
 
-character(len=*), parameter :: Iam = ' scale_obs_sfmc_zscore'
+character(len=*), parameter        :: Iam = ' scale_obs_sfmc_zscore'
 character(len=400) :: err_msg
 
 ! ------------------------------------------------------------------
 
 ! read scaling parameters from file
-
-call system_clock(clock_start) ! Start timing
 
 fname = trim(this_obs_param%scalepath) // '/' // &
      trim(this_obs_param%scalename) // '.nc4'
@@ -8334,11 +8310,7 @@ do i=1,N_catd
       ! ! sanity check (against accidental use of wrong tile space)
       
       if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
-           abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol        ) then
-         if (logit) write (logunit,*) 'ierr2, i = ', ierr2, i  
-         if (logit) write (logunit,*) 'start, icount', start, icount
-         if (logit) write (logunit,*) 'tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)', tile_coord(i)%com_lat, this_lat, sclprm_lat(j_ind)
-         if (logit) write (logunit,*) 'tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)', tile_coord(i)%com_lon, this_lon, sclprm_lon(i_ind)
+           abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol ) then
          err_msg = 'something wrong'
          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
       end if
@@ -8357,7 +8329,7 @@ do i=1,N_catd
          
          tmp_obs(i) = sclprm_mean_mod(j_ind, i_ind)                       &
               + tmpreal*(tmp_obs(i)-sclprm_mean_obs(j_ind, i_ind)) 
-                      
+
          ! scale observation error std
          
          tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
@@ -8378,10 +8350,6 @@ deallocate(sclprm_mean_obs)
 deallocate(sclprm_std_obs)      
 deallocate(sclprm_mean_mod)     
 deallocate(sclprm_std_mod)      
-
-call system_clock(clock_end, clock_rate) ! Stop timing
-elapsed_time=(real(clock_end-clock_start)/real(clock_rate))
-write (logunit,*) 'Elapsed time in scale_obs_sfmc_zscore: ', elapsed_time, ' seconds'
 
 end subroutine scale_obs_sfmc_zscore
 
