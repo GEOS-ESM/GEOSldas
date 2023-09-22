@@ -1559,13 +1559,21 @@ contains
     
     !---------------------------------------------------------------------
     ! 
-    ! Routine to read in ASCAT surface degree of saturation (sfds) obs. 
+    ! Routine to read in ASCAT surface degree of saturation (sfds) obs from 
+    !   BUFR files that both ascending and descending passes. 
+    !
+    ! ASCAT_sm and ASCAT_sm_std outputs from this subroutine are in wetness fraction (i.e., 0-1) units!
     !
     ! Read in EUMETSAT level 2 soil moisture product 25 km (SMO), PPF software version 5.0.
-    ! Data correspond to re-sampled (spatially averaged) backscatter (sigma0) values
-    ! on a 25-km orbit swath grid.  Input data files are in BUFR file format.
+    !   Data correspond to re-sampled (spatially averaged) backscatter (sigma0) values
+    !   on a 25-km orbit swath grid.  Input data files are in BUFR file format.
     !
-    ! ASCAT_sm and ASCAT_sm_std outputs are in wetness fraction (i.e., 0-1) units!
+    ! EUMETSAT BUFR files contain data for both ascending and descending half-orbits. 
+    !   The BUFR field DOMO ("Direction of motion of moving observing platform") could be used to 
+    !   separate Asc and Desc.  (The BUFR files do not contain any explicit orbit indicator variable.)
+    !   According to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk:
+    !   "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
+    !    of the orbit.  When it is between 270 and 360 degrees, it is the ascending part."
     !
     ! Q. Liu,          Nov 2019 - based on read_obs_sm_ASCAT
     ! A. Fox, reichle, Sep 2023 - updated
@@ -1771,7 +1779,7 @@ contains
           open(lnbufr, file=trim(fnames(kk)), action='read', form='unformatted')
           call openbf(lnbufr, 'SEC3', lnbufr) 
           call mtinfo( trim(this_obs_param%path) // '/BUFR_mastertable/', lnbufr+1, lnbufr+2)
-          call datelen(10)
+          call datelen(10)     ! select date/time format with 4-digit year (YYYYMMDDHH) 
           
           msg_report: do while( ireadmg(lnbufr,subset,idate) == 0 )
              
@@ -1820,12 +1828,11 @@ contains
           ! skip if record contains invalid soil moisture value
           if ( tmp_data(kk, 7) > 100. .or. tmp_data(kk, 7) < 0. ) cycle
           
-          ! EUMETSAT file contains data of both ascending and descending half-orbits. 
-          ! DOMO ("Direction of motion of moving observing platform") is used to separate Asc and Desc
-          !   because the file doesn't contain any explicit orbit indicator variable.
-          ! According to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk:
-          !   "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
-          !    of the orbit.  When it is between 270 and 360 degrees, it is the ascending part."
+          ! to distinguish orbit directions, must read "DOMO" from BUFR file
+          !
+          !   180 <= DOMO <  270 : descending
+          !   270 <  DOMO <= 360 : ascending
+          !
           ! if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data(kk, 8) < 270 .or. tmp_data(kk, 8) >  360)) cycle
           ! if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data(kk, 8) < 180 .or. tmp_data(kk, 8) >= 270)) cycle
           
@@ -7145,13 +7152,23 @@ contains
   ! *****************************************************************
   
   subroutine read_obs_fnames( date_time, this_obs_param,         &
-       fname_of_fname_list, N_max, N_fnames, fname_list, obs_dir_hier )
+       fname_of_fname_list, N_max, N_fnames, fname_list,         &
+       obs_dir_hier )
     
-    ! read the file within a SMAP Yyyyy/Mmm/Ddd directory that lists
-    !  the SMAP h5 file names; preface file names with "Yyyyy/Mmm/Ddd"
+    ! read the file within an obs Yyyyy/Mmm/Ddd directory that lists
+    !   the obs file names, preface file names with "Yyyyy/Mmm/Ddd",
+    !   and return in "fname_list"
+    !
+    ! optional input argument: 
+    !   obs_dir_hier==1 : preface file names with "Yyyyy/Mmm" instead 
+    !
+    ! this subroutine is needed when obs file names cannot be predicted
+    !   and must be provided in a short text file that lists the file names
+    !   (e.g., SMAP Tb or soil moisture h5 files, ASCAT soil moisture BUFR files)
     !
     ! reichle,  3 Jan 2014
     ! reichle,  8 Jun 2017: Use "%flistpath" and "%flistname" from "obs_param_type". 
+    ! A M Fox, reichle, 22 Sep 2023: added optional argument obs_dir_hier
     !
     ! ---------------------------------------------------------------------------------
     
@@ -7168,7 +7185,7 @@ contains
     integer,                          intent(out) :: N_fnames
 
     character(100), dimension(N_max), intent(out) :: fname_list
-
+    
     integer, optional,                intent(in)  :: obs_dir_hier
     
     ! local variables
@@ -7236,28 +7253,30 @@ contains
              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
           end if
 
-          if (present(obs_dir_hier) .and. obs_dir_hier == 1) then
-            
-            ! preface file names with "Yyyyy/Mmm"
-            
-            fname_list(ii) = YYYYMMdir // trim(tmpstr80)
-
-          elseif (present(obs_dir_hier) .and. obs_dir_hier /= 1) then
-            
-            err_msg = 'Unrecognized obs_dir_hier #'
-            call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-          else
-            ! preface file names with "Yyyyy/Mmm/Ddd" Default for SMAP obs
-            
-            fname_list(ii) = YYYYMMDDdir // trim(tmpstr80)
+          ! preface file names with "Yyyyy/Mmm/Ddd" (default)
           
+          fname_list(ii) = YYYYMMDDdir // trim(tmpstr80)
+          
+          if (present(obs_dir_hier)) then
+             
+             if (obs_dir_hier == 1) then
+                
+                ! preface file names with "Yyyyy/Mmm"
+                
+                fname_list(ii) = YYYYMMdir // trim(tmpstr80)
+                
+             else
+                
+                err_msg = 'Unrecognized value of optional argument obs_dir_hier'
+                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+                
+             end if
           end if
           
        else
           
           exit
-             
+          
        end if
        
     end do
@@ -7518,7 +7537,8 @@ contains
              date_time, dtstep_assim, N_catd, tile_coord,              &
              tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
              this_obs_param,                                           &
-             found_obs, tmp_obs, tmp_std_obs, tmp_lon, tmp_lat, tmp_time)
+             found_obs, tmp_obs, tmp_std_obs, tmp_lon, tmp_lat,        &
+             tmp_time)
  
         ! scale observations to model climatology
         
@@ -7526,9 +7546,9 @@ contains
 
            scaled_obs = .true.
 
-           call scale_obs_sfmc_zscore( N_catd, tile_coord,            &
-                date_time, this_obs_param, tmp_obs,                   &
-                tmp_std_obs, tmp_lon, tmp_lat, tmp_time )
+           call scale_obs_sfmc_zscore( N_catd, tile_coord,             &
+                date_time, this_obs_param, tmp_lon, tmp_lat, tmp_time, &
+                tmp_obs, tmp_std_obs )
            
         end if        
 
@@ -8148,211 +8168,196 @@ contains
  
   ! *****************************************************************
   
-  subroutine scale_obs_sfmc_zscore( N_catd, tile_coord,      &
-   date_time, this_obs_param, tmp_obs,                       &
-   tmp_std_obs, tmp_lon, tmp_lat, tmp_time)
-
-! scale tskin obs to model climatology via standard-normal-deviate (zscore)
-! scaling
-! 
-! use matlab functions "get_cdf_match_AMSR.m" and "get_model_and_obs_stats.m" 
-! to create input scaling files
-!
-! IMPORTANT: Make sure that model and obs data are in the SAME UNITS prior
-!            to generating the input scaling files with the matlab routines.  
-
-! reichle, 14 Oct 2005
-!
-! reichle, 22 Nov 2011 - renamed subroutine, minor clean-up, added comments
-!
-! Modified for ASCAT observations A M Fox, April 2023,  
-
-
-use netcdf   
-implicit none
-
-integer, intent(in) :: N_catd
-
-real,    intent(in), dimension(N_catd) :: tmp_lon, tmp_lat
-real*8,  intent(in), dimension(N_catd) :: tmp_time            ! J2000 seconds
+  subroutine scale_obs_sfmc_zscore( N_catd, tile_coord,         &
+       date_time, this_obs_param, tmp_lon, tmp_lat, tmp_time,   &
+       tmp_obs, tmp_std_obs )
     
-type(tile_coord_type), dimension(:), pointer :: tile_coord    ! input
+    ! scale sfmc obs to model climatology via standard-normal-deviate (zscore)
+    ! scaling using seasonally varying (pentad) stats
+    ! 
+    ! scaling parameters are on 0.25 deg lat/lon grid
+    !
+    ! intended for scaling of ASCAT "sfds" observations 
+    !
+    ! A M Fox, reichle, April 2023
+    
+    use netcdf   
+    implicit none
+    
+    integer, intent(in) :: N_catd
+    
+    type(tile_coord_type), dimension(:), pointer :: tile_coord    ! input
+    
+    type(date_time_type), intent(in) :: date_time
+    
+    type(obs_param_type), intent(in) :: this_obs_param
 
-type(date_time_type), intent(in) :: date_time
-
-type(obs_param_type), intent(in) :: this_obs_param
-
-! inout
-
-real,    intent(inout), dimension(N_catd) :: tmp_obs
-real,    intent(inout), dimension(N_catd) :: tmp_std_obs
-
-! ----------------------------------------------------------
+    real,    intent(in),    dimension(N_catd) :: tmp_lon, tmp_lat
+    real*8,  intent(in),    dimension(N_catd) :: tmp_time         ! J2000 seconds
+        
+    ! inout
+    
+    real,    intent(inout), dimension(N_catd) :: tmp_obs
+    real,    intent(inout), dimension(N_catd) :: tmp_std_obs
+    
+    ! ----------------------------------------------------------
     ! Grid and netcdf parameters (might want to read these from netCDF file?)
     
-! integer, parameter :: N_lon   = 1440
-! integer, parameter :: N_lat   =  720
-real,    parameter :: ll_lon  = -180.0000
-real,    parameter :: ll_lat  =  -90.0000 
-real,    parameter :: dlon    =    0.25
-real,    parameter :: dlat    =    0.25
-
-! ----------------------------------------------------------
-
-! local variables
-
-real, parameter :: no_data_stats = -9999.
-
-real, parameter :: tol = 0.99
-
-character(3), dimension(12) :: month_string = (/ &
-     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',   &
-     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' /)
-
-! -------------------
-
-character(300) :: fname
-
-integer :: i, ind, pp, j_ind, i_ind
-integer :: ncid, varid, ierr, ierr2
-integer :: pentad_dimid, lon_dimid, lat_dimid
-integer :: N_pentad, N_lon, N_lat
-integer :: pentad_varid, lon_varid, lat_varid
-integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
-integer, dimension(3) :: start, icount
-
-real :: tmpreal, this_lon, this_lat
-
-integer, dimension(:), allocatable :: sclprm_tile_id
-integer, dimension(:), allocatable :: pentads
-
-real, dimension(:),   allocatable  :: sclprm_lon,      sclprm_lat 
-real, dimension(:,:), allocatable  :: sclprm_mean_obs, sclprm_std_obs
-real, dimension(:,:), allocatable  :: sclprm_mean_mod, sclprm_std_mod
-
-character(len=*), parameter        :: Iam = ' scale_obs_sfmc_zscore'
-character(len=400) :: err_msg
-
-! ------------------------------------------------------------------
-
-! read scaling parameters from file
-
-fname = trim(this_obs_param%scalepath) // '/' // &
-     trim(this_obs_param%scalename) // '.nc4'
-
-if (logit) write (logunit,*)        'scaling obs species ', this_obs_param%species, ':'
-if (logit) write (logunit,'(400A)') '  reading ', trim(fname)
-
-! What pentad do we want?
-pp = date_time%pentad
-
-! open the NetCDF file
-ierr = nf90_open(fname, nf90_nowrite, ncid)
-
-ierr = nf90_inq_dimid(ncid, 'pentad', pentad_dimid)
-ierr = nf90_inq_dimid(ncid, 'lon', lon_dimid)
-ierr = nf90_inq_dimid(ncid, 'lat', lat_dimid)
-
-ierr = nf90_inquire_dimension(ncid, pentad_dimid, len = N_pentad)
-ierr = nf90_inquire_dimension(ncid, lon_dimid, len = N_lon)
-ierr = nf90_inquire_dimension(ncid, lat_dimid, len = N_lat)
-
-ierr = nf90_inq_varid(ncid, 'lon', lon_varid)
-ierr = nf90_inq_varid(ncid, 'lat', lat_varid)
-ierr = nf90_inq_varid(ncid, 'o_mean', o_mean_varid)
-ierr = nf90_inq_varid(ncid, 'o_std', o_std_varid)
-ierr = nf90_inq_varid(ncid, 'm_mean', m_mean_varid)
-ierr = nf90_inq_varid(ncid, 'm_std', m_std_varid)
-
-! read lon and lat variables
-allocate(sclprm_lon(N_lon), sclprm_lat(N_lat))
-ierr = nf90_get_var(ncid, lon_varid, sclprm_lon)
-ierr = nf90_get_var(ncid, lat_varid, sclprm_lat)
-
-start = [1, 1, pp]
-icount = [N_lat, N_lon, 1]
-
-allocate(sclprm_mean_obs(N_lat, N_lon), sclprm_std_obs(N_lat, N_lon))
-allocate(sclprm_mean_mod(N_lat, N_lon), sclprm_std_mod(N_lat, N_lon))
-
-! ierr = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, (/1, 1, pp/), (/N_lon, N_lat, 1/))
-ierr2 = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, start, icount)
-ierr = nf90_get_var(ncid, o_std_varid, sclprm_std_obs, start, icount)
-ierr = nf90_get_var(ncid, m_mean_varid, sclprm_mean_mod, start, icount)
-ierr = nf90_get_var(ncid, m_std_varid, sclprm_std_mod, start, icount)
-
-! close the netcdf file
-ierr = nf90_close(ncid)
-
-! --------------------------------------------------------------
-
-! scale observations (at this point all obs are of type 
-! isccp_tskin_gswp2_v1 because of the way the subroutine is called
-! from subroutine read_obs())
-
-do i=1,N_catd
-   
-   ! check for no-data-values in observation (any neg Tskin is no_data)
-   
-   if (tmp_obs(i)>=0.) then
-      
-      ! ll_lon and ll_lat refer to lower left corner of grid cell
-      ! (as opposed to the grid point in the center of the grid cell)
+    ! integer, parameter :: N_lon   = 1440
+    ! integer, parameter :: N_lat   =  720
+    real,    parameter :: ll_lon  = -180.0000
+    real,    parameter :: ll_lat  =  -90.0000 
+    real,    parameter :: dlon    =    0.25
+    real,    parameter :: dlat    =    0.25
+    
+    ! ----------------------------------------------------------
+    
+    ! local variables
+        
+    real, parameter :: tol = 0.99
+    
+    ! -------------------
+    
+    character(300) :: fname
+    
+    integer :: i, ind, pp, j_ind, i_ind
+    integer :: ncid, varid, ierr, ierr2
+    integer :: pentad_dimid, lon_dimid, lat_dimid
+    integer :: N_pentad, N_lon, N_lat
+    integer :: pentad_varid, lon_varid, lat_varid
+    integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
+    integer, dimension(3) :: start, icount
+    
+    real :: tmpreal, this_lon, this_lat
+    
+    integer, dimension(:), allocatable :: sclprm_tile_id
+    integer, dimension(:), allocatable :: pentads
+    
+    real, dimension(:),   allocatable  :: sclprm_lon,      sclprm_lat 
+    real, dimension(:,:), allocatable  :: sclprm_mean_obs, sclprm_std_obs
+    real, dimension(:,:), allocatable  :: sclprm_mean_mod, sclprm_std_mod
+    
+    character(len=*), parameter        :: Iam = ' scale_obs_sfmc_zscore'
+    character(len=400) :: err_msg
+    
+    ! ------------------------------------------------------------------
+    
+    ! read scaling parameters from file
+    
+    fname = trim(this_obs_param%scalepath) // '/' // &
+         trim(this_obs_param%scalename) // '.nc4'
+    
+    if (logit) write (logunit,*)        'scaling obs species ', this_obs_param%species, ':'
+    if (logit) write (logunit,'(400A)') '  reading ', trim(fname)
+    
+    ! What pentad do we want?
+    pp = date_time%pentad
+    
+    ! open the NetCDF file
+    ierr = nf90_open(fname, nf90_nowrite, ncid)
+    
+    ierr = nf90_inq_dimid(ncid, 'pentad', pentad_dimid)
+    ierr = nf90_inq_dimid(ncid, 'lon',    lon_dimid)
+    ierr = nf90_inq_dimid(ncid, 'lat',    lat_dimid)
+    
+    ierr = nf90_inquire_dimension(ncid, pentad_dimid, len = N_pentad)
+    ierr = nf90_inquire_dimension(ncid, lon_dimid,    len = N_lon)
+    ierr = nf90_inquire_dimension(ncid, lat_dimid,    len = N_lat)
+    
+    ierr = nf90_inq_varid(ncid, 'lon',    lon_varid)
+    ierr = nf90_inq_varid(ncid, 'lat',    lat_varid)
+    ierr = nf90_inq_varid(ncid, 'o_mean', o_mean_varid)
+    ierr = nf90_inq_varid(ncid, 'o_std',  o_std_varid)
+    ierr = nf90_inq_varid(ncid, 'm_mean', m_mean_varid)
+    ierr = nf90_inq_varid(ncid, 'm_std',  m_std_varid)
+    
+    ! read lon and lat variables
+    allocate(sclprm_lon(N_lon), sclprm_lat(N_lat))
+    ierr = nf90_get_var(ncid, lon_varid, sclprm_lon)
+    ierr = nf90_get_var(ncid, lat_varid, sclprm_lat)
+    
+    start = [1, 1, pp]
+    icount = [N_lat, N_lon, 1]
+    
+    allocate(sclprm_mean_obs(N_lat, N_lon), sclprm_std_obs(N_lat, N_lon))
+    allocate(sclprm_mean_mod(N_lat, N_lon), sclprm_std_mod(N_lat, N_lon))
+    
+    ierr2 = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, start, icount)
+    ierr  = nf90_get_var(ncid, o_std_varid,  sclprm_std_obs,  start, icount)
+    ierr  = nf90_get_var(ncid, m_mean_varid, sclprm_mean_mod, start, icount)
+    ierr  = nf90_get_var(ncid, m_std_varid,  sclprm_std_mod,  start, icount)
+    
+    ! close the netcdf file
+    ierr = nf90_close(ncid)
+    
+    ! --------------------------------------------------------------
+    
+    ! scale observations (at this point all obs are of same type because
+    !   of the way the subroutine is called from subroutine read_obs()
+    
+    do i=1,N_catd
        
-      this_lon = tmp_lon(i)
-      this_lat = tmp_lat(i)
-      
-      i_ind = ceiling((this_lon - ll_lon)/dlon) 
-      j_ind = ceiling((this_lat - ll_lat)/dlat) 
-     
-      ! find ind for current tile id in scaling parameters
-      
-      ! ! sanity check (against accidental use of wrong tile space)
-      
-      if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
-           abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol ) then
-         err_msg = 'something wrong'
-         call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-      end if
-      
-      ! ! check for no-data-values in observation and fit parameters
-      ! ! (any negative number could be no-data-value for observations)
-      
-      if ( sclprm_mean_obs(j_ind, i_ind)>0.     .and.          &
-           sclprm_mean_mod(j_ind, i_ind)>0.     .and.          &
-           sclprm_std_obs(j_ind, i_ind)>=0.     .and.          &
-           sclprm_std_mod(j_ind, i_ind)>=0. ) then
-         
-         ! scale via standard normal deviates
-         
-         tmpreal = sclprm_std_mod(j_ind, i_ind)/sclprm_std_obs(j_ind, i_ind) 
-         
-         tmp_obs(i) = sclprm_mean_mod(j_ind, i_ind)                       &
-              + tmpreal*(tmp_obs(i)-sclprm_mean_obs(j_ind, i_ind)) 
-
-         ! scale observation error std
-         
-         tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
-         
-      else
-         
-         tmp_obs(i) = this_obs_param%nodata
-         
-      end if
-      
-   end if
-   
-end do
-
-deallocate(sclprm_lon)     
-deallocate(sclprm_lat)          
-deallocate(sclprm_mean_obs)     
-deallocate(sclprm_std_obs)      
-deallocate(sclprm_mean_mod)     
-deallocate(sclprm_std_mod)      
-
-end subroutine scale_obs_sfmc_zscore
-
+       ! check for no-data-values in observation (any neg value is no_data)
+       
+       if (tmp_obs(i)>=0.) then
+          
+          ! ll_lon and ll_lat refer to lower left corner of grid cell
+          ! (as opposed to the grid point in the center of the grid cell)
+          
+          this_lon = tmp_lon(i)
+          this_lat = tmp_lat(i)
+          
+          i_ind = ceiling((this_lon - ll_lon)/dlon) 
+          j_ind = ceiling((this_lat - ll_lat)/dlat) 
+          
+          ! find ind for current tile id in scaling parameters
+          
+          ! sanity check (against accidental use of wrong tile space)
+          
+          if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
+               abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol ) then
+             err_msg = 'something wrong'
+             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+          end if
+          
+          ! check for no-data-values in observation and fit parameters
+          ! (any negative number could be no-data-value for observations)
+          
+          if ( sclprm_mean_obs(j_ind, i_ind)>0.     .and.          &
+               sclprm_mean_mod(j_ind, i_ind)>0.     .and.          &
+               sclprm_std_obs(j_ind, i_ind)>=0.     .and.          &
+               sclprm_std_mod(j_ind, i_ind)>=0. ) then
+             
+             ! scale via standard normal deviates
+             
+             tmpreal = sclprm_std_mod(j_ind, i_ind)/sclprm_std_obs(j_ind, i_ind) 
+             
+             tmp_obs(i) = sclprm_mean_mod(j_ind, i_ind)                       &
+                  + tmpreal*(tmp_obs(i)-sclprm_mean_obs(j_ind, i_ind)) 
+             
+             ! scale observation error std
+             
+             tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
+             
+          else
+             
+             tmp_obs(i) = this_obs_param%nodata
+             
+          end if
+          
+       end if
+       
+    end do
+    
+    deallocate(sclprm_lon)     
+    deallocate(sclprm_lat)          
+    deallocate(sclprm_mean_obs)     
+    deallocate(sclprm_std_obs)      
+    deallocate(sclprm_mean_mod)     
+    deallocate(sclprm_std_mod)      
+    
+  end subroutine scale_obs_sfmc_zscore
+  
   ! ********************************************************************************
   
   subroutine scale_obs_Tb_zscore( N_catd, tile_coord, date_time, this_obs_param,   &
@@ -8791,7 +8796,7 @@ end subroutine scale_obs_sfmc_zscore
 
     implicit none
     
-    character(*),                               intent(in)  :: work_path
+    character(*),                                intent(in)  :: work_path
     character(*),                                intent(in)  :: exp_id
     
     type(date_time_type),                         intent(in)  :: date_time
