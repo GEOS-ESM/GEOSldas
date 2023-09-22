@@ -1621,7 +1621,7 @@ contains
     
     character( 15) :: str_date_time
     character( 80) :: fname_of_fname_list
-    character(300) :: tmpfname, tmpfname2
+    character(300) :: tmpfname
 
     type(date_time_type) :: date_time_tmp
     type(date_time_type) :: date_time_low, date_time_low_fname
