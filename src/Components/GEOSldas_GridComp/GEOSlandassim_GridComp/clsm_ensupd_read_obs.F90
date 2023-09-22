@@ -1779,7 +1779,7 @@ contains
                 
                 ! columns of tmp_data:                  1    2    3    4    5    6    7    8    9    10   11   12   13    14
 
-                call ufbint(lnbufr,tmp_vdata,15,1,iret,'YEAR MNTH DAYS HOUR MINU SECO SSOM SMPF SMCF ALFR TPCX IWFR CLATH CLONH')
+                call ufbint(lnbufr,tmp_vdata,14,1,iret,'YEAR MNTH DAYS HOUR MINU SECO SSOM SMPF SMCF ALFR TPCX IWFR CLATH CLONH')
 
                 N_obs = N_obs + 1
 
