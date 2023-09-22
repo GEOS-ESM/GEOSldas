@@ -1627,7 +1627,7 @@ contains
     !
     ! variables for BUFR read
 
-    real*8, dimension(15) :: tmp_vdata
+    real*8, dimension(14) :: tmp_vdata
 
     integer, parameter :: lnbufr  =     50       ! BUFR file unit number
     integer, parameter :: max_rec =  20000       ! max number of obs after QC (expecting < 6 hr assim window)
