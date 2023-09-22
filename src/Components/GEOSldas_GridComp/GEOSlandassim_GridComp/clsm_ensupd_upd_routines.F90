@@ -4604,15 +4604,15 @@ contains
                       tmp_htsn(kk,n_e,isnow) = cat_progn(kk,n_e)%htsn(isnow) * swe_ratio  ! What if fcst snow is at 0 deg C and contains liquid water?  TBD reichle 20221007, could update as:
                       !tmp_htsn(kk, n_e, isnow)   = (cpw * tpsn(kkm n_e, isnow)  - fices(kk, n_e, isnow) * MAPL_ALHF) * tmp_wesn(kk, n_e, isnow)
                       
-                      if (asnow_ana < 1.) then
+                      if (asnow_ana < 1. .and. asnow_fcst < 1.) then
                          
                          tmp_sndz(kk,n_e,isnow) = cat_progn(kk,n_e)%sndz(isnow)          ! snow depth remains constant b/c swe_ana<1.
                          
                       else
                          
-                         ! compute analysis snow depth from (layer-specific) forecast snow density
+                         ! compute analysis snow depth from (layer-specific) forecast snow density with inclusion of ansnow_ana to correctly parse snow depth
                          
-                         tmp_sndz(kk,n_e,isnow) = tmp_wesn(kk,n_e,isnow) / ( cat_progn(kk,n_e)%wesn(isnow) / cat_progn(kk,n_e)%sndz(isnow) )
+                         tmp_sndz(kk,n_e,isnow) = tmp_wesn(kk,n_e,isnow) / ( cat_progn(kk,n_e)%wesn(isnow) / cat_progn(kk,n_e)%sndz(isnow) ) / asnow_ana
                          
                       end if
 
