@@ -4542,7 +4542,7 @@ contains
                    
                 else 
                    
-                   ! NO CHANGE
+                   cycle  ! NO CHANGE, skip rest of increment calcs and go straight to next ens member 
                    
                 endif  ! (Toure et al. 2018 Equation 1)
                 
