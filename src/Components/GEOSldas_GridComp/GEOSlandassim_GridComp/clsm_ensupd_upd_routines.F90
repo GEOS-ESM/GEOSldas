@@ -3524,7 +3524,7 @@ contains
     type(obs_param_type)                  :: this_obs_param
    
     integer                               :: isnow
-    real                                  :: asnow_fcst, swe_fcst, swe_ratio
+    real                                  :: asnow_fcst, swe_fcst, swe_ratio, snow_dens
     real                                  :: asnow_ana,  swe_ana
     real, dimension(1)                    :: asnow_ana_array                   !  StieglitzSnow_calc_asnow() requires array
     real, dimension(1,     1)             :: swe_ana_array                     !  StieglitzSnow_calc_asnow() requires array
@@ -4476,7 +4476,7 @@ contains
        
        if (SCF_ANA_MAXINCRSWE>WEMIN)  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'must use SCF_ANA_MAXINCRSWE<=WEMIN')
        
-       ! get target for snow layer thickness (as used in Catchment over land tiles)
+       ! get target for snow layer thickness (as used in subroutine catchment() over land tiles)
        
        targetthick(1)        = CATCH_DZ1MAX
        
@@ -4512,34 +4512,20 @@ contains
           
           if (N_selected_obs > 0) then
              
-             ! NEED TO ALLOW FOR MULTIPLE asnow OBS (I.E., FROM MULTIPLE SENSORS, SAY, MODIS AND VIIRS)
-             !
-             ! if statement added to maintain 0-diff for now; can be removed later
-             ! (that is, compute average even when N_selected_obs=1)
+             ! average in case there are multiple "asnow" obs (e.g., from MODIS and VIIRS)
              
-             if (N_selected_obs > 1) then    
-                
-                ! compute average obs value
-                
-                tmp_obs = sum(Observations(ind_obs(1:N_selected_obs))%obs)
-                
-                tmp_obs = tmp_obs/real(N_selected_obs)
-                
-             else
-                
-                tmp_obs = Observations(ind_obs(1))%obs
-                
-             end if
+             tmp_obs = sum(Observations(ind_obs(1:N_selected_obs))%obs)
              
+             if (N_selected_obs > 1)  tmp_obs = tmp_obs/real(N_selected_obs)
              
              do n_e=1,N_ens  ! compute analysis separately for each ensemble member
                 
-                ! 1. Get model forecast snow cover area fraction and total SWE
+                ! 1. Diagnose model forecast snow cover area fraction and total SWE
                 
                 asnow_fcst  = asnow(kk,n_e)
                 swe_fcst    = sum(cat_progn(kk,n_e)%wesn(1:N_snow))
                 
-                ! 2. Calculate SWE increment based on Toure et al (2018) eq 1
+                ! 2. Calculate SWE increment based on modified eq 1 of Toure et al (2018)
                 
                 if     (asnow_fcst .lt. tmp_obs * SCF_ANA_ALPHA) then
                    
@@ -4550,7 +4536,7 @@ contains
                 elseif (tmp_obs .lt. SCF_ANA_BETA) then
                    
                    ! REMOVE SNOW: Simulated SCF is greater than observed SCF (after "bias" adjustment)
-                   !              and observed SCF is less than beta threshold
+                   !                and observed SCF is less than beta threshold
                    
                    swe_incr(kk,n_e) = (-1.) *  SCF_ANA_MAXINCRSWE * asnow_fcst * (1. - tmp_obs/SCF_ANA_BETA)
                    
@@ -4558,13 +4544,13 @@ contains
                    
                    ! NO CHANGE
                    
-                endif ! (Toure et al. 2018 Equation 1)
+                endif  ! (Toure et al. 2018 Equation 1)
                 
                 ! 3. Derive SWE, snow heat content, and snow depth increments for each layer from total SWE increment 
                 
                 swe_ana   = max(swe_fcst + swe_incr(kk,n_e), 0.0)    ! total SWE after analysis
                  
-                swe_ana_array(1,1) = swe_ana   
+                swe_ana_array(1,1) = swe_ana                         ! StieglitzSnow_calc_asnow requires arrays
                 
                 call StieglitzSnow_calc_asnow( 1, 1, swe_ana_array, asnow_ana_array )
                 
@@ -4573,7 +4559,7 @@ contains
                 if (swe_fcst>=SCF_ANA_MINFCSTSWE) then
                    swe_ratio = swe_ana / swe_fcst 
                 else
-                   swe_ratio = 1.  ! not used when swe_fcst<SCF_ANA_MINFCSTSWE but set to neutral just in case
+                   swe_ratio = MAPL_UNDEF  ! swe_ratio unreliable; set to MAPL_UNDEF to expose inadvertent use
                 end if
                 
                 ! loop through snow layers and compute SWE, snow heat content, and snow depth analysis for each layer
@@ -4593,32 +4579,70 @@ contains
                       ! too little snow in forecast, use generic properties for added snow
                       
                       tmp_wesn(kk,n_e,isnow) = swe_ana / N_snow                           ! distribute SWE evenly across layers
-                      tmp_htsn(kk,n_e,isnow) = (0.0 - MAPL_ALHF)*tmp_wesn(kk,n_e,isnow)   ! assign heat content for snow at 0 deg C and without liquid water content (100% frozen) based on StieglitzSnow: htsn = (cpw*tsnow - fice*MAPL_ALHF)*swe
-                      tmp_sndz(kk,n_e,isnow) = (WEMIN / RHOFS) / N_snow                   ! assign snow depth consistent with density of freshly fallen snow (must have SCF_ANA_MAXINCRSWE<=WEMIN)
+
+                      ! assign heat content for snow at 0 deg C and without liquid water content (100% frozen) 
+                      ! (based on StieglitzSnow: htsn = (cpw*tsnow - fice*MAPL_ALHF)*swe )
+
+                      tmp_htsn(kk,n_e,isnow) = (0.0 - MAPL_ALHF)*tmp_wesn(kk,n_e,isnow)
+
+                      ! assign snow depth consistent with density of freshly fallen snow (must have SCF_ANA_MAXINCRSWE<=WEMIN)
+
+                      tmp_sndz(kk,n_e,isnow) = (WEMIN / RHOFS) / N_snow                   
                       
                    else
                       
                       ! snow in forecast and analysis, derive properties of analysis snow from properties of forecast snow
                       
+                      ! update SWE:
+
                       tmp_wesn(kk,n_e,isnow) = cat_progn(kk,n_e)%wesn(isnow) * swe_ratio
-                      tmp_htsn(kk,n_e,isnow) = cat_progn(kk,n_e)%htsn(isnow) * swe_ratio  ! What if fcst snow is at 0 deg C and contains liquid water?  TBD reichle 20221007, could update as:
-                      !tmp_htsn(kk, n_e, isnow)   = (cpw * tpsn(kkm n_e, isnow)  - fices(kk, n_e, isnow) * MAPL_ALHF) * tmp_wesn(kk, n_e, isnow)
+
+                      ! update snow heat content:
                       
+                      ! reichle, 27 Sep 2023: not sure if we can/should update htsn using swe_ratio;                       
+                      ! what if fcst snowpack contains liquid water?  
+                      ! in this case, would it make more sense to keep the temperature constant? 
+                      ! that is, do something like:
+                      !
+                      !   call StieglitzSnow_calc_tpsnow(1, cat_progn(kk,n_e)%htsn(isnow), cat_progn(kk,n_e)%wesn(isnow), snow_temp, fice)
+                      !
+                      !   tmp_htsn(kk, n_e, isnow) = (cpw*snow_temp - fice*MAPL_ALHF)*tmp_wesn(kk,n_e,isnow)
+                      !
+                      ! but not sure if the latter equation is correct 
+                      !
+                      ! for now, keep multiplication with swe_ratio:
+                      
+                      tmp_htsn(kk,n_e,isnow) = cat_progn(kk,n_e)%htsn(isnow) * swe_ratio  
+                      
+                      ! update snow depth: 
+
                       if (asnow_ana < 1. .and. asnow_fcst < 1.) then
                          
-                         tmp_sndz(kk,n_e,isnow) = cat_progn(kk,n_e)%sndz(isnow)          ! snow depth remains constant b/c swe_ana<1.
+                         ! keep snow depth constant when less than full snow cover in fcst and ana
+                         
+                         tmp_sndz(kk,n_e,isnow) = cat_progn(kk,n_e)%sndz(isnow)  
                          
                       else
                          
-                         ! compute analysis snow depth from (layer-specific) forecast snow density with inclusion of ansnow_ana to correctly parse snow depth
+                         ! compute analysis snow depth by keeping snow density constant
+                         !
+                         ! in this case, it is possible that either asnow_fcst<1 or asnow_ana<1;
+                         ! when computing density or depth, make sure that SWE value (which is per unit area) is 
+                         ! adjusted to reflect SWE value (per unit area) in the snow-covered fraction of the tile
                          
-                         tmp_sndz(kk,n_e,isnow) = tmp_wesn(kk,n_e,isnow) / ( cat_progn(kk,n_e)%wesn(isnow) / cat_progn(kk,n_e)%sndz(isnow) ) / asnow_ana
+                         ! i) diagnose (layer-specific) forecast snow density 
+                         
+                         snow_dens = ( cat_progn(kk,n_e)%wesn(isnow)/asnow_fcst ) / cat_progn(kk,n_e)%sndz(isnow) 
+                         
+                         ! ii) diagnose analysis snow depth using forecast density
+
+                         tmp_sndz(kk,n_e,isnow) = ( tmp_wesn(kk,n_e,isnow)/asnow_ana ) / snow_dens
                          
                       end if
                       
                    end if
                    
-                end do        ! isnow = 1, N_snow
+                end do        ! isnow=1,N_snow (compute SWE, snow heat content, and snow depth analysis for each layer)
                 
                 ! 4. Relayer to balance the snow column 
                 
@@ -4646,11 +4670,11 @@ contains
                 cat_progn_incr(kk,n_e)%htsn(1:N_snow) = tmp_htsn(kk,n_e,1:N_snow) - cat_progn(kk,n_e)%htsn(1:N_snow)
                 cat_progn_incr(kk,n_e)%sndz(1:N_snow) = tmp_sndz(kk,n_e,1:N_snow) - cat_progn(kk,n_e)%sndz(1:N_snow)
                 
-             end do   ! n_e = 1, N_ens
+             end do   ! n_e=1,N_ens
              
           end if      ! if (N_selected_obs > 0)
           
-       end do         ! kk = 1, N_catd
+       end do         ! kk=1,N_catd
        
        ! ----------------------------------
        
