@@ -4473,7 +4473,7 @@ contains
        
        ! ensure that max SWE increment parameter is less than WEMIN; larger increments make no sense because
        ! at SWE=WEMIN, the tile is fully snow covered (asnow=1)
-
+       
        if (SCF_ANA_MAXINCRSWE>WEMIN)  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'must use SCF_ANA_MAXINCRSWE<=WEMIN')
        
        ! get target for snow layer thickness (as used in Catchment over land tiles)
@@ -4483,11 +4483,11 @@ contains
        targetthick(2:N_snow) = 1./(N_snow-1.)
        
        ! identify the obs species of interest       
-
+       
        N_select_varnames  = 1      
-
+       
        select_varnames(1) = 'asnow'
-  
+       
        call get_select_species(                                           &
             N_select_varnames, select_varnames(1:N_select_varnames),      &
             N_obs_param, obs_param, N_select_species, select_species )
@@ -4524,23 +4524,23 @@ contains
                 tmp_obs = sum(Observations(ind_obs(1:N_selected_obs))%obs)
                 
                 tmp_obs = tmp_obs/real(N_selected_obs)
-             
+                
              else
                 
                 tmp_obs = Observations(ind_obs(1))%obs
                 
              end if
-                
-
+             
+             
              do n_e=1,N_ens  ! compute analysis separately for each ensemble member
                 
                 ! 1. Get model forecast snow cover area fraction and total SWE
-
+                
                 asnow_fcst  = asnow(kk,n_e)
                 swe_fcst    = sum(cat_progn(kk,n_e)%wesn(1:N_snow))
                 
                 ! 2. Calculate SWE increment based on Toure et al (2018) eq 1
-
+                
                 if     (asnow_fcst .lt. tmp_obs * SCF_ANA_ALPHA) then
                    
                    ! ADD SNOW:    Forecast SCF is less than observed SCF (after "bias" adjustment with alpha)
@@ -4569,12 +4569,12 @@ contains
                 call StieglitzSnow_calc_asnow( 1, 1, swe_ana_array, asnow_ana_array )
                 
                 asnow_ana = asnow_ana_array(1)                       ! asnow after analysis
-
+                
                 if (swe_fcst>=SCF_ANA_MINFCSTSWE) then
                    swe_ratio = swe_ana / swe_fcst 
                 else
                    swe_ratio = 1.  ! not used when swe_fcst<SCF_ANA_MINFCSTSWE but set to neutral just in case
-                end if 
+                end if
                 
                 ! loop through snow layers and compute SWE, snow heat content, and snow depth analysis for each layer
                 
@@ -4615,9 +4615,9 @@ contains
                          tmp_sndz(kk,n_e,isnow) = tmp_wesn(kk,n_e,isnow) / ( cat_progn(kk,n_e)%wesn(isnow) / cat_progn(kk,n_e)%sndz(isnow) ) / asnow_ana
                          
                       end if
-
+                      
                    end if
-
+                   
                 end do        ! isnow = 1, N_snow
                 
                 ! 4. Relayer to balance the snow column 
@@ -4639,7 +4639,7 @@ contains
                 !     'fcst_sndz = ', cat_progn(kk, n_e)%sndz(1:N_snow), &
                 !     'tmp_sndz  = ', tmp_sndz( kk ,n_e,      1:N_snow), & 
                 !     '--------------------------------------'
-
+                
                 ! 5. Diagnose increments 
                 
                 cat_progn_incr(kk,n_e)%wesn(1:N_snow) = tmp_wesn(kk,n_e,1:N_snow) - cat_progn(kk,n_e)%wesn(1:N_snow)
@@ -4655,9 +4655,9 @@ contains
        ! ----------------------------------
        
     case default
-
+       
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown update_type')
-  
+       
     end select select_update_type
     
     ! clean up
@@ -4666,7 +4666,7 @@ contains
     if (allocated( State_lon ))          deallocate( State_lon )
     if (allocated( State_lat ))          deallocate( State_lat )
     if (allocated( select_tilenum ))     deallocate( select_tilenum )
-
+    
     if (allocated( Obs_cov        ))     deallocate( Obs_cov )
     
     if (associated(N_tile_in_cell_ij  )) deallocate( N_tile_in_cell_ij   )
