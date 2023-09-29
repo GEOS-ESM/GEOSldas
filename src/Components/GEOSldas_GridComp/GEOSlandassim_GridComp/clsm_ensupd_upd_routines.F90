@@ -4555,7 +4555,7 @@ contains
                  
                 swe_ana_array(1,1) = swe_ana                         ! StieglitzSnow_calc_asnow requires arrays
                 
-                call StieglitzSnow_calc_asnow( 1, 1, swe_ana_array, asnow_ana_array )
+                call StieglitzSnow_calc_asnow( 1, 1, swe_ana_array, asnow_ana_array )  ! swe_ana_array = sum of SWE over layers
                 
                 asnow_ana = asnow_ana_array(1)                       ! asnow after analysis
                 
