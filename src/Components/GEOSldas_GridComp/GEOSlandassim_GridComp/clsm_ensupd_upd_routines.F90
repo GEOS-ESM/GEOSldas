@@ -8,6 +8,9 @@ module clsm_ensupd_upd_routines
   
   use nr_ran2_gasdev,                   ONLY:     &
        NRANDSEED
+
+  use MAPL_BaseMod,                     ONLY:     &
+       MAPL_UNDEF
   
   use MAPL_ConstantsMod,                ONLY:     &
        MAPL_TICE,                                 &
