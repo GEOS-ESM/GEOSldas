@@ -115,10 +115,10 @@ module clsm_ensupd_upd_routines
        WEMIN
 
   use STIEGLITZSNOW,                    ONLY:     &
-      StieglitzSnow_calc_asnow,                   &
-      relayer2,                                   &   
-      N_constit                                  
-
+       StieglitzSnow_calc_asnow,                  &
+       relayer2,                                  &   
+       N_constit                                  
+  
   use LDAS_ensdrv_mpi,                  ONLY:     &
        numprocs,                                  &
        myid,                                      &
@@ -4646,7 +4646,7 @@ contains
                 
                 ! 4. Relayer to balance the snow column 
                 
-                call relayer2( N_snow, N_constit ,          &
+                call relayer2( N_snow, N_constit,           &
                      targetthick(1), targetthick(2:N_snow), &  
                      tmp_htsn(kk,n_e,1:N_snow),             &
                      tmp_wesn(kk,n_e,1:N_snow),             &
