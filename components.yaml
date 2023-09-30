@@ -43,3 +43,4 @@ GEOSgcm_GridComp:
   remote: ../GEOSgcm_GridComp.git
   branch: feature/rreichle/snow_check_after_apply_LDAS_incr
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
+  develop: develop
