@@ -215,8 +215,8 @@ contains
 
     call MAPL_AddExportSpec(                                                    &
          gc,                                                                    &
-         SHORT_NAME = "RainfSnowf",                                                  &
-         LONG_NAME  = "rainf+snowf",                                         &
+         SHORT_NAME = "RainfSnowf",                                             &
+         LONG_NAME  = "rainf+snowf",                                            &
          UNITS      = "kg m-2 s-1",                                             &
          DIMS       = MAPL_DimsTileOnly,                                        &
          VLOCATION  = MAPL_VlocationNone,                                       &
@@ -227,7 +227,7 @@ contains
     call MAPL_AddExportSpec(                                                    &
          gc,                                                                    &
          SHORT_NAME = "LWdown",                                                 &
-         LONG_NAME  = "downward_longwave_radiation",                            &
+         LONG_NAME  = "surface_absorbed_longwave_flux",                         &
          UNITS      = "W m-2",                                                  &
          DIMS       = MAPL_DimsTileOnly,                                        &
          VLOCATION  = MAPL_VlocationNone,                                       &
