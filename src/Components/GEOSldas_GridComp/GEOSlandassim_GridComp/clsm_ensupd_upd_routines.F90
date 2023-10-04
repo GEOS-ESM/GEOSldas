@@ -3349,7 +3349,7 @@ contains
   
   ! *********************************************************************
 
-  subroutine cat_enkf_increments(                               &
+  subroutine cat_enkf_increments(                               & 
        N_ens, N_obs, N_catd, N_obs_param,                       &
        update_type, obs_param,                                  &
        tile_coord, l2f,                                         &
@@ -3438,7 +3438,7 @@ contains
     
     integer,           dimension(N_obs)   :: ind_obs
     
-    real, allocatable, dimension(:,:)     :: State_incr
+    real, allocatable, dimension(:,:)     :: State_incr, State_incr_cum
     real, allocatable, dimension(:,:)     :: Obs_cov      ! measurement error covariance
     
     real, allocatable, dimension(:)       :: State_lon, State_lat
@@ -3474,6 +3474,8 @@ contains
     real, dimension(     N_catd)          :: tp1_ensavg
 
     type(obs_param_type)                  :: this_obs_param
+
+    logical :: nonZeroFound
         
     ! -----------------------------------------------------------------------
 
@@ -4407,7 +4409,197 @@ contains
 
        ! ----------------------------------
 
-      case (13) select_update_type   ! All observation types from obs_param
+      case (13) select_update_type   ! 3d analysis
+
+         ! update each tile separately using all observations within customized halo around each tile
+         !
+         ! amfox, 14 September 2023
+         
+         if (logit) write (logunit,*) 'Get increments for all observation types in obs_param'
+  
+         N_select_varnames  = 0
+                  
+         if (any(obs_param%varname == 'Tb')) then
+            N_select_varnames = N_select_varnames + 1
+            select_varnames(N_select_varnames) = 'Tb'     
+         end if 
+
+         if (any(obs_param%varname == 'sfds')) then
+            N_select_varnames = N_select_varnames + 1
+            select_varnames(N_select_varnames) = 'sfds'     
+         end if
+
+         ! Will get all species associated with Tb or sfds observations
+
+         call get_select_species(                                           &
+              N_select_varnames, select_varnames(1:N_select_varnames),      &
+              N_obs_param, obs_param, N_select_species, select_species )         
+
+         N_state_max = 7
+         
+         allocate( State_incr(N_state_max,N_ens)) 
+         allocate( State_lon( N_state_max      ))
+         allocate( State_lat( N_state_max      ))
+         
+         do kk=1,N_catd     
+            
+            N_state = 0
+            
+            ! compute increments only snow-free and non-frozen tiles
+            
+            if ( (SWE_ensavg(kk) < SWE_threshold)     .and.            &
+                 (tp1_ensavg(kk) > tp1_threshold)             ) then  
+               
+               ! find observations within halo around tile kk
+               
+               halo_minlon = tile_coord(kk)%com_lon - xcompact
+               halo_maxlon = tile_coord(kk)%com_lon + xcompact
+               halo_minlat = tile_coord(kk)%com_lat - ycompact
+               halo_maxlat = tile_coord(kk)%com_lat + ycompact
+               
+               ! simple approach to dateline issue (cut halo back to at most -180:180, -90:90)
+               ! - reichle, 28 May 2013
+               
+               halo_minlon = max(halo_minlon,-180.)
+               halo_maxlon = min(halo_maxlon, 180.)
+               halo_minlat = max(halo_minlat, -90.)
+               halo_maxlat = min(halo_maxlat,  90.)
+               
+               call get_ind_obs_lat_lon_box(                               &
+                    N_obs,            Observations,                        &
+                    halo_minlon, halo_maxlon, halo_minlat, halo_maxlat,    &
+                    N_select_species, select_species(1:N_select_species),  &
+                    N_selected_obs,   ind_obs )
+               
+               if (N_selected_obs>0) then
+
+                  ! call get_select_species(1, 'sfds', N_obs_param, obs_param, N_select_species, select_species )
+
+                  ! do ii = 1,N_select_species
+                  !    if ( any(select_species(ii) == Observations(ind_obs(1:N_selected_obs))%species)) then
+                  !       N_state = max(3, N_state)                 ! Keep 6 or 7 if we have Tb _and_ sfds obs)
+                  !       if ( N_state > 3) then
+                  !          write (logunit,*) "Two obs types in Catchment = ", kk
+                  !       end if
+                  !    end if
+                  ! end do
+
+                  ! ! Determine which observation species are actually selected
+                  ! call get_select_species(1, 'Tb', N_obs_param, obs_param, N_select_species, select_species )
+
+                  ! do ii = 1,N_select_species
+                  !    if ( any(select_species(ii) == Observations(ind_obs(1:N_selected_obs))%species)) then
+                  !       if (cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
+                  !          N_state = 7
+                  !       else
+                  !          N_state = 6
+                  !       end if
+                  !    end if
+                  ! end do
+
+                  N_state = 6
+
+                  if ( N_state == 0 ) then
+                     err_msg = 'Dont know what state to use with this observation type'
+                     call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+                  end if
+           
+                  ! assemble State_minus
+                  ! (on  input, cat_progn contains cat_progn_minus)
+                  
+                  if ( N_state==3 ) then 
+
+                     State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc)
+                     State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc)
+                     State_incr(3,:) = (cat_progn( kk,:)%catdef/scale_catdef)
+
+                  elseif ( N_state==7 ) then
+                     
+                     State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
+                     State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
+                     State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef   ! catdef in State
+                     
+                     State_incr(4,:) = cat_progn( kk,:)%tc1   /scale_temp
+                     State_incr(5,:) = cat_progn( kk,:)%tc2   /scale_temp
+                     State_incr(6,:) = cat_progn( kk,:)%tc4   /scale_temp
+                     State_incr(7,:) = cat_progn( kk,:)%ght(1)/scale_ght1
+                     
+                  else
+                     
+                     State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
+                     State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
+                     
+                     State_incr(3,:) = cat_progn( kk,:)%tc1   /scale_temp
+                     State_incr(4,:) = cat_progn( kk,:)%tc2   /scale_temp
+                     State_incr(5,:) = cat_progn( kk,:)%tc4   /scale_temp
+                     State_incr(6,:) = cat_progn( kk,:)%ght(1)/scale_ght1
+  
+                  end if
+                  
+                  State_lon(   :) = tile_coord(kk  )%com_lon
+                  State_lat(   :) = tile_coord(kk  )%com_lat
+                  
+                  allocate(Obs_cov(N_selected_obs,N_selected_obs))
+                  
+                  call assemble_obs_cov( N_selected_obs, N_obs_param, obs_param, &
+                       Observations(ind_obs(1:N_selected_obs)), Obs_cov )
+                  
+                  ! EnKF update
+                  write (logunit,*) "N_state = ", N_state     
+                  
+                  call enkf_increments(                                        &
+                       N_state, N_selected_obs, N_ens,                         &
+                       Observations(ind_obs(1:N_selected_obs)),                &
+                       Obs_pred(ind_obs(1:N_selected_obs),:),                  &
+                       Obs_pert(ind_obs(1:N_selected_obs),:),                  &
+                       Obs_cov,                                                &
+                       State_incr(1:N_state,:),                                &
+                       State_lon( 1:N_state  ),                                &
+                       State_lat( 1:N_state  ),                                &
+                       xcompact, ycompact,                                     &
+                       fcsterr_inflation_fac )             
+                  
+                  deallocate(Obs_cov)
+                  
+                  ! assemble cat_progn increments
+                  if ( N_state==3 ) then
+
+                     cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
+                     cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
+                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef                     
+
+                  elseif ( N_state==7 ) then
+                     
+                     cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
+                     cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
+                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State
+                     
+                     cat_progn_incr(kk,:)%tc1    = State_incr(4,:)*scale_temp
+                     cat_progn_incr(kk,:)%tc2    = State_incr(5,:)*scale_temp
+                     cat_progn_incr(kk,:)%tc4    = State_incr(6,:)*scale_temp
+                     cat_progn_incr(kk,:)%ght(1) = State_incr(7,:)*scale_ght1
+                  
+                  else
+                     
+                     cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
+                     cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
+                     
+                     cat_progn_incr(kk,:)%tc1    = State_incr(3,:)*scale_temp
+                     cat_progn_incr(kk,:)%tc2    = State_incr(4,:)*scale_temp
+                     cat_progn_incr(kk,:)%tc4    = State_incr(5,:)*scale_temp
+                     cat_progn_incr(kk,:)%ght(1) = State_incr(6,:)*scale_ght1
+                     
+                  end if
+                  
+               end if
+               
+            end if     ! thresholds
+            
+         end do       
+
+       ! ----------------------------------
+
+      case (33) select_update_type   ! All observation types from obs_param
 
          ! update each tile separately using all observations within customized halo around each tile
          !
@@ -4418,7 +4610,8 @@ contains
          N_select_varnames  = 1
          N_state_max = 7                    ! Needs to be constant size for applying increment, potential for lots of zeros
 
-         allocate( State_incr(N_state_max,N_ens)) 
+         allocate( State_incr(N_state_max,N_ens))
+         allocate( State_incr_cum(N_state_max,N_ens)) 
          allocate( State_lon( N_state_max      ))
          allocate( State_lat( N_state_max      ))
 
@@ -4432,14 +4625,16 @@ contains
             select_varnames(N_varnames) = 'sfds'         
          end if
 
-         do ii = 1,N_varnames
+         do kk=1,N_catd
 
-            call get_select_species(                                           &
-            N_select_varnames, select_varnames(ii),      &
-            N_obs_param, obs_param, N_select_species, select_species )
-           
-            do kk=1,N_catd       
-               
+            State_incr_cum = 0.0
+
+            do ii = 1,N_varnames
+
+               call get_select_species(                                           &
+               N_select_varnames, select_varnames(ii),      &
+               N_obs_param, obs_param, N_select_species, select_species )          
+                                            
                ! compute increments only snow-free and non-frozen tiles
                
                if ( (SWE_ensavg(kk) < SWE_threshold)     .and.            &
@@ -4460,7 +4655,7 @@ contains
                   halo_minlat = max(halo_minlat, -90.)
                   halo_maxlat = min(halo_maxlat,  90.)
                   
-                  call get_ind_obs_lat_lon_box(                               &
+                  call get_ind_obs_lat_lon_box(                             &
                      N_obs,            Observations,                        &
                      halo_minlon, halo_maxlon, halo_minlat, halo_maxlat,    &
                      N_select_species, select_species(1:N_select_species),  &
@@ -4484,34 +4679,34 @@ contains
                      
                      if (N_state==3) then 
 
-                        State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
-                        State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
-                        State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef 
+                        State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc) + State_incr_cum(1,:)
+                        State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc) + State_incr_cum(2,:)
+                        State_incr(3,:) = (cat_progn( kk,:)%catdef/scale_catdef) + State_incr_cum(3,:)
 
                      elseif ( N_state==7 ) then
                         
-                        State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
-                        State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
-                        State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef   ! catdef in State
-                        State_incr(4,:) = cat_progn( kk,:)%tc1   /scale_temp
-                        State_incr(5,:) = cat_progn( kk,:)%tc2   /scale_temp
-                        State_incr(6,:) = cat_progn( kk,:)%tc4   /scale_temp
-                        State_incr(7,:) = cat_progn( kk,:)%ght(1)/scale_ght1
+                        State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc) + State_incr_cum(1,:)
+                        State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc) + State_incr_cum(2,:)
+                        State_incr(3,:) = (cat_progn( kk,:)%catdef/scale_catdef) + State_incr_cum(3,:)   ! catdef in State
+                        State_incr(4,:) = (cat_progn( kk,:)%tc1   /scale_temp) + State_incr_cum(4,:)
+                        State_incr(5,:) = (cat_progn( kk,:)%tc2   /scale_temp) + State_incr_cum(5,:)
+                        State_incr(6,:) = (cat_progn( kk,:)%tc4   /scale_temp) + State_incr_cum(6,:)
+                        State_incr(7,:) = (cat_progn( kk,:)%ght(1)/scale_ght1) + State_incr_cum(7,:)
                         
                      else                                                        ! N_state == 6
                         
-                        State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
-                        State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
-                        State_incr(3,:) = cat_progn( kk,:)%tc1   /scale_temp
-                        State_incr(4,:) = cat_progn( kk,:)%tc2   /scale_temp
-                        State_incr(5,:) = cat_progn( kk,:)%tc4   /scale_temp
-                        State_incr(6,:) = cat_progn( kk,:)%ght(1)/scale_ght1
+                        State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc) + State_incr_cum(1,:)
+                        State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc) + State_incr_cum(2,:)
+                        State_incr(3,:) = (cat_progn( kk,:)%tc1   /scale_temp) + State_incr_cum(3,:)
+                        State_incr(4,:) = (cat_progn( kk,:)%tc2   /scale_temp) + State_incr_cum(4,:)
+                        State_incr(5,:) = (cat_progn( kk,:)%tc4   /scale_temp) + State_incr_cum(5,:)
+                        State_incr(6,:) = (cat_progn( kk,:)%ght(1)/scale_ght1) + State_incr_cum(6,:)
    
                      end if
                      
                      State_lon(   :) = tile_coord(kk  )%com_lon
                      State_lat(   :) = tile_coord(kk  )%com_lat
-                     
+                   
                      allocate(Obs_cov(N_selected_obs,N_selected_obs))
                      
                      call assemble_obs_cov( N_selected_obs, N_obs_param, obs_param, &
@@ -4532,33 +4727,41 @@ contains
                         fcsterr_inflation_fac )             
                      
                      deallocate(Obs_cov)
+
+                     State_incr_cum(1:N_state,:) = State_incr_cum(1:N_state,:) + State_incr(1:N_state,:) 
+
+                     nonZeroFound = ANY(cat_progn_incr(kk,:)%srfexc /= 0.0)
+                     if (nonZeroFound) then
+                        write (logunit,*) "Non-zero values found. ii = ", ii,  &
+                        " kk = ", kk, "State_lon = ", State_lon(1), "State_lat = ", State_lat(1)
+                     end if
                      
                      ! assemble cat_progn increments
                      
                      if (N_state==3) then
                      
-                        cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
-                        cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                        cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef
+                        cat_progn_incr(kk,:)%srfexc = State_incr_cum(1,:)*scale_srfexc
+                        cat_progn_incr(kk,:)%rzexc  = State_incr_cum(2,:)*scale_rzexc
+                        cat_progn_incr(kk,:)%catdef = State_incr_cum(3,:)*scale_catdef
                      
                      elseif (N_state==7) then
                         
-                        cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
-                        cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                        cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State                        
-                        cat_progn_incr(kk,:)%tc1    = State_incr(4,:)*scale_temp
-                        cat_progn_incr(kk,:)%tc2    = State_incr(5,:)*scale_temp
-                        cat_progn_incr(kk,:)%tc4    = State_incr(6,:)*scale_temp
-                        cat_progn_incr(kk,:)%ght(1) = State_incr(7,:)*scale_ght1
+                        cat_progn_incr(kk,:)%srfexc = State_incr_cum(1,:)*scale_srfexc
+                        cat_progn_incr(kk,:)%rzexc  = State_incr_cum(2,:)*scale_rzexc
+                        cat_progn_incr(kk,:)%catdef = State_incr_cum(3,:)*scale_catdef   ! catdef in State                        
+                        cat_progn_incr(kk,:)%tc1    = State_incr_cum(4,:)*scale_temp
+                        cat_progn_incr(kk,:)%tc2    = State_incr_cum(5,:)*scale_temp
+                        cat_progn_incr(kk,:)%tc4    = State_incr_cum(6,:)*scale_temp
+                        cat_progn_incr(kk,:)%ght(1) = State_incr_cum(7,:)*scale_ght1
                      
                      else
                         
-                        cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
-                        cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc                      
-                        cat_progn_incr(kk,:)%tc1    = State_incr(3,:)*scale_temp
-                        cat_progn_incr(kk,:)%tc2    = State_incr(4,:)*scale_temp
-                        cat_progn_incr(kk,:)%tc4    = State_incr(5,:)*scale_temp
-                        cat_progn_incr(kk,:)%ght(1) = State_incr(6,:)*scale_ght1
+                        cat_progn_incr(kk,:)%srfexc = State_incr_cum(1,:)*scale_srfexc
+                        cat_progn_incr(kk,:)%rzexc  = State_incr_cum(2,:)*scale_rzexc                      
+                        cat_progn_incr(kk,:)%tc1    = State_incr_cum(3,:)*scale_temp
+                        cat_progn_incr(kk,:)%tc2    = State_incr_cum(4,:)*scale_temp
+                        cat_progn_incr(kk,:)%tc4    = State_incr_cum(5,:)*scale_temp
+                        cat_progn_incr(kk,:)%ght(1) = State_incr_cum(6,:)*scale_ght1
                         
                      end if
                      
@@ -4566,9 +4769,9 @@ contains
                   
                end if     ! thresholds
                
-            end do
+            end do ! varnames
 
-         end do !var_names
+         end do ! N_catd
   
          ! ---------------------------------- 
        
@@ -4581,6 +4784,7 @@ contains
     ! clean up
     
     if (allocated( State_incr ))         deallocate( State_incr )
+    if (allocated( State_incr_cum ))     deallocate( State_incr_cum )
     if (allocated( State_lon ))          deallocate( State_lon )
     if (allocated( State_lat ))          deallocate( State_lat )
     if (allocated( select_tilenum ))     deallocate( select_tilenum )
