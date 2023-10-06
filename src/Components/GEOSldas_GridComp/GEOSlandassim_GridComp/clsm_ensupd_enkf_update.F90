@@ -1306,7 +1306,7 @@ contains
 
     integer :: n, n_e, ii
 
-    logical :: cat_progn_has_changed
+    logical :: cat_progn_has_changed, check_snow
 
     character(len=*), parameter :: Iam = 'apply_enkf_increments'
     character(len=400) :: err_msg
@@ -1316,17 +1316,19 @@ contains
     ! apply increments
 
     cat_progn_has_changed = .true.     ! conservative initialization
-
+    
+    check_snow            = .true.     ! conservative initialization
+    
     select_update_type: select case (update_type)
-
+       
     case (1,2) select_update_type  ! soil moisture update
-
+       
        if (logit) write (logunit,*) &
             'apply_enkf_increments(): applying soil moisture increments'
-
+       
        do n=1,N_catd
           do n_e=1,N_ens
-
+             
              cat_progn(n,n_e)%srfexc = &
                   cat_progn(n,n_e)%srfexc + cat_progn_incr(n,n_e)%srfexc
              cat_progn(n,n_e)%rzexc = &
@@ -1406,7 +1408,9 @@ contains
        end do
 
        cat_progn_has_changed = .true.
-       
+
+       check_snow            = .false.  ! turn off for now to maintain 0-diff w/ SMAP Tb DA test case
+
     case(11) select_update_type ! empirical MODIS SCF update
        
        do n=1,N_catd       ! for each tile
@@ -1429,7 +1433,7 @@ contains
        end do
        
        cat_progn_has_changed = .true.
-       
+
     case default
 
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown update_type')
@@ -1444,7 +1448,7 @@ contains
 
        do n_e=1,N_ens
 
-          call check_cat_progn( N_catd, cat_param, cat_progn(:,n_e) )
+          call check_cat_progn( check_snow, N_catd, cat_param, cat_progn(:,n_e) )
 
        end do
 

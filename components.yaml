@@ -41,6 +41,6 @@ MAPL:
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: feature/lcandre2/newsnowexports
+  branch: feature/rreichle/snow_check_after_apply_LDAS_incr
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
