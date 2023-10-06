@@ -111,7 +111,6 @@ module clsm_ensupd_upd_routines
        N_snow => CATCH_N_SNOW,                    &
        N_gt   => CATCH_N_GT,                      &
        RHOFS  => CATCH_SNWALB_RHOFS,              &
-       CATCH_DZ1MAX,                              &
        PEATCLSM_POROS_THRESHOLD
     
   use SurfParams,                       ONLY:     &
@@ -119,7 +118,8 @@ module clsm_ensupd_upd_routines
 
   use STIEGLITZSNOW,                    ONLY:     &
        StieglitzSnow_calc_asnow,                  &
-       relayer2,                                  &   
+       StieglitzSnow_targetthick_land,            &
+       StieglitzSnow_relayer,                     &   
        N_constit                                  
   
   use LDAS_ensdrv_mpi,                  ONLY:     &
@@ -4479,12 +4479,10 @@ contains
        
        if (SCF_ANA_MAXINCRSWE>WEMIN)  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'must use SCF_ANA_MAXINCRSWE<=WEMIN')
        
-       ! get target for snow layer thickness (as used in subroutine catchment() over land tiles)
+       ! get target for snow layer thickness 
        
-       targetthick(1)        = CATCH_DZ1MAX
-       
-       targetthick(2:N_snow) = 1./(N_snow-1.)
-       
+       call  StieglitzSnow_targetthick_land( N_snow, targetthick )
+
        ! identify the obs species of interest       
        
        N_select_varnames  = 1      
@@ -4649,11 +4647,11 @@ contains
                 
                 ! 4. Relayer to balance the snow column 
                 
-                call relayer2( N_snow, N_constit,           &
-                     targetthick(1), targetthick(2:N_snow), &  
-                     tmp_htsn(kk,n_e,1:N_snow),             &
-                     tmp_wesn(kk,n_e,1:N_snow),             &
-                     tmp_sndz(kk,n_e,1:N_snow),             &
+                call StieglitzSnow_relayer( N_snow, N_constit,    &
+                     targetthick(1), targetthick(2:N_snow),       &  
+                     tmp_htsn(kk,n_e,1:N_snow),                   &
+                     tmp_wesn(kk,n_e,1:N_snow),                   &
+                     tmp_sndz(kk,n_e,1:N_snow),                   &
                      rconstit                       )
                 
                 ! print the old and new swe, heat content and snow density
