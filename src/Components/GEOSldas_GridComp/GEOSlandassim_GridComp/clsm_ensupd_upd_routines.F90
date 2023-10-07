@@ -3531,8 +3531,6 @@ contains
     real                                  :: asnow_fcst, swe_fcst, swe_ratio, snow_dens, snow_temp, fice_snow
     real                                  :: asnow_ana,  swe_ana
     logical                               :: log_dum, log_dum2
-    real, dimension(1)                    :: asnow_ana_array                   !  StieglitzSnow_calc_asnow() requires array
-    real, dimension(1,     1)             :: swe_ana_array                     !  StieglitzSnow_calc_asnow() requires array
     real, dimension(N_catd,N_ens)         :: swe_incr
     real, dimension(N_catd,N_ens,N_snow)  :: tmp_wesn, tmp_htsn, tmp_sndz
 
@@ -4553,11 +4551,7 @@ contains
                 
                 swe_ana   = max(swe_fcst + swe_incr(kk,n_e), 0.0)    ! total SWE after analysis
                  
-                swe_ana_array(1,1) = swe_ana                         ! StieglitzSnow_calc_asnow requires arrays
-                
-                call StieglitzSnow_calc_asnow( 1, 1, swe_ana_array, asnow_ana_array )  ! swe_ana_array = sum of SWE over layers
-                
-                asnow_ana = asnow_ana_array(1)                       ! asnow after analysis
+                call StieglitzSnow_calc_asnow( swe_ana, asnow_ana )  ! asnow after analysis
                 
                 if (swe_fcst>=SCF_ANA_MINFCSTSWE) then
                    swe_ratio = swe_ana / swe_fcst 
