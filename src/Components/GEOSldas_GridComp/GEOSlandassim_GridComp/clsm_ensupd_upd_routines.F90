@@ -118,6 +118,7 @@ module clsm_ensupd_upd_routines
 
   use STIEGLITZSNOW,                    ONLY:     &
        StieglitzSnow_calc_asnow,                  &
+       StieglitzSnow_calc_tpsnow,                 &
        StieglitzSnow_targetthick_land,            &
        StieglitzSnow_relayer,                     &
        StieglitzSnow_CPW,                         &
