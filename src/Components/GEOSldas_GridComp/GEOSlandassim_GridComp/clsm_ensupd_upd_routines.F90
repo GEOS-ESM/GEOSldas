@@ -119,7 +119,8 @@ module clsm_ensupd_upd_routines
   use STIEGLITZSNOW,                    ONLY:     &
        StieglitzSnow_calc_asnow,                  &
        StieglitzSnow_targetthick_land,            &
-       StieglitzSnow_relayer,                     &   
+       StieglitzSnow_relayer,                     &
+       StieglitzSnow_CPW,                         &
        N_constit                                  
   
   use LDAS_ensdrv_mpi,                  ONLY:     &
@@ -3527,8 +3528,9 @@ contains
     type(obs_param_type)                  :: this_obs_param
    
     integer                               :: isnow
-    real                                  :: asnow_fcst, swe_fcst, swe_ratio, snow_dens
+    real                                  :: asnow_fcst, swe_fcst, swe_ratio, snow_dens, snow_temp, fice_snow
     real                                  :: asnow_ana,  swe_ana
+    logical                               :: log_dum, log_dum2
     real, dimension(1)                    :: asnow_ana_array                   !  StieglitzSnow_calc_asnow() requires array
     real, dimension(1,     1)             :: swe_ana_array                     !  StieglitzSnow_calc_asnow() requires array
     real, dimension(N_catd,N_ens)         :: swe_incr
@@ -4582,7 +4584,7 @@ contains
                       tmp_wesn(kk,n_e,isnow) = swe_ana / N_snow                           ! distribute SWE evenly across layers
 
                       ! assign heat content for snow at 0 deg C and without liquid water content (100% frozen) 
-                      ! (based on StieglitzSnow: htsn = (cpw*tsnow - fice*MAPL_ALHF)*swe )
+                      ! (based on StieglitzSnow: htsn = (CPW*tsnow - fice*MAPL_ALHF)*swe )
 
                       tmp_htsn(kk,n_e,isnow) = (0.0 - MAPL_ALHF)*tmp_wesn(kk,n_e,isnow)
 
@@ -4595,25 +4597,15 @@ contains
                       ! snow in forecast and analysis, derive properties of analysis snow from properties of forecast snow
                       
                       ! update SWE:
-
+                      
                       tmp_wesn(kk,n_e,isnow) = cat_progn(kk,n_e)%wesn(isnow) * swe_ratio
 
-                      ! update snow heat content:
+                      ! update snow heat content (keep snow temperature constant):
+
+                      call StieglitzSnow_calc_tpsnow( cat_progn(kk,n_e)%htsn(isnow), cat_progn(kk,n_e)%wesn(isnow),  &
+                           snow_temp, fice_snow, log_dum, log_dum2, .false. )
                       
-                      ! reichle, 27 Sep 2023: not sure if we can/should update htsn using swe_ratio;                       
-                      ! what if fcst snowpack contains liquid water?  
-                      ! in this case, would it make more sense to keep the temperature constant? 
-                      ! that is, do something like:
-                      !
-                      !   call StieglitzSnow_calc_tpsnow(1, cat_progn(kk,n_e)%htsn(isnow), cat_progn(kk,n_e)%wesn(isnow), snow_temp, fice)
-                      !
-                      !   tmp_htsn(kk, n_e, isnow) = (cpw*snow_temp - fice*MAPL_ALHF)*tmp_wesn(kk,n_e,isnow)
-                      !
-                      ! but not sure if the latter equation is correct 
-                      !
-                      ! for now, keep multiplication with swe_ratio:
-                      
-                      tmp_htsn(kk,n_e,isnow) = cat_progn(kk,n_e)%htsn(isnow) * swe_ratio  
+                      tmp_htsn(kk,n_e,isnow) = (StieglitzSnow_CPW*snow_temp - fice_snow*MAPL_ALHF)*tmp_wesn(kk,n_e,isnow)
                       
                       ! update snow depth: 
 
