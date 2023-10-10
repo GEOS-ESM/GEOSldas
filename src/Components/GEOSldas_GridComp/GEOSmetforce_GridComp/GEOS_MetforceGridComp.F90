@@ -831,7 +831,7 @@ contains
         allocate(daily_force%date_int(num_steps_day_75min, total_tiles_running)) 
         allocate(daily_force%tile_num(num_steps_day_75min, total_tiles_running)) 
 
-    elseif (point_forcing_write == 0)then ! if not writing out point forcing files
+    elseif (point_forcing_write == 0 .and. point_forcing_read == 0)then ! if not writing out point forcing files
         
         call LDAS_GetForcing(                                                       &
              force_time_prv,                                                        &
@@ -1721,70 +1721,62 @@ contains
        var_curr = met_force_new%Tair(:,time_ind)
        Tair = var_curr(tile_ind,1)
 
-       
-       !write(*,*) 'Tair'
-       !write(*,*) Tair
-
-       !write(*,*) count(Tair /= Tair_new)
-
        var_curr = met_force_new%Qair(:,time_ind)
-       Qair = var_curr(:,1)
+       Qair = var_curr(tile_ind,1)
        !write(*,*) 'Qair'
        !write(*,*) count(Qair /= var_curr_cpu)
 
        var_curr = met_force_new%Psurf(:,time_ind)
-       Psurf = var_curr(:,1)
+       Psurf = var_curr(tile_ind,1)
        !write(*,*) 'Psurf'
        !write(*,*) count(Psurf /= var_curr_cpu)
 
        var_curr = met_force_new%Rainf_C(:,time_ind)
-       Rainf_C = var_curr(:,1)
+       Rainf_C = var_curr(tile_ind,1)
        !write(*,*) 'Rainf_c'
        !write(*,*) count(Rainf_c /= var_curr_cpu)
 
        var_curr = met_force_new%Rainf(:,time_ind)
-       Rainf = var_curr(:,1)
+       Rainf = var_curr(tile_ind,1)
        !write(*,*) 'Rainf'
        !write(*,*) count(Rainf /= var_curr_cpu)
 
        var_curr = met_force_new%Snowf(:,time_ind)
-       Snowf = var_curr(:,1)
+       Snowf = var_curr(tile_ind,1)
        !write(*,*) 'Snowf'
        !write(*,*) count(Snowf /= var_curr_cpu)
 
-       !RainfSnowf = Rainf+Snowf
+       RainfSnowf = Rainf+Snowf
        
        var_curr = met_force_new%LWdown(:,time_ind)
-       LWdown = var_curr(:,1)
+       LWdown = var_curr(tile_ind,1)
        !write(*,*) 'LWdown'
        !write(*,*) count(LWdown /= var_curr_cpu)
 
        var_curr = met_force_new%SWdown(:,time_ind)
-       SWdown = var_curr(:,1)
+       SWdown = var_curr(tile_ind,1)
        !write(*,*) 'SWdown'
        !write(*,*) count(SWdown /= var_curr_cpu)
 
        var_curr = met_force_new%PARdrct(:,time_ind)
-       PARdrct = var_curr(:,1)
+       PARdrct = var_curr(tile_ind,1)
        !write(*,*) 'PARdrct'
        !write(*,*) count(PARdrct /= var_curr_cpu)
 
        var_curr = met_force_new%PARdffs(:,time_ind)
-       PARdffs = var_curr(:,1)
+       PARdffs = var_curr(tile_ind,1)
        !write(*,*) 'PARdffs'
        !write(*,*) count(PARdffs /= var_curr_cpu)
 
        var_curr = met_force_new%Wind(:,time_ind)
-       Wind = var_curr(:,1)
+       Wind = var_curr(tile_ind,1)
        !write(*,*) 'Wind'
        !write(*,*) count(Wind /= var_curr_cpu)
 
        var_curr = met_force_new%RefH(:,time_ind)
-       RefH = var_curr(:,1)
+       RefH = var_curr(tile_ind,1)
        !write(*,*) 'RefH'
        !write(*,*) count(RefH /= var_curr_cpu)
-       
-       
        
        !write(*,*) 'finished assigning exports'
        ! Set exports

@@ -58,7 +58,7 @@ class LDASsetup:
         # ------
         # Optional resource manager input fields
         # ------
-        optSlurmInpKeys = ['job_name', 'qos', 'oserver_nodes', 'writers-per-node']
+        optSlurmInpKeys = ['job_name', 'qos','oserver_nodes','writers-per-node','partition']
 
         # ------
         # ./ldsetup.py sample ...
@@ -1281,14 +1281,14 @@ class LDASsetup:
         status = False
 
         os.chdir(self.rundir)
-        lenkf=self.blddir+'/../src/Applications/LDAS_App/lenkf.j.template.original'
+        lenkf=self.blddir+'/../src/Applications/LDAS_App/lenkf.j.template.PSO'
         shutil.copy(lenkf,'lenkf.j')
 
-        pso=self.blddir+'/../src/Applications/LDAS_App/PSO_v2_objective.py'
-        shutil.copy(pso,'PSO_v2_objective.py')
+        pso=self.blddir+'/../src/Applications/LDAS_App/pso.py'
+        shutil.copy(pso,'pso.py')
 
-        obj=self.blddir+'/../src/Applications/LDAS_App/compute_objective_v2.py'
-        shutil.copy(obj,'compute_objective_v2.py')
+        main=self.blddir+'/../src/Applications/LDAS_App/main.py'
+        shutil.copy(main,'main.py')
 
         con=self.blddir+'/../src/Applications/LDAS_App/check_continue.py'
         shutil.copy(con,'check_continue.py')

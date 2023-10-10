@@ -865,7 +865,8 @@ contains
       integer, parameter :: N_search_dir_max =  5
       integer, parameter :: N_col_real_max   = 18  ! "v15" soil_param.dat had 22 columns (incl. first 4 columns with integers)
       
-      character( 80) :: fname
+      character(500) :: fname
+      character(len=400) :: fname_test
       character(999) :: tmpstr999
       
       character(100), dimension(N_search_dir_max) :: search_dir
@@ -890,7 +891,7 @@ contains
       DATA VGZ2 /35.0, 20.0, 17.0, 0.6, 0.5, 0.6/      ! Dorman and Sellers (1989)
       
       ! ---------------------------------------------------------------------
-      
+     
       if (logit) write (logunit,*) 'reading Catchment model parameters'
       if (logit) write (logunit,*)
       
@@ -899,7 +900,7 @@ contains
       ! Vegetation class
       
       if (logit) write (logunit,*) 'Reading vegetation class and, if available, height'
-      
+     
       fname = '/mosaic_veg_typs_fracs'
       
       N_search_dir = 2         ! specify sub-dirs of veg_path to search for file "fname"

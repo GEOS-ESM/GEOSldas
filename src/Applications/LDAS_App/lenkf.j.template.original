@@ -19,6 +19,15 @@
 #######################################################################
 #    System Settings and Architecture Specific Environment Variables
 #######################################################################
+
+echo 'start of lenkf.j'
+date
+
+source /efs/userhome/trobinet/.bashrc
+
+echo 'after sourcing modules'
+date
+
 umask 022
 limit stacksize unlimited
 setenv ARCH `uname`
@@ -29,8 +38,8 @@ setenv EXPDIR     MY_EXPDIR
 setenv ESMADIR    $EXPDIR/build/
 setenv GEOSBIN    $ESMADIR/bin/
 # need to unsetenv LD_LIBRARY_PATH for execution of LDAS within the coupled land-atm DAS
-unsetenv LD_LIBRARY_PATH
-source $GEOSBIN/g5_modules
+#unsetenv LD_LIBRARY_PATH
+#source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
 
@@ -95,6 +104,9 @@ endif
 #        Move to Scratch Directory and Copy .rc .nml .rst files
 #######################################################################
 
+echo 'top of set experiment run parameters'
+date
+
 if (! -e $SCRDIR            ) mkdir -p $SCRDIR
 cd $SCRDIR
 /bin/rm -rf *.*
@@ -105,8 +117,8 @@ cd $SCRDIR
 set LSMCHOICE = `grep -n -m 1 "LSM_CHOICE" $HOMDIR/LDAS.rc | cut -d':' -f3`
 
 if( ${LSMCHOICE} > 1 ) then # CatchCN Only
-    ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/CO2_MonthlyMean_DiurnalCycle.nc4
-    ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/FPAR_CDF_Params-M09.nc4
+    ln -s /shared/fake_forcing/CO2_MonthlyMean_DiurnalCycle.nc4
+    ln -s /shared/fake_forcing/FPAR_CDF_Params-M09.nc4
 endif
 
 ########################################################################
@@ -121,7 +133,10 @@ endif
 #######################################################################
 #              Create HISTORY Collection Directories
 #######################################################################
-   
+ 
+echo 'top of create HISTORY collection directories'
+date
+
 set collections = ''
 foreach line ("`cat HISTORY.rc`")
    set firstword  = `echo $line | awk '{print $1}'`
@@ -160,6 +175,10 @@ endif
 #######################################################################
 #                      Domain Decomposition
 #######################################################################
+
+echo 'top of domain decomposition'
+date
+
 set npes_nx = `grep NX: LDAS.rc | cut -d':' -f2 `
 set npes_ny = `grep NY: LDAS.rc | cut -d':' -f2 `
 @ numprocs = $npes_nx * $npes_ny
@@ -190,6 +209,9 @@ endif
 #         Create Strip Utility to Remove Multiple Blank Spaces
 #######################################################################
 
+echo 'top of remove blank spaces'
+date
+
 set      FILE = strip
 /bin/rm $FILE
 cat << EOF > $FILE
@@ -210,8 +232,13 @@ chmod +x $FILE
 ######
 ##################################################################
 
+echo 'top of perform multiple iterations of model run'
+date
+
 @ counter    = 1
 while ( $counter <= ${NUM_SGMT} )
+   echo 'inside while loop'
+   date
 
    /bin/rm -f  EGRESS.ldas
    /bin/cp -f $HOMDIR/CAP.rc .
@@ -263,7 +290,9 @@ while ( $counter <= ${NUM_SGMT} )
    
    # Prescribed LAI/SAI for CATCHCN
    # -------------------------------
-   
+   echo 'prescribed lai'
+   date
+
    set PRESCRIBE_DVG = `grep PRESCRIBE_DVG LDAS.rc | cut -d':' -f2`
    if( ${PRESCRIBE_DVG} == 3 ) then
        set FCSTDATE = `grep FCAST_BEGTIME  $HOMDIR/LDAS.rc | cut -d':' -f2`
@@ -278,7 +307,9 @@ while ( $counter <= ${NUM_SGMT} )
    endif
    
    if( ${PRESCRIBE_DVG} >= 1 ) then
-   
+       echo 'prescribe dvg'
+       date
+
        # Modify local CAP.rc Ending date if Finish time exceeds Current year boundary
        # ----------------------------------------------------------------------------
     
@@ -319,7 +350,9 @@ while ( $counter <= ${NUM_SGMT} )
    endif
    
    # ----------------------------------------------------------------------------
-   
+   echo 'setting cap_restart'
+   date
+
    set bYEAR = `cat cap_restart | cut -c1-4`
    set bMON  = `cat cap_restart | cut -c5-6`
    set bDAY  = `cat cap_restart | cut -c7-8`
@@ -347,11 +380,14 @@ while ( $counter <= ${NUM_SGMT} )
    /bin/cp LDAS.rc  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${bYEAR}/M${bMON}/${EXPID}.ldas_LDAS_rc.${bYEAR}${bMON}${bDAY}_${bHour}${bMin}z.txt
    /bin/cp CAP.rc  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${bYEAR}/M${bMON}/${EXPID}.ldas_CAP_rc.${bYEAR}${bMON}${bDAY}_${bHour}${bMin}z.txt
    
+   echo 'about to run GEOSldas.x'
+   date
    # Run GEOSldas.x
    # --------------
    # clean up
    $GEOSBIN/RmShmKeys_sshmpi.csh
-
+   echo 'debugging'
+   date
    # Debugging
    # ---------
    if ( "$1" == "-debug" ) then
@@ -382,7 +418,8 @@ while ( $counter <= ${NUM_SGMT} )
    else
       set oserver_options = "--oserver_type multigroup --nodes_output_server $oserver_nodes  --npes_backend_pernode $writers"
    endif
-
+   echo 'running'
+   date
    $RUN_CMD $total_npes $GEOSBIN/GEOSldas.x --npes_model $numprocs $oserver_options 
    
    if( -e EGRESS.ldas ) then
@@ -399,7 +436,8 @@ while ( $counter <= ${NUM_SGMT} )
    #######################################################################
    #              Move Legacy LDASsa Files to ana/ens_avg Directory
    #######################################################################
-
+   echo 'move legacy LDASsa files'
+   date
    # must be done before moving HISTORY files
    
    set ObsFcses = `ls *.ldas_ObsFcstAna.*.bin` 
@@ -411,7 +449,8 @@ while ( $counter <= ${NUM_SGMT} )
       if (! -e $THISDIR            ) mkdir -p $THISDIR
       /bin/mv $obsfcs ${THISDIR}$obsfcs
    end
-
+   echo 'set smap l4s'
+   date
    set smapL4s = `ls *.ldas_tile_inst_smapL4SMaup.*.bin` 
    foreach smapl4 ( $smapL4s ) 
       set ThisTime = `echo $smapl4 | rev | cut -d'.' -f2 | rev`
@@ -426,26 +465,38 @@ while ( $counter <= ${NUM_SGMT} )
    #######################################################################
    #              Move HISTORY Files to cat/ens Directory
    #######################################################################
-   
+   echo 'move history files to cat/ens directory'
+   date
    set outfiles = `ls $EXPID.*[bin,nc4]`
    set TILECOORD=`ls ../output/*/rc_out/*ldas_tilecoord.bin`
-   
+   echo 'move current files'
+   date
    # Move current files to /cat/ens
    # ------------------------------
    
    foreach ofile ( $outfiles )
+      echo 'inside for loop for moving files'
+      date
+      echo 'before setting variables'
+      date
       set ThisTime = `echo $ofile | rev | cut -d'.' -f2 | rev`
       set TY = `echo $ThisTime | cut -c1-4`
       set TM = `echo $ThisTime | cut -c5-6`
+      echo 'before if'
+      date
       if ($NENS == 1) then
          set THISDIR = $EXPDIR/output/$EXPDOMAIN/cat/ens0000/Y${TY}/M${TM}/
       else
          set THISDIR = $EXPDIR/output/$EXPDOMAIN/cat/ens_avg/Y${TY}/M${TM}/
       endif
+      echo 'before -e'
+      date
       if (! -e $THISDIR            ) mkdir -p $THISDIR
-     
+      echo 'before setting again'
+      date
       set file_ext = `echo $ofile | rev | cut -d'.' -f1 | rev`
-   
+      echo 'before nc4'
+      date
       if($file_ext == nc4) then
          /bin/mv $ofile $THISDIR/.
       else
@@ -456,14 +507,19 @@ while ( $counter <= ${NUM_SGMT} )
          /bin/rm ${binfile}.bin) &
       endif
    end
-   wait 
+   echo 'before wait'
+   date
+   wait
+   echo 'after wait'
+   date
    
    #######################################################################
    #              Post-Process model diagnostic output
    #              (1) Concatenate sub-daily files to daily files
    #              (2) Write monthly means  
    #######################################################################
-   
+   echo 'post process model diagnostic output'
+   date
    if ($POSTPROC_HIST > 0) then
    
      set PWD = `pwd`
@@ -475,9 +531,11 @@ while ( $counter <= ${NUM_SGMT} )
      endif
    
      set MONTHDIRS = `ls -d $OUTDIR/*/*`
-   
+     echo 'before foreach THISMONTH'
+     date
      foreach THISMONTH ($MONTHDIRS)
-   
+       echo 'starting a new month of postprocessing'
+       date
        set MM = `echo $THISMONTH | rev | cut -d'/' -f1 | cut -c1-2 | rev`
        set YYYY = `echo $THISMONTH | rev | cut -d'/' -f2 | cut -c1-4 | rev`
        set NDAYS = `cal $MM $YYYY | awk 'NF {DAYS = $NF}; END {print DAYS}'`
@@ -485,6 +543,8 @@ while ( $counter <= ${NUM_SGMT} )
        cd $THISMONTH
        
        foreach ThisCol ($collections)
+          echo 'for thiscol'
+          date
           # if monthly exists, move on to the next collection
           if (-f $EXPID.${ThisCol}.monthly.$YYYY$MM.nc4) continue
 
@@ -492,16 +552,25 @@ while ( $counter <= ${NUM_SGMT} )
           # ------------------------------------------------------------------
           set day=1
           while ($day <= $NDAYS)
+             echo 'for this day'
+             date
              if ( $day < 10  ) set DD=0${day}
              if ( $day >= 10 ) set DD=${day}
-             @ day++    
+             @ day++  
+             echo 'before ls set'
+             date
              set time_steps = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}${DD}_* | rev | cut -d'.' -f2 | rev`
+             echo 'after ls step'
+             date
              set LEN_SUB = `echo $#time_steps`
 
              # no file or just one file? nothing to concatenate, move on to the next collection
              if ($LEN_SUB <= 1) continue
 
+             
              # check if day is complete (get HISTORY time step from first two files)
+             echo 'before we set a ton of things'
+             date
              set hour1   = `echo $time_steps[1] | cut -c10-11`
              set min1    = `echo $time_steps[1] | cut -c12-13`
              set hour2   = `echo $time_steps[2] | cut -c10-11`
@@ -532,11 +601,16 @@ DATAVALUES;
 }      
 EOF
    
+             echo 'before we sed a bunch of things'
              sed -i -e "s/NT/$LEN_SUB/g" timestamp.cdl
              sed -i -e "s/DATAVALUES/$tstep2/g" timestamp.cdl
+             echo 'before nc4gen'
+             date
              ncgen -k4 -o timestamp.nc4 timestamp.cdl
              ncrcat -h $EXPID.$ThisCol.${YYYY}${MM}${DD}_* ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
              ncks -4 -h -v time_stamp timestamp.nc4 -A ${EXPID}.${ThisCol}.$YYYY$MM$DD.nc4
+             echo 'before /bin'
+             date
              /bin/rm timestamp.cdl
              /bin/rm timestamp.nc4
              # rudimentary check for desired nc4 file;  if ok, delete sub-daily files
@@ -556,11 +630,16 @@ EOF
           #         *.YYYYMMDD.*       daily files from concatenation of sub-daily files
           #         *.YYYYMMDD_HHMM.*  daily (avg or inst) files written directly by HISTORY.rc
    
+          echo 'before we ls even more things'
+          date
           set time_steps  = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}??.* | rev | cut -d'.' -f2 | rev`
           set time_steps_ = `ls -1 $EXPID.$ThisCol.${YYYY}${MM}??_* | rev | cut -d'.' -f2 | cut -d'_' -f2 | rev`
+          echo 'after ls ing these things'
+          date
           set LEN  = `echo $#time_steps`
           set LEN_ = `echo $#time_steps_`
-
+          echo 'before checking if month is complete'
+          date
           # check if month is complete 
           if ($LEN != 0) then 
             set dayl = `echo $time_steps[$LEN] | cut -c1-8`
@@ -594,12 +673,14 @@ EOF
      end # each month
      cd $PWD
    endif # POSTPROC_HIST > 0
-   
+   echo 'done postprocessing'
+   date
    #######################################################################
    #   Rename Final Checkpoints => Restarts for Next Segment and Archive
    #        Note: cap_restart contains the current NYMD and NHMS
    #######################################################################
-   
+   echo 'rename final checkpoints'
+   date
    set eYEAR = `cat cap_restart | cut -c1-4`
    set eMON  = `cat cap_restart | cut -c5-6`
    set eDAY  = `cat cap_restart | cut -c7-8`
@@ -608,12 +689,14 @@ EOF
    
    # Create rc_out/YYYY/MM 
    # ---------------------
-   
+   echo 'create new rc_out'
+   date
    set THISDIR = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/
    if (! -e $THISDIR  ) mkdir -p $THISDIR
    
    # Move mwrtm and cat_param
-   
+   echo 'move mwrtm'
+   date
    set new_mwrtm_file  =  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXPID}.ldas_mwRTMparam.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}z.nc4
    set new_catch_param =  $EXPDIR/output/$EXPDOMAIN/rc_out/Y${eYEAR}/M${eMON}/${EXPID}.ldas_catparam.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}z.bin
    
@@ -635,10 +718,13 @@ EOF
    
    # Move Intermediate Checkpoints to RESTARTS directory
    # ---------------------------------------------------
-   
+   echo 'move intermediate checkpoitns to restarts'
+   date
    @ inens = MY_FIRST_ENS_ID
    @ enens = $inens + $NENS
    while ($inens < $enens)
+       echo 'top of ensemble while loop'
+       date
        if ($inens <10) then
           set ENSDIR = `echo ens000${inens}`
        else if($inens<100) then
@@ -652,7 +738,8 @@ EOF
        if ( $NENS == 1) set ENSID =''
        set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/
        if (! -e $THISDIR            ) mkdir -p $THISDIR
-   
+       echo 'set rstf MODEL'
+       date
        set rstf = ${MODEL} 
        if (-f ${rstf}${ENSID}_internal_checkpoint ) then
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
@@ -660,7 +747,8 @@ EOF
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /bin/ln -rs  $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
        endif
-   
+       echo 'set rstf landpert'
+       date
        set rstf = 'landpert'
        if (-f ${rstf}${ENSID}_internal_checkpoint ) then
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
@@ -673,7 +761,8 @@ EOF
           /bin/ln -rs $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /usr/bin/gzip $old_rst &
        endif
-   
+       echo 'set rstf landassim'
+       date
        set rstf = 'landassim_obspertrseed'
        if (-f ${rstf}${ENSID}_checkpoint ) then
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
@@ -687,7 +776,8 @@ EOF
        set rstfiles1 = `ls ${MODEL}${ENSID}_internal_checkpoint.*`
        set rstfiles2 = `ls landpert${ENSID}_internal_checkpoint.*`
        set rstfiles3 = `ls landassim_obspertrseed${ENSID}_checkpoint.*`
-   
+       echo 'for each rfile'
+       date
        foreach rfile ( $rstfiles1 ) 
           set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
           set TY = `echo $ThisTime | cut -c1-4`
@@ -697,7 +787,8 @@ EOF
           /bin/mv $rfile ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4
           /usr/bin/gzip ${THISDIR}${EXPID}.${MODEL}_internal_rst.${ThisTime}.nc4 &
        end
-       
+       echo 'for each rfile 2'
+       date
        foreach rfile ( $rstfiles2 ) 
           set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
           set TY = `echo $ThisTime | cut -c1-4`
@@ -708,7 +799,8 @@ EOF
                /usr/bin/gzip ${THISDIR}${EXPID}.landpert_internal_rst.${ThisTime}.nc4; \
                /bin/rm -f $rfile) &
        end
-   
+       echo 'for each rfile 3'
+       date
        foreach rfile ( $rstfiles3 ) 
           set ThisTime = `echo $rfile | rev | cut -d'.' -f2 | rev`
           set TY = `echo $ThisTime | cut -c1-4`
@@ -724,7 +816,8 @@ EOF
    #####################
    # update cap_restart
    # ##################
-   
+   echo 'update cap restart'
+   date
    set CO2LINE = `grep -n -m 1 "CO2_YEAR" $HOMDIR/LDAS.rc | cut -d':' -f1`
    
    if ( $CO2LINE >= 1 ) then
@@ -748,7 +841,8 @@ EOF
    #######################################################################
    #              Update Iteration Counter
    #######################################################################
-
+   echo 'update iteration counter'
+   date
    set enddate = `echo  $END_DATE | cut -c1-8`
    set endhour = `echo  $END_DATE | cut -c10-11`
    set capdate = `cat cap_restart | cut -c1-8`
@@ -768,7 +862,8 @@ end
 #######################################################################
 #                 Set Next Log and Error Files 
 #######################################################################
-
+echo 'set next log and error files'
+date
 set logfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${logYEAR}/M${logMON}/${EXPID}.ldas_log.${logYEAR}${logMON}${logDAY}_${logHour}${logMin}z.txt
 set errfile = $EXPDIR/output/$EXPDOMAIN/rc_out/Y${logYEAR}/M${logMON}/${EXPID}.ldas_err.${logYEAR}${logMON}${logDAY}_${logHour}${logMin}z.txt
 
@@ -785,7 +880,8 @@ endif
 #######################################################################
 #                 Re-Submit Job
 #######################################################################
-
+echo 'resubmit job'
+date
 if ( $LADAS_COUPLING > 0 ) then
    if ( $rc == 0 ) then
       echo 'SUCCEEDED' > $HOMDIR/lenkf_job_completed.txt

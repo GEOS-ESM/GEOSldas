@@ -19,6 +19,10 @@
 #######################################################################
 #    System Settings and Architecture Specific Environment Variables
 #######################################################################
+
+module purge
+source /efs/userhome/trobinet/.bashrc
+
 umask 022
 limit stacksize unlimited
 setenv ARCH `uname`
@@ -29,7 +33,7 @@ setenv EXPDIR     MY_EXPDIR
 setenv ESMADIR    $EXPDIR/build/
 setenv GEOSBIN    $ESMADIR/bin/
 # need to unsetenv LD_LIBRARY_PATH for execution of LDAS within the coupled land-atm DAS
-unsetenv LD_LIBRARY_PATH
+#unsetenv LD_LIBRARY_PATH
 
 set debug_flag = 0
 if ( "$1" == "-debug" ) then
@@ -38,7 +42,7 @@ endif
 unset argv
 setenv argv
 
-source $GEOSBIN/g5_modules
+#source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
 
@@ -114,8 +118,8 @@ cd $SCRDIR
 set LSMCHOICE = `grep -n -m 1 "LSM_CHOICE" $HOMDIR/LDAS.rc | cut -d':' -f3`
 
 if( ${LSMCHOICE} > 1 ) then # CatchCN Only
-    ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/CO2_MonthlyMean_DiurnalCycle.nc4
-    ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/FPAR_CDF_Params-M09.nc4
+    ln -s /shared/fake_forcing/CO2_MonthlyMean_DiurnalCycle.nc4
+    ln -s /shared/fake_forcing/FPAR_CDF_Params-M09.nc4
 endif
 
 #######################################################################
@@ -238,12 +242,10 @@ echo "this_ens" >> $HOMDIR/PSO_iterations.txt
 echo $this_ens >> $HOMDIR/PSO_iterations.txt
 
 if ($this_ens == 0) then
-  if ( -f $EXPDIR/../position_vals.csv ) then
+  if ( -f $EXPDIR/../positions.csv ) then
     echo pso_exists
   else
-    module load python/GEOSpyD/Min4.11.0_py3.9
-    conda activate /home/trobinet/.conda/envs/pso
-    python3 $HOMDIR/PSO_v2_objective.py $EXPDIR
+    python3 $HOMDIR/main.py $EXPDIR
   endif
 endif
 
@@ -844,22 +846,24 @@ else
   endif
 endif
 
+# create the file that says that we have finished this ensemble
 set file_write="finished_${this_ens}.txt"
+# tell this to PSO_iterations
 echo "file_write" >> $HOMDIR/PSO_iterations.txt
 echo $file_write >> $HOMDIR/PSO_iterations.txt
+# create the file
 touch $EXPDIR/../$file_write
 
-# if this is ensemble zero, you can be allowed to do the calculations
-# else continue to check until calcuations are done
+# set everything to zero to be changed later
 set runs_done=0
 set pso_done=0
 set convergence=0
 
-module load python/GEOSpyD/Min4.11.0_py3.9
-conda activate /home/trobinet/.conda/envs/pso
-
+# if this is ensemble zero, you can be allowed to do the calculations
+# else continue to check until calcuations are done
 if ( $this_ens == 0 ) then
   echo "inside ensemble 0 section" >> $HOMDIR/PSO_iterations.txt
+  # wait for the running of all particles to be completed
   while ( $runs_done == 0 ) 
     echo "waiting for runs to finish" >> $HOMDIR/PSO_iterations.txt
     @ runs_done=`python3 $HOMDIR/check_continue.py 0 $EXPDIR`
@@ -870,16 +874,19 @@ if ( $this_ens == 0 ) then
   echo 'before calling python script' >> $HOMDIR/PSO_iterations.txt
   echo $EXPDIR >> $HOMDIR/PSO_iterations.txt
   echo $HOMDIR >> $HOMDIR/PSO_iterations.txt
-  echo `qstat -u trobinet` >> $HOMDIR/PSO_iterations.txt
-  @ convergence=`python3 $HOMDIR/PSO_v2_objective.py $EXPDIR`
-  #set convergence = 1
-  echo 'after calling convergence script' >> $HOMDIR/PSO_iterations.txt
-  echo 'convergence' >> $HOMDIR/PSO_iterations.txt
+  echo 'about to call main.py' >> $HOMDIR/PSO_iterations.txt
+  echo `python3 $HOMDIR/main.py $EXPDIR` > convergence_message.txt
+  @ convergence=`cat convergence_message.txt | rev | cut -c -1`
+  echo 'convergence' >> PSO_iterations.txt
+  echo $convergence >> PSO_iterations.txt
   echo $convergence > $EXPDIR/../conv.txt
-  echo "creating pso_finished.txt" >> $HOMDIR/PSO_iterations.txt
+  echo "creating pso_finished.txt" >> $HOMDIR/PSO_iterations.txt\
+  # tell all of the particles that the PSO is finished
   touch $EXPDIR/../pso_finished.txt
+  # sleep for 30s so all the other partices can figure this out
   echo "sleeping" >> $HOMDIR/PSO_iterations.txt
   sleep 30s
+  # remove this and restart
   echo "removing pso_finished.txt" >> $HOMDIR/PSO_iterations.txt
   rm $EXPDIR/../pso_finished.txt
   echo `qstat -u trobinet` >> $HOMDIR/PSO_iterations.txt
@@ -889,6 +896,7 @@ else
   echo $this_ens >> $HOMDIR/PSO_iterations.txt
   while ( $pso_done == 0 )
     echo "checking if pso is done" >> $HOMDIR/PSO_iterations.txt
+    # run the python script that check if the pso is done
     @ pso_done=`python3 $HOMDIR/check_continue.py 1 $EXPDIR`
     #python3 $HOMDIR/check_continue.py 1 $EXPDIR
     echo $pso_done >> $HOMDIR/PSO_iterations.txt
@@ -897,7 +905,7 @@ endif
 
 # we to restart from original restart to maintain same model between iterations
 # this is fine since we allowing a spinup time at the beginning of each iteration
-cp 
+#cp 
 
 rm $EXPDIR/../$file_write
 @ convergence=`cat $EXPDIR/../conv.txt`
@@ -920,9 +928,14 @@ set startday = `cat cap_restart | cut -c7-8`
 set starthour = `cat cap_restart | cut -c10-11`
 set startmin = `cat cap_restart | cut -c12-13`
 
+# restart from the original model
 cp $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${startyear}/M${startmon}/${EXPID}.${MODEL}_internal_rst.${startyear}${startmon}${startday}_${starthour}${startmin} $EXPDIR/input/restart/${MODEL}_internal_rst
 cp $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${startyear}/M${startmon}/${EXPID}.vegdyn_internal_rst $EXPDIR/input/restart/vegdyn_internal_rst
 
+# reload the package that I had to unload to run my python script
+module load py-numpy-1.23.4-gcc-9.4.0-6k3zrhu
+
+# restart based off of the returned convergence code
 if ($convergence == 0) then
    echo 'CONVERGED, convergence=0' >> $HOMDIR/PSO_iterations.txt
 else if ($convergence == 1) then

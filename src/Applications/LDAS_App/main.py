@@ -5,24 +5,48 @@ import datetime
 def main():
     # the experiment directory is passed in from the command line
     exp_dir = sys.argv[1]
-    # the location of the file for the PSO
-    truth_fname = (
+    # location to save outputs of new global best model runs
+    save_path = '/shared/pso_outputs/g1_et_v2'
+    # should Fluxcom ET be used as a constraint in objective function?
+    et_constraint = True
+    # should USGS WaterWatch runoff be used as a constraint in objective
+    # function?
+    streamflow_constraint = False
+    # the location of the ET truth file for the PSO
+    et_truth_fname = (
         '/shared/pso/step_3_process_fluxcom/outputs/' +
         'le_truth_fluxcom_rs_meteo_ensemble_watts_per_m2_2001-01-01_' +
         '2009-12-31_selected_tiles.csv'
     )
+    # the location of the streamflow truth file for the PSO
+    stream_truth_fname = (
+        '/shared/pso/step_3.1_process_streamflow/outputs/' +
+        'streamflow_data_mm_per_month.csv'
+    )
+    # location of the intersection info .pkl file that relates catchment tiles
+    # to huc watershed
+    inter_info_fname = (
+        '/shared/pso/step_1_choose_tiles/outputs/intersection_info.pkl'
+    )
+    # location where list of all pixels being run is stored
+    all_pix_fname = (
+        '/shared/pso/step_1_choose_tiles/outputs/intersecting_catch_tiles.csv'
+    )
     # date range over which to calculate the objective function
-    start = datetime.date(2001,1,1)
-    end = datetime.date(2001,1,3)
+    # this is inclusive
+    start = datetime.date(2006,1,1)
+    end = datetime.date(2006,12,31)
     # number of iterations with no change to global best before convergence
     conv_thresh = 5
     # number of iterations at which to declare does not converge
-    max_iter = 1000
+    max_iter = 40
     # how often do we submit a new job?
     restart_every = 1
     # how many particles are we running?
     num_particles = 10
     # how many parameters for each particle?:
+    num_params = 10
+    # what are the names of the different paramaeters?
         #parameter 1: aj in g1 EF for forests
         #parameter 2: aj in g1 EF for croplands
         #parameter 3: aj in g1 EF for grasslands
@@ -33,8 +57,19 @@ def main():
         #parameter 8: constant_1 in Ksat EF
         #parameter 9: constant_2 in Ksat EF
         #parameter 10: sand_exp in Ksat EF
-    num_params = 10
-    # what are the proper ranges for the different paramters?
+    parameter_names = [
+        'aj_forests',
+        'aj_croplands',
+        'aj_grasslands',
+        'aj_savannas',
+        'aj_shrublands',
+        'alpha_ksat',
+        'beta_ksat',
+        'const1_ksat',
+        'const2_ksat',
+        'sand_exp_ksat'
+    ]
+    # what are the starting ranges for the different paramters?
     param_range = [
         [0.1,4], # parameter 1
         [0.1,4], # parameter 2
@@ -47,6 +82,10 @@ def main():
         [0.5,3], # parameter 9
         [.05,.3] # parameter 10
     ]
+    # what are the objective function weights? This is multiplied by the
+    # normalized objective output for [0]:et and [1]:streamflow. These two
+    # weights should sum to one
+    obj_weights = [0.5,0.5]
     # PSO hyper-parameters
     # intertia; weights the velocity at the previous step compared to 
     # velocity produced by local and global best positions
@@ -56,7 +95,7 @@ def main():
     c1 = 0.7
     # global weight; weights the velocity chagne based off of global 
     # particles's best position
-    c2 = 1.3
+    c2 = 0.3
     # how many spinup iterations should we do before changing initial
     # parameters?
     spinup_iter = 0
@@ -84,9 +123,17 @@ def main():
         'text_out':text_out,
         'load_previous_pso':load_previous_pso,
         'previous_pso_dir':previous_pso_dir,
-        'truth_fname':truth_fname,
+        'et_truth_fname':et_truth_fname,
+        'stream_truth_fname':stream_truth_fname,
         'start':start,
-        'end':end
+        'end':end,
+        'save_path':save_path,
+        'et_constraint':et_constraint,
+        'streamflow_constraint':streamflow_constraint,
+        'param_names':parameter_names,
+        'inter_info_fname':inter_info_fname,
+        'all_pix_fname':all_pix_fname,
+        'obj_weights':obj_weights
     }
 
     # do the pso calculations
