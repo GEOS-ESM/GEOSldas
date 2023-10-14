@@ -10,7 +10,8 @@ module clsm_ensupd_upd_routines
        NRANDSEED
 
   use MAPL_BaseMod,                     ONLY:     &
-       MAPL_UNDEF
+       MAPL_UNDEF,                                &
+       MAPL_LAND
   
   use MAPL_ConstantsMod,                ONLY:     &
        MAPL_TICE,                                 &
@@ -110,7 +111,7 @@ module clsm_ensupd_upd_routines
   use catch_constants,                  ONLY:     &
        N_snow => CATCH_N_SNOW,                    &
        N_gt   => CATCH_N_GT,                      &
-       RHOFS  => CATCH_SNWALB_RHOFS,              &
+       RHOFS  => CATCH_SNOW_RHOFS,                &
        PEATCLSM_POROS_THRESHOLD
     
   use SurfParams,                       ONLY:     &
@@ -119,9 +120,9 @@ module clsm_ensupd_upd_routines
   use STIEGLITZSNOW,                    ONLY:     &
        StieglitzSnow_calc_asnow,                  &
        StieglitzSnow_calc_tpsnow,                 &
-       StieglitzSnow_targetthick_land,            &
        StieglitzSnow_relayer,                     &
        StieglitzSnow_CPW,                         &
+       StieglitzSnow_DZPARAM,                     &
        N_constit                                  
   
   use LDAS_ensdrv_mpi,                  ONLY:     &
@@ -3535,7 +3536,7 @@ contains
     real, dimension(N_catd,N_ens)         :: swe_incr
     real, dimension(N_catd,N_ens,N_snow)  :: tmp_wesn, tmp_htsn, tmp_sndz
 
-    real, dimension(N_snow)               :: targetthick                       ! for snow model relayer
+    real, dimension(N_snow)               :: tpsn, fice_snow_vec                      ! for snow model relayer
     real, dimension(N_snow,N_constit)     :: rconstit
 
     ! -----------------------------------------------------------------------
@@ -4480,10 +4481,6 @@ contains
        
        if (SCF_ANA_MAXINCRSWE>WEMIN)  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'must use SCF_ANA_MAXINCRSWE<=WEMIN')
        
-       ! get target for snow layer thickness 
-       
-       call  StieglitzSnow_targetthick_land( N_snow, targetthick )
-
        ! identify the obs species of interest       
        
        N_select_varnames  = 1      
@@ -4630,16 +4627,16 @@ contains
                       
                    end if
                    
-                end do        ! isnow=1,N_snow (compute SWE, snow heat content, and snow depth analysis for each layer)
+                end do  ! isnow=1,N_snow (compute SWE, snow heat content, and snow depth analysis for each layer)
                 
-                ! 4. Relayer to balance the snow column 
+                ! 4. Relayer to balance the snow column (call with optional args for adjustment of htsnn)
                 
                 call StieglitzSnow_relayer( N_snow, N_constit,    &
-                     targetthick(1), targetthick(2:N_snow),       &  
+                     MAPL_LAND, CATCH_SNOW_DZPARAM,               &
                      tmp_htsn(kk,n_e,1:N_snow),                   &
                      tmp_wesn(kk,n_e,1:N_snow),                   &
                      tmp_sndz(kk,n_e,1:N_snow),                   &
-                     rconstit                       )
+                     rconstit, tpsn, fice_snow_vec             )
                 
                 ! print the old and new swe, heat content and snow density
                 
