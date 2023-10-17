@@ -111,6 +111,7 @@ module clsm_ensupd_upd_routines
        N_snow => CATCH_N_SNOW,                    &
        N_gt   => CATCH_N_GT,                      &
        RHOFS  => CATCH_SNOW_RHOFS,                &
+       CATCH_SNOW_DZPARAM,                        &
        PEATCLSM_POROS_THRESHOLD
     
   use SurfParams,                       ONLY:     &
@@ -121,7 +122,6 @@ module clsm_ensupd_upd_routines
        StieglitzSnow_calc_tpsnow,                 &
        StieglitzSnow_relayer,                     &
        StieglitzSnow_CPW,                         &
-       StieglitzSnow_DZPARAM,                     &
        StieglitzSnow_MINSWE,                      &
        N_constit                                  
   
