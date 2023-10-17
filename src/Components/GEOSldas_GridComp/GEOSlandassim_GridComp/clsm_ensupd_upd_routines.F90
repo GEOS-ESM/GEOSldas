@@ -39,8 +39,7 @@ module clsm_ensupd_upd_routines
        FT_ANA_UPPERBOUND_TEFF,                    & 
        SCF_ANA_ALPHA,                             &           
        SCF_ANA_BETA,                              &
-       SCF_ANA_MAXINCRSWE,                        & 
-       SCF_ANA_MINFCSTSWE
+       SCF_ANA_MAXINCRSWE
   
   use my_matrix_functions,              ONLY:     &
        row_variance,                              &
@@ -123,6 +122,7 @@ module clsm_ensupd_upd_routines
        StieglitzSnow_relayer,                     &
        StieglitzSnow_CPW,                         &
        StieglitzSnow_DZPARAM,                     &
+       StieglitzSnow_MINSWE,                      &
        N_constit                                  
   
   use LDAS_ensdrv_mpi,                  ONLY:     &
@@ -4551,7 +4551,7 @@ contains
                  
                 call StieglitzSnow_calc_asnow( swe_ana, asnow_ana )  ! asnow after analysis
                 
-                if (swe_fcst>=SCF_ANA_MINFCSTSWE) then
+                if (swe_fcst>=StieglitzSnow_MINSWE) then
                    swe_ratio = swe_ana / swe_fcst 
                 else
                    swe_ratio = MAPL_UNDEF  ! swe_ratio unreliable; set to MAPL_UNDEF to expose inadvertent use
@@ -4569,7 +4569,7 @@ contains
                       tmp_htsn(kk,n_e,isnow) = 0.0
                       tmp_sndz(kk,n_e,isnow) = 0.0 
                       
-                   elseif (swe_fcst < SCF_ANA_MINFCSTSWE) then
+                   elseif (swe_fcst < StieglitzSnow_MINSWE) then
                       
                       ! too little snow in forecast, use generic properties for added snow
                       
