@@ -287,7 +287,6 @@ contains
     type(force_pert_ccor_type) :: ccorr_force_pert
 
     ! Errlong variables
-    integer :: rc, status
     character(len=*), parameter :: Iam = 'read_ens_prop_inputs'
 
     ! MPI variables
@@ -995,7 +994,6 @@ contains
     integer :: xstart, xcount, ystart, ycount ! for computing local indices
 
     ! Errlong variables
-    integer :: rc, status
     character(len=*), parameter :: Iam = 'get_force_pert_inputs'
 
     ! MPI variables
@@ -1385,7 +1383,6 @@ contains
     integer :: xstart, xcount, ystart, ycount ! for computing local indices
 
     ! Errlong variables
-    integer :: rc, status
     character(len=*), parameter :: Iam = 'get_progn_pert_inputs'
 
     ! MPI variables
@@ -1902,7 +1899,7 @@ contains
     !
     ! local variables
 
-    integer :: i,j,k, ierr
+    integer :: k, ierr
 
     ! ---------------------------------------------------------------
     !

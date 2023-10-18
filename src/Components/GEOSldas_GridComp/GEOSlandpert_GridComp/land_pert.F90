@@ -361,8 +361,6 @@ contains
     !
     ! local variables
     
-    integer :: m, n, i, j
-    
     character(len=*), parameter :: Iam = 'get_init_Pert_rseed'
     character(len=400) :: err_msg
     

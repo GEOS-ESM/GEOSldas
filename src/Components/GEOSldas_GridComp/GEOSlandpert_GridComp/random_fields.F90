@@ -45,7 +45,7 @@ module random_fields_class
        NRANDSEED,                                 &
        nr_ran2_2d,                                   &
        nr_gasdev
-  
+
   implicit none
   
   private
@@ -98,9 +98,9 @@ contains
     integer, optional, intent(in) :: comm
     
     ! local variable
-    integer :: mklstat, ierror, i, j
+    integer :: mklstat, ierror
     integer :: rank, npes, local_dim1, local_dim2, remainer
-    integer :: N1, N2, gcount(2), lstart(2), Stride(2)
+    integer :: N1, N2, Stride(2)
 
     ! set obj param vals
     this%N_x = Nx
@@ -134,6 +134,12 @@ contains
        N1 = this%fft_lens(1)
        N2 = this%fft_lens(2)
 
+       if (npes > minval([N1, N2]) ) then
+          print*, " Two many processors are acquired  in a node for parallel FFT"
+          print*, " The number of processors acquired in a node should be smaller than or equal to FFT grid size: ", minval([N1, N2]) 
+          call quit('Parallel FFT failed')
+       endif
+
        call this%win_allocate(N1, N2)
 
        ! distribution of the grid for fft
@@ -153,23 +159,35 @@ contains
 
        mklstat = DftiCreateDescriptor(this%Desc_Handle_Dim1, DFTI_SINGLE,&
                                 DFTI_COMPLEX, 1, N1 )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiCreate dim1 failed!')
        mklstat = DftiCreateDescriptor(this%Desc_Handle_Dim2, DFTI_SINGLE,&
                                 DFTI_COMPLEX, 1, N2 )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiCreate dim2 failed!')
 
        ! perform local_dim2 one-dimensional transforms along 1st dimension
        mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_NUMBER_OF_TRANSFORMS, local_dim2 )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue DFTI_NUMBER_OF_TRANSFORMS failed!')
        mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_INPUT_DISTANCE, N1 )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue N1 failed!')
        mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_OUTPUT_DISTANCE, N1 )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue N2 failed!')
        mklstat = DftiCommitDescriptor( this%Desc_Handle_Dim1 )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiCommit dim1 failed!')
        ! mklstat = DftiComputeForward( this%Desc_Handle_Dim1, X )
        ! local_dim1 one-dimensional transforms along 2nd dimension
        Stride(1) = 0; Stride(2) = local_dim1
        mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_NUMBER_OF_TRANSFORMS, local_dim1)
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue local_dim1 failed!')
        mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_INPUT_DISTANCE, 1 )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue in distance failed!')
        mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_OUTPUT_DISTANCE, 1 )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue out distance failed!')
        mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_INPUT_STRIDES, Stride )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue in_stride failed!')
        mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_OUTPUT_STRIDES, Stride )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue outstride failed!')
        mklstat = DftiCommitDescriptor( this%Desc_Handle_Dim2 )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiCommit Dim2 failed!')
        !mklstat = DftiComputeForward( this%Desc_Handle_Dim2, X )
     else
        this%comm = MPI_COMM_NULL
@@ -194,7 +212,7 @@ contains
     class(random_fields), intent(inout) :: this
 
     ! local variable
-    integer :: mklstat, i , npes, ierror
+    integer :: mklstat
 
     ! deallocate memory
     if(allocated(this%field1_fft)) deallocate(this%field1_fft)
@@ -515,6 +533,7 @@ contains
        cptr = c_loc(tmp_field_dim1(1,1))
        call c_f_pointer (cptr, X, [ldim1*N_y_fft])
        mklstat = DftiComputeBackward( this%Desc_Handle_Dim2, X )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiComputeBackward dim2 failed!')
        call MPI_Barrier(this%node_comm, ierror)
        tmp_field(n1:n2,:) = tmp_field_dim1
 
@@ -528,6 +547,7 @@ contains
        cptr = c_loc(tmp_field_dim2(1,1))
        call c_f_pointer (cptr, X, [N_x_fft*ldim2])
        mklstat = DftiComputeBackward( this%Desc_Handle_Dim1, X )
+       if (mklstat/= DFTI_NO_ERROR) call quit('DftiComputeBackward dim1 failed!')
        tmp_field(:,n1:n2) = tmp_field_dim2/N_xy_fft_real
        
        call MPI_Win_fence(0, this%win, ierror)
@@ -648,7 +668,6 @@ contains
      integer(kind=MPI_ADDRESS_KIND) :: windowsize
      integer :: disp_unit,status, Rank
      integer(kind=MPI_ADDRESS_KIND) :: n_bytes 
-     integer :: int_size
 
 
      call MPI_Comm_rank( this%node_comm, rank, status)
