@@ -51,6 +51,7 @@ module GEOS_LandAssimGridCompMod
   use catch_types,               only: cat_progn_type
   use catch_types,               only: cat_param_type
   use catch_types,               only: cat_diagS_type
+  use catch_types,               only: max_cat_diagS
   use catch_types,               only: cat_diagS_sqrt
   use catch_types,               only: assignment(=), operator (+), operator (-), operator (*), operator (/)
   use clsm_bias_routines,        only: initialize_obs_bias
@@ -2009,7 +2010,7 @@ contains
           
              cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize --> ens avg
           
-             cat_diagS_ensstd(ii) = cat_diagS_sqrt( cat_diagS_ensstd(ii)/Nm1 - NdivNm1*(cat_diagS_ensavg(ii)*cat_diagS_ensavg(ii)) )
+             cat_diagS_ensstd(ii) = cat_diagS_sqrt( max_cat_diagS(0.0, cat_diagS_ensstd(ii)/Nm1 - NdivNm1*(cat_diagS_ensavg(ii)*cat_diagS_ensavg(ii))) )
 
           end do
 

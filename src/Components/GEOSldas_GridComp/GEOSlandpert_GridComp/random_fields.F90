@@ -30,7 +30,10 @@
 #define NR_FALLBACK
 #endif
 
-module random_fields_class
+#include "MAPL_ErrLog.h"
+#include "unused_dummy.H"
+
+module random_fieldsMod
 
 #ifdef MKL_AVAILABLE
   use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer, c_ptr, c_sizeof, C_NULL_PTR
@@ -46,6 +49,8 @@ module random_fields_class
        nr_ran2_2d,                                   &
        nr_gasdev
 
+  use MAPL_ExceptionHandling
+
   implicit none
   
   private
@@ -56,7 +61,6 @@ module random_fields_class
   type, public :: random_fields
      private
      integer :: N_x, N_y
-     real :: var, lx, ly, dx, dy
      integer :: N_x_fft, N_y_fft ! computed by calc_fft_grid
      real, allocatable :: field1_fft(:,:), field2_fft(:,:)
      integer :: fft_lens(2) ! length of each dim for 2D transform
@@ -73,146 +77,137 @@ module random_fields_class
      integer, allocatable :: dim2_counts(:)
 #endif
    contains
-     procedure, public  :: initialize
+!     procedure, public  :: initialize
      procedure, public  :: finalize
      procedure, public  :: rfg2d_fft
      procedure, public  :: generate_white_field
      procedure, private :: sqrt_gauss_spectrum_2d
-     procedure, private :: calc_fft_grid
 #ifdef MKL_AVAILABLE
      procedure, private :: win_allocate
      procedure, private :: win_deallocate
 #endif
   end type random_fields
+
+  interface random_fields
+     module procedure new_random_fields
+  end interface
   
 contains
 
   ! constructor (set parameter values), allocate memory
-  subroutine initialize(this, Nx, Ny, var, lx, ly, dx, dy, comm)
+  function new_random_fields(Nx, Ny, Nx_fft, Ny_fft, comm, rc) result (rf)
 
     ! input/output variables [NEED class(random_fields)
     ! instead of type(random_fields)] - F2003 quirk?!?
-    class(random_fields), intent(inout) :: this
-    integer, intent(in) :: Nx, Ny
-    real, intent(in) :: var, lx, ly, dx, dy
+    type(random_fields) :: rf
+    integer, intent(in) :: Nx, Ny, Nx_fft, Ny_fft
     integer, optional, intent(in) :: comm
-    
+    integer, optional, intent(out) :: rc 
     ! local variable
-    integer :: mklstat, ierror
+    integer :: status, ierror
     integer :: rank, npes, local_dim1, local_dim2, remainer
-    integer :: N1, N2, Stride(2)
+    integer :: Stride(2)
 
     ! set obj param vals
-    this%N_x = Nx
-    this%N_y = Ny
-    this%var = var
-    this%dx = dx
-    this%dy = dy
-    this%lx = lx
-    this%ly = ly
+    rf%N_x = Nx
+    rf%N_y = Ny
 
-    ! calculate fft grid (N_x_fft, N_y_fft)
-    call this%calc_fft_grid
+    ! ensure N_x_fft, N_y_fft are powers of two
+    rf%N_x_fft = Nx_fft
+    rf%N_y_fft = Ny_fft
 
-    ! lengths of transform in each dimension
-    this%fft_lens(1) = this%N_x_fft
-    this%fft_lens(2) = this%N_y_fft
 
     ! allocate memory
-    allocate(this%field1_fft(this%N_x_fft, this%N_y_fft))
-    allocate(this%field2_fft(this%N_x_fft, this%N_y_fft))
+    allocate(rf%field1_fft(rf%N_x_fft, rf%N_y_fft))
+    allocate(rf%field2_fft(rf%N_x_fft, rf%N_y_fft))
 
 #ifdef MKL_AVAILABLE
     if (present(comm)) then
-       this%comm = comm
+       rf%comm = comm
 
-       call MPI_Comm_split_type(this%comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, this%Node_Comm,ierror)
-       call MPI_Comm_size(this%Node_Comm, npes,ierror)
-       call MPI_Comm_rank(this%Node_Comm, rank, ierror)
+       call MPI_Comm_split_type(rf%comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, rf%Node_Comm,ierror)
+       call MPI_Comm_size(rf%Node_Comm, npes,ierror)
+       call MPI_Comm_rank(rf%Node_Comm, rank, ierror)
 
-
-       N1 = this%fft_lens(1)
-       N2 = this%fft_lens(2)
-
-       if (npes > minval([N1, N2]) ) then
+       if (npes > minval([Nx_fft, Ny_fft]) ) then
           print*, " Two many processors are acquired  in a node for parallel FFT"
-          print*, " The number of processors acquired in a node should be smaller than or equal to FFT grid size: ", minval([N1, N2]) 
-          call quit('Parallel FFT failed')
+          print*, " The number of processors acquired in a node should be smaller than or equal to FFT grid size: ", minval([Nx_fft, Ny_fft]) 
+          _FAIL('Parallel FFT failed')
        endif
 
-       call this%win_allocate(N1, N2)
+       call rf%win_allocate(Nx_fft, Ny_fft, _RC)
 
        ! distribution of the grid for fft
-       allocate(this%dim1_counts(npes),this%dim2_counts(npes))
-       local_dim1 = N1/npes
-       this%dim1_counts = local_dim1
-       remainer = mod(N1, npes)
-       this%dim1_counts(1:remainer) = local_dim1 + 1
-       local_dim1 = this%dim1_counts(rank+1) 
+       allocate(rf%dim1_counts(npes),rf%dim2_counts(npes))
+       local_dim1 = Nx_fft/npes
+       rf%dim1_counts = local_dim1
+       remainer = mod(Nx_fft, npes)
+       rf%dim1_counts(1:remainer) = local_dim1 + 1
+       local_dim1 = rf%dim1_counts(rank+1) 
 
-       local_dim2 = N2/npes
-       this%dim2_counts = local_dim2
-       remainer = mod(N2, npes)
-       this%dim2_counts(1:remainer) = local_dim2 + 1
-       local_dim2 = this%dim2_counts(rank+1)
+       local_dim2 = Ny_fft/npes
+       rf%dim2_counts = local_dim2
+       remainer = mod(Ny_fft, npes)
+       rf%dim2_counts(1:remainer) = local_dim2 + 1
+       local_dim2 = rf%dim2_counts(rank+1)
 
 
-       mklstat = DftiCreateDescriptor(this%Desc_Handle_Dim1, DFTI_SINGLE,&
-                                DFTI_COMPLEX, 1, N1 )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiCreate dim1 failed!')
-       mklstat = DftiCreateDescriptor(this%Desc_Handle_Dim2, DFTI_SINGLE,&
-                                DFTI_COMPLEX, 1, N2 )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiCreate dim2 failed!')
+       status = DftiCreateDescriptor(rf%Desc_Handle_Dim1, DFTI_SINGLE,&
+                                DFTI_COMPLEX, 1, Nx_fft )
+       _VERIFY(status)
+       status = DftiCreateDescriptor(rf%Desc_Handle_Dim2, DFTI_SINGLE,&
+                                DFTI_COMPLEX, 1, Ny_fft )
+       _VERIFY(status)
 
        ! perform local_dim2 one-dimensional transforms along 1st dimension
-       mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_NUMBER_OF_TRANSFORMS, local_dim2 )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue DFTI_NUMBER_OF_TRANSFORMS failed!')
-       mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_INPUT_DISTANCE, N1 )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue N1 failed!')
-       mklstat = DftiSetValue( this%Desc_Handle_Dim1, DFTI_OUTPUT_DISTANCE, N1 )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue N2 failed!')
-       mklstat = DftiCommitDescriptor( this%Desc_Handle_Dim1 )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiCommit dim1 failed!')
-       ! mklstat = DftiComputeForward( this%Desc_Handle_Dim1, X )
+       status = DftiSetValue( rf%Desc_Handle_Dim1, DFTI_NUMBER_OF_TRANSFORMS, local_dim2 )
+       _VERIFY(status)
+       status = DftiSetValue( rf%Desc_Handle_Dim1, DFTI_INPUT_DISTANCE, Nx_fft )
+       _VERIFY(status)
+       status = DftiSetValue( rf%Desc_Handle_Dim1, DFTI_OUTPUT_DISTANCE, Nx_fft )
+       _VERIFY(status)
+       status = DftiCommitDescriptor( rf%Desc_Handle_Dim1 )
+       _VERIFY(status)
+       ! status = DftiComputeForward( rf%Desc_Handle_Dim1, X )
        ! local_dim1 one-dimensional transforms along 2nd dimension
        Stride(1) = 0; Stride(2) = local_dim1
-       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_NUMBER_OF_TRANSFORMS, local_dim1)
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue local_dim1 failed!')
-       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_INPUT_DISTANCE, 1 )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue in distance failed!')
-       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_OUTPUT_DISTANCE, 1 )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue out distance failed!')
-       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_INPUT_STRIDES, Stride )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue in_stride failed!')
-       mklstat = DftiSetValue( this%Desc_Handle_Dim2, DFTI_OUTPUT_STRIDES, Stride )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiSetValue outstride failed!')
-       mklstat = DftiCommitDescriptor( this%Desc_Handle_Dim2 )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiCommit Dim2 failed!')
-       !mklstat = DftiComputeForward( this%Desc_Handle_Dim2, X )
+       status = DftiSetValue( rf%Desc_Handle_Dim2, DFTI_NUMBER_OF_TRANSFORMS, local_dim1)
+       _VERIFY(status)
+       status = DftiSetValue( rf%Desc_Handle_Dim2, DFTI_INPUT_DISTANCE, 1 )
+       _VERIFY(status)
+       status = DftiSetValue( rf%Desc_Handle_Dim2, DFTI_OUTPUT_DISTANCE, 1 )
+       _VERIFY(status)
+       status = DftiSetValue( rf%Desc_Handle_Dim2, DFTI_INPUT_STRIDES, Stride )
+       _VERIFY(status)
+       status = DftiSetValue( rf%Desc_Handle_Dim2, DFTI_OUTPUT_STRIDES, Stride )
+       _VERIFY(status)
+       status = DftiCommitDescriptor( rf%Desc_Handle_Dim2 )
+       _VERIFY(status)
+       !status = DftiComputeForward( rf%Desc_Handle_Dim2, X )
     else
-       this%comm = MPI_COMM_NULL
+       rf%comm = MPI_COMM_NULL
        ! allocate mem and init mkl dft
-       mklstat = DftiCreateDescriptor(this%Desc_Handle, DFTI_SINGLE, DFTI_COMPLEX, 2, this%fft_lens)
-       if (mklstat/=DFTI_NO_ERROR) call quit('DftiCreateDescriptor failed!')
+       status = DftiCreateDescriptor(rf%Desc_Handle, DFTI_SINGLE, DFTI_COMPLEX, 2, [Nx_fft, Ny_fft])
+       _VERIFY(status)
 
        ! initialize for actual dft computation
-       mklstat = DftiCommitDescriptor(this%Desc_Handle)
-       if (mklstat/=DFTI_NO_ERROR) call quit('DftiCommitDescriptor failed!')
+       status = DftiCommitDescriptor(rf%Desc_Handle)
+       _VERIFY(status)
     endif
 #endif
-
-  end subroutine initialize
+    _RETURN(_SUCCESS)
+  end function new_random_fields
 
 
 
   ! destructor - deallocate memory
-  subroutine finalize(this)
+  subroutine finalize(this, rc)
 
     ! input/output variables
     class(random_fields), intent(inout) :: this
-
+    integer, optional, intent(out) :: rc
     ! local variable
-    integer :: mklstat
+    integer :: status
 
     ! deallocate memory
     if(allocated(this%field1_fft)) deallocate(this%field1_fft)
@@ -220,60 +215,22 @@ contains
 
 #ifdef MKL_AVAILABLE
     if (this%comm == MPI_COMM_NULL) then
-       mklstat = DftiFreeDescriptor(this%Desc_Handle)
-       if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor failed!')
+       status = DftiFreeDescriptor(this%Desc_Handle)
+       _VERIFY(status)
     else
 
-       mklstat = DftiFreeDescriptor(this%Desc_Handle_dim1)
-       if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor dim1 failed!')
-       mklstat = DftiFreeDescriptor(this%Desc_Handle_dim2)
-       if (mklstat/=DFTI_NO_ERROR) call quit('DftiFreeDescriptor dim2 failed!')
+       status = DftiFreeDescriptor(this%Desc_Handle_dim1)
+       _VERIFY(status)
+       status = DftiFreeDescriptor(this%Desc_Handle_dim2)
+       _VERIFY(status)
 
-       call this%win_deallocate()
+       call this%win_deallocate( _RC)
 
        deallocate(this%dim1_counts, this%dim2_counts)
     endif
 #endif
 
   end subroutine finalize
-
-
-
-  ! calculate fft grid (N_x_fft, N_y_fft) that extends
-  ! beyond the desired random field by about two correlation
-  ! lengths. its dimensions should be powers of 2
-  subroutine calc_fft_grid(this)
-
-    ! input/output variables
-    class(random_fields), intent(inout) :: this
-
-    ! local variables
-    real, parameter :: mult_of_xcorr = 2.
-    real, parameter :: mult_of_ycorr = 2.
-    integer :: Nx_fft, Ny_fft
-
-    ! add minimum required correlation lengths 
-    Nx_fft = this%N_x + ceiling(mult_of_xcorr*this%lx/this%dx)
-    Ny_fft = this%N_y + ceiling(mult_of_ycorr*this%ly/this%dy)
-
-    ! ensure N_x_fft, N_y_fft are powers of two
-    this%N_x_fft = 2**ceiling(log(real(Nx_fft))/log(2.))
-    this%N_y_fft = 2**ceiling(log(real(Ny_fft))/log(2.))
-
-#if TEST_RFG2D
-    write (*,*)
-    write (*,*) 'desired random field:'
-    write (*,*) 'N_x   = ', this%N_x, ' N_y   = ', this%N_y
-    write (*,*) 'dx    = ', this%dx,  ' dy    = ', this%dy
-    write (*,*) 'xcorr = ', this%lx,  ' ycorr = ', this%ly
-    write (*,*)
-    write (*,*) 'grid used for fft: '
-    write (*,*) 'N_x_fft = ', this%N_x_fft,  ' N_y_fft = ', this%N_y_fft
-    write (*,*)
-#endif
-
-  end subroutine calc_fft_grid
-
 
 
   ! subroutine sqrt_gauss_spectrum_2d()
@@ -307,24 +264,26 @@ contains
   !  lambda_y : decorrelation length in y direction
   !
   ! modifies this%field1_fft
-  subroutine sqrt_gauss_spectrum_2d(this)
+  subroutine sqrt_gauss_spectrum_2d(this, lx, ly, dx, dy)
 
     ! input/output variables
     class(random_fields), intent(inout) :: this
+    real, intent(in) :: lx, ly, dx, dy
 
     ! local variables
     real :: dkx, dky, fac, lamx2dkx2, lamy2dky2
     real :: lx2kx2(this%N_x_fft), ly2ky2(this%N_y_fft)
     integer :: i, j, i1, i2, rank, ierror
-
+    real :: var
+    var = 1.0
     ! start
-    dkx = (TWO_PI)/(float(this%N_x_fft)*this%dx)
-    dky = (TWO_PI)/(float(this%N_y_fft)*this%dy)
+    dkx = (TWO_PI)/(float(this%N_x_fft)*dx)
+    dky = (TWO_PI)/(float(this%N_y_fft)*dy)
 
     ! factor includes sqrt of volume element of ifft integral
-    fac = sqrt(this%var*this%lx*this%ly/(TWO_PI)*dkx*dky )
-    lamx2dkx2 = this%lx*this%lx*dkx*dkx
-    lamy2dky2 = this%ly*this%ly*dky*dky
+    fac = sqrt(var*lx*ly/(TWO_PI)*dkx*dky )
+    lamx2dkx2 = lx*lx*dkx*dkx
+    lamy2dky2 = ly*ly*dky*dky
 
     ! precompute (lambda_x*k_x)^2 in "wrap-around"
     ! order suitable for CXML fft
@@ -416,12 +375,13 @@ contains
   !       The individual sample variances within each pair vary from 
   !       realization to realization.
   !
-  subroutine rfg2d_fft(this, rseed, rfield, rfield2)
+  subroutine rfg2d_fft(this, rseed, rfield, rfield2, lx, ly, dx, dy)
 
     ! input/output variables
     class(random_fields), intent(inout) :: this ! ffield*_fft is modified
     integer, intent(inout) :: rseed(NRANDSEED) ! nr_ran2 modifies rseed
     real, dimension(this%N_x,this%N_y), intent(out) :: rfield, rfield2
+    real, intent(in) :: lx, ly, dx, dy
 
     ! local variables
     !real :: theta, ran_num ! rng
@@ -431,7 +391,7 @@ contains
     integer :: N_x_fft, N_y_fft
     real :: N_xy_fft_real
 #ifdef MKL_AVAILABLE
-    integer :: mklstat
+    integer :: status
     complex, allocatable :: z_inout(:)
     complex, pointer :: tmp_field(:,:)
     complex, pointer :: tmp_field_dim1(:,:)
@@ -451,7 +411,7 @@ contains
     ! compute dZ = H * exp(i*theta) * sqrt(d2k)     
     ! start with square root of spectrum (factor H*sqrt(d2k)), put into field1
     ! modify this%field1_fft
-    call this%sqrt_gauss_spectrum_2d
+    call this%sqrt_gauss_spectrum_2d(lx, ly, dx, dy)
 
     ! multiply by random phase angle
    !! do j=1,N_y_fft
@@ -508,8 +468,8 @@ contains
 
        ! compute in-place backward transform (scale=1)
        ! NOTE: MKL backward transform is the same as NR forward transform
-       mklstat = DftiComputeBackward(this%Desc_Handle, z_inout)
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiComputeBackward failed!')
+       status = DftiComputeBackward(this%Desc_Handle, z_inout)
+       if (status/= DFTI_NO_ERROR) call quit('DftiComputeBackward failed!')
 
        ! extract random fields from z_inout
        z_inout = z_inout/N_xy_fft_real
@@ -532,8 +492,8 @@ contains
        tmp_field_dim1 = cmplx(this%field1_fft(n1:n2,:),this%field2_fft(n1:n2,:))
        cptr = c_loc(tmp_field_dim1(1,1))
        call c_f_pointer (cptr, X, [ldim1*N_y_fft])
-       mklstat = DftiComputeBackward( this%Desc_Handle_Dim2, X )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiComputeBackward dim2 failed!')
+       status = DftiComputeBackward( this%Desc_Handle_Dim2, X )
+       if (status/= DFTI_NO_ERROR) call quit('DftiComputeBackward dim2 failed!')
        call MPI_Barrier(this%node_comm, ierror)
        tmp_field(n1:n2,:) = tmp_field_dim1
 
@@ -546,8 +506,8 @@ contains
        tmp_field_dim2 = tmp_field(:,n1:n2)
        cptr = c_loc(tmp_field_dim2(1,1))
        call c_f_pointer (cptr, X, [N_x_fft*ldim2])
-       mklstat = DftiComputeBackward( this%Desc_Handle_Dim1, X )
-       if (mklstat/= DFTI_NO_ERROR) call quit('DftiComputeBackward dim1 failed!')
+       status = DftiComputeBackward( this%Desc_Handle_Dim1, X )
+       if (status/= DFTI_NO_ERROR) call quit('DftiComputeBackward dim1 failed!')
        tmp_field(:,n1:n2) = tmp_field_dim2/N_xy_fft_real
        
        call MPI_Win_fence(0, this%win, ierror)
@@ -646,8 +606,6 @@ contains
     end if
 
   end subroutine generate_white_field
-  
-
 
   ! a local, small stop routine
   subroutine quit(message)
@@ -661,9 +619,10 @@ contains
     
   end subroutine quit
 
-  subroutine win_allocate(this, nx, ny)
+  subroutine win_allocate(this, nx, ny, rc)
      class(random_fields), intent(inout) :: this
      integer, intent(in) :: nx, ny
+     integer, optional, intent(out) :: rc
      complex :: dummy
      integer(kind=MPI_ADDRESS_KIND) :: windowsize
      integer :: disp_unit,status, Rank
@@ -677,117 +636,142 @@ contains
      disp_unit  = 4
      call MPI_Win_allocate_shared(windowsize, disp_unit, MPI_INFO_NULL, this%node_comm, &
               this%base_address, this%win, status)
-
+     _VERIFY(status)
      if (rank /=0)  CALL MPI_Win_shared_query(this%win, 0, windowsize, disp_unit, this%base_address, status)
      call MPI_Win_fence(0, this%win, status)
+     _VERIFY(status)
      call MPI_Barrier(this%node_comm, status)
+     _VERIFY(status)
+     _RETURN(_SUCCESS)
   end subroutine win_allocate
 
-  subroutine win_deallocate(this)
+  subroutine win_deallocate(this, rc)
      class(random_fields), intent(inout) :: this
+     integer, optional, intent(out) :: rc
      integer :: status
      call MPI_Win_fence(0, this%win, status)
-     call MPI_Win_free(this%win,status)
+     _VERIFY(status)
+     call MPI_Win_free(this%win, status)
+     _VERIFY(status)
      call MPI_comm_free(this%node_comm, status)
+     _VERIFY(status)
 
   end subroutine win_deallocate
   
-end module random_fields_class
+end module Random_fieldsMod
 
+module StringRandom_fieldsMapMod
+   use Random_fieldsMod
+
+#include "types/key_deferredLengthString.inc"
+#define _value type (random_fields)
+#define _value_equal_defined
+
+#define _map StringRandom_fieldsMap
+#define _iterator StringRandom_fieldsMapIterator
+
+#define _alt
+
+#include "templates/map.inc"
+
+#undef _alt
+#undef _iterator
+#undef _map
+#undef _value
+#undef _key
+#undef _value_equal_defined
+end module StringRandom_fieldsMapMod
 
 
 #ifdef TEST_RFG2D
 
-program test_rfg2d
-  
-  use random_fields_class
-  use nr_ran2_gasdev
-  
-  implicit none
-  
-  integer :: N_x, N_y, i, j, n_e, N_e_tot
-  real :: dx, dy, lx, ly, var
-  real, allocatable, dimension(:,:) :: field1, field2
-  
-  character(300) :: file_name
-  character(10)  :: n_e_string
-  character(100) :: output_format
-  character(10)  :: tmp_string
-
-  integer :: RSEEDCONST
-  integer, dimension(NRANDSEED) :: rseed
-  
-  character(5) :: fft_tag
-    
-  ! instance of random_fields
-  type(random_fields) :: rf
-
-  ! start
-  RSEEDCONST = -777
-  rseed(1) = RSEEDCONST
-  write (*,*) RSEEDCONST
-  call init_randseed(rseed)
-
-  N_x = 144
-  N_y = 91
-  dx = 5000.
-  dy = 5000.
-  lx = 45000.
-  ly = 45000.
-  var = 1.
-  
-  
-  allocate(field1(N_x,N_y))
-  allocate(field2(N_x,N_y))
-  
-#ifdef MKL_AVAILABLE
-  fft_tag = 'mklx.'
-#else
-  fft_tag = 'nrxx.'
-#endif
-
-  ! get N_e fields
-  N_e_tot = 10
-  do n_e=1,N_e_tot,2
-
-     call rf%initialize(N_x, N_y, var, lx, ly, dx, dy)
-     call rf%rfg2d_fft(rseed, field1, field2)
-     !call rf%generate_white_field(rseed, field1)
-     call rf%finalize
-      
-     ! write to file
-     ! field1
-     write(n_e_string,  '(i3.3)') n_e
-     file_name = 'rf.'//fft_tag// n_e_string(1:len_trim(n_e_string)) // '.dat'
-     write(tmp_string, '(i3.3)') N_y
-     output_format = '(' // tmp_string(1:len_trim(tmp_string)) // '(1x,e13.5))'
-     open (10,file=file_name,status='unknown')
-     do i=1,N_x
-        write (10,output_format(1:len_trim(output_format))) (field1(i,j), j=1,N_y)
-     end do
-     close (10,status='keep')
-
-     ! field2
-     write(n_e_string,  '(i3.3)') n_e+1
-     file_name = 'rf.' //fft_tag// n_e_string(1:len_trim(n_e_string)) // '.dat'
-     write(tmp_string, '(i3.3)') N_y
-     output_format = '(' // tmp_string(1:len_trim(tmp_string)) // '(1x,e13.5))'
-     open (10,file=file_name,status='unknown')
-     do i=1,N_x
-        write (10,output_format(1:len_trim(output_format))) (field2(i,j), j=1,N_y)
-     end do
-     close (10,status='keep')
-     
-  end do
-
-end program test_rfg2d
+!program test_rfg2d
+!  
+!  use Random_fieldsMod
+!  use nr_ran2_gasdev
+!  
+!  implicit none
+!  
+!  integer :: N_x, N_y, i, j, n_e, N_e_tot
+!  real :: dx, dy, lx, ly, var
+!  real, allocatable, dimension(:,:) :: field1, field2
+!  
+!  character(300) :: file_name
+!  character(10)  :: n_e_string
+!  character(100) :: output_format
+!  character(10)  :: tmp_string
+!
+!  integer :: RSEEDCONST
+!  integer, dimension(NRANDSEED) :: rseed
+!  
+!  character(5) :: fft_tag
+!    
+!  ! instance of random_fields
+!  type(random_fields) :: rf
+!
+!  ! start
+!  RSEEDCONST = -777
+!  rseed(1) = RSEEDCONST
+!  write (*,*) RSEEDCONST
+!  call init_randseed(rseed)
+!
+!  N_x = 144
+!  N_y = 91
+!  dx = 5000.
+!  dy = 5000.
+!  lx = 45000.
+!  ly = 45000.
+!  var = 1.
+!  
+!  
+!  allocate(field1(N_x,N_y))
+!  allocate(field2(N_x,N_y))
+!  
+!#ifdef MKL_AVAILABLE
+!  fft_tag = 'mklx.'
+!#else
+!  fft_tag = 'nrxx.'
+!#endif
+!
+!  ! get N_e fields
+!  N_e_tot = 10
+!  do n_e=1,N_e_tot,2
+!
+!     rf = random_fields(N_x, N_y, Nx_fft, Ny_fft)
+!     call rf%rfg2d_fft(rseed, field1, field2, lx, ly, dx, dy)
+!     !call rf%generate_white_field(rseed, field1)
+!     call rf%finalize
+!      
+!     ! write to file
+!     ! field1
+!     write(n_e_string,  '(i3.3)') n_e
+!     file_name = 'rf.'//fft_tag// n_e_string(1:len_trim(n_e_string)) // '.dat'
+!     write(tmp_string, '(i3.3)') N_y
+!     output_format = '(' // tmp_string(1:len_trim(tmp_string)) // '(1x,e13.5))'
+!     open (10,file=file_name,status='unknown')
+!     do i=1,N_x
+!        write (10,output_format(1:len_trim(output_format))) (field1(i,j), j=1,N_y)
+!     end do
+!     close (10,status='keep')
+!
+!     ! field2
+!     write(n_e_string,  '(i3.3)') n_e+1
+!     file_name = 'rf.' //fft_tag// n_e_string(1:len_trim(n_e_string)) // '.dat'
+!     write(tmp_string, '(i3.3)') N_y
+!     output_format = '(' // tmp_string(1:len_trim(tmp_string)) // '(1x,e13.5))'
+!     open (10,file=file_name,status='unknown')
+!     do i=1,N_x
+!        write (10,output_format(1:len_trim(output_format))) (field2(i,j), j=1,N_y)
+!     end do
+!     close (10,status='keep')
+!     
+!  end do
+!
+!end program test_rfg2d
 
 
 #endif
 
 
 ! ======= EOF ==================================================
-
-
-
 

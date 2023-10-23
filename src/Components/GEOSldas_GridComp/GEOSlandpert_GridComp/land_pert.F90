@@ -37,7 +37,8 @@ module land_pert_routines
        NRANDSEED,                                 &
        init_randseed
 
-  use random_fields_class
+  use Random_FieldsMod
+  use StringRandom_fieldsMapMod
 
   use nr_jacobi,                        ONLY:     &
        jacobi
@@ -50,7 +51,8 @@ module land_pert_routines
        LDAS_GENERIC_ERROR
 
   use LDAS_ensdrv_Globals, only: root_logit, logunit
-    
+
+  use MAPL    
   implicit none
   
   ! everything is private by default unless made public
@@ -62,8 +64,11 @@ module land_pert_routines
   public :: assemble_forcepert_param
   public :: get_sqrt_corr_matrix
   public :: get_init_Pert_rseed
+  public :: clear_rf
 
   ! **********************************************************************
+
+  type(StringRandom_fieldsMap) :: random_fieldsMap
 
 contains
   
@@ -450,7 +455,7 @@ contains
     !
     ! ----------------------
 
-    integer :: i, j, m, n, rNlon, rNlat, xStride, yStride, imax, jmax
+    integer :: i, j, m, n, Nx, Ny, Nx_fft, Ny_fft, xStride, yStride, imax, jmax
 
     real    :: cc, dd, xCorr, yCorr, tCorr, tmpReal, rdlon, rdlat
 
@@ -462,7 +467,8 @@ contains
 
     integer :: tmpInt, xstart, xend, ystart, yend
 
-    type(random_fields) :: rf
+    type(random_fields), pointer :: rf
+
     type(ESMF_VM) :: vm
     integer :: mpicomm, status  
 
@@ -501,35 +507,10 @@ contains
        ! get grid parameters for generation of new random fields on 
        ! possibly coarsened grid
 
-       if (pert_param(m)%coarsen) then
-
-          xStride = max( 1, floor(coarsen_param * xCorr / pert_grid_f%dlon) )
-          yStride = max( 1, floor(coarsen_param * yCorr / pert_grid_f%dlat) )
-
-          ! NOTE: Latitude spacing is undefined for *local* EASE grids!
-
-       else
-
-          xStride = 1
-          yStride = 1
-
-       end if
-
-       rdlon = real(xStride)*pert_grid_f%dlon
-       rdlat = real(yStride)*pert_grid_f%dlat
-
-       ! NOTE: number of grid cells of coarsened grid might not evenly divide 
-       ! that of pert_grid_f
-
-       rNlon = pert_grid_f%N_lon / xStride
-       rNlat = pert_grid_f%N_lat / yStride
-
-       if (mod(pert_grid_f%N_lon,xStride)>0) rNlon = rNlon + 1
-       if (mod(pert_grid_f%N_lat,yStride)>0) rNlat = rNlat + 1
+       call calc_fft_grid(pert_param(m), pert_grid_f, Nx, Ny, Nx_fft, Ny_fft, xStride, yStride, rdlon, rdlat)
 
        ptr2rfield  => rfield( 1:pert_grid_f%N_lon:xStride,1:pert_grid_f%N_lat:yStride)
        ptr2rfield2 => rfield2(1:pert_grid_f%N_lon:xStride,1:pert_grid_f%N_lat:yStride)
-
 
        ! generate new random fields and propagate AR(1)
        !
@@ -546,9 +527,9 @@ contains
        ! this needs to be done for each pert field
 #ifdef MKL_AVAILABLE      
        ! W.J Note: hardcoded comm = mpicomm to activate parallel fft
-       call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat, comm=mpicomm )
+       rf => find_rf(Nx, Ny, Nx_fft, Ny_fft, comm=mpicomm )
 #else
-       call rf%initialize(rNlon, rNlat, 1., xCorr, yCorr, rdlon, rdlat )
+       rf => find_rf(Nx, Ny, Nx_fft, Ny_fft)
 #endif
 
        do n=1,N_ens
@@ -559,14 +540,13 @@ contains
 
              call rf%generate_white_field(Pert_rseed(:,n), ptr2rfield)
 
-
           else       ! spatially correlated random fields
 
              ! NOTE: rfg2d_fft() relies on CXML math library (22 Feb 05)
              ! rfg2d_fft() now relies on Intel MKL (19 Jun 13)
 
              if (.not. stored_field) then
-                call rf%rfg2d_fft(Pert_rseed(:,n), ptr2rfield, ptr2rfield2)
+                call rf%rfg2d_fft(Pert_rseed(:,n), ptr2rfield, ptr2rfield2, xCorr, yCorr, rdlon, rdlat)
                 stored_field = .true.
              else
                 rfield = rfield2
@@ -632,12 +612,55 @@ contains
        end do ! n=1,N_ens
 
        ! finalize rf
-       call rf%finalize
+       ! The rf map will be destroy in the finalize of GEOSLandperp_Gridcomp
+       !call rf%finalize
 
     end do ! m=1,N_pert
 
   end subroutine propagate_pert
 
+  subroutine calc_fft_grid(pert_param, pert_grid_f, Nx, Ny, N_x_fft, N_y_fft, xStride, yStride, rdlon, rdlat) 
+    type(pert_param_type), intent(in) :: pert_param
+    type(grid_def_type), intent(in)   :: pert_grid_f
+    integer, intent(out) :: Nx, Ny, N_x_fft, N_y_fft, xStride, yStride
+    real, intent(out)    :: rdlon, rdlat
+
+    integer :: Nx_fft, Ny_fft
+    real, parameter :: mult_of_xcorr = 2.
+    real, parameter :: mult_of_ycorr = 2.
+    real, parameter :: coarsen_param = 0.8
+    real :: xCorr, yCorr
+
+    xCorr = pert_param%xcorr
+    yCorr = pert_param%ycorr
+
+    xStride = 1
+    yStride = 1
+    if (pert_param%coarsen) then
+       xStride = max( 1, floor(coarsen_param * xCorr / pert_grid_f%dlon) )
+       yStride = max( 1, floor(coarsen_param * yCorr / pert_grid_f%dlat) )
+    endif
+    rdlon = real(xStride)*pert_grid_f%dlon
+    rdlat = real(yStride)*pert_grid_f%dlat
+
+    ! NOTE: number of grid cells of coarsened grid might not evenly divide 
+    ! that of pert_grid_f
+
+    Nx = pert_grid_f%N_lon / xStride
+    Ny = pert_grid_f%N_lat / yStride
+
+    if (mod(pert_grid_f%N_lon,xStride)>0) Nx = Nx + 1
+    if (mod(pert_grid_f%N_lat,yStride)>0) Ny = Ny + 1
+  
+    ! add minimum required correlation lengths 
+    Nx_fft = Nx + ceiling(mult_of_xcorr*xCorr/rdlon)
+    Ny_fft = Ny + ceiling(mult_of_ycorr*yCorr/rdlat)
+       
+    ! ensure N_x_fft, N_y_fft are powers of two
+    N_x_fft = 2**ceiling(log(real(Nx_fft))/log(2.))
+    N_y_fft = 2**ceiling(log(real(Ny_fft))/log(2.))
+
+  end subroutine
   ! ******************************************************************
   
   subroutine truncate_std_normal( N_x, N_y, std_normal_max, grid_data )
@@ -1238,7 +1261,40 @@ contains
   end subroutine get_sqrt_corr_matrix
   
   ! ************************************************************************
-  
+
+  function find_rf(Nx, Ny, Nx_fft, Ny_fft, comm) result (rf)
+    type(random_fields), pointer :: rf 
+    integer, intent(in) :: Nx, Ny, Nx_fft, Ny_fft
+    integer, optional, intent(in) :: comm
+
+    type(StringRandom_fieldsMapIterator) :: iter
+    Character(len=:), allocatable :: id_string
+    type(random_fields) :: rf_tmp
+
+    id_string = i_to_string(Nx)//":"//i_to_string(Ny)//":"//i_to_string(Nx_fft)//":"//i_to_string(Ny_fft)
+    iter = random_fieldsMap%find(id_string)
+    if (iter == random_fieldsMap%end() ) then
+      rf_tmp = random_fields(Nx, Ny, Nx_fft, Ny_fft, comm=comm)
+      call random_fieldsMap%insert(id_string, rf_tmp)
+      iter = random_fieldsMap%find(id_string) 
+    endif
+    rf => iter%value()
+
+  end function
+
+  subroutine clear_rf()
+    type(StringRandom_fieldsMapIterator) :: iter     
+    type(random_fields), pointer :: rf_ptr 
+    iter = random_fieldsMap%begin()
+    do while (iter /= random_fieldsMap%end())
+      rf_ptr => iter%value()
+      call rf_ptr%finalize()
+      ! remove the files
+      call random_fieldsMap%erase(iter)
+      iter = random_fieldsMap%begin()
+    enddo
+  end subroutine
+
 end module land_pert_routines
 
 ! ***************************************************************************

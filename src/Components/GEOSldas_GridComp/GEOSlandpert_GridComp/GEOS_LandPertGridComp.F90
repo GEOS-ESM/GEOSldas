@@ -24,7 +24,7 @@ module GEOS_LandPertGridCompMod
   use LDAS_TileCoordType, only: tile_coord_type
   use LDAS_TileCoordType, only: T_TILECOORD_STATE
   use LDAS_TileCoordType, only: TILECOORD_WRAP
-  use land_pert_routines, only: get_pert, propagate_pert
+  use land_pert_routines, only: get_pert, propagate_pert, clear_rf
   use land_pert_routines, only: get_init_pert_rseed
   use LDAS_PertRoutinesMod, only: apply_pert
   use LDAS_PertRoutinesMod, only: get_force_pert_param
@@ -2807,6 +2807,7 @@ contains
        VERIFY_(status)
     end if
 
+    call clear_rf()
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
     VERIFY_(status)
