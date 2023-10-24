@@ -4590,539 +4590,12 @@ contains
 
 
   ! *****************************************************************
-  
-  subroutine read_MODISscf_hdf( N_files, date_time, N_data, fnames, &
-       MODIS_lon, MODIS_lat, MODIS_SCF)
-    
-    ! Purpose: read preprocessed (renamed) snow cover data from daily MODIS Terra MOD10C1, version 6.1 (https://nsidc.org/data/mod10c1/versions/61) 
-    !   - Data currently located at /discover/nobackup/projects/S2SHMA/MODIS/MOD10C1_V61/ (2010-2022)
-    !   - Daily dataset with spatial resolution of 0.05 deg on CMG grid, missing days 2016 d. 50-58
-    ! 
-    ! Procedures:
-    !   - dtstep_assim and ref_time is restricted to 3 hr and 00z, respectively
-    !   - Generate the latitude and longitude on CMG grid
-    !   - Select longitude band considering MODIS observation time (local time: ~10:30am)     ! HARDWIRED OVERPASS TIME, WHAT ABOUT AQUA !?!?!!?!?!?!?!
-    !
-    ! Table. Longitude band based on the assimilation time step (in UTC) 
-    !-----------------------------------------------------------------------------
-    ! UTC | 0000    | 0300   | 0600  | 0900 | 1200 | 1500   | 1800    | 2100    
-    ! lon | 135 180 | 90 135 | 45 90 | 0 45 | -45 0| -90 -45| -135 -90| -180 -135
-    !-----------------------------------------------------------------------------
-    !
-    ! QC: 
-    ! - Use Day_CMG_Snow_Cover      <= 100 (snow cover only) 
-    ! - Use Day_CMG_Clear_Index     >  20% (at least 20% clear sky)
-    ! - Use Day_CMG_Cloud_Obscured  /= 252 (remove Antarctica, not technically needed because this would be done by Snow_Spatial_QA) 
-    ! - Use Snow_Spatial_QA         <=   2 (use "best", "good", "ok"; exclude "poor", "other", etc)
-
-    implicit none
-
-    integer,                          intent(in) :: N_files
-    type(date_time_type),             intent(in) :: date_time  ! need UTC hour to constrain longitude of MODIS obs
-    character(*), dimension(N_files), intent(in) :: fnames
-
-    integer,                         intent(out) :: N_data 
- 
-    real, dimension(:),                  pointer :: MODIS_lon, MODIS_lat, MODIS_SCF   ! output
-
-    ! locals
-    
-    real,         dimension(:),      allocatable :: SCF_raw, SCF_tmp, lon_tmp, lat_tmp
- 
-    character(1), dimension(:,:),    allocatable :: tmp_MODIS_SCF, tmp_CI_Index, tmp_Cloud_index, tmp_Snow_QA
- 
-    ! local parameters
-
-    integer,                            parameter:: N_fields    = 4 
-    character(18),                      parameter:: Vdata_name  = 'MODIS_CMG_Snow_5km'
-    character(30), dimension(N_fields), parameter:: field_names = (/                         &
-         'Day_CMG_Snow_Cover            ',                                                   &   ! 1
-         'Day_CMG_Clear_Index           ',                                                   &   ! 2
-         'Day_CMG_Cloud_Obscured        ',                                                   &   ! 3
-         'Snow_Spatial_QA               '/)                                                      ! 4
-    
-    integer,                           parameter :: nodata = -9999 
- 
-    integer,                           parameter :: qc_snow_cover_min   =   0  ! any negative value is no-data
-    integer,                           parameter :: qc_snow_cover_max   = 100  ! screen for areas inland water, ocean, cloud obscured and fill
-    integer,                           parameter :: qc_clear_index_min  =  20  ! screen for sufficiently clear condition
-    integer,                           parameter :: qc_clear_index_max  = 100  ! screen for lake ice, night, inland water, ocean, etc     
-    integer,                           parameter :: qc_antarctica       = 252  ! screen for antarctica 
-    integer,                           parameter :: qc_snow_spatial_max =   2  ! screen for basic data quality (0=best, 1=good, 2=OK, 3=poor, 4=other) 
- 
-    ! hdf functions
-
-    integer:: sfstart, sffinfo, sfselect, sfn2index, sfginfo, sfrdata
-    integer:: sfend, sfendacc
-
-    ! hdf-related parameters and variables
-
-    integer, dimension(N_files)  :: file_id, sd_id
-    integer, dimension(N_fields) :: ind, sds_id
-    integer                      :: n_datasets, n_file_attrs, n_attrs, rank, data_type 
-    integer                      :: dim_sizes(2)
-    integer                      :: start(2), edges(2), stride(2)
-    character(100)               :: var_name
-
-    integer                      :: status
-    
-    integer,           parameter :: DFACC_READ     =  1 ! from hdf.inc
-    integer,           parameter :: DFNT_UINT8     = 21
-    integer,           parameter :: FULL_INTERLACE =  0 ! from hdf.inc
- 
-    logical                      :: keep_data
-
-    ! variables to define latitude and longitude    
-
-    integer                     :: i, j, k, k_off, ll, mm, kk, L
-    integer                     :: time_index
-
-    real,             parameter :: bin_size = 0.05
-    integer,          parameter :: XGRID    = 3600
-    integer,          parameter :: YGRID    = 7200
-
-    integer, dimension(N_files) :: N_data_tmp
-
-    real                        :: lat_ind(XGRID) = (/(ll, ll=0, XGRID-1, 1)/)
-    real                        :: lon_ind(YGRID) = (/(mm, mm=0, YGRID-1, 1)/)
-    real,      dimension(XGRID) :: lat_c(XGRID)
-    real,      dimension(YGRID) :: lon_c(YGRID)
-    real,dimension(XGRID*YGRID) :: lat_1D, lon_1D
-    real                        :: lon_subtime(9) = (/(kk, kk=180, -180, -45)/)
-     
-    integer, dimension(:), allocatable :: Snow_QA, CI_Index, Cloud_Index 
-    character(len=*),        parameter :: Iam = 'read_MODISscf_hdf'
-    character(len=400)                 :: err_msg
-
-    ! -------------------------------------------------------------------------
-
-    ! initialize N_data
-
-    N_data_tmp(N_files) = XGRID*YGRID      !?!?!?! WHY ONLY FOR LAST ELEMENT????
-    N_data              = XGRID*YGRID 
-
-    ! Define latitude and longitude 
-    !
-    ! VERIFY THAT lat/lon DEFINITION HERE IS CONSISTENT WITH lat/lon STORED IN FILE ?????
-    ! PER FILE SPECS: 
-    !   Lat = Upper left X coordinate for each grid cell in degrees north
-    !   Lon = Upper left Y coordinate for each grid cell in degrees east
-
-    lat_c   = (  90-bin_size/2)-bin_size*lat_ind       
-    lon_c   = (-180+bin_size/2)+bin_size*lon_ind
-
-    ! Create a 1D structure for lat and lon (could change to remove this)
-
-    do i=1,7200
-
-      lat_1D(3600*(i-1)+1:3600*i)= lat_c        
-      lon_1D(3600*(i-1)+1:3600*i)= lon_c(i)
-
-    end do 
-
-    ! Ensure output pointers are not allocated (must be deallocated outside this subroutine)
-
-    if ( associated(MODIS_lon) .or. associated(MODIS_lat) .or. associated(MODIS_SCF) ) then 
-
-       err_msg = 'output pointers must not be associated/allocated on input.'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       
-    end if
-    
-    ! Allocate SCF and QC vectors
-
-    allocate(SCF_raw(    N_data))    
-    allocate(CI_Index(   N_data))
-    allocate(Snow_QA(    N_data))
-    allocate(Cloud_Index(N_data))
-
-    ! read hdf data into arrays, concatenate data from N_files files   !?!?!?!?! NOT HAPPENING...
-    
-    k_off = 0
-    
-    do j=1,N_files
-       
-       ! open and start "hdf file"        
-
-       sd_id(j) = sfstart(fnames(j), DFACC_READ)
-       
-       !if (logit) write (logunit,*), 'sd_id:' , sd_id(j)
-       
-       status  = sffinfo( sd_id(j), n_datasets, n_file_attrs )
-       
-       do i=1,N_fields
-          
-          ind(i)    = sfn2index(sd_id(j),  trim(field_names(i)))
-          sds_id(i) = sfselect( sd_id(j),  ind(i))
-          
-          status    = sfginfo(  sds_id(i), var_name, rank, dim_sizes, data_type, n_attrs )
-          
-          start(1)   = 0
-          start(2)   = 0
-          edges(1)   = dim_sizes(1)
-          edges(2)   = dim_sizes(2)
-          stride(1)  = 1
-          stride(2)  = 1
-          
-          ! read 2-dim data and convert to 1-dim arrays   (!?!?!?!? WOULD MAKE SENSE IF CONCATENATING DATA FROM MULTIPLE FILES)
-
-          select case (i)
-             
-          case (1)  ! Observed SCF (in percent)
-
-             allocate(tmp_MODIS_SCF(dim_sizes(1),dim_sizes(2)))
-             status = sfrdata(sds_id(i), start, stride, edges, tmp_MODIS_SCF)
-             
-             L=0
-             do k=1,YGRID
-                do kk=1,XGRID
-                   L=L+1
-                   SCF_raw(L) = ichar(tmp_MODIS_SCF(k,kk))      !  !?!?!?!!? ichar()???  GNU manual: ICHAR(C) returns the code for the character in the first character position of C in the system’s native character set. The correspondence between characters and their codes is not necessarily the same across different GNU Fortran implementations.
-                end do
-                
-             end do
-             
-          case (2)  ! Clear Index
-
-             allocate(tmp_CI_Index(dim_sizes(1),dim_sizes(2)))
-             status = sfrdata(sds_id(i), start, stride, edges, tmp_CI_Index)
-             
-             L=0
-             do k=1,YGRID
-                do kk=1,XGRID
-                   L=L+1
-                   CI_Index(L) = ichar(tmp_CI_index(k,kk))
-                end do
-                
-             end do
-             
-          case (3)  ! Cloud Index   
-
-             allocate(tmp_Cloud_Index(dim_sizes(1),dim_sizes(2))) 
-             status = sfrdata(sds_id(i), start, stride, edges, tmp_Cloud_Index)
-             
-             L=0
-             do k=1,YGRID
-                do kk=1,XGRID
-                   L = L+1
-                   Cloud_Index(L) = ichar(tmp_Cloud_Index(k,kk))
-                end do
-                
-             end do
-             
-          case (4)  ! Snow_QA
-             
-             allocate(tmp_Snow_QA(dim_sizes(1),dim_sizes(2)))
-             status = sfrdata(sds_id(i), start, stride, edges, tmp_Snow_QA)
-             
-             L=0
-             do k=1,YGRID
-                do kk=1,XGRID
-                   L = L+1
-                   Snow_QA(L) = ichar(tmp_Snow_QA(k,kk))
-                end do
-                
-             end do
-             
-          case default
-             
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'Unknown case')
-             
-          end select
-          
-          if (dim_sizes(1)*dim_sizes(2)/=N_data_tmp(j)) then
-             
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'ERROR reading hdf')
-             
-          end if
-          
-          status = sfendacc(sds_id(i))
-          
-       end do    ! i=1,N_fields 
-       
-       ! clean up
-
-       deallocate(tmp_MODIS_SCF)
-       deallocate(tmp_CI_index)
-       deallocate(tmp_Cloud_index)
-       deallocate(tmp_Snow_QA)
-       
-       ! close hdf files
-
-       status = sfend(file_id(j))
-       
-    end do       ! j=1,N_files            ! IF MORE THAN ONE FILE IS READ, DATA ARE OVERWRITTEN !?!?!?!?!?
-
-    time_index = date_time%hour/3 + 1     ! HARDWIRED 3-HOUR TIME STEP !?!?!?!?!?
-    
-    ! -------------------------------------
-    !
-    ! eliminate no-data-values and data that fail initial QC
-    
-    allocate(SCF_tmp(N_data))
-    allocate(lat_tmp(N_data))
-    allocate(lon_tmp(N_data))
-
-    j=0
-    
-    do i=1,N_data
-      
-       keep_data =                                                   & 
-            ( SCF_raw(i)     >= qc_snow_cover_min         )  .and.   &
-            ( SCF_raw(i)     <= qc_snow_cover_max         )  .and.   &
-            ( lon_1D(i)      <= lon_subtime(time_index)   )  .and.   &  ! selection of longitudal band
-            ( lon_1D(i)      >  lon_subtime(time_index+1) )  .and.   &
-            ( CI_Index(i)    >  qc_clear_index_min        )  .and.   &
-            ( CI_Index(i)    <= qc_clear_index_max        )  .and.   &
-            ( Cloud_index(i) /= qc_antarctica             )  .and.   &
-            ( Snow_QA(i)     <  qc_snow_spatial_max       )                     
-       
-       if (keep_data) then     
-          
-          j=j+1 
-          SCF_tmp(j) = SCF_raw(i)/CI_Index(i)  ! raw SCF includes cloud cover
-          lon_tmp(j) = lon_1D(i)
-          lat_tmp(j) = lat_1D(i)
-          
-       end if
-       
-    end do    ! i=1,N_data
-    
-    N_data = j
-
-    allocate(MODIS_lon(N_data))
-    allocate(MODIS_lat(N_data))
-    allocate(MODIS_SCF(N_data))
-
-    MODIS_lon = lon_tmp(1:j)
-    MODIS_lat = lat_tmp(1:j)
-    MODIS_SCF = SCF_tmp(1:j)
-
-    deallocate(lon_tmp, lat_tmp, SCF_tmp)
-    deallocate(CI_Index)
-    deallocate(Cloud_Index)
-    deallocate(Snow_QA)
-    deallocate(SCF_raw)
-
-  end subroutine read_MODISscf_hdf
-
-  ! *****************************************************************
-  
-  subroutine read_obs_MODISscf(                                    &
-       date_time, dtstep_assim, N_catd, tile_coord,                &
-       tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,        &
-       this_obs_param, found_obs, MODIS_obs, std_MODIS_obs )
-    
-    implicit none
-
-    ! inputs
-
-    type(date_time_type), intent(in) :: date_time
-
-    integer,              intent(in) :: dtstep_assim, N_catd
-
-    type(tile_coord_type), dimension(:), pointer:: tile_coord           ! input
-    
-    type(grid_def_type),  intent(in) :: tile_grid_d
-    
-    integer, dimension(tile_grid_d%N_lon, tile_grid_d%N_lat), intent(in):: &
-                       N_tile_in_cell_ij
-   
-    integer, dimension(:,:,:),           pointer:: tile_num_in_cell_ij  ! input
-   
-    type(obs_param_type), intent(in) :: this_obs_param
-  
-    ! output
-
-    real,     intent(out), dimension(N_catd) :: MODIS_obs
-    real,     intent(out), dimension(N_catd) :: std_MODIS_obs
-    logical,  intent(out)                    :: found_obs
-    logical                                  :: file_exists
-
-    !locals
-
-    character(2)   :: MM
-    character(4)   :: YYYY
-    character(3)   :: DDD         ! Day of Year 
-    character(300) :: tmpfname1
-    
-    integer        :: i, ind, N_files, N_tmp
-
-    integer, parameter :: dtstep_assim_threshold = 10800  ! restricting dtstep_assim to 3 hours
- 
-    character(300), dimension(:), allocatable :: fnames
-   
-    real,    dimension(:), pointer :: tmp_lat, tmp_lon
-    integer, dimension(:), pointer :: tmp_tile_num
-    real,    dimension(:), pointer :: tmp_obs
-
-    integer,     dimension(N_catd) :: N_obs_in_tile
-
-    character(len=*),   parameter  :: Iam = 'read_obs_MODISscf'
-    character(len=400)             :: err_msg
-   
-    ! --------------
-    
-    nullify (tmp_obs, tmp_lat, tmp_lon, tmp_tile_num)
-
-    ! --------------
-    !
-    ! restricting the assimilation time step to *only* 3 hr
-
-    if (dtstep_assim .NE. dtstep_assim_threshold) then
-     
-       err_msg = 'dtstep_assim must be equal to 3 hours'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-   
-    end if 
-
-    ! restricting current time to only 0z, 3z, ..., 21z
-
-    if ( (mod(date_time%hour,3) .NE. 0) .or.             &
-         (date_time%min         .NE. 0) .or.             &
-         (date_time%sec         .NE. 0)        ) then
-       
-       err_msg = 'analysis time must be 0z, 3z, ..., 21z'
-       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-       
-    end if
-    
-    ! --------------
-    !
-    ! Initialize
-    
-    found_obs = .false.
-    N_tmp     = 3600*7200
-
-    write (YYYY,'(i4.4)') date_time%year
-    write (MM,  '(i2.2)') date_time%month
-    write (DDD, '(i3.3)') date_time%dofyr
- 
-    write (logunit,*) 'Obs time (year/month/day-of-year): ', YYYY, MM, DDD
-
-    ! In the ensupd nml file, specify the file "name" according to the following template:
-    !   
-    !     %name = 'MOD10C1.Ayyyyddd.061.hdf'
-    !
-    !                       1         2
-    !              123456789012345678901234
-    ! 
-    !       MOD10C1 = MODIS product name
-    !       .A      = "acquisition time" indicator
-    !       yyyyddd = placeholder for year/day-of-year 
-    !       .061    = version (Collection) indicator
-    !       .hdf    = file name extension 
-    !
-    ! Assuming the MODIS file naming convention remains unchanged, the version can then
-    !  be specified in the nml file.
-    
-    !tmpfname1 = trim(this_obs_param%path) // '/' // YYYY // '/' &
-    !     // this_obs_param%name(1:9) // YYYY // DDD // this_obs_param%name(17:24)
-    
-    tmpfname1 = trim(this_obs_param%path) // '/' // YYYY // '/MOD10C1.A' // YYYY // DDD // &
-                   '.061.hdf' !note the MODIS data version included here  
-
-    if (logit) write (logunit,*) 'Reading data from ', trim(tmpfname1)
-    
-    inquire(file=trim(tmpfname1), exist=file_exists)
-    
-    if (logit) write (logunit,*), file_exists
-    
-    if (file_exists) then
-      
-       N_files = 1                      !?!?!?!?!?! READS NO MORE THAN ONE FILE
-       allocate(fnames(N_files))
-       fnames(N_files) = tmpfname1
-
-    end if !(file_exists)
-
-    if (N_files>0) then 
-   
-        call read_MODISscf_hdf(N_files, date_time, N_tmp, fnames,       &
-                               tmp_lon, tmp_lat, tmp_obs)
-   
-        deallocate(fnames)
-        
-    else 
-       
-       N_tmp = 0
-       
-    end if ! (N_files>0)
-    
-    if (N_tmp>0) then
-    
-       allocate(tmp_tile_num(N_tmp))
- 
-       call get_tile_num_for_obs(N_catd, tile_coord,                 &
-                                 tile_grid_d, N_tile_in_cell_ij,     &
-                                 tile_num_in_cell_ij,                &
-                                 N_tmp, tmp_lat, tmp_lon,            &
-                                 this_obs_param,                     &
-                                 tmp_tile_num(1:N_tmp))
-
- 
-       MODIS_obs     = 0.
-       N_obs_in_tile = 0
-    
-       do i=1,N_tmp
-
-          ind = tmp_tile_num(i) ! 1<=tmp_tile_num<=N_catd (unless nodata)
-
-          if (ind>0) then ! this step eliminates obs outside domain
-          
-             MODIS_obs(ind)     = MODIS_obs(ind) + tmp_obs(i)
-             N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
-         
-          end if !(ind>0)
-
-       end do !i         
-
-       !normalize
-       do i=1,N_catd
-          if (N_obs_in_tile(i)>0) then
-           
-             MODIS_obs(i) = MODIS_obs(i)/real(N_obs_in_tile(i))
-          
-          else if (N_obs_in_tile(i) == 0) then
-             
-             MODIS_obs(i) = this_obs_param%nodata
-         
-          end if !(N_obs_in_tile(i)>0
-       end do !i
-          
-       if (associated(tmp_tile_num)) deallocate (tmp_tile_num)
-
-          do i=1, N_catd
-        
-             std_MODIS_obs(i) = this_obs_param%errstd
-        
-          end do !i
-
-          if (any(N_obs_in_tile>0)) then
-          
-             found_obs = .true.
-       
-          else 
-       
-             found_obs = .false.
-       
-          end if !(any(N_obs_in_tile>0)
-       
-       end if ! (associated(tmp_tile_num)  
- 
-    if (associated(tmp_obs))      deallocate(tmp_obs)
-    if (associated(tmp_lon))      deallocate(tmp_lon)
-    if (associated(tmp_lat))      deallocate(tmp_lat)
-  
-  end subroutine read_obs_MODISscf
-
-  ! *****************************************************************
 
   subroutine read_obs_MODIS_SCF(                                   &
        date_time, dtstep_assim, N_catd, tile_coord,                &
        tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,        &
        this_obs_param,                                             &
-       found_obs, MODIS_obs, std_MODIS_obs )
+       found_obs, MODIS_obs, std_MODIS_obs, MODIS_lon, MODIS_lat )
     
     ! read MODIS snow cover fraction observations on MODIS 0.05-degree climate
     ! modeling grid (CMG)
@@ -5161,7 +4634,7 @@ contains
 
     logical,                                  intent(out) :: found_obs
 
-    real,                  dimension(N_catd), intent(out) :: MODIS_obs, std_MODIS_obs
+    real,                  dimension(N_catd), intent(out) :: MODIS_obs, std_MODIS_obs, MODIS_lon, MODIS_lat
 
     ! ------------------------------------------------------------------------
     
@@ -5172,14 +4645,20 @@ contains
     real,    parameter    :: CMG_dlat         = 0.05   ! [degrees]  latitude  spacing    of MODIS CMG grid
     real,    parameter    :: CMG_dlon         = 0.05   ! [degrees]  longitude spacing    of MODIS CMG grid
  
-    real,    parameter    :: CMG_ll_lat       =  -90.  ! [degrees]  lower-left latitude  of MODIS CMG grid
-    real,    parameter    :: CMG_ll_lon       = -180.  ! [degrees]  lower-left longitude of MODIS CMG grid
- 
-    character(7)          :: MODIS_product_ID
-
-    real                  :: overpass_hour, tmp_delta
+    real,    parameter    :: CMG_ur_lat       =   90.  ! [degrees]  upper-right latitude  of MODIS CMG grid
+    real,    parameter    :: CMG_ll_lon       = -180.  ! [degrees]  lower-left  longitude of MODIS CMG grid
     
-    integer               :: N_files, N_lon, N_lat, nn, N_cmg_obs, N_good_data
+    character(7)          :: MODIS_product_ID
+    
+    character(4)          :: YYYY
+    character(3)          :: DDD                       ! day of year 
+    
+    character(400)        :: fname
+
+    real                  :: overpass_hour, tmp_delta, tmp_real, max_delta_lon
+    
+    integer               :: N_files, N_lon, N_lat, nn, kk, ind 
+    integer               :: N_CMG_obs, N_good_data, tmp_ind_start, tmp_ind_last
 
     type(date_time_type)  :: date_time_beg,       date_time_end
     type(date_time_type)  :: date_time_beg_MODIS, date_time_end_MODIS
@@ -5188,42 +4667,22 @@ contains
     real                  :: lon_beg_MODIS,       lon_end_MODIS
     
     integer               :: delta_day_beg,       delta_day_end
-    integer,              :: delta_day_beg_MODIS, delta_day_end_MODIS
+    integer               :: delta_day_beg_MODIS, delta_day_end_MODIS
 
     real                  :: lat_min,             lat_max
-
-    integer               :: N_lat, N_CMG_obs
 
     real,    dimension(2) :: lon_min_vec,         lon_max_vec
 
     integer, dimension(2) :: N_lon_vec, year_vec, dofyr_vec, start_ind, last_ind
 
+    real,    dimension(:),     allocatable :: CMG_obs, CMG_lat, CMG_lon
 
-    real,    dimension(:), allocatable :: CMG_obs, CMG_lat, CMG_lon, tmp_tile_num
+    integer, dimension(:),     allocatable :: tmp_tile_num
 
+    integer, dimension(N_catd)             :: N_obs_in_tile
 
-
-!    logical        :: file_exists
-!    
-!    character(2)   :: MM
-!    character(4)   :: YYYY
-!    character(3)   :: DDD           ! Day of Year 
-!    character(300) :: tmpfname1
-!    
-!    integer        :: ii, ind, N_files, N_tmp
-! 
-!    character(400), dimension(2),   allocatable :: fnames
-!    
-!    integer,        dimension(:,:), allocatable :: tmp_tile_num
-!
-!    integer,        dimension(N_catd) :: N_obs_in_tile
-
-
-
-
-
-    character(len=*),   parameter  :: Iam = 'read_obs_MODISscf'
-    character(len=400)             :: err_msg
+    character(len=*),          parameter   :: Iam = 'read_obs_MODISscf'
+    character(len=400)                     :: err_msg
    
     ! ----------------------------------------------------------------------------------
     !
@@ -5231,7 +4690,7 @@ contains
 
     if (dtstep_assim > dtstep_assim_max) then                 
        
-       err_msg = 'dtstep_assim exceeds max allowed of ' // dtstep_assim_max
+       err_msg = 'dtstep_assim exceeds max allowed'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        
     end if 
@@ -5248,9 +4707,9 @@ contains
     
     select case (MODIS_product_ID)
        
-    case('MOD10C1') overpass_hour = 10.5               ! [hours]    Terra: 10:30am local time
+    case('MOD10C1'); overpass_hour = 10.5               ! [hours]    Terra: 10:30am local time
        
-    case('MYD10C1') overpass_hour = 13.5               ! [hours]    Aqua:   1:30pm local time
+    case('MYD10C1'); overpass_hour = 13.5               ! [hours]    Aqua:   1:30pm local time
        
     end select
     
@@ -5271,15 +4730,6 @@ contains
     call localtime2longitude( date_time_beg, overpass_hour, lon_beg, delta_day_beg )
     call localtime2longitude( date_time_end, overpass_hour, lon_end, delta_day_end )
     
-    ! NEEDS FINISHING ???
-
-
-!    if (lon_beg < lon_end) then
-!      
-!
-!
-!    end if
-
     
     ! determine (rough) longitude band for which MODIS obs need to be read    
     !
@@ -5307,15 +4757,6 @@ contains
         
     ! put together arguments for call(s) to read_MODIS_SCF_hdf()
     
-    ! TO DO: 
-    !
-    ! - deal with lon_*_MODIS hitting exactly -180/+180 deg longitude 
-    ! - check that delta_lon is in range consistent with dtstep_assim
-    ! - does N_lon give the right array size? 
-    ! - what if date changes when N_files=1??
-    !   --> check delta_day_beg_MODIS and delta_day_end_MODIS and process accordingly
-    ! - is CMG DE or DC grid? 
-
     lon_min_vec = MAPL_UNDEF
     lon_max_vec = MAPL_UNDEF
 
@@ -5353,7 +4794,7 @@ contains
           write (logunit,*) 'lon_beg_MODIS       = ', lon_beg_MODIS
           write (logunit,*) 'lon_end_MODIS       = ', lon_end_MODIS
           
-          err_msg = 'encountered unexpected condition!!!'
+          err_msg = 'encountered unexpected condition for longitude band!!!'
           call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
           
        end if
@@ -5380,12 +4821,31 @@ contains
        dofyr_vec(  2) = date_time_beg_MODIS%dofyr
        
     end if
-        
+    
+    ! verify that longitude bands do not exceed max expected expected width 
+    !  (add 0.1 degree of wiggle room)
+    
+    max_delta_lon = real(dtstep_assim_max + 2*nint(tmp_delta))/86400.*360. + 0.1   ! [degree]
+    
+    do nn=1,N_files
+       
+       if ( lon_max_vec(nn) - lon_min_vec(nn) > max_delta_lon ) then
+          
+          err_msg = 'longitude band too wide'
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+          
+       end if
+
+    end do
+
+
+    ! determine latitude band covered by domain (no need to read obs outside domain)
+
     lat_min = minval( tile_coord(1:N_catd)%min_lat )
     lat_max = maxval( tile_coord(1:N_catd)%max_lat )
 
     
-    ! determine # CMG grid cells in lat/lon bands 
+    ! determine N_lat and N_lon[_vec] (# CMG grid cells in lat/lon bands )
 
     start_ind(1) = (CMG_ur_lat - lat_max )/CMG_dlat
     last_ind(1)  = (CMG_ur_lat - lat_min )/CMG_dlat
@@ -5427,7 +4887,7 @@ contains
     ! Assuming the MODIS file naming convention remains unchanged, the version can then
     !  be specified in the nml file.
     
-    N_cmg_obs = 0       ! initialize counter for "good" obs returned by read_MODIS_SCF_hdf()
+    N_CMG_obs = 0       ! initialize counter for "good" obs returned by calls to read_MODIS_SCF_hdf()
     
     do nn=1,N_files     ! loop through longitude bands
        
@@ -5442,30 +4902,29 @@ contains
        
        ! determine sub-array of CMG_* 
        
-       tmp_ind_start = N_cmg_obs + 1
-       tmp_ind_last  = N_cmg_obs + N_lon_vec(nn)*N_lat
+       tmp_ind_start = N_CMG_obs + 1
+       tmp_ind_last  = N_CMG_obs + N_lon_vec(nn)*N_lat
        
        call read_MODIS_SCF_hdf( fname,                                                  &
             lon_min_vec(nn), lon_max_vec(nn), lat_min, lat_max,                         &
             N_good_data,                                                                &
             CMG_lon(tmp_ind_start:tmp_ind_last),                                        &
             CMG_lat(tmp_ind_start:tmp_ind_last),                                        &
-            CMG_obs(tmp_ind_start:tmp_ind_last),                         )
-       
+            CMG_obs(tmp_ind_start:tmp_ind_last)                          )
 
-       N_cmg_obs = N_cmg_obs + N_good_data
+       N_CMG_obs = N_CMG_obs + N_good_data
        
     end do
     
     
     ! map to tile space 
     
-    allocate(tmp_tile_num(N_cmg_obs))
+    allocate(tmp_tile_num(N_CMG_obs))
     
     call get_tile_num_for_obs( N_catd, tile_coord,                 &
          tile_grid_d, N_tile_in_cell_ij,                           &
          tile_num_in_cell_ij,                                      &
-         N_cmg_obs, CMG_lat(1:N_cmg_obs), CMG_lon(1:N_cmg_obs),    &
+         N_CMG_obs, CMG_lat(1:N_CMG_obs), CMG_lon(1:N_CMG_obs),    &
          this_obs_param,                                           &
          tmp_tile_num    )
     
@@ -5475,13 +4934,16 @@ contains
     MODIS_obs     = 0.
     N_obs_in_tile = 0
     
-    do kk=1,N_cmg_obs
+    do kk=1,N_CMG_obs
        
        ind = tmp_tile_num(kk)          ! 1<=tmp_tile_num<=N_catd (unless nodata)
        
        if (ind>0) then                 ! this condition eliminates obs outside domain
           
-          MODIS_obs(    ind) = MODIS_obs(    ind) + tmp_obs(kk)
+          MODIS_obs(    ind) = MODIS_obs(    ind) + CMG_obs(kk)
+          MODIS_lon(    ind) = MODIS_lon(    ind) + CMG_lon(kk)
+          MODIS_lat(    ind) = MODIS_lat(    ind) + CMG_lat(kk)
+
           N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
           
        end if
@@ -5493,11 +4955,17 @@ contains
     do kk=1,N_catd
        if (N_obs_in_tile(kk)>0) then
           
-          MODIS_obs(kk) = MODIS_obs(kk)/real(N_obs_in_tile(kk))
+          tmp_real      = real(N_obs_in_tile(kk))
+
+          MODIS_obs(kk) = MODIS_obs(kk)/tmp_real
+          MODIS_lon(kk) = MODIS_lon(kk)/tmp_real
+          MODIS_lat(kk) = MODIS_lat(kk)/tmp_real
           
        else if (N_obs_in_tile(kk)==0) then
           
           MODIS_obs(kk) = this_obs_param%nodata
+          MODIS_lon(kk) = this_obs_param%nodata
+          MODIS_lat(kk) = this_obs_param%nodata
           
        end if
     end do
@@ -5512,13 +4980,40 @@ contains
        
     end if
     
-
     deallocate(tmp_tile_num)
   
-    deallocate(CMG_obs)
+    deallocate(CMG_obs)    
     deallocate(CMG_lon)
     deallocate(CMG_lat)
-  
+
+    ! to avoid double-counting of MODIS CMG obs, remove obs for tiles with center-of-mass longitude 
+    !   falling outside the longitude band associated with assimilation window
+    
+    if (lon_end < lon_beg) then
+       
+       ! need only one longitude band (keep obs when lon_end<=com_lon<=lon_beg)
+       
+       do kk=1,N_catd
+          
+          if ( (tile_coord(kk)%com_lon<lon_end) .or. (tile_coord(kk)%com_lon>lon_beg) )  &
+               MODIS_obs(kk) = this_obs_param%nodata
+          
+       end do
+       
+    else
+       
+       ! longitude band wraps around dateline (keep obs when -180<=com_lon<=lon_beg or lon_end<=com_lon<=180)
+       
+       do kk=1,N_catd
+          
+          if ( (tile_coord(kk)%com_lon>lon_beg) .and. (tile_coord(kk)%com_lon<lon_end) )  &
+               MODIS_obs(kk) = this_obs_param%nodata
+          
+       end do
+       
+    end if
+    
+
   end subroutine read_obs_MODIS_SCF
 
   ! *******************************************************************************************************
@@ -5555,7 +5050,7 @@ contains
     
     if ( (local_hour < 0.) .or. (local_hour >= 24.) ) then
        
-       err_msg = 'input local_hour falls outside allowed range of 0:24; local_hour=' // local_hour
+       err_msg = 'input local_hour falls outside allowed range of 0:24'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        
     end if
@@ -5658,31 +5153,37 @@ contains
     
     integer, parameter :: DFACC_READ          =  1     ! from hdf.inc
     
+    integer, parameter :: uint8_min           =   0    
+    integer, parameter :: uint8_max           = 255
+
+
     ! local variables
     
-    integer                                       :: N_lat, N_lon, N_tmp, ii, jj, kk, nn
+    integer                                         :: N_lat, N_lon, N_tmp, ii, jj, kk, nn
 
-    real,             dimension(:),   allocatable :: lat_c
-    real,             dimension(:),   allocatable :: lon_c
+    real,               dimension(:),   allocatable :: lat_c
+    real,               dimension(:),   allocatable :: lon_c
 
-    real              dimension(:),   allocatable :: lat_ind
-    real              dimension(:),   allocatable :: lon_ind
+    real,               dimension(:),   allocatable :: lat_ind
+    real,               dimension(:),   allocatable :: lon_ind
 
-    integer,          dimension(2)                :: start, edge, stride, last    
+    integer,            dimension(2)                :: start, edge, stride, last    
     
-    logical                                       :: file_exists, keep_data
+    logical                                         :: file_exists, keep_data
     
-    integer                                       :: status, sd_id, sds_ind, sds_idex
+    integer                                         :: status, sd_id, sds_id, sds_index
     
-    integer                                       :: SDstart,    SDselect, SDnametoindex
-    integer                                       :: SDreaddata, SDend,    SDendacc  
+    integer                                         :: sfstart, sfn2index, sfselect
+    integer                                         :: sfrdata, sfendacc,  sfend
     
-    unsigned(KIND=1), dimension(:,:), allocatable :: uint8_Snow_Cover
-    unsigned(KIND=1), dimension(:,:), allocatable :: uint8_Clear_Index
-    unsigned(KIND=1), dimension(:,:), allocatable :: uint8_Snow_Spatial_QA
+    integer(KIND=2),    dimension(:,:), allocatable :: Snow_Cover
+    integer(KIND=2),    dimension(:,:), allocatable :: Clear_Index
+    integer(KIND=2),    dimension(:,:), allocatable :: Snow_Spatial_QA
     
-    character(len=*),                   parameter :: Iam = 'read_MODISscf_hdf'
-    character(len=400)                            :: err_msg
+    character(1),       dimension(:,:), allocatable :: tmp_char1
+
+    character(len=*),                     parameter :: Iam = 'read_MODISscf_hdf'
+    character(len=400)                              :: err_msg
     
     ! -------------------------------------------------------------------------
     !
@@ -5698,14 +5199,6 @@ contains
        end if
        
        return
-       
-    else
-       
-       if (logit) then
-          write (logunit,*) trim(Iam), ': reading MODIS SCF obs from  ', trim(fname)
-          write (logunit,*) 'lon_min, lon_max, lat_min, lat_max = ', &
-               lon_min, lon_max, lat_min, lat_max       
-       end if
        
     end if
     
@@ -5769,6 +5262,12 @@ contains
               
     end if
 
+    if (logit) then
+       write (logunit,*) trim(Iam), ': reading MODIS SCF obs from  ', trim(fname)
+       write (logunit,*) 'N_lon, N_lat, lon_min, lon_max, lat_min, lat_max = ',      &
+            N_lon, N_lat, lon_min, lon_max, lat_min, lat_max       
+    end if
+    
 
     ! allocate arrays
 
@@ -5778,9 +5277,11 @@ contains
     allocate(lat_ind(N_lat))
     allocate(lon_ind(N_lon))
 
-    allocate(uint8_Snow_Cover     (N_lat,N_lon))       ! lat-by-lon !!
-    allocate(uint8_Clear_Index    (N_lat,N_lon))       ! lat-by-lon !!
-    allocate(uint8_Snow_Spatial_QA(N_lat,N_lon))       ! lat-by-lon !!
+    allocate(Snow_Cover     (N_lat,N_lon))       ! lat-by-lon !!
+    allocate(Clear_Index    (N_lat,N_lon))       ! lat-by-lon !!
+    allocate(Snow_Spatial_QA(N_lat,N_lon))       ! lat-by-lon !!
+
+    allocate(tmp_char1(      N_lat,N_lon))       ! lat-by-lon !!
 
     ! --------------------------
     
@@ -5798,11 +5299,11 @@ contains
     
     ! open hdf file (read-only) and initialize SD interface 
     
-    sd_id = SDstart(trim(fname), DFACC_READ)
+    sd_id = sfstart(trim(fname), DFACC_READ)
 
     if (sd_id<0) then
               
-       err_msg = 'cannot SDstart (open) file: ' // trim(fname)
+       err_msg = 'cannot sfstart (open) file: ' // trim(fname)
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        
     end if
@@ -5811,24 +5312,38 @@ contains
 
     do nn=1,N_fields
        
-       sds_index = SDnametoindex( sd_id, trim(field_names(nn)) )
-       sds_id    = SDselect(      sd_id, sds_index             )
+       sds_index = sfn2index( sd_id, trim(field_names(nn)) )
+       sds_id    = sfselect(  sd_id, sds_index             )
           
        select case (nn)
           
-       case (1)      status = SDreaddata( sds_id, start, stride, edge, uint8_Snow_Cover      )
-       case (2)      status = SDreaddata( sds_id, start, stride, edge, uint8_Clear_Index     )
-       case (3)      status = SDreaddata( sds_id, start, stride, edge, uint8_Snow_Spatial_QA )
+       case (1); status = sfrdata( sds_id, start, stride, edge, tmp_char1 ); Snow_Cover      = ichar(tmp_char1,2)
+       case (2); status = sfrdata( sds_id, start, stride, edge, tmp_char1 ); Clear_Index     = ichar(tmp_char1,2)
+       case (3); status = sfrdata( sds_id, start, stride, edge, tmp_char1 ); Snow_Spatial_QA = ichar(tmp_char1,2)
           
-       case default  call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown field')
+       case default; call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown field')
              
        end select
        
-       status   = SDendacc(sds_id)                   ! terminate access to SDS (field)
+       status   = sfendacc(sds_id)                   ! terminate access to SDS (field)
           
     end do
     
-    status = SDend(sd_id)                            ! close hdf file and SD interface
+    status = sfend(sd_id)                            ! close hdf file and SD interface
+
+    ! check range (make sure uint8 from hdf file is correctly translated into Fortran integer)
+
+    if ( any(Snow_Cover      < uint8_min) .or.          &
+         any(Snow_Cover      > uint8_max) .or.          &
+         any(Clear_Index     < uint8_min) .or.          &
+         any(Clear_Index     > uint8_max) .or.          &
+         any(Snow_Spatial_QA < uint8_min) .or.          &
+         any(Snow_Spatial_QA > uint8_max)       ) then
+       
+       err_msg = 'unexpected range in data from hdf file'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       
+    end if
     
     ! -------------------------------------
     !
@@ -5843,26 +5358,24 @@ contains
     do jj=1,N_lat
        do ii=1,N_lon
           
-          ! note: uint8_Snow_Cover >= 0 per Fortran type, no need to check for minimum 
+          ! note: Snow_Cover >= 0 per range check above, no need to check for minimum 
           
-          keep_data =                                                        &  
-               (uint8_Snow_Cover(     jj,ii) <= qc_snow_cover_max  )  .and.  &  ! 0<=SCF<=100 (1) 
-               (uint8_Clear_Index(    jj,ii) >  qc_clear_index_min )  .and.  &  ! sufficiently clear sky (2)
-               (uint8_Snow_Spatial_QA(jj,ii) <  qc_snow_spatial_max)            ! keep "best", "good", or "OK" quality (3)
+          keep_data =                                                  &  
+               (Snow_Cover(     jj,ii) <= qc_snow_cover_max  )  .and.  &  ! 0<=SCF<=100 (1) 
+               (Clear_Index(    jj,ii) >  qc_clear_index_min )  .and.  &  ! sufficiently clear sky (2)
+               (Snow_Spatial_QA(jj,ii) <  qc_snow_spatial_max)            ! keep "best", "good", or "OK" quality (3)
           
           ! (1)  excludes "lake ice", "night", "inland water", "ocean", "cloud obscured water", "data not mapped", "fill"
           ! (2)  clear_index>100 already removed via qc_snow_cover_max
           ! (3)  excludes Antarctica
 
-          ! NOTE: 
-          ! - raw SCF value is for clear portion of the grid cell only, need to normalized with Clear_Index
-          ! - transpose from lat-by-lon uint8 array to lon-by-lat output array
-          
           if (keep_data) then
 
              kk = kk + 1
+
+             ! raw SCF value is for clear portion of grid cell only, need to normalize with Clear_Index
              
-             MODIS_SCF(kk) = real(uint8_Snow_Cover(jj,ii))/real(uint8_Clear_Index(jj,ii)) 
+             MODIS_SCF(kk) = real(Snow_Cover(jj,ii))/real(Clear_Index(jj,ii)) 
              
              MODIS_lon(kk) = lon_c(ii)
              MODIS_lat(kk) = lat_c(jj)
@@ -5883,9 +5396,9 @@ contains
     deallocate(lat_ind)
     deallocate(lon_ind)
 
-    deallocate(uint8_Snow_Cover     )
-    deallocate(uint8_Clear_Index    )
-    deallocate(uint8_Snow_Spatial_QA)
+    deallocate(Snow_Cover     )
+    deallocate(Clear_Index    )
+    deallocate(Snow_Spatial_QA)
 
   end subroutine read_MODIS_SCF_hdf
 
@@ -8503,7 +8016,7 @@ contains
             N_tile_in_cell_ij, tile_num_in_cell_ij, write_obslog,     &
             found_obs, tmp_obs, tmp_std_obs, tmp_lon, tmp_lat )
        
-       ! scale observations to model climatology XXXXXXX
+       ! scale observations to model climatology
        
        if (this_obs_param%scale .and. found_obs) then
 
@@ -8516,10 +8029,11 @@ contains
        
     case ('MODIS_SCF')
        
-       call read_obs_MODISscf(                                        &
+       call read_obs_MODIS_SCF(                                       &
             date_time, dtstep_assim, N_catd, tile_coord,              &
             tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
-            this_obs_param, found_obs, tmp_obs, tmp_std_obs)
+            this_obs_param,                                           &
+            found_obs, tmp_obs, tmp_std_obs, tmp_lon, tmp_lat )
    
     case('SMAP_L1C_Tbh_A',     'SMAP_L1C_Tbv_A',        &
          'SMAP_L1C_Tbh_D',     'SMAP_L1C_Tbv_D',        &
@@ -8536,7 +8050,7 @@ contains
             N_tile_in_cell_ij, tile_num_in_cell_ij, write_obslog,           &
             found_obs, tmp_obs, tmp_std_obs, tmp_lon, tmp_lat, tmp_time )
        
-       ! scale observations to model climatology XXXXXXX
+       ! scale observations to model climatology
        
        if (this_obs_param%scale .and. found_obs) then
 
