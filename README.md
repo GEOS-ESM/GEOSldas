@@ -4,7 +4,7 @@ This document explains how to build, set up, and run the GEOS land modeling and 
 
 ## How to Build GEOSldas
 
-### Step 1: Load the Build Modules  
+### Step 1: Load the Build Modules
 
 Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It contains the latest `git`, `CMake`, and `mepo` modules and must be loaded in any interactive window that is used to check out and build the model.
 
@@ -13,7 +13,7 @@ module use -a (path)
 module load GEOSenv
 ```
 
-where `(path)` depends on the computer and operating system: 
+where `(path)` depends on the computer and operating system:
 
 | System        | Path                                              |
 | ------------- |---------------------------------------------------|
@@ -28,7 +28,7 @@ For development work, clone the _entire_ repository and use the `develop` branch
 ```
 git clone -b develop git@github.com:GEOS-ESM/GEOSldas.git
 ```
-For science runs, you can also obtain a specific tag or branch _only_ (as opposed to the _entire_ repository), e.g.: 
+For science runs, you can also obtain a specific tag or branch _only_ (as opposed to the _entire_ repository), e.g.:
 ```
 git clone -b v17.9.1 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 ```
@@ -40,12 +40,24 @@ To build the model in a single step, do the following:
 ```
 cd ./GEOSldas
 parallel_build.csh
-``` 
-from a head node. Doing so will check out all the external repositories of the model (albeit only on the first run, [see subsection on mepo below](#mepo)!) and build the model. When done, the resulting model build will be found in `build/` and the installation will be found in `install/`, with setup scripts like `ldas_setup` in `install/bin`. 
+```
+from a head node. Doing so will check out all the external repositories of the model (albeit only on the first run, [see subsection on mepo below](#mepo)!) and build the model. When done, the resulting model build will be found in `build-SLES12/` and the installation will be found in `install-SLES12/`, with setup scripts like `ldas_setup` in `install-SLES12/bin`.
 
-To obtain a build that is suitable for debugging, use `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.  There is also an option for aggressive  optimization.  For details, see [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
+To obtain a build that is suitable for debugging, use `parallel_build.csh -debug`, which will build in `build-Debug-SLES12/` and install in `install-Debug-SLES12/`.  There is also an option for aggressive  optimization.  For details, see [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
 
 See below for how to build the model in multiple steps.
+
+#### Running on Milans at NCCS
+
+By default, `parallel_build.csh` will build on SLES12 nodes at discover (either Skylake or Cascade Lake). However, Milan nodes were
+recently installed at discover, which use SLES15 as their operating system. Because of this OS difference, if you want to run on the
+Milans, you must build on the Milans. To do so you can run `parallel_build.csh` with the `-mil` flag, e.g.:
+
+```
+parallel_build.csh -mil
+```
+
+This will by default build in `build-SLES15` and install to `install-SLES15`.
 
 ---
 
@@ -57,7 +69,7 @@ a) Set up the job as follows:
 cd (build_path)/GEOSldas/install/bin
 source g5_modules                        [for bash or zsh: source g5_modules.[z]sh]
 ./ldas_setup setup [-v]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
-```  
+```
 
 where
 
@@ -70,14 +82,14 @@ where
 
 The three arguments for `ldas_setup` are positional and must be ordered as indicated above.
 
-The latter two files contain essential information about the experiment setup. 
+The latter two files contain essential information about the experiment setup.
 Sample files can be generated as follows:
-```        
+```
 ldas_setup sample --exeinp > YOUR_exeinp.txt
 ldas_setup sample --batinp > YOUR_batinp.txt
 ```
 
-Edit these sample files following the examples and comments within the sample files.  
+Edit these sample files following the examples and comments within the sample files.
 
 The ldas_setup script creates a run directory and other directories at:
 `[exp_path]/[exp_name]`
@@ -156,7 +168,7 @@ and CMake will install there.
 ```
 make -j6 install
 ```
-If you are at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.  
+If you are at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.
 
 
 ## Contributing
