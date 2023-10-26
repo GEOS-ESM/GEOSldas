@@ -1336,9 +1336,9 @@ class LDASsetup:
                         if int(self.rqdRmInp['ntasks-per-node']) > 46:
                            fout.write("#SBATCH --constraint=mil\n")
                         elif int(self.rqdRmInp['ntasks-per-node']) > 40:
-                           fout.write("#SBATCH --constraint=mil|cas\n")
+                           fout.write("#SBATCH --constraint=cas\n")
                         elif (28 < int(self.rqdRmInp['ntasks-per-node']) and int(self.rqdRmInp['ntasks-per-node']) <= 40) :
-                           fout.write("#SBATCH --constraint=mil|cas|sky\n")
+                           fout.write("#SBATCH --constraint=cas|sky\n")
                     elif 'MY_OSERVER_NODES' in line :
                         fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
                     elif 'MY_WRITERS_NPES' in line :
