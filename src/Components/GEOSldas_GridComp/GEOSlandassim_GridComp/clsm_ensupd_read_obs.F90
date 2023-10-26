@@ -8174,10 +8174,43 @@ contains
     
     ! scale sfmc obs to model climatology via standard-normal-deviate (zscore)
     ! scaling using seasonally varying (pentad) stats
+    ! Grid information is read from a NetCDF file   
     ! 
-    ! scaling parameters are on 0.25 deg lat/lon grid
-    !
-    ! intended for scaling of ASCAT "sfds" observations 
+    ! Scaling parameters are read from a NetCDF file that contains the following:
+    !  variables:
+    !  int version ;
+    !  double ll_lon ;
+    !          ll_lon:standard_name = "longitude of lower left corner" ;
+    !  double ll_lat ;
+    !          ll_lat:standard_name = "latitude of lower left corner" ;
+    !  double d_lon ;
+    !          d_lon:standard_name = "longitude grid spacing" ;
+    !  double d_lat ;
+    !          d_lat:standard_name = "latitude grid spacing" ;
+    !  int pentad(pentad) ;
+    !          pentad:standard_name = "pentad" ;
+    !  double start_time(pentad) ;
+    !          start_time:standard_name = "start time" ;
+    !  double end_time(pentad) ;
+    !          end_time:standard_name = "end time" ;
+    !  double lon(lon) ;
+    !          lon:standard_name = "longitude" ;
+    !  double lat(lat) ;
+    !          lat:standard_name = "latitude" ;
+    !  double o_mean(pentad, lon, lat) ;
+    !          o_mean:standard_name = "observation mean" ;
+    !  double o_std(pentad, lon, lat) ;
+    !          o_std:standard_name = "observation standard deviation" ;
+    !  double m_mean(pentad, lon, lat) ;
+    !          m_mean:standard_name = "model mean" ;
+    !  double m_std(pentad, lon, lat) ;
+    !          m_std:standard_name = "model standard deviation" ;
+    !  double m_min(lon, lat) ;
+    !          m_min:standard_name = "model minimum" ;
+    !  double m_max(lon, lat) ;
+    !          m_max:standard_name = "model maximum" ;
+    !  double n_data(pentad, lon, lat) ;
+    !          n_data:standard_name = "number of data points" ;
     !
     ! A M Fox, reichle, April 2023
     
@@ -8199,17 +8232,7 @@ contains
     
     real,    intent(inout), dimension(N_catd) :: tmp_obs
     real,    intent(inout), dimension(N_catd) :: tmp_std_obs
-    
-    ! ----------------------------------------------------------
-    ! Grid and netcdf parameters (might want to read these from netCDF file?)
-    
-    ! integer, parameter :: N_lon   = 1440
-    ! integer, parameter :: N_lat   =  720
-    real,    parameter :: ll_lon  = -180.0000
-    real,    parameter :: ll_lat  =  -90.0000 
-    real,    parameter :: dlon    =    0.25
-    real,    parameter :: dlat    =    0.25
-    
+       
     ! ----------------------------------------------------------
     
     ! local variables
@@ -8225,10 +8248,13 @@ contains
     integer :: pentad_dimid, lon_dimid, lat_dimid
     integer :: N_pentad, N_lon, N_lat
     integer :: pentad_varid, lon_varid, lat_varid
-    integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid
+    integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid, m_min_varid, m_max_varid
+    integer :: ll_lon_varid, ll_lat_varid, dlon_varid, dlat_varid
     integer, dimension(3) :: start, icount
+
+    logical :: file_exists
     
-    real :: tmpreal, this_lon, this_lat
+    real :: tmpreal, this_lon, this_lat, ll_lon, ll_lat, dlon, dlat
     
     integer, dimension(:), allocatable :: sclprm_tile_id
     integer, dimension(:), allocatable :: pentads
@@ -8236,26 +8262,49 @@ contains
     real, dimension(:),   allocatable  :: sclprm_lon,      sclprm_lat 
     real, dimension(:,:), allocatable  :: sclprm_mean_obs, sclprm_std_obs
     real, dimension(:,:), allocatable  :: sclprm_mean_mod, sclprm_std_mod
+    real, dimension(:,:), allocatable  :: sclprm_min_mod,  sclprm_max_mod
     
     character(len=*), parameter        :: Iam = ' scale_obs_sfmc_zscore'
     character(len=400) :: err_msg
     
     ! ------------------------------------------------------------------
     
-    ! read scaling parameters from file
-    
+    ! Read scaling parameters from file
+
     fname = trim(this_obs_param%scalepath) // '/' // &
          trim(this_obs_param%scalename) // '.nc4'
     
     if (logit) write (logunit,*)        'scaling obs species ', this_obs_param%species, ':'
     if (logit) write (logunit,'(400A)') '  reading ', trim(fname)
+
+    ! Check if file exists
+
+    inquire(file=fname, exist=file_exists)
+          
+    if (.not. file_exists) then
+       
+       err_msg = 'Scaling parameter file not found'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)             
+
+    end if
     
-    ! What pentad do we want?
+    ! Determine pentad to use
+
     pp = date_time%pentad
     
-    ! open the NetCDF file
+    ! Open the NetCDF file
+
     ierr = nf90_open(fname, nf90_nowrite, ncid)
-    
+
+    ! Get the dimension and variable IDs
+
+    ierr = nf90_inq_varid(ncid, 'll_lon', ll_lon_varid)
+    ierr = nf90_inq_varid(ncid, 'll_lat', ll_lat_varid)
+    ierr = nf90_inq_varid(ncid, 'dlon',   dlon_varid)
+    ierr = nf90_inq_varid(ncid, 'dlat',   dlat_varid)
+
+    ! Get the dimension sizes
+
     ierr = nf90_inq_dimid(ncid, 'pentad', pentad_dimid)
     ierr = nf90_inq_dimid(ncid, 'lon',    lon_dimid)
     ierr = nf90_inq_dimid(ncid, 'lat',    lat_dimid)
@@ -8264,14 +8313,26 @@ contains
     ierr = nf90_inquire_dimension(ncid, lon_dimid,    len = N_lon)
     ierr = nf90_inquire_dimension(ncid, lat_dimid,    len = N_lat)
     
+    ! Get the variable IDs
+
     ierr = nf90_inq_varid(ncid, 'lon',    lon_varid)
     ierr = nf90_inq_varid(ncid, 'lat',    lat_varid)
     ierr = nf90_inq_varid(ncid, 'o_mean', o_mean_varid)
     ierr = nf90_inq_varid(ncid, 'o_std',  o_std_varid)
     ierr = nf90_inq_varid(ncid, 'm_mean', m_mean_varid)
     ierr = nf90_inq_varid(ncid, 'm_std',  m_std_varid)
+    ierr = nf90_inq_varid(ncid, 'm_min',  m_min_varid)
+    ierr = nf90_inq_varid(ncid, 'm_max',  m_max_varid)    
     
-    ! read lon and lat variables
+    ! Read grid variables
+
+    ierr = nf90_get_var(ncid, ll_lon_varid, ll_lon)
+    ierr = nf90_get_var(ncid, ll_lat_varid, ll_lat)
+    ierr = nf90_get_var(ncid, dlon_varid,   dlon)
+    ierr = nf90_get_var(ncid, dlat_varid,   dlat)
+    
+    ! Read lon and lat variables
+
     allocate(sclprm_lon(N_lon), sclprm_lat(N_lat))
     ierr = nf90_get_var(ncid, lon_varid, sclprm_lon)
     ierr = nf90_get_var(ncid, lat_varid, sclprm_lat)
@@ -8279,26 +8340,32 @@ contains
     start = [1, 1, pp]
     icount = [N_lat, N_lon, 1]
     
+    ! Read mean and std variables
+
     allocate(sclprm_mean_obs(N_lat, N_lon), sclprm_std_obs(N_lat, N_lon))
     allocate(sclprm_mean_mod(N_lat, N_lon), sclprm_std_mod(N_lat, N_lon))
-    
-    ierr2 = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, start, icount)
+    allocate(sclprm_min_mod(N_lat, N_lon),  sclprm_max_mod(N_lat, N_lon))
+
+    ierr  = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, start, icount)
     ierr  = nf90_get_var(ncid, o_std_varid,  sclprm_std_obs,  start, icount)
     ierr  = nf90_get_var(ncid, m_mean_varid, sclprm_mean_mod, start, icount)
     ierr  = nf90_get_var(ncid, m_std_varid,  sclprm_std_mod,  start, icount)
-    
-    ! close the netcdf file
+    ierr  = nf90_get_var(ncid, m_min_varid,  sclprm_min_mod)
+    ierr  = nf90_get_var(ncid, m_max_varid,  sclprm_max_mod)
+
+    ! Close the netcdf file
+
     ierr = nf90_close(ncid)
     
     ! --------------------------------------------------------------
     
-    ! scale observations (at this point all obs are of same type because
-    !   of the way the subroutine is called from subroutine read_obs()
+    ! Scale observations (at this point all obs are of same type because
+    ! of the way the subroutine is called from subroutine read_obs()
     
     do i=1,N_catd
        
-       ! check for no-data-values in observation (any neg value is no_data)
-       
+       ! Check for no-data-values in observation (any neg value is no_data)
+
        if (tmp_obs(i)>=0.) then
           
           ! ll_lon and ll_lat refer to lower left corner of grid cell
@@ -8307,20 +8374,22 @@ contains
           this_lon = tmp_lon(i)
           this_lat = tmp_lat(i)
           
+          ! Find indices for current tile lat and lon on scaling parameter grid
+
           i_ind = ceiling((this_lon - ll_lon)/dlon) 
           j_ind = ceiling((this_lat - ll_lat)/dlat) 
           
-          ! find ind for current tile id in scaling parameters
-          
-          ! sanity check (against accidental use of wrong tile space)
-          
+          ! Sanity check (against accidental use of wrong tile space)
+
           if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
                abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol ) then
+
              err_msg = 'something wrong'
              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+
           end if
           
-          ! check for no-data-values in observation and fit parameters
+          ! Check for no-data-values in observation and fit parameters
           ! (any negative number could be no-data-value for observations)
           
           if ( sclprm_mean_obs(j_ind, i_ind)>0.     .and.          &
@@ -8328,14 +8397,22 @@ contains
                sclprm_std_obs(j_ind, i_ind)>=0.     .and.          &
                sclprm_std_mod(j_ind, i_ind)>=0. ) then
              
-             ! scale via standard normal deviates
+             ! Scale via standard normal deviates
              
              tmpreal = sclprm_std_mod(j_ind, i_ind)/sclprm_std_obs(j_ind, i_ind) 
              
              tmp_obs(i) = sclprm_mean_mod(j_ind, i_ind)                       &
                   + tmpreal*(tmp_obs(i)-sclprm_mean_obs(j_ind, i_ind)) 
              
-             ! scale observation error std
+             ! Check of tmp_obs is within range of model climatology
+
+             if (tmp_obs(i)<sclprm_min_mod(j_ind, i_ind)) then
+                tmp_obs(i) = sclprm_min_mod(j_ind, i_ind)
+               elseif (tmp_obs(i)>sclprm_max_mod(j_ind, i_ind)) then
+                tmp_obs(i) = sclprm_max_mod(j_ind, i_ind)
+               end if
+            
+             ! Scale observation error std
              
              tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
              
@@ -8348,13 +8425,15 @@ contains
        end if
        
     end do
-    
+
     deallocate(sclprm_lon)     
     deallocate(sclprm_lat)          
     deallocate(sclprm_mean_obs)     
     deallocate(sclprm_std_obs)      
     deallocate(sclprm_mean_mod)     
-    deallocate(sclprm_std_mod)      
+    deallocate(sclprm_std_mod)  
+    deallocate(sclprm_min_mod)
+    deallocate(sclprm_max_mod)    
     
   end subroutine scale_obs_sfmc_zscore
   
