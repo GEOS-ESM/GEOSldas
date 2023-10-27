@@ -812,7 +812,7 @@ class LDASsetup:
                   self.rqdExeInp['RESTART_ID'] + \
                   '/output/'+self.rqdExeInp['RESTART_DOMAIN']+'/rc_out/'
 
-        # pass into process_rst
+        # pass into remap_config_ldas
         sponsorid = self.rqdRmInp['account']
         exp_id    = self.rqdExeInp['EXP_ID']
         exp_dir   = self.exphome
@@ -836,9 +836,6 @@ class LDASsetup:
                os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ _ensid +'_rst')
                self.has_landassim_seed = True
         mk_outdir = self.exphome+'/'+exp_id+'/mk_restarts/' 
-        #cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, mk_outdir,
-        #                out_bcdir, out_tilefile, self.catch, RESTART_str, YYYYMMDDHH,
-        #                self.in_rstfile, self.in_tilefile, dzsf, wemin_in, wemin_out])
 
         if (RESTART_str != '1'):
            remap_tpl = os.path.dirname(os.path.realpath(__file__)) + '/remap_params.tpl'
@@ -858,7 +855,7 @@ class LDASsetup:
            config['output']['shared']['out_dir']         = mk_outdir
            config['output']['surface']['catch_remap']    = True
            config['output']['surface']['catch_tilefile'] = self.rqdExeInp['TILING_FILE']
-           config['output']['shared']['bcs_dir']         = self.bcs_geom
+           config['output']['shared']['bcs_dir']         = self.bcs_land
            config['output']['shared']['expid']           = self.rqdExeInp['EXP_ID']
            config['output']['surface']['surflay']        = dzsf
            config['output']['surface']['wemin']          = wemin_out
@@ -867,20 +864,6 @@ class LDASsetup:
 
            catch_obj = catchANDcn(config_obj = config)
            catch_obj.remap()
-
-           #print "cmd:   " + cmd
-           #os.system(cmd)
-
-           #done_rst=self.exphome+'/'+exp_id+'/mk_restarts/done_rst_file'
-           #print "Please hold on for a while until the restart file is created  ....."
-           #_animation = "|/-\\"
-           #_idx = 0
-           #while not os.path.isfile(done_rst):
-           #  sys.stdout.write('\r'+_animation[_idx % len(_animation)])
-           #  sys.stdout.flush()
-           #  _idx += 1
-           #  time.sleep(1.)
-
 
         #for ens in self.ensdirs :
         catchRstFile0  = ''
