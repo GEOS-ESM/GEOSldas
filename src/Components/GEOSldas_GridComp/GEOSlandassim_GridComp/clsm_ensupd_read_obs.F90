@@ -8300,8 +8300,8 @@ contains
 
     ierr = nf90_inq_varid(ncid, 'll_lon', ll_lon_varid)
     ierr = nf90_inq_varid(ncid, 'll_lat', ll_lat_varid)
-    ierr = nf90_inq_varid(ncid, 'dlon',   dlon_varid)
-    ierr = nf90_inq_varid(ncid, 'dlat',   dlat_varid)
+    ierr = nf90_inq_varid(ncid, 'd_lon',   dlon_varid)
+    ierr = nf90_inq_varid(ncid, 'd_lat',   dlat_varid)
 
     ! Get the dimension sizes
 
@@ -8383,18 +8383,18 @@ contains
 
           if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
                abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol ) then
-
-             err_msg = 'something wrong'
-             call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+                 
+               err_msg = 'Lat/lon diff beyond tolerance'
+               call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
 
           end if
           
           ! Check for no-data-values in observation and fit parameters
           ! (any negative number could be no-data-value for observations)
           
-          if ( sclprm_mean_obs(j_ind, i_ind)>0.     .and.          &
-               sclprm_mean_mod(j_ind, i_ind)>0.     .and.          &
-               sclprm_std_obs(j_ind, i_ind)>=0.     .and.          &
+          if ( sclprm_mean_obs(j_ind, i_ind)>0.   .and.        &
+               sclprm_mean_mod(j_ind, i_ind)>0.   .and.        &
+               sclprm_std_obs(j_ind, i_ind)>=0.   .and.        &
                sclprm_std_mod(j_ind, i_ind)>=0. ) then
              
              ! Scale via standard normal deviates
@@ -8407,10 +8407,14 @@ contains
              ! Check of tmp_obs is within range of model climatology
 
              if (tmp_obs(i)<sclprm_min_mod(j_ind, i_ind)) then
+
                 tmp_obs(i) = sclprm_min_mod(j_ind, i_ind)
-               elseif (tmp_obs(i)>sclprm_max_mod(j_ind, i_ind)) then
+
+             elseif (tmp_obs(i)>sclprm_max_mod(j_ind, i_ind)) then
+
                 tmp_obs(i) = sclprm_max_mod(j_ind, i_ind)
-               end if
+
+             end if
             
              ! Scale observation error std
              
