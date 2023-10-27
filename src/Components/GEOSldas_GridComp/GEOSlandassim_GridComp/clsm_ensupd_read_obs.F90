@@ -4951,6 +4951,9 @@ contains
     std_MODIS_obs = this_obs_param%errstd
     
     MODIS_obs     = 0.
+    MODIS_lon     = 0.
+    MODIS_lat     = 0.
+
     N_obs_in_tile = 0
     
     do kk=1,N_CMG_obs
@@ -5109,7 +5112,7 @@ contains
   ! *****************************************************************
   
   subroutine read_MODIS_SCF_hdf( fname, lon_min, lon_max, lat_min, lat_max,   &
-       N_good_data, MODIS_lon, MODIS_lat, MODIS_SCF )
+       N_good_data, CMG_lon, CMG_lat, CMG_SCF )
     
     ! read snow cover area fraction (SCF) obs from daily MODIS Terra or Aqua M?D10C1, version 6.1 
     !   - Terra: https://nsidc.org/data/mod10c1/versions/61
@@ -5132,7 +5135,7 @@ contains
     
     integer,               intent(out) :: N_good_data
     
-    real,    dimension(:), intent(out) :: MODIS_lon, MODIS_lat, MODIS_SCF   ! NOTE: lon-by-lat
+    real,    dimension(:), intent(out) :: CMG_lon, CMG_lat, CMG_SCF         ! NOTE: 1-dim array on CMG grid
     
     ! -------------------------------------------------
 
@@ -5264,7 +5267,7 @@ contains
 
     ! ! dbg ! ! write (*,*)  '###############################################################################'
     ! ! dbg ! ! write (*,*)  Iam // '():'
-    ! ! dbg ! ! write (*,*)  'size(MODIS_SCF), N_lon, N_lat = ', size(MODIS_SCF), N_lon, N_lat
+    ! ! dbg ! ! write (*,*)  'size(CMG_SCF), N_lon, N_lat   = ', size(CMG_SCF), N_lon, N_lat
     ! ! dbg ! ! write (*,*)  'lon_min, lon_max              = ', lon_min, lon_max
     ! ! dbg ! ! write (*,*)  'lat_min, lat_max              = ', lat_min, lat_max       
     ! ! dbg ! ! write (*,*)  'start [lon, lat]              = ', start
@@ -5278,9 +5281,9 @@ contains
     
     N_tmp = N_lon*N_lat
            
-    if ( (N_tmp /= size(MODIS_lon)) .or.            &
-         (N_tmp /= size(MODIS_lat)) .or.            &
-         (N_tmp /= size(MODIS_SCF))      ) then
+    if ( (N_tmp /= size(CMG_lon)) .or.            &
+         (N_tmp /= size(CMG_lat)) .or.            &
+         (N_tmp /= size(CMG_SCF))      ) then
        
        err_msg = 'inconsistent array dimensions'
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
@@ -5436,9 +5439,9 @@ contains
     !
     ! apply QC and put SCF obs into output array
     
-    MODIS_lon = SCF_nodata                           ! initialize
-    MODIS_lat = SCF_nodata                           ! initialize
-    MODIS_SCF = SCF_nodata                           ! initialize
+    CMG_lon = SCF_nodata                             ! initialize
+    CMG_lat = SCF_nodata                             ! initialize
+    CMG_SCF = SCF_nodata                             ! initialize
 
     kk        = 0                                    ! initialize counter for "good" data
 
@@ -5462,10 +5465,10 @@ contains
              
              ! raw SCF value is for clear portion of grid cell only, need to normalize with Clear_Index
              
-             MODIS_SCF(kk) = real(Snow_Cover(ii,jj))/real(Clear_Index(ii,jj)) 
+             CMG_SCF(kk) = real(Snow_Cover(ii,jj))/real(Clear_Index(ii,jj)) 
              
-             MODIS_lon(kk) = lon_c(ii)
-             MODIS_lat(kk) = lat_c(jj)
+             CMG_lon(kk) = lon_c(ii)
+             CMG_lat(kk) = lat_c(jj)
              
           end if
           
@@ -5488,7 +5491,6 @@ contains
 
   end subroutine read_MODIS_SCF_hdf
 
-  ! *****************************************************************
   ! *****************************************************************
  
   subroutine read_obs_SMAP_FT( date_time, N_catd, this_obs_param,            &
