@@ -19,7 +19,7 @@ from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
 from remap_utils import *
 from remap_catchANDcn  import *
-from process_rst import *
+from remap_config_ldas import *
 
 """
 This script is intended to be run from any installed directory with GEOSldas.x and ldas_setup
