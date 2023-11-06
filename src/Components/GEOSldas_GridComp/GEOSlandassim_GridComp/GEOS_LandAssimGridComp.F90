@@ -149,7 +149,7 @@ contains
     ! Local Variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
     character(len=ESMF_MAXSTR)   :: LAND_ASSIM_STR, mwRTM_file
-    character(len=ESMF_MAXSTR)   :: ensid_string,childname
+    character(len=ESMF_MAXSTR)   :: ensid_string, childname
     integer                      :: i, ens_id_width, FIRST_ENS_ID, NUM_ENSEMBLE
     integer                      :: ens_id, export_id
 
@@ -2011,8 +2011,11 @@ contains
           
              cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize --> ens avg
           
-             cat_diagS_ensstd(ii) = cat_diagS_sqrt( cat_diagS_max(0.0, cat_diagS_ensstd(ii)/Nm1 - NdivNm1*(cat_diagS_ensavg(ii)*cat_diagS_ensavg(ii))) )
-
+             cat_diagS_ensstd(ii) =                                                                                  &
+                  cat_diagS_sqrt(                                                                                    &
+                  cat_diagS_max( 0., cat_diagS_ensstd(ii)/Nm1 - NdivNm1*(cat_diagS_ensavg(ii)*cat_diagS_ensavg(ii))) &
+                  )
+             
           end do
 
        else    ! NUM_ENSEMBLE = 1

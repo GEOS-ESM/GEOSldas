@@ -34,7 +34,7 @@
 #include "unused_dummy.H"
 
 module random_fieldsMod
-
+  
 #ifdef MKL_AVAILABLE
   use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer, c_ptr, c_sizeof, C_NULL_PTR
   use mpi
@@ -46,7 +46,7 @@ module random_fieldsMod
   
   use nr_ran2_gasdev,                   ONLY:     &
        NRANDSEED,                                 &
-       nr_ran2_2d,                                   &
+       nr_ran2_2d,                                &
        nr_gasdev
 
   use MAPL_ExceptionHandling
@@ -69,15 +69,17 @@ module random_fieldsMod
      integer :: node_comm
      integer :: win
      type (c_ptr) :: base_address 
-
+     
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle_dim1
      type(DFTI_DESCRIPTOR), pointer :: Desc_Handle_dim2
      integer, allocatable :: dim1_counts(:)
      integer, allocatable :: dim2_counts(:)
 #endif
+
    contains
-!     procedure, public  :: initialize
+     
+     !     procedure, public  :: initialize
      procedure, public  :: finalize
      procedure, public  :: rfg2d_fft
      procedure, public  :: generate_white_field
@@ -90,24 +92,25 @@ module random_fieldsMod
 
   interface random_fields
      module procedure new_random_fields
-  end interface
+  end interface random_fields
   
 contains
-
+  
   ! constructor (set parameter values), allocate memory
   function new_random_fields(Nx, Ny, Nx_fft, Ny_fft, comm, rc) result (rf)
-
+    
     ! input/output variables [NEED class(random_fields)
-    ! instead of type(random_fields)] - F2003 quirk?!?
-    type(random_fields) :: rf
-    integer, intent(in) :: Nx, Ny, Nx_fft, Ny_fft
-    integer, optional, intent(in) :: comm
+    !   instead of type(random_fields)] - F2003 quirk?!?
+    type(random_fields)            :: rf
+    integer,           intent(in)  :: Nx, Ny, Nx_fft, Ny_fft
+    integer, optional, intent(in)  :: comm
     integer, optional, intent(out) :: rc 
-    ! local variable
+    
+    ! local variables
     integer :: status, ierror
-    integer :: rank, npes, local_dim1, local_dim2, remainer
+    integer :: rank, npes, local_dim1, local_dim2, remainder
     integer :: Stride(2)
-
+    
     ! set obj param vals
     rf%N_x = Nx
     rf%N_y = Ny
@@ -124,11 +127,11 @@ contains
 #ifdef MKL_AVAILABLE
     if (present(comm)) then
        rf%comm = comm
-
+       
        call MPI_Comm_split_type(rf%comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, rf%Node_Comm,ierror)
-       call MPI_Comm_size(rf%Node_Comm, npes,ierror)
+       call MPI_Comm_size(rf%Node_Comm, npes, ierror)
        call MPI_Comm_rank(rf%Node_Comm, rank, ierror)
-
+       
        if (npes > minval([Nx_fft, Ny_fft]) ) then
           print*, " Two many processors are acquired  in a node for parallel FFT"
           print*, " The number of processors acquired in a node should be smaller than or equal to FFT grid size: ", minval([Nx_fft, Ny_fft]) 
@@ -141,14 +144,14 @@ contains
        allocate(rf%dim1_counts(npes),rf%dim2_counts(npes))
        local_dim1 = Nx_fft/npes
        rf%dim1_counts = local_dim1
-       remainer = mod(Nx_fft, npes)
-       rf%dim1_counts(1:remainer) = local_dim1 + 1
+       remainder = mod(Nx_fft, npes)
+       rf%dim1_counts(1:remainder) = local_dim1 + 1
        local_dim1 = rf%dim1_counts(rank+1) 
 
        local_dim2 = Ny_fft/npes
        rf%dim2_counts = local_dim2
-       remainer = mod(Ny_fft, npes)
-       rf%dim2_counts(1:remainer) = local_dim2 + 1
+       remainder = mod(Ny_fft, npes)
+       rf%dim2_counts(1:remainder) = local_dim2 + 1
        local_dim2 = rf%dim2_counts(rank+1)
 
 
@@ -197,9 +200,9 @@ contains
 #endif
     _RETURN(_SUCCESS)
   end function new_random_fields
-
-
-
+  
+  ! **************************************************************************
+  
   ! destructor - deallocate memory
   subroutine finalize(this, rc)
 
@@ -212,26 +215,26 @@ contains
     ! deallocate memory
     if(allocated(this%field1_fft)) deallocate(this%field1_fft)
     if(allocated(this%field2_fft)) deallocate(this%field2_fft)
-
+    
 #ifdef MKL_AVAILABLE
     if (this%comm == MPI_COMM_NULL) then
        status = DftiFreeDescriptor(this%Desc_Handle)
        _VERIFY(status)
     else
-
+       
        status = DftiFreeDescriptor(this%Desc_Handle_dim1)
        _VERIFY(status)
        status = DftiFreeDescriptor(this%Desc_Handle_dim2)
        _VERIFY(status)
-
+       
        call this%win_deallocate( _RC)
-
+       
        deallocate(this%dim1_counts, this%dim2_counts)
     endif
 #endif
 
   end subroutine finalize
-
+  
 
   ! subroutine sqrt_gauss_spectrum_2d()
   !
@@ -264,17 +267,19 @@ contains
   !  lambda_y : decorrelation length in y direction
   !
   ! modifies this%field1_fft
+
   subroutine sqrt_gauss_spectrum_2d(this, lx, ly, dx, dy)
 
     ! input/output variables
     class(random_fields), intent(inout) :: this
-    real, intent(in) :: lx, ly, dx, dy
+    real,                 intent(in)    :: lx, ly, dx, dy
 
     ! local variables
-    real :: dkx, dky, fac, lamx2dkx2, lamy2dky2
-    real :: lx2kx2(this%N_x_fft), ly2ky2(this%N_y_fft)
+    real    :: dkx, dky, fac, lamx2dkx2, lamy2dky2
+    real    :: lx2kx2(this%N_x_fft), ly2ky2(this%N_y_fft)
     integer :: i, j, i1, i2, rank, ierror
-    real :: var
+    real    :: var
+
     var = 1.0
     ! start
     dkx = (TWO_PI)/(float(this%N_x_fft)*dx)
@@ -319,7 +324,7 @@ contains
     return
 
   end subroutine sqrt_gauss_spectrum_2d
-
+  
   ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
   ! ----------------------------------------------------------------------
@@ -374,14 +379,14 @@ contains
   !       (before re-scaling with sqrt(2)). 
   !       The individual sample variances within each pair vary from 
   !       realization to realization.
-  !
+  
   subroutine rfg2d_fft(this, rseed, rfield, rfield2, lx, ly, dx, dy)
-
+    
     ! input/output variables
-    class(random_fields), intent(inout) :: this ! ffield*_fft is modified
-    integer, intent(inout) :: rseed(NRANDSEED) ! nr_ran2 modifies rseed
-    real, dimension(this%N_x,this%N_y), intent(out) :: rfield, rfield2
-    real, intent(in) :: lx, ly, dx, dy
+    class(random_fields),                  intent(inout) :: this ! ffield*_fft is modified
+    integer,                               intent(inout) :: rseed(NRANDSEED) ! nr_ran2 modifies rseed
+    real,    dimension(this%N_x,this%N_y), intent(out)   :: rfield, rfield2
+    real,                                  intent(in)    :: lx, ly, dx, dy
 
     ! local variables
     !real :: theta, ran_num ! rng

@@ -2017,7 +2017,7 @@ contains
 
   ! WY noted :: -l is changed to _g. Only read part was kept  
   subroutine io_pert_rstrt( action, work_path, exp_id, ens_id, &
-       date_time, pert_grid_g, pert_grid_f,      &
+       date_time, pert_grid_g, pert_grid_f,                    &
        N_force_pert, N_progn_pert, Pert_rseed,                 &
        Force_pert_ntrmdt_g, Progn_pert_ntrmdt_g, rc )
 

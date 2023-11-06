@@ -612,24 +612,30 @@ contains
        end do ! n=1,N_ens
 
        ! finalize rf
-       ! The rf map will be destroy in the finalize of GEOSLandperp_Gridcomp
+       ! The rf map will be destroyed in the finalize of GEOSLandperp_Gridcomp
        !call rf%finalize
 
     end do ! m=1,N_pert
 
   end subroutine propagate_pert
 
-  subroutine calc_fft_grid(pert_param, pert_grid_f, Nx, Ny, N_x_fft, N_y_fft, xStride, yStride, rdlon, rdlat) 
-    type(pert_param_type), intent(in) :: pert_param
-    type(grid_def_type), intent(in)   :: pert_grid_f
-    integer, intent(out) :: Nx, Ny, N_x_fft, N_y_fft, xStride, yStride
-    real, intent(out)    :: rdlon, rdlat
+  ! ******************************************************************************************
 
-    integer :: Nx_fft, Ny_fft
+  subroutine calc_fft_grid(pert_param, pert_grid_f, Nx, Ny, N_x_fft, N_y_fft, xStride, yStride, rdlon, rdlat) 
+
+    type(pert_param_type), intent(in)  :: pert_param
+    type(grid_def_type),   intent(in)  :: pert_grid_f
+
+    integer,               intent(out) :: Nx, Ny, N_x_fft, N_y_fft, xStride, yStride
+    real,                  intent(out) :: rdlon, rdlat
+
+    ! local variables
+    
+    integer         :: Nx_fft, Ny_fft
     real, parameter :: mult_of_xcorr = 2.
     real, parameter :: mult_of_ycorr = 2.
     real, parameter :: coarsen_param = 0.8
-    real :: xCorr, yCorr
+    real            :: xCorr, yCorr
 
     xCorr = pert_param%xcorr
     yCorr = pert_param%ycorr
@@ -661,6 +667,7 @@ contains
     N_y_fft = 2**ceiling(log(real(Ny_fft))/log(2.))
 
   end subroutine
+
   ! ******************************************************************
   
   subroutine truncate_std_normal( N_x, N_y, std_normal_max, grid_data )
@@ -1263,38 +1270,46 @@ contains
   ! ************************************************************************
 
   function find_rf(Nx, Ny, Nx_fft, Ny_fft, comm) result (rf)
-    type(random_fields), pointer :: rf 
-    integer, intent(in) :: Nx, Ny, Nx_fft, Ny_fft
-    integer, optional, intent(in) :: comm
-
+    
+    type(random_fields), pointer              :: rf 
+    integer,                       intent(in) :: Nx, Ny, Nx_fft, Ny_fft
+    integer,             optional, intent(in) :: comm
+    
+    ! local variables
+    
     type(StringRandom_fieldsMapIterator) :: iter
     Character(len=:), allocatable :: id_string
     type(random_fields) :: rf_tmp
-
+    
     id_string = i_to_string(Nx)//":"//i_to_string(Ny)//":"//i_to_string(Nx_fft)//":"//i_to_string(Ny_fft)
     iter = random_fieldsMap%find(id_string)
     if (iter == random_fieldsMap%end() ) then
-      rf_tmp = random_fields(Nx, Ny, Nx_fft, Ny_fft, comm=comm)
-      call random_fieldsMap%insert(id_string, rf_tmp)
-      iter = random_fieldsMap%find(id_string) 
+       rf_tmp = random_fields(Nx, Ny, Nx_fft, Ny_fft, comm=comm)
+       call random_fieldsMap%insert(id_string, rf_tmp)
+       iter = random_fieldsMap%find(id_string) 
     endif
     rf => iter%value()
-
-  end function
-
+    
+  end function find_rf
+  
+  ! ************************************************************************
+  
   subroutine clear_rf()
-    type(StringRandom_fieldsMapIterator) :: iter     
-    type(random_fields), pointer :: rf_ptr 
+    
+    type(StringRandom_fieldsMapIterator)          :: iter     
+    type(random_fields),                  pointer :: rf_ptr 
+    
     iter = random_fieldsMap%begin()
     do while (iter /= random_fieldsMap%end())
-      rf_ptr => iter%value()
-      call rf_ptr%finalize()
-      ! remove the files
-      call random_fieldsMap%erase(iter)
-      iter = random_fieldsMap%begin()
+       rf_ptr => iter%value()
+       call rf_ptr%finalize()
+       ! remove the files
+       call random_fieldsMap%erase(iter)
+       iter = random_fieldsMap%begin()
     enddo
-  end subroutine
-
+  end subroutine clear_rf
+  
+  
 end module land_pert_routines
 
 ! ***************************************************************************

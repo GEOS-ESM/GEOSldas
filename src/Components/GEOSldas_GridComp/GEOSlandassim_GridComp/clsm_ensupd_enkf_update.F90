@@ -1397,32 +1397,34 @@ contains
     ! - reichle, 16 Jun 2011
 
     implicit none
+    
+    type(date_time_type),                         intent(in) :: date_time
+    
+    character(*),                                 intent(in) :: exp_id
 
-    type(date_time_type), intent(in) :: date_time
-    character(*), intent(in) :: exp_id
-
-    integer, intent(in) :: N_obsl, N_obs_param
+    integer,                                      intent(in) :: N_obsl, N_obs_param
 
 
     type(obs_type),       dimension(N_obsl),      intent(in) :: Observations_l
 
-    integer, dimension(:), optional, intent(in) :: rf2f
+    integer,              dimension(:), optional, intent(in) :: rf2f
 
     ! ---------------------
 
     ! locals
 
-    character(40), parameter  :: file_tag = 'ldas_ObsFcstAna'
-    character(40), parameter  :: dir_name = 'ana'
+    character(40),  parameter                 :: file_tag = 'ldas_ObsFcstAna'
+    character(40),  parameter                 :: dir_name = 'ana'
 
     type(obs_type), dimension(:), allocatable :: Observations_f, Observations_tmp
 
     integer                                   :: n, N_obsf
-    integer, dimension(:), allocatable :: rf_tilenums, tilenums
+    integer,        dimension(:), allocatable :: rf_tilenums, tilenums
 
     integer,        dimension(numprocs)       :: N_obsl_vec, tmp_low_ind
 
     character(300)                            :: fname
+
 #ifdef LDAS_MPI
 
     integer                                   :: this_species, ind_tmp, j
@@ -1432,8 +1434,6 @@ contains
     integer,        dimension(N_obs_param)    :: ind_within_species
 
 #endif
-
-
 
     ! --------------------------------------------------------------------
 

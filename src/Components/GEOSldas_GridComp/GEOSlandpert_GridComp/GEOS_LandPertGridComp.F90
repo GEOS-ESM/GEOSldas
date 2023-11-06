@@ -860,9 +860,9 @@ contains
 
     ! Misc variables
     integer :: model_dtstep
-    integer :: land_nt_local,n,m,i1, in, j1, jn
+    integer :: land_nt_local, m, n, i1, in, j1, jn
     logical :: IAmRoot, f_exist
-    integer :: n_lon,n_lat, n_lon_g, n_lat_g
+    integer :: n_lon, n_lat, n_lon_g, n_lat_g
     integer, allocatable :: pert_rseed(:)
     type(ESMF_Grid) :: Grid
     character(len=ESMF_MAXSTR) :: id_string
@@ -2662,7 +2662,7 @@ contains
     type(MAPL_LocStream) :: locstream
     type(TILECOORD_WRAP) :: tcwrap
     type(T_TILECOORD_STATE), pointer :: tcinternal
-    integer :: m,land_nt_local, ens_id_width
+    integer :: m, land_nt_local, ens_id_width
 
     integer :: nfpert, nppert, n_tile
     type(tile_coord_type), pointer :: tile_coord_f(:)=>null()
