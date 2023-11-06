@@ -1422,7 +1422,7 @@ contains
     ! allocate and assemble tile_data_l
     allocate(tile_data_l(0,0,0))  ! for debugging to pass  
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
-         tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
+         tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                        &
          N_catlH, tile_coord_lH=tile_coord_lH )
     
     if (get_sfmc_lH)   allocate(sfmc_lH( N_catlH,                     N_ens))
@@ -1453,7 +1453,7 @@ contains
     ! communicate tile_data_l as needed and get tile_data_lH
     
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
-         tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
+         tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                        &
          N_catlH, tile_data_lH=tile_data_lH )    
     
     ! read out sfmc, rzmc, etc. from tile_data_lH    
@@ -2341,7 +2341,7 @@ contains
   ! *********************************************************************
 
   subroutine get_halo_obs( N_ens, N_obsl, Observations_l, Obs_pred_l,  &
-       tile_coord_l, xcompact, ycompact,                                       &
+       tile_coord_l, xcompact, ycompact,                               &
        N_obslH, Observations_lH, Obs_pred_lH )
     
     ! collect observations from other local domains (processors) that are 
@@ -2764,7 +2764,7 @@ contains
   ! *********************************************************************
   
   subroutine get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
-       tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                      &
+       tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                              &
        N_catlH, tile_coord_lH, tile_data_lH )
     
     ! collect (bundled) tile_data from other local domains (processors) that are 
