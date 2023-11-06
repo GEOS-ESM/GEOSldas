@@ -62,7 +62,7 @@ module GEOS_LandAssimGridCompMod
   use clsm_ensupd_glob_param,    only: echo_clsm_ensupd_glob_param
   use clsm_ensupd_enkf_update,   only: get_enkf_increments 
   use clsm_ensupd_enkf_update,   only: apply_enkf_increments 
-  use clsm_ensupd_enkf_update,   only: output_incr_etc
+  use clsm_ensupd_enkf_update,   only: output_ObsFcstAna_wrapper
   use clsm_ensupd_enkf_update,   only: write_smapL4SMaup 
   use clsm_ensdrv_out_routines,  only: init_log, GEOS_output_smapL4SMlmc 
   use clsm_ensdrv_drv_routines,  only: recompute_diagS
@@ -1936,7 +1936,7 @@ contains
 
     if (.true.) then  ! replace obsolete check for analysis time with "if true" to keep indents
 
-       call output_incr_etc( out_ObsFcstAna,                             &
+       call output_ObsFcstAna_wrapper( out_ObsFcstAna,                   &
             date_time_new, trim(exp_id),                                 &
             N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
             N_catl, tile_coord_l,                                        &

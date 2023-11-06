@@ -132,7 +132,7 @@ module clsm_ensupd_enkf_update
 
   public :: get_enkf_increments
   public :: apply_enkf_increments
-  public :: output_incr_etc
+  public :: output_ObsFcstAna_wrapper
   public :: write_smapL4SMaup 
 
 contains
@@ -1614,7 +1614,7 @@ contains
 
   ! **********************************************************************
 
-  subroutine output_incr_etc( out_ObsFcstAna,                                &
+  subroutine output_ObsFcstAna_wrapper( out_ObsFcstAna,                      &
        date_time, exp_id,                                                    &
        N_obsl, N_obs_param, N_ens,                                           &
        N_catl, tile_coord_l,                                                 &
@@ -1675,7 +1675,7 @@ contains
     integer :: N_obsl_tmp
 
 
-    character(len=*), parameter :: Iam = 'output_incr_etc'
+    character(len=*), parameter :: Iam = 'output_ObsFcstAna_wrapper'
 
     ! --------------------------------------------------------------
 
@@ -1710,100 +1710,7 @@ contains
 
     end if
 
-    ! ----------------------------------------------------------------
-
-    ! output ens avg increments
-
-!!    if (out_incr) then
-!!
-!!       ! compute increments for local domain
-!!
-!!       do i=1,N_catl
-!!          cat_progn_incr_ensavg(i) = 0.
-!!          do n_e=1,N_ens
-!!             cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
-!!                  + cat_progn_incr(i,n_e)
-!!          end do
-!!          cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(N_ens)
-!!       end do
-!!
-!!
-!!       ! gather and write to file
-!!
-!!       file_tag = 'ldas_incr'
-!!       dir_name = 'ana'
-!!
-!!       if (root_proc)  allocate(cat_progn_incr_f(N_catf))
-!!
-!!#ifdef LDAS_MPI
-!!
-!!       call MPI_GATHERV( &
-!!            cat_progn_incr_ensavg, N_catl,                MPI_cat_progn_type, &
-!!            cat_progn_incr_f,      N_catl_vec, low_ind-1, MPI_cat_progn_type, &
-!!            0, mpicomm, mpierr )
-!!
-!!#else
-!!       cat_progn_incr_f = cat_progn_incr_ensavg
-!!#endif
-!!       if (root_proc) then
-!!
-!!
-!!          select case (out_incr_format)
-!!
-!!          case (0)
-!!
-!!             ! output increments in LDASsa domain and in LDASsa tile order (standard LDASsa)
-!!             if(present(rf2f)) then
-!!                allocate(cat_progn_incr_tmp(N_catf))
-!!                cat_progn_incr_tmp(:) = cat_progn_incr_f(rf2f(:))
-!!                cat_progn_incr_f = cat_progn_incr_tmp
-!!                deallocate(cat_progn_incr_tmp)
-!!             endif
-!!
-!!             call io_rstrt( 'w', work_path, exp_id, -1, date_time,       &
-!!                  N_catf, cat_progn_incr_f, file_tag, dir_name=dir_name)
-!!
-!!          case (1)
-!!
-!!             ! output increments on global domain in GEOS-5 global tile order
-!!             ! suitable for reading into GEOS-5 GCM as land incremental analysis
-!!             ! update (LIAU)
-!!
-!!             allocate(cat_progn_incr_g(N_catg))
-!!
-!!             ! initialize
-!!
-!!             do i=1,N_catg
-!!                cat_progn_incr_g(i) = 0.0
-!!             end do
-!!
-!!             ! reorder increments to GEOS-5 gcm global tile order
-!!
-!!             do i=1,N_catf
-!!                cat_progn_incr_g(f2g(i)) = cat_progn_incr_f(i)
-!!             end do
-!!
-!!             file_tag = trim(file_tag) // 'LIAU'
-!!
-!!             call io_rstrt( 'w', work_path, exp_id, -1, date_time,       &
-!!                  N_catg, cat_progn_incr_g, file_tag, dir_name=dir_name, &
-!!                  is_little_endian=.true. )
-!!
-!!             deallocate(cat_progn_incr_g)
-!!
-!!          case default
-!!
-!!             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown out_incr_format')
-!!
-!!          end select
-!!
-!!          deallocate(cat_progn_incr_f)
-!!
-!!       end if  ! root_proc
-!!
-!!    end if     ! out_incr
-
-  end subroutine output_incr_etc
+  end subroutine output_ObsFcstAna_wrapper
 
   ! **********************************************************************
 
