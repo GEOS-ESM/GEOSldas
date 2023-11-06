@@ -405,7 +405,7 @@ contains
 
     type(grid_def_type) :: tile_grid_g, pert_grid_g
     type(grid_def_type) :: tile_grid_f, pert_grid_f
-    type(grid_def_type) :: pert_grid_l
+    type(grid_def_type) ::              pert_grid_l
 
     type(date_time_type):: start_time
     type(ESMF_Time)     :: CurrentTime
