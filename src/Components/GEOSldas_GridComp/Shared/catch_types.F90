@@ -38,7 +38,7 @@ module catch_types
   
   public :: assignment (=), operator (*), operator (/), operator (+), operator (-)
 
-  public :: cat_diagS_sqrt
+  public :: cat_diagS_sqrt, cat_diagS_max
 
   public :: catprogn2wesn, catprogn2htsn, catprogn2sndz, catprogn2ghtcnt
 
@@ -1368,6 +1368,38 @@ contains
   end function catprogn2ghtcnt
   
   ! ***********************************************************************
+
+  function cat_diagS_max( scalar, cat_diagS )
+
+    implicit none
+
+    type(cat_diagS_type)             :: cat_diagS_max
+    type(cat_diagS_type), intent(in) :: cat_diagS
+
+    real, intent(in) :: scalar
+
+    integer :: i     ! local
+
+    cat_diagS_max%ar1        = max(scalar, cat_diagS%ar1)
+    cat_diagS_max%ar2        = max(scalar, cat_diagS%ar2)
+
+    cat_diagS_max%asnow      = max(scalar, cat_diagS%asnow)
+
+    cat_diagS_max%sfmc       = max(scalar, cat_diagS%sfmc)
+    cat_diagS_max%rzmc       = max(scalar, cat_diagS%rzmc)
+    cat_diagS_max%prmc       = max(scalar, cat_diagS%prmc)
+
+    cat_diagS_max%tsurf      = max(scalar, cat_diagS%tsurf)
+
+    do i=1,N_gt
+       cat_diagS_max%tp(i)   = max(scalar, cat_diagS%tp(i))
+    end do
+
+    do i=1,N_snow
+       cat_diagS_max%tpsn(i) = max(scalar, cat_diagS%tpsn(i))
+    end do
+
+  end function cat_diagS_max
     
 end module catch_types
   
