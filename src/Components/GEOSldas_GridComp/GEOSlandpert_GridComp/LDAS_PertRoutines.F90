@@ -287,7 +287,6 @@ contains
     type(force_pert_ccor_type) :: ccorr_force_pert
 
     ! Errlong variables
-    integer :: rc, status
     character(len=*), parameter :: Iam = 'read_ens_prop_inputs'
 
     ! MPI variables
@@ -995,7 +994,6 @@ contains
     integer :: xstart, xcount, ystart, ycount ! for computing local indices
 
     ! Errlong variables
-    integer :: rc, status
     character(len=*), parameter :: Iam = 'get_force_pert_inputs'
 
     ! MPI variables
@@ -1385,7 +1383,6 @@ contains
     integer :: xstart, xcount, ystart, ycount ! for computing local indices
 
     ! Errlong variables
-    integer :: rc, status
     character(len=*), parameter :: Iam = 'get_progn_pert_inputs'
 
     ! MPI variables
@@ -1902,7 +1899,7 @@ contains
     !
     ! local variables
 
-    integer :: i,j,k, ierr
+    integer :: k, ierr
 
     ! ---------------------------------------------------------------
     !
@@ -2020,7 +2017,7 @@ contains
 
   ! WY noted :: -l is changed to _g. Only read part was kept  
   subroutine io_pert_rstrt( action, work_path, exp_id, ens_id, &
-       date_time, tile_coord_g, pert_grid_g, pert_grid_f,      &
+       date_time, pert_grid_g, pert_grid_f,                    &
        N_force_pert, N_progn_pert, Pert_rseed,                 &
        Force_pert_ntrmdt_g, Progn_pert_ntrmdt_g, rc )
 
@@ -2039,8 +2036,6 @@ contains
     type(date_time_type), intent(in) :: date_time
 
     integer, intent(in) :: ens_id, N_force_pert, N_progn_pert
-
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_g  ! input
 
     type(grid_def_type), intent(in) :: pert_grid_g, pert_grid_f
 
