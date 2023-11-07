@@ -1057,7 +1057,6 @@ contains
 
     character(len=*), parameter :: Iam = 'get_obs_pred'
     character(len=400) :: err_msg
-    character(len= 10) :: tmpstring10
     
     ! --------------------------------------------------------------
     !
@@ -1423,7 +1422,7 @@ contains
     ! allocate and assemble tile_data_l
     allocate(tile_data_l(0,0,0))  ! for debugging to pass  
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
-         N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
+         tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                        &
          N_catlH, tile_coord_lH=tile_coord_lH )
     
     if (get_sfmc_lH)   allocate(sfmc_lH( N_catlH,                     N_ens))
@@ -1454,7 +1453,7 @@ contains
     ! communicate tile_data_l as needed and get tile_data_lH
     
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
-         N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
+         tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                        &
          N_catlH, tile_data_lH=tile_data_lH )    
     
     ! read out sfmc, rzmc, etc. from tile_data_lH    
@@ -1977,7 +1976,6 @@ contains
     integer :: k, ks, opt
 
     character(len=*), parameter :: Iam = 'get_obs_pred_comm_helper'
-    character(len=400) :: err_msg
     
     ! -------------------------------------------------------------------------
     
@@ -2342,8 +2340,8 @@ contains
   
   ! *********************************************************************
 
-  subroutine get_halo_obs( N_ens, N_catl, N_obsl, Observations_l, Obs_pred_l,  &
-       tile_coord_l, xcompact, ycompact,                                       &
+  subroutine get_halo_obs( N_ens, N_obsl, Observations_l, Obs_pred_l,  &
+       tile_coord_l, xcompact, ycompact,                               &
        N_obslH, Observations_lH, Obs_pred_lH )
     
     ! collect observations from other local domains (processors) that are 
@@ -2375,7 +2373,7 @@ contains
     
     implicit none
     
-    integer,                                        intent(in)  :: N_ens, N_catl, N_obsl
+    integer,                                        intent(in)  :: N_ens, N_obsl
     
     type(obs_type),        dimension(N_obsl),       intent(in)  :: Observations_l
     
@@ -2766,7 +2764,7 @@ contains
   ! *********************************************************************
   
   subroutine get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
-       N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                      &
+       tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                              &
        N_catlH, tile_coord_lH, tile_data_lH )
     
     ! collect (bundled) tile_data from other local domains (processors) that are 
@@ -2787,7 +2785,7 @@ contains
     implicit none
     
     integer,                                    intent(in)  :: N_catl, N_fields
-    integer,                                    intent(in)  :: N_ens,  N_catf
+    integer,                                    intent(in)  :: N_ens
     
     real,    dimension(N_catl,N_fields,N_ens),  intent(in)  :: tile_data_l
     
@@ -3453,7 +3451,6 @@ contains
     integer, dimension(:,:,:), pointer    :: tile_num_in_cell_ij    => null()
 
     character(len=*),  parameter          :: Iam = 'cat_enkf_increments'
-    character(len=400)                    :: err_msg
 
     real, dimension(     N_catd)          :: r_x, tmp_dlon
     real                                  :: r_y, tmp_dlat
@@ -4528,10 +4525,10 @@ contains
     
     ! locals
     
-    integer :: i, j, k, m
+    integer :: i, k
     
-    logical :: selected_obs
-    
+   
+ 
     ! --------------------------------------------------------------
     
     if (N_select_species==0 .and. N_select_tilenum==0) then
@@ -4803,7 +4800,7 @@ contains
     
     ! locals
     
-    integer :: i, j, k
+    integer :: i, k
 
     real :: lon_obs, lat_obs
 

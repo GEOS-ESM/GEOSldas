@@ -496,7 +496,6 @@ contains
     integer, dimension(N_catd) :: N_obs_in_tile    
 
     character(len=*), parameter :: Iam = 'read_obs_ae_l2_sm'
-    character(len=400) :: err_msg
 
     ! -------------------------------------------------------------------
     
@@ -1009,7 +1008,6 @@ contains
     integer, dimension(N_catd) :: N_obs_in_tile    
 
     character(len=*), parameter :: Iam = 'read_obs_ae_sm_LPRM'
-    character(len=400) :: err_msg
 
     ! -------------------------------------------------------------------
     
@@ -1320,7 +1318,6 @@ contains
     real, parameter :: tol = 1e-2
 
     character(len=*), parameter :: Iam = 'read_obs_sm_ASCAT'
-    character(len=400) :: err_msg
 
     ! -------------------------------------------------------------------
     
@@ -1431,7 +1428,7 @@ contains
     if (N_files>0) then
               
        call read_sm_ASCAT_bin( &
-            this_obs_param, N_files, fnames, &
+            N_files, fnames, &
             N_tmp, tmp_lon, tmp_lat, tmp_obs )
        
        if (logit) then
@@ -2009,7 +2006,7 @@ contains
   ! ***************************************************************************
 
   subroutine read_sm_ASCAT_bin( &
-       this_obs_param, N_files, fnames, N_data, lon, lat, sm_ASCAT, ease_col, ease_row )
+       N_files, fnames, N_data, lon, lat, sm_ASCAT, ease_col, ease_row )
     
     ! read soil moisture data from one or more ASCAT bin files
     !
@@ -2025,8 +2022,6 @@ contains
     ! (error info currently not saved)
 
     implicit none
-    
-    type(obs_param_type), intent(in) :: this_obs_param
     
     integer, intent(in) :: N_files
     
@@ -2197,7 +2192,6 @@ contains
   ! *****************************************************************
   
   subroutine read_obs_LaRC_Tskin(                                &
-       work_path, exp_id,                                        &
        date_time, dtstep_assim, N_catd, tile_coord,              &
        tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
        this_obs_param,                                           &
@@ -2214,9 +2208,6 @@ contains
     
     ! inputs:
     
-    character(*), intent(in) :: work_path
-    character(*),  intent(in) :: exp_id
-
     type(date_time_type), intent(in) :: date_time
     
     integer, intent(in) :: dtstep_assim, N_catd
@@ -2274,7 +2265,6 @@ contains
     integer         :: MM 
     
     character(len=*), parameter :: Iam = 'read_obs_LaRC_Tskin'
-    character(len=400) :: err_msg
 
     ! -------------------------------------------------------------------
     
@@ -6827,7 +6817,6 @@ contains
     logical,        dimension(:,:),      allocatable :: mask_h_D, mask_v_D
 
     character(len=*), parameter :: Iam = 'turn_off_assim_SMAP_L1CTb'
-    character(len=400) :: err_msg
 
     ! ------------------------------------------------------------------------------    
     
@@ -7746,7 +7735,6 @@ contains
          'LaRC_tskin-FY2E-', 'LaRC_tskin-MTST2')
               
        call read_obs_LaRC_Tskin(                                      &
-            work_path, exp_id,                                        &
             date_time, dtstep_assim, N_catd, tile_coord,              &
             tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
             this_obs_param,                                           &
@@ -8858,7 +8846,7 @@ contains
   
   subroutine collect_obs(                                                             &
        work_path, exp_id, date_time, dtstep_assim,                                    &
-       N_catl, tile_coord_l,                                                          &
+       N_catl,                                                                        &
        N_catf, tile_coord_f, tile_grid_f, N_tile_in_cell_ij_f, tile_num_in_cell_ij_f, &
        N_catl_vec, low_ind, l2f,                                                      &
        N_obs_param, obs_param, N_obsl_max, write_obslog,                              &
@@ -8893,7 +8881,7 @@ contains
 
     ! tile_coord_f of catchments in domain (length N_catf)
     
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_l, tile_coord_f  ! input
+    type(tile_coord_type), dimension(:), pointer ::  tile_coord_f  ! input
     
     type(grid_def_type),                          intent(in)  :: tile_grid_f
     
