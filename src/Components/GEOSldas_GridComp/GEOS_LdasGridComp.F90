@@ -80,8 +80,6 @@ contains
     integer :: i, k
     integer :: ens_id
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    type(ESMF_GridComp), pointer :: gcs(:)=>null() ! Children gridcomps
-    character(len=ESMF_MAXSTR), pointer :: gcnames(:)=>null() ! Children's names
     ! ErrLog variables
     integer :: status
     character(len=ESMF_MAXSTR) :: Iam
@@ -400,7 +398,6 @@ contains
     logical :: IamRoot
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord_f => null()
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_l => null()
 
     integer,dimension(:),pointer :: f2g
     integer :: N_catf
@@ -408,7 +405,7 @@ contains
 
     type(grid_def_type) :: tile_grid_g, pert_grid_g
     type(grid_def_type) :: tile_grid_f, pert_grid_f
-    type(grid_def_type) :: tile_grid_l, pert_grid_l
+    type(grid_def_type) ::              pert_grid_l
 
     type(date_time_type):: start_time
     type(ESMF_Time)     :: CurrentTime
@@ -827,7 +824,6 @@ contains
     ! Misc variables
     integer :: igc,i, ens_id, FIRST_ENS_ID, ens_id_width
     logical :: IAmRoot
-    integer :: mpierr
     integer :: LSM_CHOICE
     type (ESMF_Field)                         :: field
 
