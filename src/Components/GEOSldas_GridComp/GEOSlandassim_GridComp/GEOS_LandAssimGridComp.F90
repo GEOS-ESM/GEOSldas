@@ -1,6 +1,7 @@
 #include "MAPL_Generic.h"
 
 !=============================================================================
+
 module GEOS_LandAssimGridCompMod
 
   !BOP
@@ -51,6 +52,7 @@ module GEOS_LandAssimGridCompMod
   use catch_types,               only: cat_progn_type
   use catch_types,               only: cat_param_type
   use catch_types,               only: cat_diagS_type
+  use catch_types,               only: cat_diagS_max
   use catch_types,               only: cat_diagS_sqrt
   use catch_types,               only: assignment(=), operator (+), operator (-), operator (*), operator (/)
   use clsm_bias_routines,        only: initialize_obs_bias
@@ -61,7 +63,7 @@ module GEOS_LandAssimGridCompMod
   use clsm_ensupd_glob_param,    only: echo_clsm_ensupd_glob_param
   use clsm_ensupd_enkf_update,   only: get_enkf_increments 
   use clsm_ensupd_enkf_update,   only: apply_enkf_increments 
-  use clsm_ensupd_enkf_update,   only: output_incr_etc
+  use clsm_ensupd_enkf_update,   only: output_ObsFcstAna_wrapper
   use clsm_ensupd_enkf_update,   only: write_smapL4SMaup 
   use clsm_ensdrv_out_routines,  only: init_log, GEOS_output_smapL4SMlmc 
   use clsm_ensdrv_drv_routines,  only: recompute_diagS
@@ -146,9 +148,8 @@ contains
     
     ! Local Variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    type(ESMF_Config)            :: CF
     character(len=ESMF_MAXSTR)   :: LAND_ASSIM_STR, mwRTM_file
-    character(len=ESMF_MAXSTR)   :: ensid_string,childname, fmt_str
+    character(len=ESMF_MAXSTR)   :: ensid_string, childname
     integer                      :: i, ens_id_width, FIRST_ENS_ID, NUM_ENSEMBLE
     integer                      :: ens_id, export_id
 
@@ -1111,7 +1112,7 @@ contains
     type(MAPL_MetaComp), pointer :: CHILD_MAPL=>null() ! Child's MAPL obj
     type(ESMF_GridComp), pointer :: gcs(:)
 
-    character(len=300)           :: out_path,fname
+    character(len=300)           :: out_path
     character(len=ESMF_MAXSTR)   :: exp_id, GridName
     integer                      :: model_dtstep
     type(date_time_type)         :: start_time
@@ -1120,7 +1121,6 @@ contains
     type(T_TILECOORD_STATE), pointer :: tcinternal
     type(TILECOORD_WRAP)             :: tcwrap
 
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_f => null()
     type(tile_coord_type), dimension(:), pointer :: tile_coord_l => null()
 
     integer :: land_nt_local,i,mpierr, ens, ens_id_width
@@ -1129,7 +1129,6 @@ contains
     integer, allocatable :: f2rf(:) ! mapping re-orderd rf to f for the LDASsa output
     character(len=300)   :: seed_fname
     character(len=300)   :: fname_tpl
-    character(len=14)    :: datestamp
     character(len=ESMF_MAXSTR) :: ensid_string 
     integer              :: nymd, nhms, yy, mm, dd, h, m, s
 
@@ -1464,7 +1463,7 @@ contains
     !
     !  time
     !  
-    type(ESMF_Time)                   :: ModelTimeCur, ModelTimeNxt
+    type(ESMF_Time)                   :: ModelTimeCur
     type(ESMF_Alarm)                  :: LandAssimAlarm
     type(ESMF_TimeInterval)           :: ModelTimeStep
     
@@ -1484,8 +1483,6 @@ contains
 
     character(len=300)                :: out_path
     character(len=ESMF_MAXSTR)        :: exp_id
-    character(40)                     :: exp_domain
-    integer                           :: model_dtstep
 
     type(met_force_type), dimension(:),     allocatable :: met_force
 
@@ -1905,12 +1902,11 @@ contains
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
-         trim(out_path), trim(exp_id), exp_domain,                         &
+         trim(out_path), trim(exp_id),                                     &
          met_force, lai, cat_param, mwRTM_param,                           &
          tile_coord_l, tile_coord_rf,                                      &
          tcinternal%tgrid_g, tcinternal%pgrid_f, tcinternal%pgrid_g,       &
          N_catl_vec, low_ind, l2rf, rf2l,                                  &
-         N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
          update_type,                                                      &
          LandAssimDTstep,                                                  &
          xcompact, ycompact, fcsterr_inflation_fac,                        &
@@ -1941,15 +1937,15 @@ contains
 
     if (.true.) then  ! replace obsolete check for analysis time with "if true" to keep indents
 
-       call output_incr_etc( out_ObsFcstAna,                             &
-            date_time_new, trim(out_path), trim(exp_id),                 &
+       call output_ObsFcstAna_wrapper( out_ObsFcstAna,                   &
+            date_time_new, trim(exp_id),                                 &
             N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
             N_catl, tile_coord_l,                                        &
-            N_catf, tile_coord_rf, tcinternal%pgrid_f, tcinternal%pgrid_g, &
-            N_catl_vec, low_ind, rf2l, N_catg, rf2g,                     &
+            N_catf, tile_coord_rf, tcinternal%pgrid_g,                   &
+            N_catl_vec, low_ind, rf2l,                                   &
             obs_param,                                                   &
             met_force, lai,                                              &
-            cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
+            cat_param, cat_progn, mwRTM_param,                           &
             Observations_l, rf2f=rf2f )
        
        do ii = 1, N_catl
@@ -2015,8 +2011,11 @@ contains
           
              cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize --> ens avg
           
-             cat_diagS_ensstd(ii) = cat_diagS_sqrt( cat_diagS_ensstd(ii)/Nm1 - NdivNm1*(cat_diagS_ensavg(ii)*cat_diagS_ensavg(ii)) )
-
+             cat_diagS_ensstd(ii) =                                                                                  &
+                  cat_diagS_sqrt(                                                                                    &
+                  cat_diagS_max( 0., cat_diagS_ensstd(ii)/Nm1 - NdivNm1*(cat_diagS_ensavg(ii)*cat_diagS_ensavg(ii))) &
+                  )
+             
           end do
 
        else    ! NUM_ENSEMBLE = 1
@@ -2058,9 +2057,9 @@ contains
        ! increments were computed)
        
        if (out_smapL4SMaup)                                                        &
-            call write_smapL4SMaup( 'analysis', date_time_new, trim(out_path),     &
+            call write_smapL4SMaup( 'analysis', date_time_new,                     &
             trim(exp_id), NUM_ENSEMBLE, N_catl, N_catf, N_obsl, tile_coord_rf,     &
-            tcinternal%tgrid_g, N_catl_vec, low_ind,                                &
+            tcinternal%tgrid_g, N_catl_vec, low_ind,                               &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn   )
 
     end if ! end if (.true.)
@@ -2103,7 +2102,6 @@ contains
 
     ! ESMF variables
     type(ESMF_Alarm) :: LandAssimAlarm
-    type(ESMF_VM)    :: vm
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
@@ -2268,25 +2266,6 @@ contains
     real, dimension(:), pointer :: WCSF
     real, dimension(:), pointer :: SWE
 
-    real, dimension(:), pointer :: VEGCLS
-    real, dimension(:), pointer :: SOILCLS
-    real, dimension(:), pointer :: SAND
-    real, dimension(:), pointer :: CLAY
-    real, dimension(:), pointer :: mw_POROS
-    real, dimension(:), pointer :: WANGWT
-    real, dimension(:), pointer :: WANGWP
-    real, dimension(:), pointer :: RGHHMIN
-    real, dimension(:), pointer :: RGHHMAX
-    real, dimension(:), pointer :: RGHWMAX
-    real, dimension(:), pointer :: RGHWMIN
-    real, dimension(:), pointer :: RGHNRH
-    real, dimension(:), pointer :: RGHNRV
-    real, dimension(:), pointer :: RGHPOLMIX
-    real, dimension(:), pointer :: OMEGA
-    real, dimension(:), pointer :: BH
-    real, dimension(:), pointer :: BV
-    real, dimension(:), pointer :: LEWT
-
     ! export
     real, dimension(:), pointer :: TB_H_enavg
     real, dimension(:), pointer :: TB_V_enavg
@@ -2298,7 +2277,7 @@ contains
     real,    allocatable, dimension(:) :: Tb_h_tmp, TB_v_tmp
 
     
-    integer              :: N_catl, n, mpierr
+    integer              :: N_catl
     type(MAPL_LocStream) :: locstream
     
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
@@ -2647,7 +2626,7 @@ contains
     character(len=*),intent(in)           :: seed_fname
     real(kind=ESMF_KIND_R8),intent(inout) :: pert_rseed_r8(:)
     
-    integer :: ncid, s_varid, en_dim, n_ens, id_varid, i, pos
+    integer :: ncid, s_varid 
     logical :: file_exist
 
     character(len=ESMF_MAXSTR) :: tmpstr
