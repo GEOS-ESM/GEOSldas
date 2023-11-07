@@ -3604,9 +3604,10 @@ contains
        
        if (logit) write (logunit,*) 'get 1d soil moisture increments; sfmc obs'
 
-       N_select_varnames  = 1
+       N_select_varnames  = 2
        
        select_varnames(1) = 'sfmc'
+       select_varnames(2) = 'sfds'
        
        call get_select_species(                                           &
             N_select_varnames, select_varnames(1:N_select_varnames),      &
