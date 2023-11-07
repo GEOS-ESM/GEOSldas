@@ -24,7 +24,7 @@ module GEOS_LandPertGridCompMod
   use LDAS_TileCoordType, only: tile_coord_type
   use LDAS_TileCoordType, only: T_TILECOORD_STATE
   use LDAS_TileCoordType, only: TILECOORD_WRAP
-  use land_pert_routines, only: get_pert, propagate_pert
+  use land_pert_routines, only: get_pert, propagate_pert, clear_rf
   use land_pert_routines, only: get_init_pert_rseed
   use LDAS_PertRoutinesMod, only: apply_pert
   use LDAS_PertRoutinesMod, only: get_force_pert_param
@@ -859,13 +859,11 @@ contains
     real(kind=ESMF_KIND_R8), pointer :: pert_rseed_r8(:)=>null()
 
     ! Misc variables
-    integer :: imjm(7), imjm_global(7) ! we need just the first 2
     integer :: model_dtstep
-    integer :: land_nt_local,m,n, i1, in, j1, jn
+    integer :: land_nt_local, m, n, i1, in, j1, jn
     logical :: IAmRoot, f_exist
-    integer :: ipert,n_lon,n_lat, n_lon_g, n_lat_g
+    integer :: n_lon, n_lat, n_lon_g, n_lat_g
     integer, allocatable :: pert_rseed(:)
-    real :: dlon, dlat,locallat,locallon
     type(ESMF_Grid) :: Grid
     character(len=ESMF_MAXSTR) :: id_string
     integer :: ens_id_width
@@ -1322,9 +1320,8 @@ contains
     real, allocatable :: fpert_grid(:,:,:), ppert_grid(:,:,:)
     integer,allocatable :: pert_rseed(:)
 
-    integer :: land_nt_local,n,ipert,i,j,n_lon,n_lat
+    integer :: land_nt_local,ipert,n_lon,n_lat
     logical :: IAmRoot
-    real :: locallat,locallon
 
     ! Begin...
     ! phase2_initialized is a global variables shared by all ensemble member
@@ -1839,12 +1836,11 @@ contains
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     integer :: n_lon,n_lat
-    integer :: ipert, itile
+    integer :: ipert
     integer, allocatable :: pert_rseed(:)
     logical :: IAmRoot
     integer :: land_nt_local
     type(pert_param_type), pointer :: PertParam=>null() ! pert param
-    real :: tmpRealArrDim1(1)
     real, allocatable :: tmpreal(:)
 
     ! Begin...
@@ -2277,14 +2273,13 @@ contains
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     integer :: n_lon,n_lat
-    integer :: ipert,ntiles
+    integer :: ipert
     integer, allocatable :: pert_rseed(:)
     logical :: IAmRoot
     integer :: land_nt_local
     type(pert_param_type), pointer :: PertParam=>null() ! pert param
     integer :: model_dtstep
     real :: dtmh
-    integer :: m
     ! Begin...
 
     ! Get my name and setup traceback handle
@@ -2669,7 +2664,7 @@ contains
     type(MAPL_LocStream) :: locstream
     type(TILECOORD_WRAP) :: tcwrap
     type(T_TILECOORD_STATE), pointer :: tcinternal
-    integer :: m,n_lon,n_lat, land_nt_local, ens_id_width
+    integer :: m, land_nt_local, ens_id_width
 
     integer :: nfpert, nppert, n_tile
     type(tile_coord_type), pointer :: tile_coord_f(:)=>null()
@@ -2814,6 +2809,7 @@ contains
        VERIFY_(status)
     end if
 
+    call clear_rf()
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
     VERIFY_(status)
