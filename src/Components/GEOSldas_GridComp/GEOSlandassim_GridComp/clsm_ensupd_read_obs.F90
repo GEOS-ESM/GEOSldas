@@ -5213,7 +5213,9 @@ contains
           write (logunit,'(400A)') trim(Iam), ': cannot find file  ', trim(fname)
           write (logunit,*       ) 'not reading MODIS SCF obs'
        end if
-       
+
+       N_good_data = 0
+
        return
        
     end if
