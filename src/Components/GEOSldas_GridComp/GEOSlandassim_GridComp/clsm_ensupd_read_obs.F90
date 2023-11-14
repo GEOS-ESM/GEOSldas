@@ -4925,7 +4925,12 @@ contains
        
     end do
     
-    
+
+    ! return if no MODIS obs were found (found_obs=.false. per initialization above)    
+
+    if (N_CMG_obs==0)  return
+
+
     ! map to tile space 
     
     allocate(tmp_tile_num(N_CMG_obs))
@@ -5435,7 +5440,7 @@ contains
     CMG_lat = SCF_nodata                             ! initialize
     CMG_SCF = SCF_nodata                             ! initialize
 
-    kk        = 0                                    ! initialize counter for "good" data
+    kk      = 0                                      ! initialize counter for "good" data
 
     do ii=1,N_lon
        do jj=1,N_lat
