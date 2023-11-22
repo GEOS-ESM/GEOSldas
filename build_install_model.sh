@@ -7,12 +7,12 @@ model_dir_gen="/shared/models/GEOSldas_pso_g1_ksat/GEOSldas"
 # what is the directory where we should place the experiment
 exp_dir_gen="/lustre/catchment/exps"
 # what is the name of this experiment
-exp_name="GEOSldas_CN45_pso_g1_et_v2"
+exp_name="GEOSldas_CN45_med_default_1996_2015"
 # where is the list of tiles to run?
 include_name="/shared/pso/step_1_choose_tiles/outputs/include"
 # how many particles are we running for the pso?
 # if want just a normal run, make this 1
-num_members=10
+num_members=1
 
 # directly based off of user input (shouldn't need to edit)
 # what is the exeinp file
@@ -69,7 +69,7 @@ do
   cd ../../
   echo "$c" > "${exp_dir}/${c}/run/ens_num.txt"
   # add the correct partition to lenkf.j
-  sed -i '18 i #SBATCH --partition=catch-m6a4xl-spot' "${exp_dir}/${c}/run/lenkf.j"
+  sed -i '18 i #SBATCH --partition=catch-m6a4xl-demand' "${exp_dir}/${c}/run/lenkf.j"
   touch "${exp_dir}/${c}/scratch/GEOSldas_log_txt"
 done
 #tail -f "${exp_dir}/0/scratch/GEOSldas_log_txt"

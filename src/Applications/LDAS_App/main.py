@@ -6,22 +6,22 @@ def main():
     # the experiment directory is passed in from the command line
     exp_dir = sys.argv[1]
     # location to save outputs of new global best model runs
-    save_path = '/shared/pso_outputs/g1_et_v2'
+    save_path = '/shared/pso_outputs/fake'
     # should Fluxcom ET be used as a constraint in objective function?
     et_constraint = True
     # should USGS WaterWatch runoff be used as a constraint in objective
     # function?
-    streamflow_constraint = False
+    streamflow_constraint = True
     # the location of the ET truth file for the PSO
     et_truth_fname = (
         '/shared/pso/step_3_process_fluxcom/outputs/' +
-        'le_truth_fluxcom_rs_meteo_ensemble_watts_per_m2_2001-01-01_' +
-        '2009-12-31_selected_tiles.csv'
+        'le_truth_fluxcom_rs_CRUNCEP_ensemble_watts_per_m2_2001-01-01_' +
+        '2015-12-31_selected_tiles.csv'
     )
     # the location of the streamflow truth file for the PSO
     stream_truth_fname = (
         '/shared/pso/step_3.1_process_streamflow/outputs/' +
-        'streamflow_data_mm_per_month.csv'
+        'streamflow_data_mm_per_month_200101_201512.csv'
     )
     # location of the intersection info .pkl file that relates catchment tiles
     # to huc watershed
@@ -34,16 +34,16 @@ def main():
     )
     # date range over which to calculate the objective function
     # this is inclusive
-    start = datetime.date(2006,1,1)
-    end = datetime.date(2006,12,31)
+    start = datetime.date(2002,1,1)
+    end = datetime.date(2002,12,31)
     # number of iterations with no change to global best before convergence
-    conv_thresh = 5
+    conv_thresh = 1
     # number of iterations at which to declare does not converge
-    max_iter = 40
+    max_iter = 1
     # how often do we submit a new job?
     restart_every = 1
     # how many particles are we running?
-    num_particles = 10
+    num_particles = 1
     # how many parameters for each particle?:
     num_params = 10
     # what are the names of the different paramaeters?
@@ -58,29 +58,29 @@ def main():
         #parameter 9: constant_2 in Ksat EF
         #parameter 10: sand_exp in Ksat EF
     parameter_names = [
-        'aj_forests',
-        'aj_croplands',
-        'aj_grasslands',
-        'aj_savannas',
-        'aj_shrublands',
-        'alpha_ksat',
-        'beta_ksat',
-        'const1_ksat',
-        'const2_ksat',
-        'sand_exp_ksat'
+        'a1_forests',
+        'a1_croplands',
+        'a1_grasslands',
+        'a1_savannas',
+        'a1_shrublands',
+        'a0_forests',
+        'a0_croplands',
+        'a0_grasslands',
+        'a0_savannas',
+        'a0_shrublands'
     ]
     # what are the starting ranges for the different paramters?
     param_range = [
-        [0.1,4], # parameter 1
-        [0.1,4], # parameter 2
-        [0.1,4], # parameter 3
-        [0.1,4], # parameter 4
-        [0.1,4], # parameter 5
-        [2,6],   # parameter 6
-        [3,7],   # parameter 7
-        [2,5],   # parameter 8
-        [0.5,3], # parameter 9
-        [.05,.3] # parameter 10
+        [0,15], # parameter 1
+        [0,15], # parameter 2
+        [0,15], # parameter 3
+        [0,15], # parameter 4
+        [0,15], # parameter 5
+        [-.25,.25],   # parameter 6
+        [-.25,.25],   # parameter 7
+        [-.25,.25],   # parameter 8
+        [-.25,.25], # parameter 9
+        [-.25,.25] # parameter 10
     ]
     # what are the objective function weights? This is multiplied by the
     # normalized objective output for [0]:et and [1]:streamflow. These two
@@ -92,10 +92,10 @@ def main():
     w = 1
     # individual weight; weights the velocity change based off of individual 
     # particle's best position
-    c1 = 0.7
+    c1 = 0.5
     # global weight; weights the velocity chagne based off of global 
     # particles's best position
-    c2 = 0.3
+    c2 = 0.2
     # how many spinup iterations should we do before changing initial
     # parameters?
     spinup_iter = 0

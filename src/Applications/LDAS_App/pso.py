@@ -572,8 +572,8 @@ class pso:
                     # save to the larger array
                     this_part_et[s,:] = this_et
                 if streamflow_constraint:
-                    this_runoff = np.array(data['RUNOFF'])
-                    this_baseflow = np.array(data['BASEFLOW'])
+                    this_runoff = np.array(data['RUNOFF'][:])
+                    this_baseflow = np.array(data['BASEFLOW'][:])
                     this_strm = this_runoff + this_baseflow
                     # lets convert units here
                     # need to go from kg/m2/s to mm/day
@@ -634,7 +634,7 @@ class pso:
                             # take the sum across all days since each day is
                             # already in mm/month
                             this_mon_strm_avg = np.sum(
-                                this_mon_strm
+                                this_mon_strm_avg
                             )
                             # assign this to the correct month and watershed
                             this_part_stream_mon[months_elapsed,w] = (
@@ -679,6 +679,14 @@ class pso:
                 # waterwatch
                 avg_waterwatch_strm = np.mean(stream_truth_np)
                 this_strm_obj_norm = this_strm_obj/avg_waterwatch_strm
+            print('wat')
+            print(wat)
+            print('this_strm_obj')
+            print(this_strm_obj)
+            print('avg_waterwatch_strm')
+            print(avg_waterwatch_strm)
+            print('this_strm_obj_norm')
+            print(this_strm_obj_norm)
             # now let's calculate the final objective value for this particle
             # based off of what we are using as constraints.
             # if only using ET or only use streamflow as constraints, then the
