@@ -1953,14 +1953,15 @@ contains
        do ii=1,N_catd
           
           ! set observation error standard deviation 
-          
+         
+          ASCAT_sm_std(ii) = this_obs_param%errstd/100.    ! change units from percent (0-100) to fraction (0-1)
+ 
           if (N_obs_in_tile(ii)>1) then
              
              ASCAT_sm(    ii) = ASCAT_sm(  ii)/real(N_obs_in_tile(ii))
              ASCAT_lon(   ii) = ASCAT_lon( ii)/real(N_obs_in_tile(ii))
              ASCAT_lat(   ii) = ASCAT_lat( ii)/real(N_obs_in_tile(ii))
              ASCAT_time(  ii) = ASCAT_time(ii)/real(N_obs_in_tile(ii),kind(0.0D0))
-             ASCAT_sm_std(ii) = this_obs_param%errstd/100.    ! change units from percent (0-100) to fraction (0-1)
              
           elseif (N_obs_in_tile(ii)==0) then
              
