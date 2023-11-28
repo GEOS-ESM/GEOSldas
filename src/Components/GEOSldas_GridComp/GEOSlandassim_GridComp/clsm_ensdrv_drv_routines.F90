@@ -68,12 +68,14 @@ contains
   
   ! ********************************************************************
     
-  subroutine check_cat_progn( N_cat, cat_param, cat_progn )
+  subroutine check_cat_progn( check_snow, N_cat, cat_param, cat_progn )
     
     ! wrapper for subroutine check_catch_progn() which has been 
     ! moved to "catch_iau.F90" in GEOScatch_GridComp - reichle, 3 Apr 2012
     
     implicit none
+    
+    logical, intent(in) :: check_snow
     
     integer, intent(in) :: N_cat
     
@@ -124,7 +126,8 @@ contains
          cat_progn%qa1,     cat_progn%qa2,    cat_progn%qa4,                      &
          cat_progn%capac,   cat_progn%catdef,                                     &
          cat_progn%rzexc,   cat_progn%srfexc,                                     &
-         ghtcnt, wesn, htsn, sndz            )
+         ghtcnt, wesn, htsn, sndz,                                                &
+         check_snow=check_snow)
     
     ! copy 2-d arrays back into cat_progn fields
     

@@ -84,7 +84,7 @@ fcsterr_inflation_fac = -9999.
 !                     0 = n/a  [eg., in situ obs]
 !                     1 = ascending
 !                     2 = descending
-!                     3 = ascending and descending
+!                     3 = ascending or descending
 !                     4 = geostationary
 ! %pol            = polarization
 !                     0 = n/a  [eg., multi-pol. retrieval]
@@ -2067,12 +2067,12 @@ obs_param_nml(48)%adapt          = 0
 
 ! --------------------------------------------------------------------
 !
-!  49 = ASCAT_META_SM_A (ASCAT soil moisture ascending)
+!  49 = ASCAT_META_SM (ASCAT soil moisture ascending and descending orbits)
 !
 ! https://navigator.eumetsat.int/product/EO:EUM:DAT:METOP:SOMO25
 
-obs_param_nml(49)%descr          = 'ASCAT_META_SM_A'
-obs_param_nml(49)%orbit          = 1
+obs_param_nml(49)%descr          = 'ASCAT_META_SM'
+obs_param_nml(49)%orbit          = 3
 obs_param_nml(49)%pol            = 0
 obs_param_nml(49)%N_ang          = 0
 obs_param_nml(49)%freq           = 0
@@ -2083,8 +2083,8 @@ obs_param_nml(49)%scale          = .false.
 obs_param_nml(49)%getinnov       = .false.
 obs_param_nml(49)%RTM_ID         = 0
 obs_param_nml(49)%bias_Npar      = 0
-obs_param_nml(49)%bias_trel      = 0
-obs_param_nml(49)%bias_tcut      = 0
+obs_param_nml(49)%bias_trel      = 864000
+obs_param_nml(49)%bias_tcut      = 432000
 obs_param_nml(49)%nodata         = -9999.
 obs_param_nml(49)%varname        = 'sfds'
 obs_param_nml(49)%units          = '%'
@@ -2094,7 +2094,7 @@ obs_param_nml(49)%scalepath      = ''
 obs_param_nml(49)%scalename      = ''
 obs_param_nml(49)%flistpath      = ''
 obs_param_nml(49)%flistname      = ''
-obs_param_nml(49)%errstd         = .04
+obs_param_nml(49)%errstd         = 9.
 obs_param_nml(49)%std_normal_max = 2.5
 obs_param_nml(49)%zeromean       = .true.
 obs_param_nml(49)%coarsen_pert   = .false.
@@ -2102,14 +2102,14 @@ obs_param_nml(49)%xcorr          = 0.25
 obs_param_nml(49)%ycorr          = 0.25
 obs_param_nml(49)%adapt          = 0
 
-! -------------------
+! --------------------------------------------------------------------
 !
-!  50 = ASCAT_META_SM_D (ASCAT soil moisture descending)
+!  50 = ASCAT_METB_SM (ASCAT soil moisture ascending and descending orbits)
 !
 ! https://navigator.eumetsat.int/product/EO:EUM:DAT:METOP:SOMO25
 
-obs_param_nml(50)%descr          = 'ASCAT_META_SM_D'
-obs_param_nml(50)%orbit          = 2
+obs_param_nml(50)%descr          = 'ASCAT_METB_SM'
+obs_param_nml(50)%orbit          = 3
 obs_param_nml(50)%pol            = 0
 obs_param_nml(50)%N_ang          = 0
 obs_param_nml(50)%freq           = 0
@@ -2120,18 +2120,18 @@ obs_param_nml(50)%scale          = .false.
 obs_param_nml(50)%getinnov       = .false.
 obs_param_nml(50)%RTM_ID         = 0
 obs_param_nml(50)%bias_Npar      = 0
-obs_param_nml(50)%bias_trel      = 0
-obs_param_nml(50)%bias_tcut      = 0
+obs_param_nml(50)%bias_trel      = 864000
+obs_param_nml(50)%bias_tcut      = 432000
 obs_param_nml(50)%nodata         = -9999.
 obs_param_nml(50)%varname        = 'sfds'
 obs_param_nml(50)%units          = '%'
-obs_param_nml(50)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_A/'
-obs_param_nml(50)%name           = 'M02-ASCA-ASCSMO02'
+obs_param_nml(50)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_B/'
+obs_param_nml(50)%name           = 'M01-ASCA-ASCSMO02'
 obs_param_nml(50)%scalepath      = ''
 obs_param_nml(50)%scalename      = ''
 obs_param_nml(50)%flistpath      = ''
 obs_param_nml(50)%flistname      = ''
-obs_param_nml(50)%errstd         = .04
+obs_param_nml(50)%errstd         = 9.
 obs_param_nml(50)%std_normal_max = 2.5
 obs_param_nml(50)%zeromean       = .true.
 obs_param_nml(50)%coarsen_pert   = .false.
@@ -2141,12 +2141,12 @@ obs_param_nml(50)%adapt          = 0
 
 ! --------------------------------------------------------------------
 !
-!  51 = ASCAT_METB_SM_A (ASCAT soil moisture ascending)
+!  51 = ASCAT_METC_SM (ASCAT soil moisture ascending and descending orbits)
 !
 ! https://navigator.eumetsat.int/product/EO:EUM:DAT:METOP:SOMO25
 
-obs_param_nml(51)%descr          = 'ASCAT_METB_SM_A'
-obs_param_nml(51)%orbit          = 1
+obs_param_nml(51)%descr          = 'ASCAT_METC_SM'
+obs_param_nml(51)%orbit          = 3
 obs_param_nml(51)%pol            = 0
 obs_param_nml(51)%N_ang          = 0
 obs_param_nml(51)%freq           = 0
@@ -2157,135 +2157,24 @@ obs_param_nml(51)%scale          = .false.
 obs_param_nml(51)%getinnov       = .false.
 obs_param_nml(51)%RTM_ID         = 0
 obs_param_nml(51)%bias_Npar      = 0
-obs_param_nml(51)%bias_trel      = 0
-obs_param_nml(51)%bias_tcut      = 0
+obs_param_nml(51)%bias_trel      = 864000
+obs_param_nml(51)%bias_tcut      = 432000
 obs_param_nml(51)%nodata         = -9999.
 obs_param_nml(51)%varname        = 'sfds'
 obs_param_nml(51)%units          = '%'
-obs_param_nml(51)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_B/'
-obs_param_nml(51)%name           = 'M01-ASCA-ASCSMO02'
+obs_param_nml(51)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_C/'
+obs_param_nml(51)%name           = 'M03-ASCA-ASCSMO02'
 obs_param_nml(51)%scalepath      = ''
 obs_param_nml(51)%scalename      = ''
 obs_param_nml(51)%flistpath      = ''
 obs_param_nml(51)%flistname      = ''
-obs_param_nml(51)%errstd         = .04
+obs_param_nml(51)%errstd         = 9.
 obs_param_nml(51)%std_normal_max = 2.5
 obs_param_nml(51)%zeromean       = .true.
 obs_param_nml(51)%coarsen_pert   = .false.
 obs_param_nml(51)%xcorr          = 0.25
 obs_param_nml(51)%ycorr          = 0.25
 obs_param_nml(51)%adapt          = 0
-
-! -------------------
-!
-!  52 = ASCAT_METB_SM_D (ASCAT soil moisture descending)
-!
-! https://navigator.eumetsat.int/product/EO:EUM:DAT:METOP:SOMO25
-
-obs_param_nml(52)%descr          = 'ASCAT_METB_SM_D'
-obs_param_nml(52)%orbit          = 2
-obs_param_nml(52)%pol            = 0
-obs_param_nml(52)%N_ang          = 0
-obs_param_nml(52)%freq           = 0
-obs_param_nml(52)%FOV            = 20.
-obs_param_nml(52)%FOV_units      = 'km'
-obs_param_nml(52)%assim          = .false.
-obs_param_nml(52)%scale          = .false.
-obs_param_nml(52)%getinnov       = .false.
-obs_param_nml(52)%RTM_ID         = 0
-obs_param_nml(52)%bias_Npar      = 0
-obs_param_nml(52)%bias_trel      = 0
-obs_param_nml(52)%bias_tcut      = 0
-obs_param_nml(52)%nodata         = -9999.
-obs_param_nml(52)%varname        = 'sfds'
-obs_param_nml(52)%units          = '%'
-obs_param_nml(52)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_B/'
-obs_param_nml(52)%name           = 'M01-ASCA-ASCSMO02'
-obs_param_nml(52)%scalepath      = ''
-obs_param_nml(52)%scalename      = ''
-obs_param_nml(52)%flistpath      = ''
-obs_param_nml(52)%flistname      = ''
-obs_param_nml(52)%errstd         = .04
-obs_param_nml(52)%std_normal_max = 2.5
-obs_param_nml(52)%zeromean       = .true.
-obs_param_nml(52)%coarsen_pert   = .false.
-obs_param_nml(52)%xcorr          = 0.25
-obs_param_nml(52)%ycorr          = 0.25
-obs_param_nml(52)%adapt          = 0
-
-! --------------------------------------------------------------------
-!
-!  53 = ASCAT_METC_SM_A (ASCAT soil moisture ascending)
-!
-! https://navigator.eumetsat.int/product/EO:EUM:DAT:METOP:SOMO25
-
-obs_param_nml(53)%descr          = 'ASCAT_METC_SM_A'
-obs_param_nml(53)%orbit          = 1
-obs_param_nml(53)%pol            = 0
-obs_param_nml(53)%N_ang          = 0
-obs_param_nml(53)%freq           = 0
-obs_param_nml(53)%FOV            = 20.
-obs_param_nml(53)%FOV_units      = 'km'
-obs_param_nml(53)%assim          = .false.
-obs_param_nml(53)%scale          = .false.
-obs_param_nml(53)%getinnov       = .false.
-obs_param_nml(53)%RTM_ID         = 0
-obs_param_nml(53)%bias_Npar      = 0
-obs_param_nml(53)%bias_trel      = 0
-obs_param_nml(53)%bias_tcut      = 0
-obs_param_nml(53)%nodata         = -9999.
-obs_param_nml(53)%varname        = 'sfds'
-obs_param_nml(53)%units          = '%'
-obs_param_nml(53)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_C/'
-obs_param_nml(53)%name           = 'M03-ASCA-ASCSMO02'
-obs_param_nml(53)%scalepath      = ''
-obs_param_nml(53)%scalename      = ''
-obs_param_nml(53)%flistpath      = ''
-obs_param_nml(53)%flistname      = ''
-obs_param_nml(53)%errstd         = .04
-obs_param_nml(53)%std_normal_max = 2.5
-obs_param_nml(53)%zeromean       = .true.
-obs_param_nml(53)%coarsen_pert   = .false.
-obs_param_nml(53)%xcorr          = 0.25
-obs_param_nml(53)%ycorr          = 0.25
-obs_param_nml(53)%adapt          = 0
-
-! -------------------
-!
-!  54 = ASCAT_METC_SM_D (ASCAT soil moisture descending)
-!
-! https://navigator.eumetsat.int/product/EO:EUM:DAT:METOP:SOMO25
-
-obs_param_nml(54)%descr          = 'ASCAT_METC_SM_D'
-obs_param_nml(54)%orbit          = 2
-obs_param_nml(54)%pol            = 0
-obs_param_nml(54)%N_ang          = 0
-obs_param_nml(54)%freq           = 0
-obs_param_nml(54)%FOV            = 20.
-obs_param_nml(54)%FOV_units      = 'km'
-obs_param_nml(54)%assim          = .false.
-obs_param_nml(54)%scale          = .false.
-obs_param_nml(54)%getinnov       = .false.
-obs_param_nml(54)%RTM_ID         = 0
-obs_param_nml(54)%bias_Npar      = 0
-obs_param_nml(54)%bias_trel      = 0
-obs_param_nml(54)%bias_tcut      = 0
-obs_param_nml(54)%nodata         = -9999.
-obs_param_nml(54)%varname        = 'sfds'
-obs_param_nml(54)%units          = '%'
-obs_param_nml(54)%path           = '/discover/nobackup/projects/gmao/merra/iau/merra_land/DATA/ASCAT_EUMETSAT/Metop_C/'
-obs_param_nml(54)%name           = 'M03-ASCA-ASCSMO02'
-obs_param_nml(54)%scalepath      = ''
-obs_param_nml(54)%scalename      = ''
-obs_param_nml(54)%flistpath      = ''
-obs_param_nml(54)%flistname      = ''
-obs_param_nml(54)%errstd         = .04
-obs_param_nml(54)%std_normal_max = 2.5
-obs_param_nml(54)%zeromean       = .true.
-obs_param_nml(54)%coarsen_pert   = .false.
-obs_param_nml(54)%xcorr          = 0.25
-obs_param_nml(54)%ycorr          = 0.25
-obs_param_nml(54)%adapt          = 0
 
 ! --------------------------------------------------------------------
 

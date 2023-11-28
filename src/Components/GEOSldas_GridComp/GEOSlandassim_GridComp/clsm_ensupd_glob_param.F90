@@ -44,7 +44,7 @@ module clsm_ensupd_glob_param
   ! total number of all obs species defined in namelist file
   ! (regardless of whether "assim" flag is true or false)
   
-  integer, parameter :: N_obs_species_nml = 54
+  integer, parameter :: N_obs_species_nml = 51
   
   ! ----------------------------------------------------------------------
   !

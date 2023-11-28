@@ -132,7 +132,7 @@ module clsm_ensupd_enkf_update
 
   public :: get_enkf_increments
   public :: apply_enkf_increments
-  public :: output_incr_etc
+  public :: output_ObsFcstAna_wrapper
   public :: write_smapL4SMaup 
 
 contains
@@ -140,12 +140,11 @@ contains
   subroutine get_enkf_increments(                                        &
        date_time,                                                        &
        N_ens, N_catl, N_catf, N_obsl_max,                                &
-       work_path, exp_id, exp_domain,                                    &
+       work_path, exp_id,                                                &
        met_force, lai, cat_param, mwRTM_param,                           &
        tile_coord_l, tile_coord_f,                                       &
        tile_grid_g, pert_grid_f, pert_grid_g,                            &
        N_catl_vec, low_ind, l2f, f2l,                                    &
-       N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
        update_type,                                                      &
        dtstep_assim,                                                     &
        xcompact, ycompact, fcsterr_inflation_fac,                        &
@@ -177,7 +176,7 @@ contains
     integer, intent(in) :: N_obsl_max     ! max number of observations allowed
 
     character(*), intent(in) :: work_path
-    character(*), intent(in) :: exp_id, exp_domain
+    character(*), intent(in) :: exp_id
 
 
     ! Meteorological forcings, Catchment model and microwave RTM parameters
@@ -199,11 +198,6 @@ contains
     integer, intent(in), dimension(N_catl)   :: l2f
 
     integer, intent(in), dimension(N_catf)   :: f2l
-
-    integer, intent(in) :: N_force_pert, N_progn_pert
-
-    type(pert_param_type), dimension(:), pointer :: force_pert_param ! input
-    type(pert_param_type), dimension(:), pointer :: progn_pert_param ! input
 
     integer, intent(in) :: update_type, dtstep_assim
 
@@ -251,8 +245,6 @@ contains
     ! ----------------------------------------------
 
     ! local variables
-
-    integer :: N_obslH
 
     logical :: found_obs_f, assimflag
 
@@ -417,8 +409,8 @@ contains
 
        if (out_smapL4SMaup)                                                        &
             call output_smapL4SMaup( date_time, work_path, exp_id, dtstep_assim,   &
-            N_ens, N_catl, N_catf, N_obsl, N_obsl_max,                             &
-            tile_coord_f, tile_coord_l, tile_grid_g, pert_grid_f,                  &
+            N_ens, N_catl, N_catf, N_obsl_max,                                     &
+            tile_coord_f, tile_grid_g, pert_grid_f,                                &
             N_catl_vec, low_ind, l2f, N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,  &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn  )
 
@@ -426,7 +418,7 @@ contains
 
        call collect_obs(                                              &
             work_path, exp_id, date_time, dtstep_assim,               &
-            N_catl, tile_coord_l,                                     &
+            N_catl,                                                   &
             N_catf, tile_coord_f, pert_grid_f,                        &
             N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,               &
             N_catl_vec, low_ind, l2f,                                 &
@@ -986,7 +978,7 @@ contains
           !       of Observations_l and Obs_pred_l that are "good"
           !       [allocation of these arrays in get_obs_pred() is larger
           !        than eventual size]
-          call get_halo_obs( N_ens, N_catl, N_obsl,                          &
+          call get_halo_obs( N_ens, N_obsl,                                  &
                Observations_l(1:N_obsl), Obs_pred_l(1:N_obsl,1:N_ens),       &
                tile_coord_l, xcompact, ycompact,                             &
                N_obslH, Observations_lH, Obs_pred_lH )
@@ -1195,7 +1187,7 @@ contains
        ! into SMAP L4_SM aup file
 
        if (out_smapL4SMaup)                                                          &
-            call write_smapL4SMaup( 'obs_fcst', date_time, work_path, exp_id, N_ens, &
+            call write_smapL4SMaup( 'obs_fcst', date_time, exp_id, N_ens, &
             N_catl, N_catf, N_obsl, tile_coord_f, tile_grid_g, N_catl_vec, low_ind,  &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn       )
 
@@ -1268,27 +1260,28 @@ contains
 
     integer :: n, n_e
 
-    logical :: cat_progn_has_changed
+    logical :: cat_progn_has_changed, check_snow
 
     character(len=*), parameter :: Iam = 'apply_enkf_increments'
-    character(len=400) :: err_msg
 
     ! ----------------------------------------------------------------
     !
     ! apply increments
 
     cat_progn_has_changed = .true.     ! conservative initialization
-
+    
+    check_snow            = .true.     ! conservative initialization
+    
     select_update_type: select case (update_type)
-
+       
     case (1,2) select_update_type  ! soil moisture update
-
+       
        if (logit) write (logunit,*) &
             'apply_enkf_increments(): applying soil moisture increments'
-
+       
        do n=1,N_catd
           do n_e=1,N_ens
-
+             
              cat_progn(n,n_e)%srfexc = &
                   cat_progn(n,n_e)%srfexc + cat_progn_incr(n,n_e)%srfexc
              cat_progn(n,n_e)%rzexc = &
@@ -1370,6 +1363,8 @@ contains
 
        cat_progn_has_changed = .true.
 
+       check_snow            = .false.  ! turn off for now to maintain 0-diff w/ SMAP Tb DA test case
+
     case default
 
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown update_type')
@@ -1384,7 +1379,7 @@ contains
 
        do n_e=1,N_ens
 
-          call check_cat_progn( N_catd, cat_param, cat_progn(:,n_e) )
+          call check_cat_progn( check_snow, N_catd, cat_param, cat_progn(:,n_e) )
 
        end do
 
@@ -1394,8 +1389,8 @@ contains
 
   ! ********************************************************************
 
-  subroutine output_ObsFcstAna(date_time, work_path, exp_id, &
-       N_obsl, Observations_l, N_obs_param, obs_param, rf2f)
+  subroutine output_ObsFcstAna(date_time, exp_id, &
+       N_obsl, Observations_l, N_obs_param, rf2f)
 
     ! obs space output: observations, obs space forecast, obs space analysis, and
     ! associated error variances
@@ -1403,35 +1398,34 @@ contains
     ! - reichle, 16 Jun 2011
 
     implicit none
+    
+    type(date_time_type),                         intent(in) :: date_time
+    
+    character(*),                                 intent(in) :: exp_id
 
-    character(*), intent(in) :: work_path
-    character(*), intent(in) :: exp_id
+    integer,                                      intent(in) :: N_obsl, N_obs_param
 
-    integer, intent(in) :: N_obsl, N_obs_param
-
-    type(date_time_type), intent(in) :: date_time
 
     type(obs_type),       dimension(N_obsl),      intent(in) :: Observations_l
 
-    type(obs_param_type), dimension(N_obs_param), intent(in) :: obs_param
-    integer, dimension(:), optional, intent(in) :: rf2f
+    integer,              dimension(:), optional, intent(in) :: rf2f
 
     ! ---------------------
 
     ! locals
 
-    character(40), parameter  :: file_tag = 'ldas_ObsFcstAna'
-    character(40), parameter  :: dir_name = 'ana'
+    character(40),  parameter                 :: file_tag = 'ldas_ObsFcstAna'
+    character(40),  parameter                 :: dir_name = 'ana'
 
     type(obs_type), dimension(:), allocatable :: Observations_f, Observations_tmp
 
     integer                                   :: n, N_obsf
-    integer, dimension(:), allocatable :: rf_tilenums, tilenums
+    integer,        dimension(:), allocatable :: rf_tilenums, tilenums
 
     integer,        dimension(numprocs)       :: N_obsl_vec, tmp_low_ind
 
     character(300)                            :: fname
-    integer                                   :: i
+
 #ifdef LDAS_MPI
 
     integer                                   :: this_species, ind_tmp, j
@@ -1441,8 +1435,6 @@ contains
     integer,        dimension(N_obs_param)    :: ind_within_species
 
 #endif
-
-
 
     ! --------------------------------------------------------------------
 
@@ -1623,14 +1615,14 @@ contains
 
   ! **********************************************************************
 
-  subroutine output_incr_etc( out_ObsFcstAna,                                &
-       date_time, work_path, exp_id,                                         &
+  subroutine output_ObsFcstAna_wrapper( out_ObsFcstAna,                      &
+       date_time, exp_id,                                                    &
        N_obsl, N_obs_param, N_ens,                                           &
        N_catl, tile_coord_l,                                                 &
-       N_catf, tile_coord_f, pert_grid_f, pert_grid_g,                       &
-       N_catl_vec, low_ind, f2l, N_catg, f2g,                                &
+       N_catf, tile_coord_f, pert_grid_g,                                    &
+       N_catl_vec, low_ind, f2l,                                             &
        obs_param,                                                            &
-       met_force, lai, cat_param, cat_progn, cat_progn_incr, mwRTM_param,    &
+       met_force, lai, cat_param, cat_progn, mwRTM_param,                    &
        Observations_l, rf2f )
 
     implicit none
@@ -1647,22 +1639,18 @@ contains
 
     type(date_time_type),   intent(in) :: date_time
 
-    character(len=*),       intent(in) :: work_path
     character(len=*),       intent(in) :: exp_id
 
-    integer,                intent(in) :: N_obsl, N_obs_param, N_ens, N_catl, N_catf, N_catg
+    integer,                intent(in) :: N_obsl, N_obs_param, N_ens, N_catl, N_catf
 
     type(tile_coord_type),  dimension(:),     pointer :: tile_coord_l  ! input
     type(tile_coord_type),  dimension(:),     pointer :: tile_coord_f  ! input
 
-    type(grid_def_type),                              intent(in) :: pert_grid_f
     type(grid_def_type),                              intent(in) :: pert_grid_g
 
     integer,                dimension(numprocs),      intent(in) :: N_catl_vec, low_ind
 
     integer,                dimension(N_catf),        intent(in) :: f2l
-
-    integer,                dimension(N_catf),        intent(in) :: f2g
 
     type(obs_param_type),   dimension(N_obs_param),   intent(in) :: &
          obs_param
@@ -1673,7 +1661,6 @@ contains
 
     type(cat_param_type),   dimension(N_catl),        intent(in)    :: cat_param
     type(cat_progn_type),   dimension(N_catl,N_ens),  intent(in)    :: cat_progn
-    type(cat_progn_type),   dimension(N_catl,N_ens),  intent(in)    :: cat_progn_incr
 
     type(mwRTM_param_type), dimension(N_catl),        intent(in)    :: mwRTM_param
 
@@ -1686,19 +1673,10 @@ contains
 
     real,    dimension(:,:),   pointer :: Obs_pred_l            => null()
 
-    integer :: i, n_e, N_obsl_tmp
+    integer :: N_obsl_tmp
 
-    type(cat_progn_type), dimension(N_catl)         :: cat_progn_incr_ensavg
 
-    type(cat_progn_type), dimension(:), allocatable :: cat_progn_incr_f
-    type(cat_progn_type), dimension(:), allocatable :: cat_progn_incr_tmp
-
-    type(cat_progn_type), dimension(:), allocatable :: cat_progn_incr_g
-
-    character(40) :: file_tag, dir_name
-
-    character(len=*), parameter :: Iam = 'output_incr_etc'
-    character(len=400) :: err_msg
+    character(len=*), parameter :: Iam = 'output_ObsFcstAna_wrapper'
 
     ! --------------------------------------------------------------
 
@@ -1728,111 +1706,18 @@ contains
 
        ! write out model, observations, and "OminusA" information
 
-       call output_ObsFcstAna( date_time, work_path, exp_id, N_obsl, &
-            Observations_l(1:N_obsl), N_obs_param, obs_param, rf2f=rf2f )
+       call output_ObsFcstAna( date_time, exp_id, N_obsl, &
+            Observations_l(1:N_obsl), N_obs_param, rf2f=rf2f )
 
     end if
 
-    ! ----------------------------------------------------------------
-
-    ! output ens avg increments
-
-!!    if (out_incr) then
-!!
-!!       ! compute increments for local domain
-!!
-!!       do i=1,N_catl
-!!          cat_progn_incr_ensavg(i) = 0.
-!!          do n_e=1,N_ens
-!!             cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i) &
-!!                  + cat_progn_incr(i,n_e)
-!!          end do
-!!          cat_progn_incr_ensavg(i) = cat_progn_incr_ensavg(i)/real(N_ens)
-!!       end do
-!!
-!!
-!!       ! gather and write to file
-!!
-!!       file_tag = 'ldas_incr'
-!!       dir_name = 'ana'
-!!
-!!       if (root_proc)  allocate(cat_progn_incr_f(N_catf))
-!!
-!!#ifdef LDAS_MPI
-!!
-!!       call MPI_GATHERV( &
-!!            cat_progn_incr_ensavg, N_catl,                MPI_cat_progn_type, &
-!!            cat_progn_incr_f,      N_catl_vec, low_ind-1, MPI_cat_progn_type, &
-!!            0, mpicomm, mpierr )
-!!
-!!#else
-!!       cat_progn_incr_f = cat_progn_incr_ensavg
-!!#endif
-!!       if (root_proc) then
-!!
-!!
-!!          select case (out_incr_format)
-!!
-!!          case (0)
-!!
-!!             ! output increments in LDASsa domain and in LDASsa tile order (standard LDASsa)
-!!             if(present(rf2f)) then
-!!                allocate(cat_progn_incr_tmp(N_catf))
-!!                cat_progn_incr_tmp(:) = cat_progn_incr_f(rf2f(:))
-!!                cat_progn_incr_f = cat_progn_incr_tmp
-!!                deallocate(cat_progn_incr_tmp)
-!!             endif
-!!
-!!             call io_rstrt( 'w', work_path, exp_id, -1, date_time,       &
-!!                  N_catf, cat_progn_incr_f, file_tag, dir_name=dir_name)
-!!
-!!          case (1)
-!!
-!!             ! output increments on global domain in GEOS-5 global tile order
-!!             ! suitable for reading into GEOS-5 GCM as land incremental analysis
-!!             ! update (LIAU)
-!!
-!!             allocate(cat_progn_incr_g(N_catg))
-!!
-!!             ! initialize
-!!
-!!             do i=1,N_catg
-!!                cat_progn_incr_g(i) = 0.0
-!!             end do
-!!
-!!             ! reorder increments to GEOS-5 gcm global tile order
-!!
-!!             do i=1,N_catf
-!!                cat_progn_incr_g(f2g(i)) = cat_progn_incr_f(i)
-!!             end do
-!!
-!!             file_tag = trim(file_tag) // 'LIAU'
-!!
-!!             call io_rstrt( 'w', work_path, exp_id, -1, date_time,       &
-!!                  N_catg, cat_progn_incr_g, file_tag, dir_name=dir_name, &
-!!                  is_little_endian=.true. )
-!!
-!!             deallocate(cat_progn_incr_g)
-!!
-!!          case default
-!!
-!!             call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown out_incr_format')
-!!
-!!          end select
-!!
-!!          deallocate(cat_progn_incr_f)
-!!
-!!       end if  ! root_proc
-!!
-!!    end if     ! out_incr
-
-  end subroutine output_incr_etc
+  end subroutine output_ObsFcstAna_wrapper
 
   ! **********************************************************************
 
   subroutine output_smapL4SMaup( date_time, work_path, exp_id, dtstep_assim,    &
-       N_ens, N_catl, N_catf, N_obsl, N_obsl_max,                               &
-       tile_coord_f, tile_coord_l, tile_grid_g, pert_grid_f,                    &
+       N_ens, N_catl, N_catf, N_obsl_max,                               &
+       tile_coord_f, tile_grid_g, pert_grid_f,                                  &
        N_catl_vec, low_ind, l2f, N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,    &
        N_obs_param, obs_param, Observations_l, cat_param, cat_progn )
 
@@ -1856,10 +1741,9 @@ contains
 
     integer,               intent(in) :: dtstep_assim
     integer,               intent(in) :: N_ens,  N_catl,     N_catf
-    integer,               intent(in) :: N_obsl, N_obsl_max, N_obs_param
+    integer,               intent(in) :: N_obsl_max, N_obs_param
 
     type(tile_coord_type), dimension(:),     pointer :: tile_coord_f  ! input
-    type(tile_coord_type), dimension(:),     pointer :: tile_coord_l  ! input
 
     type(grid_def_type),                             intent(in) :: tile_grid_g
     type(grid_def_type),                             intent(in) :: pert_grid_f
@@ -1936,7 +1820,7 @@ contains
 
     call collect_obs(                                                            &
          work_path, exp_id, date_time, dtstep_assim,                             &
-         N_catl, tile_coord_l,                                                   &
+         N_catl,                                                                 &
          N_catf, tile_coord_f, pert_grid_f,                                      &
          N_tile_in_cell_ij_f, tile_num_in_cell_ij_f,                             &
          N_catl_vec, low_ind, l2f,                                               &
@@ -1945,7 +1829,7 @@ contains
 
     ! write appropriate fields (according to 'option') into file
 
-    call write_smapL4SMaup( 'orig_obs', date_time, work_path, exp_id, N_ens,     &
+    call write_smapL4SMaup( 'orig_obs', date_time, exp_id, N_ens,     &
          N_catl, N_catf, N_obsl_tmp, tile_coord_f, tile_grid_g,                  &
          N_catl_vec, low_ind,                                                    &
          N_obs_param_tmp, obs_param_tmp(1:N_obs_param_tmp), Observations_l,      &
@@ -1955,7 +1839,7 @@ contains
 
   ! **********************************************************************
 
-  subroutine write_smapL4SMaup( option, date_time, work_path, exp_id, N_ens,    &
+  subroutine write_smapL4SMaup( option, date_time, exp_id, N_ens,    &
        N_catl, N_catf, N_obsl, tile_coord_f, tile_grid_g, N_catl_vec, low_ind,  &
        N_obs_param, obs_param, Observations_l, cat_param, cat_progn       )
 
@@ -2027,7 +1911,6 @@ contains
 
     type(date_time_type),  intent(in) :: date_time
 
-    character(*),          intent(in) :: work_path
     character(*),          intent(in) :: exp_id
 
     integer,               intent(in) :: N_ens, N_catl, N_catf
