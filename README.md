@@ -47,18 +47,6 @@ To obtain a build that is suitable for debugging, use `parallel_build.csh -debug
 
 See below for how to build the model in multiple steps.
 
-#### Running on Milans at NCCS
-
-By default, `parallel_build.csh` will build on SLES12 nodes at discover (either Skylake or Cascade Lake). However, Milan nodes were
-recently installed at discover, which use SLES15 as their operating system. Because of this OS difference, if you want to run on the
-Milans, you must build on the Milans. To do so you can run `parallel_build.csh` with the `-mil` flag, e.g.:
-
-```
-parallel_build.csh -mil
-```
-
-This will by default build in `build-SLES15` and install to `install-SLES15`.
-
 ---
 
 ## How to Set Up (Configure) and Run GEOSldas
