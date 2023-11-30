@@ -1947,15 +1947,17 @@ contains
           end if
           
        end do
-       
-       ! normalize
-       
+
+       ! normalize and set obs error std-dev
+
        do ii=1,N_catd
           
           ! set observation error standard deviation 
          
           ASCAT_sm_std(ii) = this_obs_param%errstd/100.    ! change units from percent (0-100) to fraction (0-1)
- 
+
+          ! normalize
+
           if (N_obs_in_tile(ii)>1) then
              
              ASCAT_sm(    ii) = ASCAT_sm(  ii)/real(N_obs_in_tile(ii))
