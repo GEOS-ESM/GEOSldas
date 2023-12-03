@@ -1323,8 +1323,6 @@ class LDASsetup:
                         fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
                         if int(self.rqdRmInp['ntasks-per-node']) > 40:
                            fout.write("#SBATCH --constraint=cas\n")
-                        if (28 < int(self.rqdRmInp['ntasks-per-node']) and int(self.rqdRmInp['ntasks-per-node']) <= 40) :
-                           fout.write("#SBATCH --constraint=sky\n")
                     elif 'MY_OSERVER_NODES' in line :
                         fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
                     elif 'MY_WRITERS_NPES' in line :
@@ -1597,9 +1595,9 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print ('#                      [At NCCS: Use command "getsponsor" to see available account number(s).]' )
     print ('# - walltime         = walltime requested; format is HH:MM:SS (hours/minutes/seconds)')
     print ('# - ntasks_model     = number of processors requested for the model (typically 112; output server is not included)')
-    print ('# - ntasks-per-node  = number of tasks per node (typically 46 for cascade lake*, 40 for skylake, and 28 for haswell nodes)')
-    print ('#                      [If >40, cascade lake nodes will be allocated, if >28, cascade or skylake, else cascade, skylake or haswell.]')
-    print ('#                      [*NCCS recommends <=46 cores per node on SCU16 (cascade lake) due to OS issues (as of 6 Oct 2021).]')
+    print ('# - ntasks-per-node  = number of tasks per node (typically 46 for cascade* and 40 for skylake nodes)')
+    print ('#                      [If >40, cascade nodes will be allocated, else cascade or skylake.]')
+    print ('#                      [*NCCS recommends <=46 cores per node on SCU16 (cascade) due to OS issues (as of 6 Oct 2021).]')
     print ('#')
     for key in rqdRmInpKeys:
         print (key + ':')
