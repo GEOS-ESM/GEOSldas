@@ -838,12 +838,17 @@ class LDASsetup:
         mk_outdir = self.exphome+'/'+exp_id+'/mk_restarts/' 
 
         if (RESTART_str != '1'):
+           bcs_path = self.rqdExeInp['BCS_PATH']
+           while bcs_path[-1] == '/' : bcs_path = bcs_path[0:-1]
+           bc_base    = os.path.dirname(bcs_path)
+           bc_version = os.path.basename(bcs_path)
+
            remap_tpl = os.path.dirname(os.path.realpath(__file__)) + '/remap_params.tpl'
            config = yaml_to_config(remap_tpl)
 
            config['slurm']['account'] = self.rqdRmInp['account'] 
            config['slurm']['qos'] = 'debug' 
-           config['slurm']['qos'] =  'cas'
+           config['slurm']['partition'] =  'cas|sky'
 
            config['input']['surface']['catch_tilefile']  = self.in_tilefile
            config['input']['shared']['expid']            = self.rqdExeInp['RESTART_ID']
@@ -855,7 +860,10 @@ class LDASsetup:
            config['output']['shared']['out_dir']         = mk_outdir
            config['output']['surface']['catch_remap']    = True
            config['output']['surface']['catch_tilefile'] = self.rqdExeInp['TILING_FILE']
-           config['output']['shared']['bcs_dir']         = self.bcs_land
+           config['output']['shared']['bc_base']         = bc_base
+           config['output']['shared']['bc_version']      = bc_version
+           config['output']['surface']['EASE_grid']      = self.rqdExeInp['BCS_RESOLUTION']
+           
            config['output']['shared']['expid']           = self.rqdExeInp['EXP_ID']
            config['output']['surface']['surflay']        = dzsf
            config['output']['surface']['wemin']          = wemin_out
