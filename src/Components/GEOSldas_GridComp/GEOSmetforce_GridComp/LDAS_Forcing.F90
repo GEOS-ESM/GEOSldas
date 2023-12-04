@@ -3170,6 +3170,7 @@ contains
     real,    parameter :: nodata_GEOSgcm = 1.e15   
     
     character(40), dimension(N_G5DAS_vars,              N_defs_cols) :: G5DAS_defs
+    character(40), dimension(N_G5DAS_vars,              N_defs_cols) :: GEOSIT_defs
     character(40), dimension(N_MERRA_vars,              N_defs_cols) :: MERRA_defs
     character(40), dimension(N_MERRA2plusAerosol_vars,  N_defs_cols) :: M2INT_defs
     character(40), dimension(N_MERRA2plusAerosol_vars,  N_defs_cols) :: M2COR_defs
@@ -3242,6 +3243,33 @@ contains
     G5DAS_defs(10,:)=[character(len=40):: 'TLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
     G5DAS_defs(11,:)=[character(len=40):: 'QLML    ','inst','inst1_2d_lfo_Nx','diag','S']    
     G5DAS_defs(12,:)=[character(len=40):: 'SPEEDLML','inst','inst1_2d_lfo_Nx','diag','S']    
+
+    ! -----------------------------------------------------------------------
+    !
+    ! define GEOSIT file specs 
+    !
+    ! columns of GEOSgcm_defs are as follows:
+    !  1 - short variable name in gfio file
+    !  2 - averaging mode in G5DAS/MERRA file ('tavg' or 'inst')
+    !  3 - file tag (eg. 'bkg.sfc' or 'diag_sfc', or 'tavg1_2d_rad_Nx')
+    !  4 - file dir ('ana' or 'diag')
+    !  5 - treated as S="state" or F="flux" in subroutine interpolate_to_timestep()
+            
+    ! GEOSIT file specs (default, unless otherwise specified via "met_tag")
+
+
+    GEOSIT_defs( 1,:)=[character(len=40):: 'SWGDN   ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
+    GEOSIT_defs( 2,:)=[character(len=40):: 'LWGAB   ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
+    GEOSIT_defs( 3,:)=[character(len=40):: 'PARDR   ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
+    GEOSIT_defs( 4,:)=[character(len=40):: 'PARDF   ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
+    GEOSIT_defs( 5,:)=[character(len=40):: 'PRECCU  ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
+    GEOSIT_defs( 6,:)=[character(len=40):: 'PRECLS  ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
+    GEOSIT_defs( 7,:)=[character(len=40):: 'PRECSNO ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
+    GEOSIT_defs( 8,:)=[character(len=40):: 'PS      ','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
+    GEOSIT_defs( 9,:)=[character(len=40):: 'HLML    ','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
+    GEOSIT_defs(10,:)=[character(len=40):: 'TLML    ','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
+    GEOSIT_defs(11,:)=[character(len=40):: 'QLML    ','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
+    GEOSIT_defs(12,:)=[character(len=40):: 'SPEEDLML','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
 
 
     ! MERRA-2 file specs with uncorrected (AGCM) precip from the "int" Collection
@@ -3576,8 +3604,12 @@ contains
        
        allocate(GEOSgcm_defs(N_GEOSgcm_vars,N_defs_cols))
 
-       GEOSgcm_defs(1:N_G5DAS_vars,  :) = G5DAS_defs
-       
+       if (index(met_tag, 'GEOSIT') > 0 .or. index(met_tag, 'geosit') > 0) then
+            GEOSgcm_defs(1:N_G5DAS_vars,  :) = GEOSIT_defs
+       else
+            GEOSgcm_defs(1:N_G5DAS_vars,  :) = G5DAS_defs
+       end if
+
        call parse_G5DAS_met_tag( met_path, met_tag, date_time_inst,          &
             met_path_inst, prec_path_inst, met_tag_inst, use_prec_corr,      &
             use_Predictor )
@@ -4658,6 +4690,10 @@ contains
     type(date_time_type)        :: dt_end_d5124_rpit2
     type(date_time_type)        :: dt_end_d5124_rpit3
 
+    type(date_time_type)        :: dt_end_d5294_geosit1
+    type(date_time_type)        :: dt_end_d5294_geosit2
+    type(date_time_type)        :: dt_end_d5294_geosit3
+
     type(date_time_type)        :: dt_end_e5110_fp
     type(date_time_type)        :: dt_end_e5130_fp
     type(date_time_type)        :: dt_end_e5131_fp
@@ -4737,6 +4773,33 @@ contains
     dt_end_d5124_rpit3%hour      = 0
     dt_end_d5124_rpit3%min       = 0
     dt_end_d5124_rpit3%sec       = 0
+
+    !                  | stream start |  stream end 
+    ! ----------------------------------------
+    ! d5294_geosit1      |  1 Jan 1998  |   1 Jan 2008          
+    ! d5294_geosit2      |  1 Jan 2008  |   1 Jan 2018          
+    ! d5294_geosit3      |  1 Jan 2018  |   (present)
+
+    dt_end_d5294_geosit1%year      = 2008
+    dt_end_d5294_geosit1%month     = 1
+    dt_end_d5294_geosit1%day       = 1
+    dt_end_d5294_geosit1%hour      = 0
+    dt_end_d5294_geosit1%min       = 0
+    dt_end_d5294_geosit1%sec       = 0
+
+    dt_end_d5294_geosit2%year      = 2018
+    dt_end_d5294_geosit2%month     = 1
+    dt_end_d5294_geosit2%day       = 1
+    dt_end_d5294_geosit2%hour      = 0
+    dt_end_d5294_geosit2%min       = 0
+    dt_end_d5294_geosit2%sec       = 0
+
+    dt_end_d5294_geosit3%year      = 9999
+    dt_end_d5294_geosit3%month     = 1
+    dt_end_d5294_geosit3%day       = 1
+    dt_end_d5294_geosit3%hour      = 0
+    dt_end_d5294_geosit3%min       = 0
+    dt_end_d5294_geosit3%sec       = 0
 
     ! ---------------------------------        
     !
@@ -4957,6 +5020,23 @@ contains
 
        end if
 
+    elseif (met_tag_out(1:18)=='cross_GEOSIT') then
+
+       if     (datetime_lt_refdatetime( date_time, dt_end_d5294_geosit1 )) then
+
+          stream = 'd5294_geosit_jan98'  ! use d5294_geosit stream 1
+
+       elseif (datetime_lt_refdatetime( date_time, dt_end_d5294_geosit2 )) then
+
+          stream = 'd5294_geosit_jan08'  ! use d5294_geosit stream 2
+
+       else
+
+          stream = 'd5294_geosit_jan18'  ! use d5294_geosit stream 2
+
+       end if
+
+
     elseif (met_tag_out(1:8)=='cross_FP') then
        
        if     (datetime_lt_refdatetime( date_time, dt_end_e5110_fp )) then
@@ -5103,7 +5183,7 @@ contains
     ! local variables
     
     character(300) :: fname, fname_full_tmp1, fname_full_tmp2
-    character( 14) :: time_stamp
+    character( 20) :: time_stamp
     character(  4) :: YYYY,  HHMM, day_dir
     character(  2) :: MM,    DD  
 
@@ -5131,8 +5211,12 @@ contains
        
        time_stamp(1:8) = YYYY // MM // DD
        
-    else
+    elseif (index(met_tag,'GEOSIT') > 0 .or. index(met_tag,'geosit') > 0)  then
        
+       time_stamp      = YYYY //'-'// MM //'-'// DD // 'T' // trim(HHMM) // 'Z'
+
+    else
+
        time_stamp      = YYYY // MM // DD // '_' // trim(HHMM) // 'z'
        
     end if
