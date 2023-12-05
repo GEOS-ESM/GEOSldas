@@ -3090,6 +3090,7 @@ contains
     !                                  (for MERRA-2, always point to publicly available files)
     !                               - updated comments
     !
+    ! qliu+reichle,      5 Dec 2023 - added GEOS-IT 
     !
     ! -----------------------------------
     !
@@ -3246,30 +3247,24 @@ contains
 
     ! -----------------------------------------------------------------------
     !
-    ! define GEOSIT file specs 
+    ! define GEOS-IT file specs 
     !
-    ! columns of GEOSgcm_defs are as follows:
-    !  1 - short variable name in gfio file
-    !  2 - averaging mode in G5DAS/MERRA file ('tavg' or 'inst')
-    !  3 - file tag (eg. 'bkg.sfc' or 'diag_sfc', or 'tavg1_2d_rad_Nx')
-    !  4 - file dir ('ana' or 'diag')
-    !  5 - treated as S="state" or F="flux" in subroutine interpolate_to_timestep()
-            
-    ! GEOSIT file specs (default, unless otherwise specified via "met_tag")
+    ! same as G5DAS except for file tag (column 3)
 
+    GEOSIT_defs = G5DAS_defs
 
-    GEOSIT_defs( 1,:)=[character(len=40):: 'SWGDN   ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
-    GEOSIT_defs( 2,:)=[character(len=40):: 'LWGAB   ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
-    GEOSIT_defs( 3,:)=[character(len=40):: 'PARDR   ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
-    GEOSIT_defs( 4,:)=[character(len=40):: 'PARDF   ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
-    GEOSIT_defs( 5,:)=[character(len=40):: 'PRECCU  ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
-    GEOSIT_defs( 6,:)=[character(len=40):: 'PRECLS  ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
-    GEOSIT_defs( 7,:)=[character(len=40):: 'PRECSNO ','tavg','lfo_tavg_1hr_glo_L576x361_slv','diag','F']
-    GEOSIT_defs( 8,:)=[character(len=40):: 'PS      ','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
-    GEOSIT_defs( 9,:)=[character(len=40):: 'HLML    ','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
-    GEOSIT_defs(10,:)=[character(len=40):: 'TLML    ','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
-    GEOSIT_defs(11,:)=[character(len=40):: 'QLML    ','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
-    GEOSIT_defs(12,:)=[character(len=40):: 'SPEEDLML','inst','lfo_inst_1hr_glo_L576x361_slv','diag','S']
+    GEOSIT_defs( 1,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_defs( 2,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_defs( 3,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_defs( 4,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_defs( 5,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_defs( 6,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_defs( 7,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_defs( 8,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_defs( 9,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_defs(10,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_defs(11,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_defs(12,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
 
 
     ! MERRA-2 file specs with uncorrected (AGCM) precip from the "int" Collection
@@ -3604,10 +3599,10 @@ contains
        
        allocate(GEOSgcm_defs(N_GEOSgcm_vars,N_defs_cols))
 
-       if (index(met_tag, 'GEOSIT') > 0 .or. index(met_tag, 'geosit') > 0) then
-            GEOSgcm_defs(1:N_G5DAS_vars,  :) = GEOSIT_defs
+       if ( (index(met_tag, 'GEOSIT') > 0) .or. (index(met_tag, 'geosit') > 0) ) then
+          GEOSgcm_defs(1:N_G5DAS_vars,:) = GEOSIT_defs
        else
-            GEOSgcm_defs(1:N_G5DAS_vars,  :) = G5DAS_defs
+          GEOSgcm_defs(1:N_G5DAS_vars,:) = G5DAS_defs
        end if
 
        call parse_G5DAS_met_tag( met_path, met_tag, date_time_inst,          &
@@ -4639,8 +4634,8 @@ contains
     ! where {__prec[PREC]} and {__Nx+-} are optional and where
     !
     !  G5DAS-NAME : name of standard G5DAS forcing (must not contain "__"!)
-    !               e.g., "e5110_fp", "d591_rpit1", "d591_fpit", ...
-    !               for cross-stream forcing, use "cross_d5124_RPFPIT" or "cross_FP" 
+    !               e.g., "e5110_fp", "d591_rpit1", "d591_fpit", "d5294_geosit", ...
+    !               for cross-stream forcing, use "cross_d5294_GEOSIT", "cross_d5124_RPFPIT", "cross_FP" 
     !  PREC       : identifier for precip corrections to G5DAS forcing (eg., 'GPCPv1.1')
     !  
     ! If {__Nx+-} is present, set flag for use forcing files from the DAS/GCM Predictor 
@@ -4658,6 +4653,7 @@ contains
     ! reichle, 10 Oct 2019: added FP transition from f521 to f522
     ! reichle, 17 Jan 2020: added FP transition from f522 to f525
     ! reichle,  3 Apr 2020: added FP transition from f525 to f525_p5
+    ! qliu+reichle,  5 Dec 2023: added GEOS-IT
     !    
     ! ---------------------------------------------------------------------------    
 
@@ -4709,7 +4705,7 @@ contains
 
     ! ----------------------------------------------------------
     !
-    ! define transition times between RP-IT, FP-IT or FP streams 
+    ! define transition times between RP-IT, FP-IT, GEOS-IT, or FP streams 
     ! if "cross-stream" forcing is requested
     !
     !            | stream start |  stream end (as of 5 Dec 2014)
@@ -4774,11 +4770,13 @@ contains
     dt_end_d5124_rpit3%min       = 0
     dt_end_d5124_rpit3%sec       = 0
 
-    !                  | stream start |  stream end 
+    !                  | stream start |  stream end
+    !                  |  (excl 1-yr  |
+    !                  |    spinup)   |
     ! ----------------------------------------
-    ! d5294_geosit1      |  1 Jan 1998  |   1 Jan 2008          
-    ! d5294_geosit2      |  1 Jan 2008  |   1 Jan 2018          
-    ! d5294_geosit3      |  1 Jan 2018  |   (present)
+    ! d5294_geosit1    |  1 Jan 1998  |   1 Jan 2008          
+    ! d5294_geosit2    |  1 Jan 2008  |   1 Jan 2018          
+    ! d5294_geosit3    |  1 Jan 2018  |   (present)
 
     dt_end_d5294_geosit1%year      = 2008
     dt_end_d5294_geosit1%month     = 1
@@ -5020,19 +5018,19 @@ contains
 
        end if
 
-    elseif (met_tag_out(1:12)=='cross_GEOSIT') then
+    elseif (met_tag_out(1:18)=='cross_d5924_GEOSIT') then
 
        if     (datetime_lt_refdatetime( date_time, dt_end_d5294_geosit1 )) then
 
-          stream = 'd5294_geosit_jan98'  ! use d5294_geosit stream 1
+          stream = 'd5294_geosit_jan98'  ! use d5294 GEOS-IT stream 1
 
        elseif (datetime_lt_refdatetime( date_time, dt_end_d5294_geosit2 )) then
 
-          stream = 'd5294_geosit_jan08'  ! use d5294_geosit stream 2
+          stream = 'd5294_geosit_jan08'  ! use d5294 GEOS-IT stream 2
 
        else
 
-          stream = 'd5294_geosit_jan18'  ! use d5294_geosit stream 3
+          stream = 'd5294_geosit_jan18'  ! use d5294 GEOS-IT stream 3
 
        end if
 
@@ -5183,7 +5181,7 @@ contains
     ! local variables
     
     character(300) :: fname, fname_full_tmp1, fname_full_tmp2
-    character( 20) :: time_stamp
+    character( 16) :: time_stamp
     character(  4) :: YYYY,  HHMM, day_dir
     character(  2) :: MM,    DD  
 
@@ -5209,15 +5207,15 @@ contains
 
     if (daily_file) then
        
-       time_stamp(1:8) = YYYY // MM // DD
+       time_stamp(1:8)  = YYYY // MM // DD
        
     elseif (index(met_tag,'GEOSIT') > 0 .or. index(met_tag,'geosit') > 0)  then
        
-       time_stamp      = YYYY //'-'// MM //'-'// DD // 'T' // trim(HHMM) // 'Z'
+       time_stamp(1:16) = YYYY //'-'// MM //'-'// DD // 'T' // trim(HHMM) // 'Z'
 
     else
 
-       time_stamp      = YYYY // MM // DD // '_' // trim(HHMM) // 'z'
+       time_stamp(1:14) = YYYY // MM // DD // '_' // trim(HHMM) // 'z'
        
     end if
     
