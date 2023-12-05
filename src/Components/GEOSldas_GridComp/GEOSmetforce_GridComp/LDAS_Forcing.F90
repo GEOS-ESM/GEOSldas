@@ -5020,7 +5020,7 @@ contains
 
        end if
 
-    elseif (met_tag_out(1:18)=='cross_GEOSIT') then
+    elseif (met_tag_out(1:12)=='cross_GEOSIT') then
 
        if     (datetime_lt_refdatetime( date_time, dt_end_d5294_geosit1 )) then
 
@@ -5032,7 +5032,7 @@ contains
 
        else
 
-          stream = 'd5294_geosit_jan18'  ! use d5294_geosit stream 2
+          stream = 'd5294_geosit_jan18'  ! use d5294_geosit stream 3
 
        end if
 
