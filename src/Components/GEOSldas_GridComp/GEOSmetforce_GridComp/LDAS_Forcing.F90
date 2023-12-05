@@ -3255,18 +3255,18 @@ contains
 
     GEOSIT_defs = G5DAS_defs
 
-    GEOSIT_ftag( 1,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_ftag( 2,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_ftag( 3,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_ftag( 4,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_ftag( 5,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_ftag( 6,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_ftag( 7,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_ftag( 8,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
-    GEOSIT_ftag( 9,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
-    GEOSIT_ftag(10,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
-    GEOSIT_ftag(11,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
-    GEOSIT_ftag(12,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_ftag( 1)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_ftag( 2)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_ftag( 3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_ftag( 4)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_ftag( 5)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_ftag( 6)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_ftag( 7)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
+    GEOSIT_ftag( 8)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_ftag( 9)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_ftag(10)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_ftag(11)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_ftag(12)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
 
     GEOSIT_defs(:,3) = GEOSIT_ftag
 
