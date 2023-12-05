@@ -3250,21 +3250,24 @@ contains
     ! define GEOS-IT file specs 
     !
     ! same as G5DAS except for file tag (column 3)
+    !
+    ! GEOSIT character(40):
+    !
+    !                             1         2         3         4
+    !                    1234567890123456789012345678901234567890     
 
-    GEOSIT_defs = G5DAS_defs
-
-    GEOSIT_defs( 1,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_defs( 2,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_defs( 3,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_defs( 4,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_defs( 5,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_defs( 6,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_defs( 7,3)=[character(len=40):: 'lfo_tavg_1hr_glo_L576x361_slv']
-    GEOSIT_defs( 8,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
-    GEOSIT_defs( 9,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
-    GEOSIT_defs(10,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
-    GEOSIT_defs(11,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
-    GEOSIT_defs(12,3)=[character(len=40):: 'lfo_inst_1hr_glo_L576x361_slv']
+    GEOSIT_defs( 1,3) = 'lfo_tavg_1hr_glo_L576x361_slv           '
+    GEOSIT_defs( 2,3) = 'lfo_tavg_1hr_glo_L576x361_slv           '
+    GEOSIT_defs( 3,3) = 'lfo_tavg_1hr_glo_L576x361_slv           '
+    GEOSIT_defs( 4,3) = 'lfo_tavg_1hr_glo_L576x361_slv           '
+    GEOSIT_defs( 5,3) = 'lfo_tavg_1hr_glo_L576x361_slv           '
+    GEOSIT_defs( 6,3) = 'lfo_tavg_1hr_glo_L576x361_slv           '
+    GEOSIT_defs( 7,3) = 'lfo_tavg_1hr_glo_L576x361_slv           '
+    GEOSIT_defs( 8,3) = 'lfo_inst_1hr_glo_L576x361_slv           '
+    GEOSIT_defs( 9,3) = 'lfo_inst_1hr_glo_L576x361_slv           '
+    GEOSIT_defs(10,3) = 'lfo_inst_1hr_glo_L576x361_slv           '
+    GEOSIT_defs(11,3) = 'lfo_inst_1hr_glo_L576x361_slv           '
+    GEOSIT_defs(12,3) = 'lfo_inst_1hr_glo_L576x361_slv           '
 
 
     ! MERRA-2 file specs with uncorrected (AGCM) precip from the "int" Collection
