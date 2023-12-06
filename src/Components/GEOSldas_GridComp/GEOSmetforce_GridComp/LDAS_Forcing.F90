@@ -3250,7 +3250,9 @@ contains
     ! define GEOS-IT file specs 
     !
     ! same as G5DAS except for file tag (column 3)
-    !
+    
+    GEOSIT_defs = G5DAS_defs
+
     ! GEOSIT character(40):
     !
     !                             1         2         3         4
