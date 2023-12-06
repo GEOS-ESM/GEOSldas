@@ -848,7 +848,7 @@ class LDASsetup:
 
            config['slurm']['account'] = self.rqdRmInp['account'] 
            config['slurm']['qos'] = 'debug' 
-           config['slurm']['partition'] =  'cas|sky'
+           config['slurm']['constraint'] =  'cas|sky'
 
            config['input']['surface']['catch_tilefile']  = self.in_tilefile
            config['input']['shared']['expid']            = self.rqdExeInp['RESTART_ID']
