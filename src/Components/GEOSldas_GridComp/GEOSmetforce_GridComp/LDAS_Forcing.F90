@@ -5023,7 +5023,7 @@ contains
 
        end if
 
-    elseif (met_tag_out(1:18)=='cross_d5924_GEOSIT') then
+    elseif (met_tag_out(1:18)=='cross_d5294_GEOSIT') then
 
        if     (datetime_lt_refdatetime( date_time, dt_end_d5294_geosit1 )) then
 
