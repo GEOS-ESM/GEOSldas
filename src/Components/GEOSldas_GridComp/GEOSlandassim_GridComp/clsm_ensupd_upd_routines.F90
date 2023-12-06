@@ -3422,9 +3422,9 @@ contains
     
     real, parameter :: tp1_threshold = -HUGE(1.) ! = 0.2             ! [CELSIUS]
 
-    integer :: n, n_e, kk, ii
+    integer :: n, n_e, kk, ii, jj
     
-    integer :: N_state_max, N_state, N_selected_obs, N_select_varnames, N_select_species, N_varnames
+    integer :: N_state_max, N_state, N_selected_obs, N_select_varnames, N_select_species, N_varnames, N_select_species_Tb
     
     real    :: halo_minlon, halo_maxlon, halo_minlat, halo_maxlat
     real    :: tmp_minlon,  tmp_maxlon,  tmp_minlat,  tmp_maxlat
@@ -3441,7 +3441,7 @@ contains
     
     real, allocatable, dimension(:)       :: State_lon, State_lat
 
-    integer,       dimension(N_obs_param) :: select_species  ! alloc max possible length
+    integer,       dimension(N_obs_param) :: select_species, select_species_Tb  ! alloc max possible length
 
     character(40), dimension(N_obs_param) :: select_varnames ! alloc max possible length
     
@@ -3451,6 +3451,7 @@ contains
     integer, dimension(:,:,:), pointer    :: tile_num_in_cell_ij    => null()
 
     character(len=*),  parameter          :: Iam = 'cat_enkf_increments'
+    character(len=400) :: err_msg
 
     real, dimension(     N_catd)          :: r_x, tmp_dlon
     real                                  :: r_y, tmp_dlat
@@ -3472,7 +3473,7 @@ contains
 
     type(obs_param_type)                  :: this_obs_param
 
-    logical :: nonZeroFound
+    logical :: nonZeroFound, found, smap_obs, ascat_obs
         
     ! -----------------------------------------------------------------------
 
@@ -4433,6 +4434,10 @@ contains
               N_select_varnames, select_varnames(1:N_select_varnames),      &
               N_obs_param, obs_param, N_select_species, select_species )         
 
+         ! Determine which species are Tb
+         call get_select_species(1, 'Tb', N_obs_param, obs_param, N_select_species_Tb, select_species_Tb )
+      
+
          N_state_max = 7
          
          allocate( State_incr(N_state_max,N_ens)) 
@@ -4471,37 +4476,30 @@ contains
                
                if (N_selected_obs>0) then
 
-                  ! call get_select_species(1, 'sfds', N_obs_param, obs_param, N_select_species, select_species )
+                  ! Determine if Tb observations are present
 
-                  ! do ii = 1,N_select_species
-                  !    if ( any(select_species(ii) == Observations(ind_obs(1:N_selected_obs))%species)) then
-                  !       N_state = max(3, N_state)                 ! Keep 6 or 7 if we have Tb _and_ sfds obs)
-                  !       if ( N_state > 3) then
-                  !          write (logunit,*) "Two obs types in Catchment = ", kk
-                  !       end if
-                  !    end if
-                  ! end do
+                  do ii = 1,N_select_species_Tb
+                     do jj = 1,N_selected_obs
+                     if (select_species_Tb(ii) == Observations(ind_obs(jj))%species) then
+                        found = .true.
+                        exit
+                     end if
+                     end do
+                     if (found) then
+                        exit
+                     end if
+                  end do
 
-                  ! ! Determine which observation species are actually selected
-                  ! call get_select_species(1, 'Tb', N_obs_param, obs_param, N_select_species, select_species )
-
-                  ! do ii = 1,N_select_species
-                  !    if ( any(select_species(ii) == Observations(ind_obs(1:N_selected_obs))%species)) then
-                  !       if (cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
-                  !          N_state = 7
-                  !       else
-                  !          N_state = 6
-                  !       end if
-                  !    end if
-                  ! end do
-
-                  N_state = 6
-
-                  if ( N_state == 0 ) then
-                     err_msg = 'Dont know what state to use with this observation type'
-                     call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                  end if
-           
+                  if (found) then
+                        if (cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
+                           N_state = 7
+                        else
+                           N_state = 6
+                        end if
+                     else
+                        N_state = 3
+                  end if                 
+          
                   ! assemble State_minus
                   ! (on  input, cat_progn contains cat_progn_minus)
                   
@@ -4543,8 +4541,15 @@ contains
                        Observations(ind_obs(1:N_selected_obs)), Obs_cov )
                   
                   ! EnKF update
-                  write (logunit,*) "N_state = ", N_state     
                   
+                  ! smap_obs = any(Observations(ind_obs(1:N_selected_obs))%species < 5) 
+                  ! ascat_obs = any(Observations(ind_obs(1:N_selected_obs))%species > 4) 
+
+                  ! if (smap_obs .and. ascat_obs) then  
+                  !   write (logunit,*) "Found tile with both obs types. Tile = ", halo_minlon, halo_maxlon, halo_minlat, halo_maxlat 
+                  !   write (logunit,*) "Observations(ind_obs(1:N_selected_obs))%species = ", Observations(ind_obs(1:N_selected_obs))%species
+                  ! end if
+
                   call enkf_increments(                                        &
                        N_state, N_selected_obs, N_ens,                         &
                        Observations(ind_obs(1:N_selected_obs)),                &
@@ -4564,23 +4569,26 @@ contains
 
                      cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                      cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef                     
+                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef  
+                     write(logunit,*) 'N3 After cat_progn_incr(kk,:)%srfexc = ', cat_progn_incr(kk,5)%srfexc                   
 
                   elseif ( N_state==7 ) then
                      
                      cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                      cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
                      cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State
+                     write(logunit,*) 'N7 After cat_progn_incr(kk,:)%srfexc = ', cat_progn_incr(kk,5)%srfexc 
                      
                      cat_progn_incr(kk,:)%tc1    = State_incr(4,:)*scale_temp
                      cat_progn_incr(kk,:)%tc2    = State_incr(5,:)*scale_temp
                      cat_progn_incr(kk,:)%tc4    = State_incr(6,:)*scale_temp
                      cat_progn_incr(kk,:)%ght(1) = State_incr(7,:)*scale_ght1
-                  
+
                   else
                      
                      cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                      cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
+                     write(logunit,*) 'N6 After cat_progn_incr(kk,:)%srfexc = ', cat_progn_incr(kk,5)%srfexc 
                      
                      cat_progn_incr(kk,:)%tc1    = State_incr(3,:)*scale_temp
                      cat_progn_incr(kk,:)%tc2    = State_incr(4,:)*scale_temp
@@ -4597,182 +4605,6 @@ contains
 
        ! ----------------------------------
 
-      case (33) select_update_type   ! All observation types from obs_param
-
-         ! update each tile separately using all observations within customized halo around each tile
-         !
-         ! amfox, 27 July 2023 
-         
-         if (logit) write (logunit,*) 'Get increments for all observation types in obs_param'
-
-         N_select_varnames  = 1
-         N_state_max = 7                    ! Needs to be constant size for applying increment, potential for lots of zeros
-
-         allocate( State_incr(N_state_max,N_ens))
-         allocate( State_incr_cum(N_state_max,N_ens)) 
-         allocate( State_lon( N_state_max      ))
-         allocate( State_lat( N_state_max      ))
-
-         if (any(obs_param%varname == 'Tb')) then
-            N_varnames = N_varnames + 1
-            select_varnames(N_varnames) = 'Tb'         
-         end if 
-
-         if (any(obs_param%varname == 'sfds')) then
-            N_varnames = N_varnames + 1
-            select_varnames(N_varnames) = 'sfds'         
-         end if
-
-         do kk=1,N_catd
-
-            State_incr_cum = 0.0
-
-            do ii = 1,N_varnames
-
-               call get_select_species(                                           &
-               N_select_varnames, select_varnames(ii),      &
-               N_obs_param, obs_param, N_select_species, select_species )          
-                                            
-               ! compute increments only snow-free and non-frozen tiles
-               
-               if ( (SWE_ensavg(kk) < SWE_threshold)     .and.            &
-                  (tp1_ensavg(kk) > tp1_threshold)             ) then  
-                  
-                  ! find observations within halo around tile kk
-                  
-                  halo_minlon = tile_coord(kk)%com_lon - xcompact
-                  halo_maxlon = tile_coord(kk)%com_lon + xcompact
-                  halo_minlat = tile_coord(kk)%com_lat - ycompact
-                  halo_maxlat = tile_coord(kk)%com_lat + ycompact
-                  
-                  ! simple approach to dateline issue (cut halo back to at most -180:180, -90:90)
-                  ! - reichle, 28 May 2013
-                  
-                  halo_minlon = max(halo_minlon,-180.)
-                  halo_maxlon = min(halo_maxlon, 180.)
-                  halo_minlat = max(halo_minlat, -90.)
-                  halo_maxlat = min(halo_maxlat,  90.)
-                  
-                  call get_ind_obs_lat_lon_box(                             &
-                     N_obs,            Observations,                        &
-                     halo_minlon, halo_maxlon, halo_minlat, halo_maxlat,    &
-                     N_select_species, select_species(1:N_select_species),  &
-                     N_selected_obs,   ind_obs )
-                  
-                  if (N_selected_obs>0) then
-
-                     if (select_varnames(ii)=='Tb' .and. cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
-                        N_state = 7
-                     elseif (select_varnames(ii)=='Tb' .and. cat_param(kk)%poros<PEATCLSM_POROS_THRESHOLD) then
-                        N_state = 6
-                     elseif (select_varnames(ii)=='sfds') then
-                        N_state = 3
-                     else
-                        err_msg = 'Dont know what state to use with this observation type.'
-                        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                     end if
-                                         
-                     ! assemble State_minus
-                     ! (on input, cat_progn contains cat_progn_minus)
-                     
-                     if (N_state==3) then 
-
-                        State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc) + State_incr_cum(1,:)
-                        State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc) + State_incr_cum(2,:)
-                        State_incr(3,:) = (cat_progn( kk,:)%catdef/scale_catdef) + State_incr_cum(3,:)
-
-                     elseif ( N_state==7 ) then
-                        
-                        State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc) + State_incr_cum(1,:)
-                        State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc) + State_incr_cum(2,:)
-                        State_incr(3,:) = (cat_progn( kk,:)%catdef/scale_catdef) + State_incr_cum(3,:)   ! catdef in State
-                        State_incr(4,:) = (cat_progn( kk,:)%tc1   /scale_temp) + State_incr_cum(4,:)
-                        State_incr(5,:) = (cat_progn( kk,:)%tc2   /scale_temp) + State_incr_cum(5,:)
-                        State_incr(6,:) = (cat_progn( kk,:)%tc4   /scale_temp) + State_incr_cum(6,:)
-                        State_incr(7,:) = (cat_progn( kk,:)%ght(1)/scale_ght1) + State_incr_cum(7,:)
-                        
-                     else                                                        ! N_state == 6
-                        
-                        State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc) + State_incr_cum(1,:)
-                        State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc) + State_incr_cum(2,:)
-                        State_incr(3,:) = (cat_progn( kk,:)%tc1   /scale_temp) + State_incr_cum(3,:)
-                        State_incr(4,:) = (cat_progn( kk,:)%tc2   /scale_temp) + State_incr_cum(4,:)
-                        State_incr(5,:) = (cat_progn( kk,:)%tc4   /scale_temp) + State_incr_cum(5,:)
-                        State_incr(6,:) = (cat_progn( kk,:)%ght(1)/scale_ght1) + State_incr_cum(6,:)
-   
-                     end if
-                     
-                     State_lon(   :) = tile_coord(kk  )%com_lon
-                     State_lat(   :) = tile_coord(kk  )%com_lat
-                   
-                     allocate(Obs_cov(N_selected_obs,N_selected_obs))
-                     
-                     call assemble_obs_cov( N_selected_obs, N_obs_param, obs_param, &
-                        Observations(ind_obs(1:N_selected_obs)), Obs_cov )
-                     
-                     ! EnKF update
-                     
-                     call enkf_increments(                                      &
-                        N_state, N_selected_obs, N_ens,                         &
-                        Observations(ind_obs(1:N_selected_obs)),                &
-                        Obs_pred(ind_obs(1:N_selected_obs),:),                  &
-                        Obs_pert(ind_obs(1:N_selected_obs),:),                  &
-                        Obs_cov,                                                &
-                        State_incr(1:N_state,:),                                &
-                        State_lon( 1:N_state  ),                                &
-                        State_lat( 1:N_state  ),                                &
-                        xcompact, ycompact,                                     &
-                        fcsterr_inflation_fac )             
-                     
-                     deallocate(Obs_cov)
-
-                     State_incr_cum(1:N_state,:) = State_incr_cum(1:N_state,:) + State_incr(1:N_state,:) 
-
-                     nonZeroFound = ANY(cat_progn_incr(kk,:)%srfexc /= 0.0)
-                     if (nonZeroFound) then
-                        write (logunit,*) "Non-zero values found. ii = ", ii,  &
-                        " kk = ", kk, "State_lon = ", State_lon(1), "State_lat = ", State_lat(1)
-                     end if
-                     
-                     ! assemble cat_progn increments
-                     
-                     if (N_state==3) then
-                     
-                        cat_progn_incr(kk,:)%srfexc = State_incr_cum(1,:)*scale_srfexc
-                        cat_progn_incr(kk,:)%rzexc  = State_incr_cum(2,:)*scale_rzexc
-                        cat_progn_incr(kk,:)%catdef = State_incr_cum(3,:)*scale_catdef
-                     
-                     elseif (N_state==7) then
-                        
-                        cat_progn_incr(kk,:)%srfexc = State_incr_cum(1,:)*scale_srfexc
-                        cat_progn_incr(kk,:)%rzexc  = State_incr_cum(2,:)*scale_rzexc
-                        cat_progn_incr(kk,:)%catdef = State_incr_cum(3,:)*scale_catdef   ! catdef in State                        
-                        cat_progn_incr(kk,:)%tc1    = State_incr_cum(4,:)*scale_temp
-                        cat_progn_incr(kk,:)%tc2    = State_incr_cum(5,:)*scale_temp
-                        cat_progn_incr(kk,:)%tc4    = State_incr_cum(6,:)*scale_temp
-                        cat_progn_incr(kk,:)%ght(1) = State_incr_cum(7,:)*scale_ght1
-                     
-                     else
-                        
-                        cat_progn_incr(kk,:)%srfexc = State_incr_cum(1,:)*scale_srfexc
-                        cat_progn_incr(kk,:)%rzexc  = State_incr_cum(2,:)*scale_rzexc                      
-                        cat_progn_incr(kk,:)%tc1    = State_incr_cum(3,:)*scale_temp
-                        cat_progn_incr(kk,:)%tc2    = State_incr_cum(4,:)*scale_temp
-                        cat_progn_incr(kk,:)%tc4    = State_incr_cum(5,:)*scale_temp
-                        cat_progn_incr(kk,:)%ght(1) = State_incr_cum(6,:)*scale_ght1
-                        
-                     end if
-                     
-                  end if
-                  
-               end if     ! thresholds
-               
-            end do ! varnames
-
-         end do ! N_catd
-  
-         ! ---------------------------------- 
-       
     case default
        
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown update_type')
