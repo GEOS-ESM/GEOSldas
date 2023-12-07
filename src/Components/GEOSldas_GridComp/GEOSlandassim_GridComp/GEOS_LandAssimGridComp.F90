@@ -1886,19 +1886,29 @@ contains
          )
     _VERIFY(status)   
 
-    ! mwRTM_param already contains static parameters, only need vegopacity.
+    if ( mwRTM ) then
 
-    call get_vegopacity(MAPL, clock, N_catl, rc=status)
-    _VERIFY(STATUS)
+       ! mwRTM_param already contains static parameters, only need vegopacity.
 
-    ! Check no-data consistency of vegetation attenuation parameter values.
-    ! Good values are allowed for either the relevant static parameters
-    ! (bh, bv, lewt) or for the vegopacity values from the file, but not both.
-
-    do ii=1,N_catl
-       call mwRTM_param_nodata_check( mwRTM_param(ii) )
-    end do
+       call get_vegopacity(MAPL, clock, N_catl, rc=status)
+       _VERIFY(STATUS)
     
+       ! Check no-data consistency of vegetation attenuation parameter values.
+       ! Good values are allowed for either the relevant static parameters
+       ! (bh, bv, lewt) or for the vegopacity values from the file, but not both.
+
+       do ii=1,N_catl
+          call mwRTM_param_nodata_check( mwRTM_param(ii) )
+       end do
+
+    endif
+
+    if(.not. allocated(mwRTM_param)) then
+
+       allocate(mwRTM_param(0))
+
+     endif
+
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
