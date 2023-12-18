@@ -1557,12 +1557,12 @@ contains
     !---------------------------------------------------------------------
     ! 
     ! Routine to read in ASCAT surface degree of saturation (sfds) obs from 
-    !   BUFR files that both ascending and descending passes. 
+    !   BUFR files for both ascending and descending passes. 
     !
     ! ASCAT_sm and ASCAT_sm_std outputs from this subroutine are in wetness fraction (i.e., 0-1) units!
     !
     ! Read in EUMETSAT level 2 soil moisture product 25 km (SMO), PPF software version 5.0.
-    !   Data correspond to re-sampled (spatially averaged) backscatter (sigma0) values
+    !   Soil moisture derived from re-sampled (spatially averaged) backscatter (sigma0) values
     !   on a 25-km orbit swath grid.  Input data files are in BUFR file format.
     !
     ! EUMETSAT BUFR files contain data for both ascending and descending half-orbits. 
@@ -1678,7 +1678,7 @@ contains
     date_time_up = date_time    
     call augment_date_time(  (dtstep_assim/2), date_time_up)
     
-    ! calculate "extra" date_time_low to catch files w/ time swath start stamps before window 
+    ! calculate "extra" date_time_low to catch files w/ swath start time stamps before window 
     !   but containing relevant obs
     
     date_time_low_fname = date_time_low
@@ -1692,8 +1692,8 @@ contains
 
     obs_dir_hier = 1
     
-    call read_obs_fnames( date_time_low_fname, this_obs_param,            &
-         fname_of_fname_list, N_fnames_max,                                    &
+    call read_obs_fnames( date_time_low_fname, this_obs_param,                              &
+         fname_of_fname_list, N_fnames_max,                                                 &
          N_fnames, fname_list(1:N_fnames_max), obs_dir_hier )
     
     ! if needed, read file with list of ASCAT file names for second day and add
@@ -1701,8 +1701,8 @@ contains
     
     if (date_time_low_fname%day /= date_time_up%day) then
        
-       call read_obs_fnames( date_time_up, this_obs_param,                &
-            fname_of_fname_list, N_fnames_max,                                 &
+       call read_obs_fnames( date_time_up, this_obs_param,                                  &
+            fname_of_fname_list, N_fnames_max,                                              &
             N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_fnames_max)), obs_dir_hier )
        
        N_fnames = N_fnames + N_fnames_tmp
@@ -5271,7 +5271,7 @@ contains
         
     ! read file with list of SMAP file names for first day
     
-    call read_obs_fnames( date_time_low_fname, this_obs_param,                &
+    call read_obs_fnames( date_time_low_fname, this_obs_param,                     &
          fname_of_fname_list, N_halforbits_max,                                    &
          N_fnames, fname_list(1:N_halforbits_max) )
     
@@ -5280,7 +5280,7 @@ contains
     
     if (date_time_low_fname%day /= date_time_upp%day) then
        
-       call read_obs_fnames( date_time_upp, this_obs_param,                   &
+       call read_obs_fnames( date_time_upp, this_obs_param,                        &
             fname_of_fname_list, N_halforbits_max,                                 &
             N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_halforbits_max)) )
        
@@ -6107,7 +6107,7 @@ contains
         
     ! read file with list of SMAP file names for first day
     
-    call read_obs_fnames( date_time_low_fname, this_obs_param,                &
+    call read_obs_fnames( date_time_low_fname, this_obs_param,                     &
          fname_of_fname_list, N_halforbits_max,                                    &
          N_fnames, fname_list(1:N_halforbits_max) )
     
@@ -6116,7 +6116,7 @@ contains
     
     if (date_time_low_fname%day /= date_time_upp%day) then
        
-       call read_obs_fnames( date_time_upp, this_obs_param,                   &
+       call read_obs_fnames( date_time_upp, this_obs_param,                        &
             fname_of_fname_list, N_halforbits_max,                                 &
             N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_halforbits_max)) )
        
@@ -8289,8 +8289,8 @@ contains
 
     ! Get the dimension and variable IDs
 
-    ierr = nf90_inq_varid(ncid, 'll_lon', ll_lon_varid)
-    ierr = nf90_inq_varid(ncid, 'll_lat', ll_lat_varid)
+    ierr = nf90_inq_varid(ncid, 'll_lon',  ll_lon_varid)
+    ierr = nf90_inq_varid(ncid, 'll_lat',  ll_lat_varid)
     ierr = nf90_inq_varid(ncid, 'd_lon',   dlon_varid)
     ierr = nf90_inq_varid(ncid, 'd_lat',   dlat_varid)
 
@@ -8325,17 +8325,18 @@ contains
     ! Read lon and lat variables
 
     allocate(sclprm_lon(N_lon), sclprm_lat(N_lat))
+
     ierr = nf90_get_var(ncid, lon_varid, sclprm_lon)
     ierr = nf90_get_var(ncid, lat_varid, sclprm_lat)
     
-    start = [1, 1, pp]
-    icount = [N_lat, N_lon, 1]
+    start  = [1,     1,     pp]
+    icount = [N_lat, N_lon, 1 ]
     
     ! Read mean and std variables
 
     allocate(sclprm_mean_obs(N_lat, N_lon), sclprm_std_obs(N_lat, N_lon))
     allocate(sclprm_mean_mod(N_lat, N_lon), sclprm_std_mod(N_lat, N_lon))
-    allocate(sclprm_min_mod(N_lat, N_lon),  sclprm_max_mod(N_lat, N_lon))
+    allocate(sclprm_min_mod( N_lat, N_lon), sclprm_max_mod(N_lat, N_lon))
 
     ierr  = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, start, icount)
     ierr  = nf90_get_var(ncid, o_std_varid,  sclprm_std_obs,  start, icount)
@@ -8386,7 +8387,7 @@ contains
           if ( sclprm_mean_obs(j_ind, i_ind)>0.   .and.        &
                sclprm_mean_mod(j_ind, i_ind)>0.   .and.        &
                sclprm_std_obs(j_ind, i_ind)>=0.   .and.        &
-               sclprm_std_mod(j_ind, i_ind)>=0. ) then
+               sclprm_std_mod(j_ind, i_ind)>=0.         ) then
              
              ! Scale via standard normal deviates
              
