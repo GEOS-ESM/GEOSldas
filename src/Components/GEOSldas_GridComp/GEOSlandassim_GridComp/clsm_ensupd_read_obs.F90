@@ -8163,7 +8163,7 @@ contains
        date_time, this_obs_param, tmp_lon, tmp_lat, tmp_time,   &
        tmp_obs, tmp_std_obs )
     
-    ! scale sfmc obs to model climatology via standard-normal-deviate (zscore)
+    ! scale sfmc or sfds obs to model climatology via standard-normal-deviate (zscore)
     ! scaling using seasonally varying (pentad) stats
     ! Grid information is read from a NetCDF file   
     ! 
@@ -8228,7 +8228,7 @@ contains
     
     ! local variables
         
-    real, parameter :: tol = 0.99
+    real, parameter :: tol = 0.99    ! [degree lat/lon]  for sanity check (should never kick in)
     
     ! -------------------
     
