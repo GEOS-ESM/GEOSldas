@@ -3595,7 +3595,7 @@ contains
 
     select_update_type: select case (update_type)
        
-    case (1) select_update_type   ! 1d soil moisture analysis; sfmc obs
+    case (1) select_update_type   ! 1d soil moisture analysis; sfmc and/or sfds obs
 
        ! this 1d update requires that obs are on same tile space as model
        
@@ -3663,7 +3663,7 @@ contains
           
        end do
        
-    case (2) select_update_type   ! 3d soil moisture analysis; sfmc obs
+    case (2) select_update_type   ! 3d soil moisture analysis; sfmc and/or sfds obs
        
        ! update each tile separately using all observations within 
        ! the customized halo around each tile
@@ -4811,7 +4811,7 @@ contains
     
     if (N_select_species==0) then      ! use all species
        
-      do i=1,N_obs
+       do i=1,N_obs
           
           ! determine center-of-mass coordinates for the given observation
           
