@@ -203,13 +203,13 @@ for imonth = 1:length(run_months)
               [~, obs_idx] = ismember([i_idx, j_idx], [i_out, j_out], 'rows');
               obs_i = obsnum(obs_idx);
               
-              o_data_sum( scnt, obs_i, count) = nansum([o_data_sum( scnt, obs_i, count); obs_obs_i']);
-              m_data_sum( scnt, obs_i, count) = nansum([m_data_sum( scnt, obs_i, count); obs_fcst_i']);
-              o_data_sum2(scnt, obs_i, count) = nansum([o_data_sum2(scnt, obs_i, count); obs_obs_i'.^2]);
-              m_data_sum2(scnt, obs_i, count) = nansum([m_data_sum2(scnt, obs_i, count); obs_fcst_i'.^2]);
-              m_data_min( scnt, obs_i, count) = min(   [m_data_min( scnt, obs_i, count); obs_fcst_i']);
-              m_data_max( scnt, obs_i, count) = max(   [m_data_max( scnt, obs_i, count); obs_fcst_i']);
-              N_data(     scnt, obs_i, count) = nansum([N_data(     scnt, obs_i, count); ~isnan(obs_obs_i)']);
+              o_data_sum( scnt, obs_i, count) = sum([o_data_sum( scnt, obs_i, count); obs_obs_i'         ], "omitnan");
+              m_data_sum( scnt, obs_i, count) = sum([m_data_sum( scnt, obs_i, count); obs_fcst_i'        ], "omitnan");
+              o_data_sum2(scnt, obs_i, count) = sum([o_data_sum2(scnt, obs_i, count); obs_obs_i'.^2      ], "omitnan");
+              m_data_sum2(scnt, obs_i, count) = sum([m_data_sum2(scnt, obs_i, count); obs_fcst_i'.^2     ], "omitnan");
+              m_data_min( scnt, obs_i, count) = min([m_data_min( scnt, obs_i, count); obs_fcst_i'        ]           );
+              m_data_max( scnt, obs_i, count) = max([m_data_max( scnt, obs_i, count); obs_fcst_i'        ]           );
+              N_data(     scnt, obs_i, count) = sum([N_data(     scnt, obs_i, count); ~isnan(obs_obs_i)' ], "omitnan");
             end
           end
         end
@@ -233,15 +233,15 @@ for imonth = 1:length(run_months)
       
       for i = 1:N_species
         
-        N_window = nansum(N_data(i,:,1:w_days),3);
+        N_window    =      sum(N_data(     i,:,1:w_days),   3,"omitnan");
 
-        data2D(1,:) =      nansum(o_data_sum( i,:,1:w_days),3)./N_window;
-        data2D(2,:) = sqrt(nansum(o_data_sum2(i,:,1:w_days),3)./N_window - data2D(1,:).^2);
-        data2D(3,:) =      nansum(m_data_sum( i,:,1:w_days),3)./N_window;
-        data2D(4,:) = sqrt(nansum(m_data_sum2(i,:,1:w_days),3)./N_window - data2D(3,:).^2);
+        data2D(1,:) =      sum(o_data_sum( i,:,1:w_days),   3,"omitnan")./N_window;
+        data2D(2,:) = sqrt(sum(o_data_sum2(i,:,1:w_days),   3,"omitnan")./N_window - data2D(1,:).^2);
+        data2D(3,:) =      sum(m_data_sum( i,:,1:w_days),   3,"omitnan")./N_window;
+        data2D(4,:) = sqrt(sum(m_data_sum2(i,:,1:w_days),   3,"omitnan")./N_window - data2D(3,:).^2);
         data2D(5,:) = N_window;
-        data2D(6,:) = min(m_data_min(i,:,1:w_days),[],3);  % Want to use minimum mean daily value
-        data2D(7,:) = max(m_data_max(i,:,1:w_days),[],3);  % Want to use maximum mean daily value
+        data2D(6,:) =      min(m_data_min( i,:,1:w_days),[],3);  % Want to use minimum mean daily value
+        data2D(7,:) =      max(m_data_max( i,:,1:w_days),[],3);  % Want to use maximum mean daily value
         
         % Set NaNs where there is not enough data
         data2D([1:Nf],N_window<Ndata_min) = NaN;

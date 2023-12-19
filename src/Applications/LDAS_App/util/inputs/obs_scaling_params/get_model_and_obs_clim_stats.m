@@ -500,17 +500,17 @@ for imonth = 1:length(run_months)
                   % and across years!
                   % some obs can be found at multiple hours within a day
                   % e.g. at the poles.
-                  % **nansum of NaN's** result in zero, this need to be
+                  % **sum(...,"omitnan") of NaNs** results in zero, this need to be
                   % taken care of
-                  o_data( pol(1),obs_i,angle_i,count) = nansum([o_data( pol(1),obs_i,angle_i,count); obs_obs_i' ]);
-                  m_data( pol(1),obs_i,angle_i,count) = nansum([m_data( pol(1),obs_i,angle_i,count); obs_fcst_i']);
+                  o_data( pol(1),obs_i,angle_i,count) = sum([o_data( pol(1),obs_i,angle_i,count); obs_obs_i'          ], "omitnan");
+                  m_data( pol(1),obs_i,angle_i,count) = sum([m_data( pol(1),obs_i,angle_i,count); obs_fcst_i'         ], "omitnan");
                   
                   % X^2
-                  o_data2(pol(1),obs_i,angle_i,count) = nansum([o_data2(pol(1),obs_i,angle_i,count); obs_obs_i'.^2 ]);
-                  m_data2(pol(1),obs_i,angle_i,count) = nansum([m_data2(pol(1),obs_i,angle_i,count); obs_fcst_i'.^2]);
+                  o_data2(pol(1),obs_i,angle_i,count) = sum([o_data2(pol(1),obs_i,angle_i,count); obs_obs_i'.^2       ], "omitnan");
+                  m_data2(pol(1),obs_i,angle_i,count) = sum([m_data2(pol(1),obs_i,angle_i,count); obs_fcst_i'.^2      ], "omitnan");
                   
                   % Sum of obs or model elements at each location
-                  N_data(pol(1),obs_i,angle_i,count) = nansum( [N_data( pol(1),obs_i,angle_i,count); ~isnan([obs_obs_i])']);
+                  N_data(pol(1), obs_i,angle_i,count) = sum([N_data( pol(1),obs_i,angle_i,count); ~isnan([obs_obs_i])'], "omitnan");
                   
                 else
                   
@@ -523,19 +523,19 @@ for imonth = 1:length(run_months)
                     
                     % Sum of X
                     o_data(pol(1),s_eff,angle_i,count) = ...
-                        nansum([o_data( pol(1),s_eff,angle_i,count); repmat(obs_obs_i( i_ind),   1,length(s_eff))]);
+                        sum([o_data( pol(1),s_eff,angle_i,count); repmat(        obs_obs_i( i_ind),   1,length(s_eff))], "omitnan");
                     m_data(pol(1),s_eff,angle_i,count) = ...
-                        nansum([m_data( pol(1),s_eff,angle_i,count); repmat(obs_fcst_i(i_ind),   1,length(s_eff))]);
+                        sum([m_data( pol(1),s_eff,angle_i,count); repmat(        obs_fcst_i(i_ind),   1,length(s_eff))], "omitnan");
                     
                     % Sum of X^2
                     o_data2(pol(1),s_eff,angle_i,count) = ...
-                        nansum([o_data2(pol(1),s_eff,angle_i,count); repmat(obs_obs_i( i_ind).^2,1,length(s_eff))]);
+                        sum([o_data2(pol(1),s_eff,angle_i,count); repmat(        obs_obs_i( i_ind).^2,1,length(s_eff))], "omitnan");
                     m_data2(pol(1),s_eff,angle_i,count) = ...
-                        nansum([m_data2(pol(1),s_eff,angle_i,count); repmat(obs_fcst_i(i_ind).^2,1,length(s_eff))]);
+                        sum([m_data2(pol(1),s_eff,angle_i,count); repmat(        obs_fcst_i(i_ind).^2,1,length(s_eff))], "omitnan");
                     
                     % Sum of obs or model elements at each location
                     N_data(pol(1),s_eff,angle_i,count) = ...
-                        nansum([N_data( pol(1),s_eff,angle_i,count); repmat(~isnan([obs_obs_i(i_ind)]),1,length(s_eff)) ]);
+                        sum([N_data( pol(1),s_eff,angle_i,count); repmat(~isnan([obs_obs_i(i_ind)]),  1,length(s_eff))], "omitnan");
                     
                   end
                   
@@ -578,41 +578,41 @@ for imonth = 1:length(run_months)
         
         pp = pol*Nf;
         
-        N_hscale_window = nansum(N_data(1+pol,:,:,1:w_days),4);
+        N_hscale_window         = sum(N_data(1+pol,:,:,1:w_days),                           4,"omitnan");
         
         if w_days == 95
-          N_hscale_inner_window = nansum(N_data(1+pol,:,:,((w_days+1)/2-15):((w_days+1)/2+15)),4);
+          N_hscale_inner_window = sum(N_data(1+pol,:,:,((w_days+1)/2-15):((w_days+1)/2+15)),4,"omitnan");
         end
         
         % OBSERVATIONS
         %----------------
         % o_data is a sum over neighbouring obs above; 
         % here then take a sum over the time steps in the window
-        data_out(1+pp,:,:) = nansum(o_data(1+pol,:,:,1:w_days),4);
+        data_out(1+pp,:,:) = sum(  o_data(   1+pol,:,:,1:w_days),4,"omitnan");
         
         % then make the average, by dividing over the sum of the number of
         % timesteps and influencing obs at each location
-        data_out(1+pp,:,:) = data_out(1+pp,:,:)./N_hscale_window;   
+        data_out(1+pp,:,:) = data_out(       1+pp, :,:)./N_hscale_window;   
         
         %stdv_H = sqrt(E[X^2] - E[X]^2)
-        data_out(2+pp,:,:) = nansum(o_data2(1+pol,:,:,1:w_days),4);
-        data_out(2+pp,:,:) = data_out(2+pp,:,:)./N_hscale_window;
-        data_out(2+pp,:,:) = sqrt( data_out(2+pp,:,:) - data_out(1+pp,:,:).^2);
+        data_out(2+pp,:,:) = sum(  o_data2(  1+pol,:,:,1:w_days),4,"omitnan");
+        data_out(2+pp,:,:) =       data_out( 2+pp, :,:)./N_hscale_window;
+        data_out(2+pp,:,:) = sqrt( data_out( 2+pp, :,:) - data_out(1+pp,:,:).^2);
         
         % MODEL
         %----------------
-        data_out(3+pp,:,:) = nansum(m_data(1+pol,:,:,1:w_days),4);
-        data_out(3+pp,:,:) = data_out(3+pp,:,:)./N_hscale_window;            
+        data_out(3+pp,:,:) = sum(  m_data(   1+pol,:,:,1:w_days),4,"omitnan");
+        data_out(3+pp,:,:) =       data_out( 3+pp, :,:)./N_hscale_window;            
         
-        data_out(4+pp,:,:) = nansum(m_data2(1+pol,:,:,1:w_days),4);
-        data_out(4+pp,:,:) = data_out(4+pp,:,:)./N_hscale_window;
-        data_out(4+pp,:,:) = sqrt( data_out(4+pp,:,:) - data_out(3+pp,:,:).^2);
+        data_out(4+pp,:,:) = sum(  m_data2(  1+pol,:,:,1:w_days),4,"omitnan");
+        data_out(4+pp,:,:) =       data_out( 4+pp, :,:)./N_hscale_window;
+        data_out(4+pp,:,:) = sqrt( data_out( 4+pp, :,:) - data_out(3+pp,:,:).^2);
         
         data_out(5+pp,:,:) = N_hscale_window;
         
         % Toss out stats that are based on too little data
         
-        data_out([1:5]+pp,N_hscale_window<Ndata_min) = NaN;
+        data_out(  [1:5]+pp,N_hscale_window       < Ndata_min      ) = NaN;
         
         if w_days == 95
           data_out([1:5]+pp,N_hscale_inner_window < (Ndata_min/2.5)) = NaN;
