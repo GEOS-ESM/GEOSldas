@@ -56,9 +56,6 @@ out_dir = 'z_score_clim_quarter_degree';
 % Define the months to run over, 1:12, plus a number of months required to complete the window
 run_months = [1:12 1:ceil(w_days/30)];
 
-obs_param_fname = [exp_path, '/', exp_run{1}, '/output/', domain, '/rc_out/', ...
-    '/Y2016/M04/',exp_run{1}, '.ldas_obsparam.20160401_0000z.txt'];
-
 % -------------------------------------------------------------------
 %                     End user-defined inputs
 % -------------------------------------------------------------------
@@ -86,6 +83,14 @@ for month = run_months
         latest_year(cnt) = end_year;
     end 
 end
+
+% assume "ldas_obsparam" file is available at 0z on first day of start_month/start_year
+
+YYYY = num2str( start_year,  '%4.4d' );
+MM   = num2str( start_month, '%2.2d' );
+
+obs_param_fname = [exp_path, '/', exp_run{1}, '/output/', domain, '/rc_out/Y', YYYY,        ...
+                   '/M', MM, '/',exp_run{1}, '.ldas_obsparam.', YYYY, MM, '01_0000z.txt'];
 
 [N_obs_param, obs_param ] = read_obsparam(obs_param_fname);
 
