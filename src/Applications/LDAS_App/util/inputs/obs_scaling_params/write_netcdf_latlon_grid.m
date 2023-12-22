@@ -125,19 +125,7 @@ function [] = write_netcdf_latlon_grid( fname, colind, rowind, ll_lons, ll_lats,
     netcdf.putAtt(ncid, varid_end_time,    'long_name',     'end time');
     netcdf.putAtt(ncid, varid_end_time,    'axis',          'T');
     netcdf.putAtt(ncid, varid_end_time,    'units',         'days since 1950-01-01 00:00:00.0 +0000');
-    
-    varid_lon        = netcdf.defVar(ncid, 'lon',        float_precision, [dimid_lon]);
-    netcdf.putAtt(ncid, varid_lon,         'standard_name', 'longitude');
-    netcdf.putAtt(ncid, varid_lon,         'long_name',     'lower left longitude of gridcell');
-    netcdf.putAtt(ncid, varid_lon,         'units',         'degrees_east');
-    netcdf.putAtt(ncid, varid_lon,         'axis',          'X');
-    
-    varid_lat        = netcdf.defVar(ncid, 'lat',        float_precision, [dimid_lat]);
-    netcdf.putAtt(ncid, varid_lat,         'standard_name', 'latitude');
-    netcdf.putAtt(ncid, varid_lat,         'long_name',     'lower left latitude of gridcell');
-    netcdf.putAtt(ncid, varid_lat,         'units',         'degrees_north');
-    netcdf.putAtt(ncid, varid_lat,         'axis',          'Y');
-    
+       
     varid_om         = netcdf.defVar(ncid, 'o_mean',     float_precision, [dimid_lat dimid_lon dimid_pentad]);
     netcdf.defVarDeflate(ncid,varid_om,true,true,compression_level);
     netcdf.putAtt(ncid, varid_om,          'standard_name', 'observation mean');
@@ -188,8 +176,6 @@ function [] = write_netcdf_latlon_grid( fname, colind, rowind, ll_lons, ll_lats,
     netcdf.putVar(ncid, varid_start_time, tmp_start_time);
     netcdf.putVar(ncid, varid_end_time,   tmp_end_time);
     
-    netcdf.putVar(ncid, varid_lon,        ll_lons);
-    netcdf.putVar(ncid, varid_lat,        ll_lats);
     netcdf.putVar(ncid, varid_ll_lon,     ll_lon);
     netcdf.putVar(ncid, varid_ll_lat,     ll_lat);
     netcdf.putVar(ncid, varid_d_lon,      d_lon);

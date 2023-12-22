@@ -8184,10 +8184,6 @@ contains
     !          start_time:standard_name = "start time" ;
     !  double end_time(pentad) ;
     !          end_time:standard_name = "end time" ;
-    !  double lon(lon) ;
-    !          lon:standard_name = "longitude" ;
-    !  double lat(lat) ;
-    !          lat:standard_name = "latitude" ;
     !  double o_mean(pentad, lon, lat) ;
     !          o_mean:standard_name = "observation mean" ;
     !  double o_std(pentad, lon, lat) ;
@@ -8224,12 +8220,6 @@ contains
     real,    intent(inout), dimension(N_catd) :: tmp_obs
     real,    intent(inout), dimension(N_catd) :: tmp_std_obs
        
-    ! ----------------------------------------------------------
-    
-    ! local variables
-        
-    real, parameter :: tol = 0.99    ! [degree lat/lon]  for sanity check (should never kick in)
-    
     ! -------------------
     
     character(300) :: fname
@@ -8250,7 +8240,6 @@ contains
     integer, dimension(:), allocatable :: sclprm_tile_id
     integer, dimension(:), allocatable :: pentads
     
-    real, dimension(:),   allocatable  :: sclprm_lon,      sclprm_lat 
     real, dimension(:,:), allocatable  :: sclprm_mean_obs, sclprm_std_obs
     real, dimension(:,:), allocatable  :: sclprm_mean_mod, sclprm_std_mod
     real, dimension(:,:), allocatable  :: sclprm_min_mod,  sclprm_max_mod
@@ -8306,8 +8295,6 @@ contains
     
     ! Get the variable IDs
 
-    ierr = nf90_inq_varid(ncid, 'lon',    lon_varid)
-    ierr = nf90_inq_varid(ncid, 'lat',    lat_varid)
     ierr = nf90_inq_varid(ncid, 'o_mean', o_mean_varid)
     ierr = nf90_inq_varid(ncid, 'o_std',  o_std_varid)
     ierr = nf90_inq_varid(ncid, 'm_mean', m_mean_varid)
@@ -8321,13 +8308,6 @@ contains
     ierr = nf90_get_var(ncid, ll_lat_varid, ll_lat)
     ierr = nf90_get_var(ncid, dlon_varid,   dlon)
     ierr = nf90_get_var(ncid, dlat_varid,   dlat)
-    
-    ! Read lon and lat variables
-
-    allocate(sclprm_lon(N_lon), sclprm_lat(N_lat))
-
-    ierr = nf90_get_var(ncid, lon_varid, sclprm_lon)
-    ierr = nf90_get_var(ncid, lat_varid, sclprm_lat)
     
     start  = [1,     1,     pp]
     icount = [N_lat, N_lon, 1 ]
@@ -8371,16 +8351,6 @@ contains
           i_ind = ceiling((this_lon - ll_lon)/dlon) 
           j_ind = ceiling((this_lat - ll_lat)/dlat) 
           
-          ! Sanity check (against accidental use of wrong tile space)
-
-          if ( abs(tile_coord(i)%com_lat-sclprm_lat(j_ind))>tol  .or.             &
-               abs(tile_coord(i)%com_lon-sclprm_lon(i_ind))>tol ) then
-                 
-               err_msg = 'Lat/lon diff beyond tolerance'
-               call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-
-          end if
-          
           ! Check for no-data-values in observation and fit parameters
           ! (any negative number could be no-data-value for observations)
           
@@ -8421,9 +8391,7 @@ contains
        end if
        
     end do
-
-    deallocate(sclprm_lon)     
-    deallocate(sclprm_lat)          
+        
     deallocate(sclprm_mean_obs)     
     deallocate(sclprm_std_obs)      
     deallocate(sclprm_mean_mod)     
