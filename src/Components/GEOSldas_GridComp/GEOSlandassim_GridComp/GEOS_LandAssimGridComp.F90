@@ -1906,7 +1906,7 @@ contains
 
     if(.not. allocated(mwRTM_param)) then
    
-       allocate(mwRTM_param(1))
+       allocate(mwRTM_param(0))
    
      endif   
 
