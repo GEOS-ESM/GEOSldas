@@ -157,8 +157,9 @@ for imonth = 1:length(run_months)
           fclose(ifp);
           [date_time, obs_assim, obs_species, obs_tilenum, obs_lon, obs_lat, obs_obs, obs_obsvar, obs_fcst, obs_fcstvar, obs_ana, obs_anavar] = read_ObsFcstAna(fname);
           
-          % remove tiles when there is no obs_fcst (obs_fcst == 0 in innov output when missing)
-          idx = find(obs_fcst == 0);
+          % remove tiles where obs_fcst is no-data (note: read_ObsFcstAna() returns NaN)
+            
+          idx = isnan(obs_fcst);
 
           obs_assim(  idx) = [];
           obs_species(idx) = [];
