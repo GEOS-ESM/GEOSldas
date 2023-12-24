@@ -4,7 +4,7 @@ function out_mwRTM  = ...
                                     L2_version,start_time, end_time)
 
 % function to compute the 2 RTM constant variables: Albedo and Roughness(H) based on the
-% preprocessed data. Constants are taken as the long term temporal nanmean
+% preprocessed data. Constants are taken as the long term temporal mean
 % with maximum coverage across Asc/Desc passes.
 
 % Q. Liu 18 Jul 2022
@@ -212,7 +212,7 @@ for iPara = 1:length(out_Para)
     data_clim_tile(data_clim_tile < 0.) = 0.; %  set small negative values to 0
     
     % averaging  A, D values
-    tile_data = nanmean(data_clim_tile,2);
+    tile_data = mean(data_clim_tile,2,"omitnan");
     
     eval(['out_mwRTM.',out_Para{iPara},'=tile_data;'])
 end
