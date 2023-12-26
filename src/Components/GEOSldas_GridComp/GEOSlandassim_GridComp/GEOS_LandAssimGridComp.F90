@@ -1907,7 +1907,7 @@ contains
 
        allocate(mwRTM_param(0))
 
-     endif
+    endif
 
     call get_enkf_increments(                                              &
          date_time_new,                                                    &

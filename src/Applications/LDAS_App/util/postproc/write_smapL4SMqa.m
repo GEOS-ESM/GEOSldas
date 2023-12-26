@@ -1258,7 +1258,6 @@ function [ stats_out ] = stats_array( array_in, weights, Nstat )
 %
 % GDL, 16 Jan 2014
 % GDL, 30 Jan 2014: remove NaN prior to the calculation of stats
-%                   and avoid using nanmean, nanstdv, etc..
 % GDL,  1 Feb 2014: - weighted statistics for mean and stdv
 %                   - add 6th statistic (frac): 
 %                     the actual used fraction of N_data (based on weights)
