@@ -79,7 +79,7 @@ module clsm_ensupd_upd_routines
        get_tile_num_in_ellipse,                   &
        get_number_of_tiles_in_cell_ij,            &
        get_tile_num_in_cell_ij,                   &
-       get_tile_grid,                             &
+       get_minExtent_grid,                        &
        get_ij_ind_from_latlon
 
   use land_pert_routines,               ONLY:     &
@@ -1057,7 +1057,6 @@ contains
 
     character(len=*), parameter :: Iam = 'get_obs_pred'
     character(len=400) :: err_msg
-    character(len= 10) :: tmpstring10
     
     ! --------------------------------------------------------------
     !
@@ -1125,12 +1124,12 @@ contains
        
        select case (trim(obs_param(i)%varname))
           
-       case ('sfmc')
+       case ('sfmc', 'sfds')
           
           get_sfmc_l   = .true.
           get_sfmc_lH  = .true.
           get_tsurf_l  = .true.    ! needed for model-based QC
-          
+
        case ('rzmc')
           
           get_rzmc_l   = .true.
@@ -1350,49 +1349,26 @@ contains
           
           do j=1,N_TbuniqFreqAngRTMid
              
-             freq       = Tb_freq_ang_RTMid(j,1)
-             inc_angle  = Tb_freq_ang_RTMid(j,2)
-             RTM_id     = Tb_freq_ang_RTMid(j,3)
+             freq       =      Tb_freq_ang_RTMid(j,1)
+             inc_angle  =      Tb_freq_ang_RTMid(j,2)
+             RTM_id     = nint(Tb_freq_ang_RTMid(j,3))
 
              ! Select a specific configuration of the RTM via the field 
              ! "RTM_ID" in the "obs_param" type. 
              !
              ! %RTM_ID = ID of radiative transfer model to use for Tb forward modeling
              !           (subroutine get_obs_pred()) 
-             !           0 = none
-             !           1 = tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1)
-             !           2 = same as 1 but without Pellarin atmospheric corrections
-             !           3 = ...
+             !       0 = none
+             !       1 = L-band tau-omega model as in De Lannoy et al. 2013 (doi:10.1175/JHM-D-12-092.1) (SMOS)
+             !       2 = same as 1 but without Pellarin atm corr (SMAP)
+             !       3 = same as 1 but with Mironov and SMAP L2_SM pol mixing (SMOS)
+             !       4 = same as 3 but without Pellarin atm corr (targeted for SMAP L4_SM Version 8)
              
-             select case (RTM_id)
-                
-             case (1)
-                
-                ! bug fix: previously, mwRTM_get_Tb() was called without specifying the
-                !          sub-array of "stemp_l" that corresponds to ensemble member n_e
-                !          - reichle, 11 Dec 2013  
-                
-                call mwRTM_get_Tb(                                              &
-                     N_catl, freq, inc_angle, mwRTM_param, tile_coord_l%elev,   &
-                     lai, smoist, stemp_l(:,n_e), SWE, met_force%Tair, .true.,  &
-                     Tb_h_vec, Tb_v_vec )
-                
-             case (2)
-                
-                call mwRTM_get_Tb(                                              &
-                     N_catl, freq, inc_angle, mwRTM_param, tile_coord_l%elev,   &
-                     lai, smoist, stemp_l(:,n_e), SWE, met_force%Tair, .false., &
-                     Tb_h_vec, Tb_v_vec )
-                
-             case default
-                
-                write (tmpstring10,*) RTM_ID
-                
-                err_msg = 'unknown or inconsistent RTM_ID=' // tmpstring10
-                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-                
-             end select
-
+             call mwRTM_get_Tb(                                              &
+                  N_catl, freq, inc_angle, mwRTM_param, tile_coord_l%elev,   &
+                  lai, smoist, stemp_l(:,n_e), SWE, met_force%Tair, RTM_ID,  &
+                  Tb_h_vec, Tb_v_vec )
+             
              Tb_h_l(:,j,n_e) = Tb_h_vec
              Tb_v_l(:,j,n_e) = Tb_v_vec
              
@@ -1446,7 +1422,7 @@ contains
     ! allocate and assemble tile_data_l
     allocate(tile_data_l(0,0,0))  ! for debugging to pass  
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
-         N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
+         tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                        &
          N_catlH, tile_coord_lH=tile_coord_lH )
     
     if (get_sfmc_lH)   allocate(sfmc_lH( N_catlH,                     N_ens))
@@ -1477,7 +1453,7 @@ contains
     ! communicate tile_data_l as needed and get tile_data_lH
     
     call get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
-         N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                &
+         tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                        &
          N_catlH, tile_data_lH=tile_data_lH )    
     
     ! read out sfmc, rzmc, etc. from tile_data_lH    
@@ -1513,16 +1489,16 @@ contains
        
        ! determine tile_grid_lH from tile_coord_lH
        
-       call get_tile_grid( N_catlH, tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,               &
+       tile_grid_lH = get_minExtent_grid( N_catlH, tile_coord_lH%pert_i_indg, tile_coord_lH%pert_j_indg,&
             tile_coord_lH%min_lon, tile_coord_lH%min_lat, tile_coord_lH%max_lon, tile_coord_lH%max_lat, &
-            tile_grid_g, tile_grid_lH ) 
+            tile_grid_g) 
        
        allocate(N_tile_in_cell_ij_lH(tile_grid_lH%N_lon,tile_grid_lH%N_lat))
        
        ! first call: count how many tiles are in each tile_grid_lH cell
 
        call get_number_of_tiles_in_cell_ij( N_catlH,                                   &
-            tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,                      &
+            tile_coord_lH%pert_i_indg, tile_coord_lH%pert_j_indg,                      &
             tile_grid_lH, N_tile_in_cell_ij_lH )
        
        ! second call: find out which tiles are in each tile_grid_lH cell
@@ -1530,7 +1506,7 @@ contains
        !               to local halo ("lH") domain]
        
        call get_tile_num_in_cell_ij( N_catlH,                                          &
-            tile_coord_lH%hash_i_indg, tile_coord_lH%hash_j_indg,                      &
+            tile_coord_lH%pert_i_indg, tile_coord_lH%pert_j_indg,                      &
             tile_grid_lH, maxval(N_tile_in_cell_ij_lH), tile_num_in_cell_ij_lH )
        
     end if
@@ -1665,7 +1641,7 @@ contains
              
              select case (trim(obs_param(this_species)%varname))
                 
-             case ('sfmc')
+             case ('sfmc', 'sfds')
                 
                 tmp_data(1:N_tmp)    = sfmc_lH(  ind_tmp(1:N_tmp), n_e )
                 
@@ -1707,9 +1683,7 @@ contains
                 ! for EASE grids *ONLY*: screen for non-land surfaces (e.g., lakes)
                 ! - reichle, 28 Mar 2015
                 
-                if   (                                                                 &
-                     (index(tile_grid_g%gridtype, 'EASE_M')  /=0) .or.                 &
-                     (index(tile_grid_g%gridtype, 'EASEv2_M')/=0)       )  then
+                if (index(tile_grid_g%gridtype, 'EASEv')  /=0) then
                    
                    ! ASSUMPTIONS: 
                    !  - at most one land tile per grid cell
@@ -2002,7 +1976,6 @@ contains
     integer :: k, ks, opt
 
     character(len=*), parameter :: Iam = 'get_obs_pred_comm_helper'
-    character(len=400) :: err_msg
     
     ! -------------------------------------------------------------------------
     
@@ -2367,8 +2340,8 @@ contains
   
   ! *********************************************************************
 
-  subroutine get_halo_obs( N_ens, N_catl, N_obsl, Observations_l, Obs_pred_l,  &
-       tile_coord_l, xcompact, ycompact,                                       &
+  subroutine get_halo_obs( N_ens, N_obsl, Observations_l, Obs_pred_l,  &
+       tile_coord_l, xcompact, ycompact,                               &
        N_obslH, Observations_lH, Obs_pred_lH )
     
     ! collect observations from other local domains (processors) that are 
@@ -2400,7 +2373,7 @@ contains
     
     implicit none
     
-    integer,                                        intent(in)  :: N_ens, N_catl, N_obsl
+    integer,                                        intent(in)  :: N_ens, N_obsl
     
     type(obs_type),        dimension(N_obsl),       intent(in)  :: Observations_l
     
@@ -2791,7 +2764,7 @@ contains
   ! *********************************************************************
   
   subroutine get_tiles_in_halo( N_catl, N_fields, N_ens, tile_data_l, tile_coord_l,  &
-       N_catf, tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                      &
+       tile_coord_f, N_catl_vec, low_ind, xhalo, yhalo,                              &
        N_catlH, tile_coord_lH, tile_data_lH )
     
     ! collect (bundled) tile_data from other local domains (processors) that are 
@@ -2812,7 +2785,7 @@ contains
     implicit none
     
     integer,                                    intent(in)  :: N_catl, N_fields
-    integer,                                    intent(in)  :: N_ens,  N_catf
+    integer,                                    intent(in)  :: N_ens
     
     real,    dimension(N_catl,N_fields,N_ens),  intent(in)  :: tile_data_l
     
@@ -3204,8 +3177,7 @@ contains
        pert_grid_lH%ur_lon = pert_grid_lH%ll_lon + delta_lon
        pert_grid_lH%ur_lat = pert_grid_lH%ll_lat + delta_lat
        
-    elseif ( (index(pert_grid_lH%gridtype,'EASE_M')  /=0)     .or.          &
-             (index(pert_grid_lH%gridtype,'EASEv2_M')/=0)          )  then
+    elseif ( index(pert_grid_lH%gridtype,'EASEv')  /=0 ) then
        
        pert_grid_lH%dlon   = pert_grid_f%dlon
        
@@ -3378,7 +3350,7 @@ contains
   subroutine cat_enkf_increments(                               &
        N_ens, N_obs, N_catd, N_obs_param,                       &
        update_type, obs_param,                                  &
-       tile_grid_f, tile_coord, l2f,                            &
+       tile_coord, l2f,                                         &
        Observations, Obs_pred, Obs_pert,                        &
        cat_param,                                               &
        xcompact, ycompact, fcsterr_inflation_fac,               &
@@ -3417,8 +3389,6 @@ contains
     integer, intent(in) :: N_ens, N_obs, N_catd, N_obs_param, update_type
 
     type(obs_param_type), dimension(N_obs_param), intent(in) :: obs_param               
-
-    type(grid_def_type), intent(in) :: tile_grid_f
 
     type(tile_coord_type), dimension(:), pointer  :: tile_coord     ! input
 
@@ -3481,7 +3451,6 @@ contains
     integer, dimension(:,:,:), pointer    :: tile_num_in_cell_ij    => null()
 
     character(len=*),  parameter          :: Iam = 'cat_enkf_increments'
-    character(len=400)                    :: err_msg
 
     real, dimension(     N_catd)          :: r_x, tmp_dlon
     real                                  :: r_y, tmp_dlat
@@ -3626,15 +3595,16 @@ contains
 
     select_update_type: select case (update_type)
        
-    case (1) select_update_type   ! 1d soil moisture analysis; sfmc obs
+    case (1) select_update_type   ! 1d soil moisture analysis; sfmc and/or sfds obs
 
        ! this 1d update requires that obs are on same tile space as model
        
        if (logit) write (logunit,*) 'get 1d soil moisture increments; sfmc obs'
 
-       N_select_varnames  = 1
+       N_select_varnames  = 2
        
        select_varnames(1) = 'sfmc'
+       select_varnames(2) = 'sfds'
        
        call get_select_species(                                           &
             N_select_varnames, select_varnames(1:N_select_varnames),      &
@@ -3693,16 +3663,17 @@ contains
           
        end do
        
-    case (2) select_update_type   ! 3d soil moisture analysis; sfmc obs
+    case (2) select_update_type   ! 3d soil moisture analysis; sfmc and/or sfds obs
        
        ! update each tile separately using all observations within 
        ! the customized halo around each tile
        
        if (logit) write (logunit,*) 'get 3d soil moisture increments; sfmc obs'
 
-       N_select_varnames  = 1
+       N_select_varnames  = 2
        
        select_varnames(1) = 'sfmc'
+       select_varnames(2) = 'sfds'
 
        call get_select_species(                                           &
             N_select_varnames, select_varnames(1:N_select_varnames),      &
@@ -4555,10 +4526,10 @@ contains
     
     ! locals
     
-    integer :: i, j, k, m
+    integer :: i, k
     
-    logical :: selected_obs
-    
+   
+ 
     ! --------------------------------------------------------------
     
     if (N_select_species==0 .and. N_select_tilenum==0) then
@@ -4830,7 +4801,7 @@ contains
     
     ! locals
     
-    integer :: i, j, k
+    integer :: i, k
 
     real :: lon_obs, lat_obs
 
@@ -4946,7 +4917,7 @@ contains
        ! In the obs readers, each obs is assigned to a single tile
        ! based on subroutine get_tile_num_from_latlon().  The assignment
        ! is such that the the obs lat/lon and the tile center-of-mass lat/lon
-       ! must always be within the same grid cell of the tile_grid.
+       ! must always be within the same grid cell of the tile_grid [or pert_grid??].
        ! Furthermore, the obs lat/lon 
        !  - must be within the min/max lat/lon boundaries of the tile
        !  OR

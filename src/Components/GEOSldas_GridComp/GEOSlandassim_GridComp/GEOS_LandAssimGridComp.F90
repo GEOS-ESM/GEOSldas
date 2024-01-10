@@ -1,6 +1,7 @@
 #include "MAPL_Generic.h"
 
 !=============================================================================
+
 module GEOS_LandAssimGridCompMod
 
   !BOP
@@ -17,6 +18,8 @@ module GEOS_LandAssimGridCompMod
   use ESMF_CFIOMOD,              only: ESMF_CFIOstrTemplate
   use GEOS_ExportCatchIncrGridCompMod, only: ExportCatchIncrSetServices=>SetServices  
   use MAPL_ConstantsMod,         only: MAPL_TICE
+
+  use LDAS_exceptionsMod,        only: ldas_abort, LDAS_GENERIC_ERROR
     
   use LDAS_TileCoordType,        only: tile_coord_type
   use LDAS_TileCoordType,        only: grid_def_type
@@ -49,7 +52,9 @@ module GEOS_LandAssimGridCompMod
   use catch_types,               only: cat_progn_type
   use catch_types,               only: cat_param_type
   use catch_types,               only: cat_diagS_type
-  use catch_types,               only: assignment(=), operator (+), operator (/)
+  use catch_types,               only: cat_diagS_max
+  use catch_types,               only: cat_diagS_sqrt
+  use catch_types,               only: assignment(=), operator (+), operator (-), operator (*), operator (/)
   use clsm_bias_routines,        only: initialize_obs_bias
   use clsm_bias_routines,        only: read_cat_bias_inputs 
 
@@ -58,7 +63,7 @@ module GEOS_LandAssimGridCompMod
   use clsm_ensupd_glob_param,    only: echo_clsm_ensupd_glob_param
   use clsm_ensupd_enkf_update,   only: get_enkf_increments 
   use clsm_ensupd_enkf_update,   only: apply_enkf_increments 
-  use clsm_ensupd_enkf_update,   only: output_incr_etc
+  use clsm_ensupd_enkf_update,   only: output_ObsFcstAna_wrapper
   use clsm_ensupd_enkf_update,   only: write_smapL4SMaup 
   use clsm_ensdrv_out_routines,  only: init_log, GEOS_output_smapL4SMlmc 
   use clsm_ensdrv_drv_routines,  only: recompute_diagS
@@ -66,7 +71,6 @@ module GEOS_LandAssimGridCompMod
   use mwRTM_routines,            only: mwRTM_get_Tb, catch2mwRTM_vars
 
   use, intrinsic :: ieee_arithmetic    
-
 
   implicit none
 
@@ -114,6 +118,8 @@ module GEOS_LandAssimGridCompMod
   logical                                            :: mwRTM
   
   logical,                               allocatable :: tb_nodata(:)
+  
+  character(len=400)                                 :: err_msg
 
 contains
   
@@ -142,9 +148,8 @@ contains
     
     ! Local Variables
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    type(ESMF_Config)            :: CF
     character(len=ESMF_MAXSTR)   :: LAND_ASSIM_STR, mwRTM_file
-    character(len=ESMF_MAXSTR)   :: ensid_string,childname, fmt_str
+    character(len=ESMF_MAXSTR)   :: ensid_string, childname
     integer                      :: i, ens_id_width, FIRST_ENS_ID, NUM_ENSEMBLE
     integer                      :: ens_id, export_id
 
@@ -777,7 +782,16 @@ contains
        VLOCATION          = MAPL_VLocationNone                                    ,&
        RC=STATUS  ) 
   VERIFY_(STATUS)
-  
+ 
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_moisture_surface_analysis_ensstd'               ,&
+       UNITS              = 'm3 m-3'                                              ,&
+       SHORT_NAME         = 'WCSF_ANA_ENSSTD'                                     ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+ 
   call MAPL_AddExportSpec(GC                                                      ,&
        LONG_NAME          = 'soil_moisture_rootzone_analysis'                     ,&
        UNITS              = 'm3 m-3'                                              ,&
@@ -788,12 +802,30 @@ contains
   VERIFY_(STATUS)
   
   call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_moisture_rootzone_analysis_ensstd'              ,&
+       UNITS              = 'm3 m-3'                                              ,&
+       SHORT_NAME         = 'WCRZ_ANA_ENSSTD'                                     ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                                                      ,&
        LONG_NAME          = 'soil_moisture_profile_analysis'                      ,&
        UNITS              = 'm3 m-3'                                              ,&
        SHORT_NAME         = 'WCPR_ANA'                                            ,&
        DIMS               = MAPL_DimsTileOnly                                     ,&
        VLOCATION          = MAPL_VLocationNone                                    ,&
        RC=STATUS  ) 
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_moisture_profile_analysis_ensstd'               ,&
+       UNITS              = 'm3 m-3'                                              ,&
+       SHORT_NAME         = 'WCPR_ANA_ENSSTD'                                     ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
   VERIFY_(STATUS)
   
   call MAPL_AddExportSpec(GC                                                      ,&
@@ -806,6 +838,15 @@ contains
   VERIFY_(STATUS)
   
   call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'ave_catchment_temp_incl_snw_analysis_ensstd'         ,&
+       UNITS              = 'K'                                                   ,&
+       SHORT_NAME         = 'TPSURF_ANA_ENSSTD'                                   ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
+  call MAPL_AddExportSpec(GC                                                      ,&
        LONG_NAME          = 'soil_temperatures_layer_1_analysis'                  ,&
        UNITS              = 'K'                                                   ,&
        SHORT_NAME         = 'TSOIL1_ANA'                                          ,&
@@ -814,6 +855,15 @@ contains
        RC=STATUS  ) 
   VERIFY_(STATUS) 
   
+  call MAPL_AddExportSpec(GC                                                      ,&
+       LONG_NAME          = 'soil_temperatures_layer_1_analysis_ensstd'           ,&
+       UNITS              = 'K'                                                   ,&
+       SHORT_NAME         = 'TSOIL1_ANA_ENSSTD'                                   ,&
+       DIMS               = MAPL_DimsTileOnly                                     ,&
+       VLOCATION          = MAPL_VLocationNone                                    ,&
+       RC=STATUS  )
+  VERIFY_(STATUS)
+
   ! Exports for microwave radiative transfer model (mwRTM)
 
   call MAPL_AddExportSpec(GC                                                      ,&
@@ -1062,7 +1112,7 @@ contains
     type(MAPL_MetaComp), pointer :: CHILD_MAPL=>null() ! Child's MAPL obj
     type(ESMF_GridComp), pointer :: gcs(:)
 
-    character(len=300)           :: out_path,fname
+    character(len=300)           :: out_path
     character(len=ESMF_MAXSTR)   :: exp_id, GridName
     integer                      :: model_dtstep
     type(date_time_type)         :: start_time
@@ -1071,18 +1121,14 @@ contains
     type(T_TILECOORD_STATE), pointer :: tcinternal
     type(TILECOORD_WRAP)             :: tcwrap
 
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_f => null()
     type(tile_coord_type), dimension(:), pointer :: tile_coord_l => null()
 
     integer :: land_nt_local,i,mpierr, ens, ens_id_width
     ! mapping f to re-orderd f so it is continous for mpi_gather
     ! rf -- ordered by processors. Within the processor, ordered by MAPL grid
     integer, allocatable :: f2rf(:) ! mapping re-orderd rf to f for the LDASsa output
-    type(grid_def_type)  :: tile_grid_g
-    type(grid_def_type)  :: tile_grid_f
     character(len=300)   :: seed_fname
     character(len=300)   :: fname_tpl
-    character(len=14)    :: datestamp
     character(len=ESMF_MAXSTR) :: ensid_string 
     integer              :: nymd, nhms, yy, mm, dd, h, m, s
 
@@ -1348,7 +1394,7 @@ contains
           call MAPL_GetResource ( MAPL, GridName, Label="GEOSldas.GRIDNAME:", DEFAULT="EASE", RC=STATUS)
           _VERIFY(STATUS)
           _ASSERT( (NUM_ENSEMBLE>1),                   "out_smapL4SMaup=.true. only works for NUM_ENSEMBLE>1")
-          _ASSERT( (index(GridName,"EASEv2-M09") /=0), "out_smapL4SMaup=.true. only works with EASEv2-M09 tile space")
+          _ASSERT( (index(GridName,"EASEv2-M09") /=0 .or. index(GridName,"EASEv2_M09") /=0), "out_smapL4SMaup=.true. only works with EASEv2-M09 tile space")
           
        end if
 
@@ -1417,7 +1463,7 @@ contains
     !
     !  time
     !  
-    type(ESMF_Time)                   :: ModelTimeCur, ModelTimeNxt
+    type(ESMF_Time)                   :: ModelTimeCur
     type(ESMF_Alarm)                  :: LandAssimAlarm
     type(ESMF_TimeInterval)           :: ModelTimeStep
     
@@ -1433,12 +1479,10 @@ contains
     type(date_time_type)              :: date_time_new
     character(len=14)                 :: datestamp
 
-    integer                           :: N_catl, N_catg,N_obsl_max, n_e, ii
+    integer                           :: N_catl, N_catg,N_obsl_max, n_e, ii 
 
     character(len=300)                :: out_path
     character(len=ESMF_MAXSTR)        :: exp_id
-    character(40)                     :: exp_domain
-    integer                           :: model_dtstep
 
     type(met_force_type), dimension(:),     allocatable :: met_force
 
@@ -1456,7 +1500,7 @@ contains
 
     type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS
     type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS_ensavg
-
+    type(cat_diagS_type), dimension(:),     allocatable :: cat_diagS_ensstd
     type(obs_type),       dimension(:),     pointer     :: Observations_l => null()
 
     logical  :: fresh_incr
@@ -1483,11 +1527,17 @@ contains
 
     !! export for analysis model diagnostics 
 
-    real, dimension(:),pointer :: SFMC_ana=>null()     ! surface soil moisture
-    real, dimension(:),pointer :: RZMC_ana=>null()     ! rootzone soil moisture
-    real, dimension(:),pointer :: PRMC_ana=>null()     ! profile soil moisture
-    real, dimension(:),pointer :: TPSURF_ana=>null()   ! tpsurf
-    real, dimension(:),pointer :: TSOIL1_ana=>null()   ! tsoil1
+    real, dimension(:),pointer :: SFMC_ana=>null()           ! surface soil moisture
+    real, dimension(:),pointer :: RZMC_ana=>null()           ! rootzone soil moisture
+    real, dimension(:),pointer :: PRMC_ana=>null()           ! profile soil moisture
+    real, dimension(:),pointer :: TPSURF_ana=>null()         ! tpsurf
+    real, dimension(:),pointer :: TSOIL1_ana=>null()         ! tsoil1
+
+    real, dimension(:),pointer :: SFMC_ana_ensstd=>null()    ! surface soil moisture
+    real, dimension(:),pointer :: RZMC_ana_ensstd=>null()    ! rootzone soil moisture
+    real, dimension(:),pointer :: PRMC_ana_ensstd=>null()    ! profile soil moisture
+    real, dimension(:),pointer :: TPSURF_ana_ensstd=>null()  ! tpsurf
+    real, dimension(:),pointer :: TSOIL1_ana_ensstd=>null()  ! tsoil1
 
     !! export for microwave radiative transfer model (mwRTM)
 
@@ -1501,6 +1551,8 @@ contains
     character(len=ESMF_MAXSTR) :: ensid_string
     integer                    :: ens, nymd, nhms, ens_id_width
     integer                    :: LandassimDTstep
+    real                       :: Nm1, NdivNm1 
+
 #ifdef DBG_LANDASSIM_INPUTS
     ! vars for debugging purposes
     type(ESMF_Grid)                 :: TILEGRID
@@ -1645,15 +1697,25 @@ contains
     
     ! exports for analysis model diagnostics
     
-    call MAPL_GetPointer(export, TPSURF_ana,  'TPSURF_ANA' ,rc=status)
+    call MAPL_GetPointer(export, TPSURF_ana,         'TPSURF_ANA'        ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, TSOIL1_ana,  'TSOIL1_ANA' ,rc=status)
+    call MAPL_GetPointer(export, TSOIL1_ana,         'TSOIL1_ANA'        ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, SFMC_ana,    'WCSF_ANA'  ,rc=status)
+    call MAPL_GetPointer(export, SFMC_ana,           'WCSF_ANA'          ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, RZMC_ana,    'WCRZ_ANA'  ,rc=status)
+    call MAPL_GetPointer(export, RZMC_ana,           'WCRZ_ANA'          ,rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, PRMC_ana,    'WCPR_ANA'  ,rc=status)
+    call MAPL_GetPointer(export, PRMC_ana,           'WCPR_ANA'          ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, TPSURF_ana_ensstd,  'TPSURF_ANA_ENSSTD' ,rc=status)    
+    VERIFY_(status)       
+    call MAPL_GetPointer(export, TSOIL1_ana_ensstd,  'TSOIL1_ANA_ENSSTD' ,rc=status)    
+    VERIFY_(status)       
+    call MAPL_GetPointer(export, SFMC_ana_ensstd,    'WCSF_ANA_ENSSTD'   ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, RZMC_ana_ensstd,    'WCRZ_ANA_ENSSTD'   ,rc=status)
+    VERIFY_(status)
+    call MAPL_GetPointer(export, PRMC_ana_ensstd,    'WCPR_ANA_ENSSTD'   ,rc=status)
     VERIFY_(status)
 
     ! exports for microwave radiative transfer model (mwRTM)
@@ -1824,28 +1886,37 @@ contains
          )
     _VERIFY(status)   
 
-    ! mwRTM_param already contains static parameters, only need vegopacity.
+    if ( mwRTM ) then
 
-    call get_vegopacity(MAPL, clock, N_catl, rc=status)
-    _VERIFY(STATUS)
+       ! mwRTM_param already contains static parameters, only need vegopacity.
 
-    ! Check no-data consistency of vegetation attenuation parameter values.
-    ! Good values are allowed for either the relevant static parameters
-    ! (bh, bv, lewt) or for the vegopacity values from the file, but not both.
-
-    do ii=1,N_catl
-       call mwRTM_param_nodata_check( mwRTM_param(ii) )
-    end do
+       call get_vegopacity(MAPL, clock, N_catl, rc=status)
+       _VERIFY(STATUS)
     
+       ! Check no-data consistency of vegetation attenuation parameter values.
+       ! Good values are allowed for either the relevant static parameters
+       ! (bh, bv, lewt) or for the vegopacity values from the file, but not both.
+
+       do ii=1,N_catl
+          call mwRTM_param_nodata_check( mwRTM_param(ii) )
+       end do
+
+    endif
+
+    if(.not. allocated(mwRTM_param)) then
+
+       allocate(mwRTM_param(0))
+
+    endif
+
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
          NUM_ENSEMBLE, N_catl, N_catf, N_obsl_max,                         &
-         trim(out_path), trim(exp_id), exp_domain,                         &
+         trim(out_path), trim(exp_id),                                     &
          met_force, lai, cat_param, mwRTM_param,                           &
-         tile_coord_l, tile_coord_rf, tcinternal%grid_f,                   &
-         tcinternal%grid_f, tcinternal%grid_l, tcinternal%grid_g,          &
+         tile_coord_l, tile_coord_rf,                                      &
+         tcinternal%tgrid_g, tcinternal%pgrid_f, tcinternal%pgrid_g,       &
          N_catl_vec, low_ind, l2rf, rf2l,                                  &
-         N_force_pert, N_progn_pert, force_pert_param, progn_pert_param,   &
          update_type,                                                      &
          LandAssimDTstep,                                                  &
          xcompact, ycompact, fcsterr_inflation_fac,                        &
@@ -1876,15 +1947,15 @@ contains
 
     if (.true.) then  ! replace obsolete check for analysis time with "if true" to keep indents
 
-       call output_incr_etc( out_ObsFcstAna,                             &
-            date_time_new, trim(out_path), trim(exp_id),                 &
+       call output_ObsFcstAna_wrapper( out_ObsFcstAna,                   &
+            date_time_new, trim(exp_id),                                 &
             N_obsl, N_obs_param, NUM_ENSEMBLE,                           &
             N_catl, tile_coord_l,                                        &
-            N_catf, tile_coord_rf, tcinternal%grid_f, tcinternal%grid_g, &
-            N_catl_vec, low_ind, rf2l, N_catg, rf2g,                     &
+            N_catf, tile_coord_rf, tcinternal%pgrid_g,                   &
+            N_catl_vec, low_ind, rf2l,                                   &
             obs_param,                                                   &
             met_force, lai,                                              &
-            cat_param, cat_progn, cat_progn_incr, mwRTM_param,           &
+            cat_param, cat_progn, mwRTM_param,                           &
             Observations_l, rf2f=rf2f )
        
        do ii = 1, N_catl
@@ -1912,11 +1983,15 @@ contains
        allocate(cat_progn_tmp(   N_catl))
        allocate(cat_diagS(       N_catl))
        allocate(cat_diagS_ensavg(N_catl))
+       allocate(cat_diagS_ensstd(N_catl))     
        
        do ii=1,N_catl
-          cat_diagS_ensavg(ii) = 0.0        ! initialize ens average
+          cat_diagS_ensavg(ii) = 0.0        ! initialize sum for ens average
+          cat_diagS_ensstd(ii) = 0.0        ! initialize sum of squares for ensemble standard deviation
        end do
        
+       ! compute sum (and sum of squares) of ensemble members
+
        do n_e=1,NUM_ENSEMBLE
           
           ! make a copy of cat_progn to ensure 0-diff (recompute_diagS() potentially alters its input cat_progn)
@@ -1928,28 +2003,63 @@ contains
           call recompute_diagS( N_catl, cat_param, cat_progn_tmp, cat_diagS )
           
           do ii=1,N_catl
-             cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii) + cat_diagS(ii)
+             cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii) +   cat_diagS(ii)                       ! sum 
+             cat_diagS_ensstd(ii) = cat_diagS_ensstd(ii) + ( cat_diagS(ii) * cat_diagS(ii) )     ! sum of squares
           end do
-          
+
        end do
        
-       do ii=1,N_catl
-          cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize
-       end do
+       ! finalize ensemble average and standard deviation
+       
+       if (NUM_ENSEMBLE > 1)  then
+
+          Nm1     = real(NUM_ENSEMBLE-1)
+
+          NdivNm1 = real(NUM_ENSEMBLE)/Nm1 
+       
+          do ii=1,N_catl
+          
+             cat_diagS_ensavg(ii) = cat_diagS_ensavg(ii)/real(NUM_ENSEMBLE)     ! normalize --> ens avg
+          
+             cat_diagS_ensstd(ii) =                                                                                  &
+                  cat_diagS_sqrt(                                                                                    &
+                  cat_diagS_max( 0., cat_diagS_ensstd(ii)/Nm1 - NdivNm1*(cat_diagS_ensavg(ii)*cat_diagS_ensavg(ii))) &
+                  )
+             
+          end do
+
+       else    ! NUM_ENSEMBLE = 1
+             
+          ! no need to normalize ens avg, set ens std to undef
+
+          do ii=1,N_catl
+
+             cat_diagS_ensstd(ii) = MAPL_UNDEF
+          
+          end do
+             
+       end if
 
        ! set export variables
        
-       if(associated(SFMC_ana))         SFMC_ana(:)         = cat_diagS_ensavg(:)%sfmc 
-       if(associated(RZMC_ana))         RZMC_ana(:)         = cat_diagS_ensavg(:)%rzmc  
-       if(associated(PRMC_ana))         PRMC_ana(:)         = cat_diagS_ensavg(:)%prmc 
-       if(associated(TPSURF_ana))       TPSURF_ana(:)       = cat_diagS_ensavg(:)%tsurf
-       if(associated(TSOIL1_ana))       TSOIL1_ana(:)       = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE  ! convert to K
+       if(associated(SFMC_ana))           SFMC_ana(:)          = cat_diagS_ensavg(:)%sfmc 
+       if(associated(RZMC_ana))           RZMC_ana(:)          = cat_diagS_ensavg(:)%rzmc 
+       if(associated(PRMC_ana))           PRMC_ana(:)          = cat_diagS_ensavg(:)%prmc 
+       if(associated(TPSURF_ana))         TPSURF_ana(:)        = cat_diagS_ensavg(:)%tsurf
+       if(associated(TSOIL1_ana))         TSOIL1_ana(:)        = cat_diagS_ensavg(:)%tp(1) + MAPL_TICE   ! convert to K
 
-       if(associated(MWRTM_VEGOPACITY)) MWRTM_VEGOPACITY(:) = mwRTM_param(:)%VEGOPACITY
+       if(associated(SFMC_ana_ensstd))    SFMC_ana_ensstd(:)   = max( cat_diagS_ensstd(:)%sfmc  , 0. )
+       if(associated(RZMC_ana_ensstd))    RZMC_ana_ensstd(:)   = max( cat_diagS_ensstd(:)%rzmc  , 0. )
+       if(associated(PRMC_ana_ensstd))    PRMC_ana_ensstd(:)   = max( cat_diagS_ensstd(:)%prmc  , 0. )
+       if(associated(TPSURF_ana_ensstd))  TPSURF_ana_ensstd(:) = max( cat_diagS_ensstd(:)%tsurf , 0. )
+       if(associated(TSOIL1_ana_ensstd))  TSOIL1_ana_ensstd(:) = max( cat_diagS_ensstd(:)%tp(1) , 0. ) 
+
+       if(associated(MWRTM_VEGOPACITY))   MWRTM_VEGOPACITY(:)  = mwRTM_param(:)%VEGOPACITY
        
        deallocate(cat_progn_tmp)
        deallocate(cat_diagS)
-       deallocate(cat_diagS_ensavg) 
+       deallocate(cat_diagS_ensavg)
+       deallocate(cat_diagS_ensstd)
        
        ! write analysis fields into SMAP L4_SM aup file 
        ! whenever it was time for assimilation (regardless 
@@ -1957,9 +2067,9 @@ contains
        ! increments were computed)
        
        if (out_smapL4SMaup)                                                        &
-            call write_smapL4SMaup( 'analysis', date_time_new, trim(out_path),     &
+            call write_smapL4SMaup( 'analysis', date_time_new,                     &
             trim(exp_id), NUM_ENSEMBLE, N_catl, N_catf, N_obsl, tile_coord_rf,     &
-            tcinternal%grid_g, N_catl_vec, low_ind,                                &
+            tcinternal%tgrid_g, N_catl_vec, low_ind,                               &
             N_obs_param, obs_param, Observations_l, cat_param, cat_progn   )
 
     end if ! end if (.true.)
@@ -2002,7 +2112,6 @@ contains
 
     ! ESMF variables
     type(ESMF_Alarm) :: LandAssimAlarm
-    type(ESMF_VM)    :: vm
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL=>null() ! MAPL obj
@@ -2136,7 +2245,9 @@ contains
   ! ******************************************************************************
   
   ! subroutine to calculate Tb for HISTORY output
-  
+  !
+  ! IMPORTANT: hardwired mwRTM configuration for SMAP L-band Tb w/o Pellarin atm correction (RTM_ID=4)
+
   subroutine CALC_LAND_TB(gc, import, export, clock, rc)
     
     type(ESMF_GridComp), intent(inout) :: gc     ! Gridded component
@@ -2150,7 +2261,7 @@ contains
     ! hard-coded SMAP Tb parameters
     real,    parameter :: freq           = 1.41e9     ! microwave frequency [Hz]
     real,    parameter :: inc_angle      = 40.        ! incidence angle [deg]
-    logical, parameter :: incl_atm_terms = .false.    ! no atmospheric correction, ie, get Tb at top-of-vegetation
+    integer, parameter :: RTM_ID         = 4          ! config of RTM - see obs_param (LDAS_DEFAULT_inputs_ensupd.nml)
 
     integer                      :: status
     character(len=ESMF_MAXSTR)   :: Iam='CALC_LAND_TB'
@@ -2165,25 +2276,6 @@ contains
     real, dimension(:), pointer :: WCSF
     real, dimension(:), pointer :: SWE
 
-    real, dimension(:), pointer :: VEGCLS
-    real, dimension(:), pointer :: SOILCLS
-    real, dimension(:), pointer :: SAND
-    real, dimension(:), pointer :: CLAY
-    real, dimension(:), pointer :: mw_POROS
-    real, dimension(:), pointer :: WANGWT
-    real, dimension(:), pointer :: WANGWP
-    real, dimension(:), pointer :: RGHHMIN
-    real, dimension(:), pointer :: RGHHMAX
-    real, dimension(:), pointer :: RGHWMAX
-    real, dimension(:), pointer :: RGHWMIN
-    real, dimension(:), pointer :: RGHNRH
-    real, dimension(:), pointer :: RGHNRV
-    real, dimension(:), pointer :: RGHPOLMIX
-    real, dimension(:), pointer :: OMEGA
-    real, dimension(:), pointer :: BH
-    real, dimension(:), pointer :: BV
-    real, dimension(:), pointer :: LEWT
-
     ! export
     real, dimension(:), pointer :: TB_H_enavg
     real, dimension(:), pointer :: TB_V_enavg
@@ -2195,7 +2287,7 @@ contains
     real,    allocatable, dimension(:) :: Tb_h_tmp, TB_v_tmp
 
     
-    integer              :: N_catl, n, mpierr
+    integer              :: N_catl
     type(MAPL_LocStream) :: locstream
     
     call ESMF_GridCompGet ( GC, name=COMP_NAME, RC=STATUS )
@@ -2277,22 +2369,34 @@ contains
     
     allocate(TB_h_tmp(N_catl), TB_v_tmp(N_catl))
     
-    if (.not. incl_atm_terms) then
+    select case (RTM_ID)
+       
+    case(2,4)
+
        allocate(dummy_real(N_catl))                   ! allocate needed for GNU compiler
+
        call mwRTM_get_Tb(                         &
             N_catl, freq, inc_angle, mwRTM_param, &   
-            dummy_real,                           &   ! intent(in), "elev", not used as long as "incl_atm_terms=.false."
+            dummy_real,                           &   ! intent(in), "elev", not used as long as RTM_ID=4 (formerly "incl_atm_terms=.false.")
             LAI,                                  &   
             sfmc_mwRTM,                           &   
             tsoil_mwRTM,                          &   
             SWE,                                  &   
             dummy_real,                           &   ! intent(in), "Tair", not used as long as "incl_atm_terms=.false." 
-            incl_atm_terms,                       &   
+            RTM_ID,                               &
             Tb_h_tmp, Tb_v_tmp )                      ! intent(out) 'TB_LAND_1410MHZ_40DEG_HPOL',  'TB_LAND_1410MHZ_40DEG_VPOL'
        deallocate(dummy_real) 
-    else
-       _ASSERT(.false., "top-of-atmosphere Tb calculation not yet implemented (incl_atm_terms=.true.)")
-    end if
+
+    case(1,3)
+       
+       _ASSERT(.false., "top-of-atmosphere Tb calculation (requested per RTM_ID) not yet implemented")
+       
+    case default
+
+       err_msg = 'unknown RTM_ID (during CALC_LAND_TB)'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+         
+    end select
 
     if (collect_tb_counter == 0) then
        TB_H_enavg = 0.
@@ -2532,7 +2636,7 @@ contains
     character(len=*),intent(in)           :: seed_fname
     real(kind=ESMF_KIND_R8),intent(inout) :: pert_rseed_r8(:)
     
-    integer :: ncid, s_varid, en_dim, n_ens, id_varid, i, pos
+    integer :: ncid, s_varid 
     logical :: file_exist
 
     character(len=ESMF_MAXSTR) :: tmpstr

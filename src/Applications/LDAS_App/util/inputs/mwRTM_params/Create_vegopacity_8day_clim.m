@@ -34,7 +34,7 @@ fill_small_gaps =  1;
 
 % provide a GEOSldas simulation with matching tile information
 if strcmp(resolution,'M36')
-    L4_path = '/gpfsm/dnb05/projects/p51/SMAP_Nature/SMAP_Nature_v9.x/';
+    L4_path = '/discover/nobackup/projects/gmao/smap/SMAP_Nature/SMAP_Nature_v9.x/';
     L4_version = 'SMAP_Nature_v9.1_M36';
     based_on_h5 = 0;
     out_Nlon = 3856/4;
@@ -241,7 +241,7 @@ for iAD = 1:2
             
             header = [y1 m1 d1 0 0 0 y2 m2 d2 0 0 0 tc.N_tile 1];
             
-            tile_data = nanmean(L2_tau_tile([nidx_pre nidx nidx_nxt],:),1);
+            tile_data = mean(L2_tau_tile([nidx_pre nidx nidx_nxt],:),1,"omitnan");
             tile_data(isnan(tile_data)) = 1.e15;
             
             fwrite( ifp, 14*4, int_precision ); % fortran_tag
@@ -260,7 +260,7 @@ for iAD = 1:2
 end
 
 % ========================
-% The  final vegopacity.bin file contains data averaged (nanmean) of Asc
+% The  final vegopacity.bin file contains data averaged (mean) of Asc
 % and Des tau climatology. VOD is climatology,the other 2 parameters are
 % time constant with maximum spatial coverage
 data_clim_tile = NaN + ones(48, tc.N_tile,2);
@@ -295,7 +295,7 @@ data_clim_tile(data_clim_tile > 10.) = NaN;
 data_clim_tile(data_clim_tile <  0.) = 0.;    %  set small negative values to 0
 
 % averaging  A, D values
-tile_data = nanmean(data_clim_tile,3);
+tile_data = mean(data_clim_tile,3,"omitnan");
 fname_out = strrep(fname, L2_Ascdes,'_AD_');
 if fill_small_gaps
     

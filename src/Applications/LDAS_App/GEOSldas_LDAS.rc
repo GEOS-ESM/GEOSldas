@@ -11,7 +11,7 @@
 ####################################################################################
 
 
-# ---- Using Catchment/CatchmentCN offline?
+# ---- Using Catchment[CN] offline?
 #
 #    0: DEFAULT for GCM,      (WW,CH,CM,CQ,FR) are required in Catchment restart file 
 #    1: DEFAULT for GEOSldas, (WW,CH,CM,CQ,FR) are optional
@@ -20,12 +20,21 @@
 #
 CATCHMENT_OFFLINE: 1
 
+
+# ---- Catchment[CN] spinup mode 
+#
+#    0 : No spinup (default)
+#    1 : remove snow every Aug 1 in N. Hemisphere and every Feb 1 in S. Hemisphere
+#
+CATCHMENT_SPINUP: 0
+
+
 # ---- Choice of land surface model
 #
 #    1 : Catchment model   (default)
 #    2 : CatchmentCN-CLM4.0
 #    3 : CatchmentCN-CLM4.5
-
+#
 LSM_CHOICE: 1
 
 

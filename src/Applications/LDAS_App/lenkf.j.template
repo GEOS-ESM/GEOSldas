@@ -113,11 +113,6 @@ cd $SCRDIR
 
 set LSMCHOICE = `grep -n -m 1 "LSM_CHOICE" $HOMDIR/LDAS.rc | cut -d':' -f3`
 
-if( ${LSMCHOICE} > 1 ) then # CatchCN Only
-    ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/CO2_MonthlyMean_DiurnalCycle.nc4
-    ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/FPAR_CDF_Params-M09.nc4
-endif
-
 #######################################################################
 # if $LADAS_COUPLING == 1:  LDAS coupled to central ADAS simulation
 #######################################################################
@@ -136,10 +131,9 @@ if ( $LADAS_COUPLING == 1 ) then
       cd $SCRDIR
    else
 
-      # copy central-simulation forcing from $FVWORK to scratch dir
-
-      echo "copying lfo_Nx+- met forcing from $FVWORK to $SCRDIR"
-      /bin/cp -f $FVWORK/*lfo_Nx+-*nc4  $SCRDIR/.
+      # move central-simulation forcing held in met_forcing to scratch dir
+      echo "move lfo_Nx+- met forcing from $EXPDIR/input/met_forcing to $SCRDIR"
+      /bin/mv $EXPDIR/input/met_forcing/*lfo_Nx+-*nc4  $SCRDIR/.
 
    endif
 endif

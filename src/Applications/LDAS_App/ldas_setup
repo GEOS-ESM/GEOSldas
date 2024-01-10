@@ -9,6 +9,7 @@ import shutil
 import argparse
 import fileinput
 import time
+import resource
 import subprocess as sp
 import shlex
 from dateutil import rrule
@@ -406,11 +407,11 @@ class LDASsetup:
               elif (self.catch == 'catchcnclm40'):
                 self.in_rstfile  = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding' \
                                    '/CatchCN/M36/20150301_0000/catchcnclm40_internal_dummy' 
-                self.in_tilefile = '/discover/nobackup/ltakacs/bcs/Heracles-NL/SMAP_EASEv2_M36/SMAP_EASEv2_M36_964x406.til'
+                self.in_tilefile = '/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Heracles-NL/SMAP_EASEv2_M36/SMAP_EASEv2_M36_964x406.til'
               elif (self.catch == 'catchcnclm45'):
                 self.in_rstfile  = '/discover/nobackup/projects/gmao/ssd/land/l_data/LandRestarts_for_Regridding' \
                                    '/CatchCN/M36/19800101_0000/catchcnclm45_internal_dummy'
-                self.in_tilefile = '/discover/nobackup/ltakacs/bcs/Icarus-NLv3/Icarus-NLv3_EASE/SMAP_EASEv2_M36/SMAP_EASEv2_M36_964x406.til'
+                self.in_tilefile = '/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/Icarus-NLv3_EASE/SMAP_EASEv2_M36/SMAP_EASEv2_M36_964x406.til'
               else:
                 sys.exit('need to provide at least dummy files')
                 self.in_rstfile = None
@@ -786,6 +787,10 @@ class LDASsetup:
            myBC=self.inpdir+'/'+bcln+'.data'
            os.symlink(bc,myBC)
 
+        if ("catchcn" in self.catch):
+           os.symlink(self.rqdExeInp['BCS_PATH']+'../land/shared/CO2_MonthlyMean_DiurnalCycle.nc4', \
+                       self.inpdir+'/CO2_MonthlyMean_DiurnalCycle.nc4')
+
         # create and link restart 
         print ("Creating and linking restart...")
         _start = self.begDates[0]
@@ -1136,6 +1141,8 @@ class LDASsetup:
                    keyn = key+'_FILE'
                    valn = val+'.data'
                    ldasrcInp[keyn]= valn
+                if('catchcn' in self.catch):
+                   ldasrcInp['CO2_MonthlyMean_DiurnalCycle_FILE']= '../input/CO2_MonthlyMean_DiurnalCycle.nc4'
 
                 # create restart item in RC
                 catch_ = self.catch.upper()
@@ -1337,8 +1344,6 @@ class LDASsetup:
                         fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
                         if int(self.rqdRmInp['ntasks-per-node']) > 40:
                            fout.write("#SBATCH --constraint=cas\n")
-                        if (28 < int(self.rqdRmInp['ntasks-per-node']) and int(self.rqdRmInp['ntasks-per-node']) <= 40) :
-                           fout.write("#SBATCH --constraint=sky\n")
                     elif 'MY_OSERVER_NODES' in line :
                         fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
                     elif 'MY_WRITERS_NPES' in line :
@@ -1611,9 +1616,9 @@ def _printRmInputKeys(rqdRmInpKeys, optRmInpKeys):
     print ('#                      [At NCCS: Use command "getsponsor" to see available account number(s).]' )
     print ('# - walltime         = walltime requested; format is HH:MM:SS (hours/minutes/seconds)')
     print ('# - ntasks_model     = number of processors requested for the model (typically 112; output server is not included)')
-    print ('# - ntasks-per-node  = number of tasks per node (typically 46 for cascade lake*, 40 for skylake, and 28 for haswell nodes)')
-    print ('#                      [If >40, cascade lake nodes will be allocated, if >28, cascade or skylake, else cascade, skylake or haswell.]')
-    print ('#                      [*NCCS recommends <=46 cores per node on SCU16 (cascade lake) due to OS issues (as of 6 Oct 2021).]')
+    print ('# - ntasks-per-node  = number of tasks per node (typically 46 for cascade* and 40 for skylake nodes)')
+    print ('#                      [If >40, cascade nodes will be allocated, else cascade or skylake.]')
+    print ('#                      [*NCCS recommends <=46 cores per node on SCU16 (cascade) due to OS issues (as of 6 Oct 2021).]')
     print ('#')
     for key in rqdRmInpKeys:
         print (key + ':')
@@ -1717,6 +1722,7 @@ def parseCmdLine():
 
 if __name__=='__main__':
 
+    resource.setrlimit(resource.RLIMIT_STACK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
     #print "reading params...."
     args = vars(parseCmdLine()) # vars converts to dict
     ld = LDASsetup(args)

@@ -26,8 +26,10 @@ module LDAS_TileCoordRoutines
   use MAPL_ConstantsMod,                ONLY:     &
        MAPL_RADIUS                                    ! Earth radius
   
-  use LDAS_EASE_conv,                   ONLY:     &
-       easev1_convert,easev2_convert
+  use EASE_conv,                        ONLY:     &
+       ease_convert,                              &
+       ease_inverse,                              &
+       ease_extent
 
   use LDAS_ExceptionsMod,               ONLY:     &
        ldas_abort,                                &
@@ -40,7 +42,7 @@ module LDAS_TileCoordRoutines
 
   private
   
-  public :: get_tile_grid
+  public :: get_minExtent_grid
   public :: get_number_of_tiles_in_cell_ij
   public :: get_tile_num_in_cell_ij
   public :: get_tile_num_in_ellipse
@@ -279,7 +281,7 @@ contains
     ! 
     ! outputs:
     !  offsets
-    !  cell_area  (optional, for EASE  grids only)
+    !  cell_area  [m^2]   (optional, for EASE  grids only)
     
     implicit none
     
@@ -295,7 +297,7 @@ contains
     logical :: date_line_on_center, pole_on_center
     logical :: ease_grid, c3_grid, latlon_grid
     logical :: file_exist
-    
+    integer :: k, rows, cols
     character(len=*),  parameter :: Iam = 'create global ldas_grid '
     character(len=400)           :: err_msg
     
@@ -330,7 +332,7 @@ contains
        pole_on_center      = .true.
     endif
     
-    if (index(gridname,"EASE") /=0) then
+    if (index(gridname,"EASEv") /=0) then
        ease_grid      = .true.
        latlon_grid    = .false.
     endif
@@ -360,70 +362,33 @@ contains
     
     if (ease_grid) then
        
+       ! gridname may be EASEv2-M36 or EASEv2_M36 (to be cleaned up later)
+
+       k = index(gridname, 'EASEv')
+       
+       if (k == 0) then   
+          err_msg = 'unknown EASE grid tile defs, gridname = ' // trim( gridname)
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       end if
+       
+       tile_grid%gridtype = trim(gridname(k:))
+       
        tile_grid%ind_base = 0
        
        ! global cylindrical EASE grid 
        
-       tile_grid%ll_lon = -180.
-       tile_grid%ur_lon =  180.
-       
        tile_grid%i_dir  = +1
        tile_grid%j_dir  = -1
        
-       ! It is sloppy that the name may be EASEv2-M36 or EASEv2_M36
-       
-       if     (index(gridname, 'EASEv2_M36')/=0 .or. index(gridname, 'EASEv2-M36')/=0) then  ! version *2*
-          
-          tile_grid%gridtype = 'EASEv2_M36'                          
-          
-          tile_grid%ll_lat =  -85.04456
-          tile_grid%ur_lat =   85.04456
-          
-          ease_cell_area   = 1298.320938704616
-          
-       elseif (index(gridname, 'EASEv2_M09')/=0 .or. index(gridname, 'EASEv2-M09')/=0) then  ! version *2*
-          
-          tile_grid%gridtype = 'EASEv2_M09'  
-          
-          tile_grid%ll_lat =  -85.04456
-          tile_grid%ur_lat =   85.04456
-          
-          ease_cell_area   =   81.145058669038477
-          
-       elseif (index(gridname, 'EASE_M36')/=0 .or. index(gridname, 'EASE-M36')/=0) then
-          
-          tile_grid%gridtype = 'EASE_M36'                          
-          
-          tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
-          tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
-          
-          ease_cell_area   = 1296.029001087600 
-          
-       elseif (index(gridname, 'EASE_M09')/=0 .or. index(gridname, 'EASE-M09')/=0) then
-          
-          tile_grid%gridtype = 'EASE_M09'                          
-          
-          tile_grid%ll_lat =  -86.62256 ! minimal change, reichle, 5 Apr 2013
-          tile_grid%ur_lat =   86.62256 ! minimal change, reichle, 5 Apr 2013
-          
-          ease_cell_area   =   81.001812568020028
-          
-       elseif (index(gridname, 'EASE_M25')/=0 .or. index(gridname, 'EASE-M25')/=0 ) then
-          
-          tile_grid%gridtype = 'EASE_M25'                          
-          
-          tile_grid%ll_lat =  -86.7167 ! need to double-check (reichle, 11 May 2011)
-          tile_grid%ur_lat =   86.7167 ! need to double-check (reichle, 11 May 2011)
-          
-          ease_cell_area   =   628.38080962
-          
-       else
-          
-          err_msg = 'unknown EASE grid tile defs, grid name = ' // trim( gridname)
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
-          
-       end if
-       
+       call ease_extent (                   &
+            gridname, cols, rows,           &
+            cell_area = ease_cell_area,     &             ! [m^2]
+            ll_lon    = tile_grid%ll_lon,   &
+            ll_lat    = tile_grid%ll_lat,   &
+            ur_lon    = tile_grid%ur_lon,   &
+            ur_lat    = tile_grid%ur_lat    &
+            )
+
        tile_grid%dlon   = 360./real(tile_grid%N_lon) 
        tile_grid%dlat   = (tile_grid%ur_lat-tile_grid%ll_lat)/real(tile_grid%N_lat) ! *avg* dlat!
 
@@ -495,24 +460,24 @@ contains
   
   ! *******************************************************************
   
-  subroutine get_tile_grid( N_tile, tc_i_indg, tc_j_indg, tc_minlon, tc_minlat, tc_maxlon, tc_maxlat, &
-       tile_grid_g, tile_grid )     
+  function get_minExtent_grid( N_tile, tc_i_indg, tc_j_indg, tc_minlon, tc_minlat, tc_maxlon, tc_maxlat, &
+       tile_grid_g) result( tile_grid )     
     
-    ! get matching tile_grid for given tile_coord and (global) tile_grid_g
+    ! get tile_grid with smallest extent for given set of tiles in tile_coord on (global) tile_grid_g
     !
     ! make sure to pass in consistent tile_coord (tc) and tile_grid_g inputs:
     !
     !   iff tile_grid_g is the grid that is associated with the tile space definition,
-    !   then tc_[x]_indg must be tile_coord%[x]_indg
+    !   then input tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !   then input tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! reichle, 20 June 2012 -- moved from within domain_setup() 
     !                           for re-use in get_obs_pred() 
     !
     ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
-    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !                                tile_coord%[x]_indg or tile_coord%pert_[x]_indg
     !
     ! -------------------------------------------------------------------
     
@@ -523,7 +488,7 @@ contains
     real,                  intent(in), dimension(N_tile) :: tc_maxlon, tc_maxlat
     
     type(grid_def_type),   intent(in)                    :: tile_grid_g
-    type(grid_def_type),   intent(out)                   :: tile_grid
+    type(grid_def_type)                                  :: tile_grid
     
     ! local variables
     
@@ -538,7 +503,7 @@ contains
     integer :: this_i_indg, this_j_indg
     integer , allocatable :: i_indg_(:), j_indg_(:)
     logical :: c3_grid 
-    character(len=*), parameter :: Iam = 'get_tile_grid'
+    character(len=*), parameter :: Iam = 'get_minExtent_grid'
     character(len=400) :: err_msg
 
     ! -------------------------------------------------
@@ -616,8 +581,7 @@ contains
        tile_grid%ur_lon = tile_grid%ll_lon + real(tile_grid%N_lon)*tile_grid%dlon
        tile_grid%ur_lat = tile_grid%ll_lat + real(tile_grid%N_lat)*tile_grid%dlat
        
-    elseif ( (index(tile_grid_g%gridtype,'EASE_M')  /=0)     .or.          &
-             (index(tile_grid_g%gridtype,'EASEv2_M')/=0)          )  then
+    elseif ( index(tile_grid_g%gridtype,'EASEv')  /=0 ) then
        
        ! *average* dlat over the domain
        
@@ -643,7 +607,7 @@ contains
     tile_grid%i_dir    = tile_grid_g%i_dir
     tile_grid%j_dir    = tile_grid_g%j_dir
     
-  end subroutine get_tile_grid
+  end function get_minExtent_grid
 
   ! **********************************************************************
 
@@ -659,12 +623,12 @@ contains
     !   then tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !   then tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
     !
     ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
-    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !                                tile_coord%[x]_indg or tile_coord%pert_[x]_indg
     !
     ! ----------------------------------------------------------
     
@@ -730,12 +694,12 @@ contains
     !   then tc_[x]_indg must be tile_coord%[x]_indg
     !
     !   iff tile_grid_g is the grid that supports efficient mapping for perts and the EnKF analysis,
-    !   then tc_[x]_indg must be tile_coord%hash_[x]_indg
+    !   then tc_[x]_indg must be tile_coord%pert_[x]_indg
     !
     ! wjiang(?) -- split off from LDASsa legacy subroutine get_tile_num_in_cell_ij()
     !
     ! reichle+wjiang, 19 Aug 2020 -- changed interface to generically accommodate use of
-    !                                tile_coord%[x]_indg or tile_coord%hash_[x]_indg
+    !                                tile_coord%[x]_indg or tile_coord%pert_[x]_indg
     !
     ! ----------------------------------------------------------
     
@@ -895,11 +859,9 @@ contains
           
           ! map from i_ind, j_ind to tile_num
           
-          if   (                                                         &
-               (index(tile_grid%gridtype, 'EASE_M')  /=0) .or.           &
-               (index(tile_grid%gridtype, 'EASEv2_M')/=0)       )  then
+          if   ( index(tile_grid%gridtype, 'EASEv')  /=0 ) then
              
-             ! ASSUMPTION: tiles match EASE or EASEv2 grid cells exactly
+             ! ASSUMPTION: tiles match EASE grid cells exactly
              !             (unless "outside" the domain, eg. water surface)
              
              if     (N_tile_in_cell_ij(i_ind,j_ind)==1) then
@@ -911,7 +873,7 @@ contains
                 
              elseif (N_tile_in_cell_ij(i_ind,j_ind)==0) then
                 
-                ! Do nothing.  If given EASE or EASEv2 grid cell is not land, 
+                ! Do nothing.  If given EASE grid cell is not land, 
                 ! tile_num will not change from its initialized value.
                 
              else
@@ -920,7 +882,6 @@ contains
                 call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
                 
              end if
-             
              
           elseif (index(tile_grid%gridtype, 'LatLon')/=0) then
              
@@ -1037,23 +998,11 @@ contains
     !
     ! select grid type
     
-    if     (index(tile_grid%gridtype, 'EASE')/=0) then
+    if     (index(tile_grid%gridtype, 'EASEv')/=0) then
 
        ! EASE grid lat/lon to index provides *global*, *0-based* index!
-       
-       if     (index(tile_grid%gridtype, 'EASE_M')  /=0) then
-          
-          call easeV1_convert( tile_grid%gridtype(6:8),  lat, lon, r, s)
-          
-       elseif (index(tile_grid%gridtype, 'EASEv2_M')/=0) then
-          
-          call easeV2_convert( tile_grid%gridtype(8:10), lat, lon, r, s)
-          
-       else
-          
-          call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown EASE grid type')
-          
-       end if
+
+       call ease_convert(tile_grid%gridtype, lat, lon, r, s)
        
        i_indg = nint(r)    ! i_ind or lon_ind
        j_indg = nint(s)    ! j_ind or lat_ind

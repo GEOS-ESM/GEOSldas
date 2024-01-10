@@ -16,7 +16,7 @@ def remap_config_ldas(config, RESTART_str, RESTART_PATH, RESTART_ID):
      config['input']['shared'] = merra2_expid(config['input']['shared'])
      config['input']['shared']['rst_dir'] = out_dir+ '/merra2_tmp_'+ yyyymmddhh
      config['input']['surface']['wemin'] = 26
-     config['input']['shared']['bcs_dir'] = '/gpfsm/dnb02/ltakacs/bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/CF0180x6C_DE1440xPE0720/'
+     config['input']['shared']['bcs_dir'] = '/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/CF0180x6C_DE1440xPE0720/'
      
    if RESTART_str == "G" :
      # WY note: it is a bad idea to overload restart_path and restart_id
@@ -39,7 +39,7 @@ def remap_config_ldas(config, RESTART_str, RESTART_PATH, RESTART_ID):
        print( "          Please select RESTART: M and use MERRA-2, instead.")
        sys.exit(1)
 
-     config['input']['shared']['bcs_dir'] = '/discover/nobackup/ltakacs/bcs/Icarus/Icarus_Ostia/CF0720x6C_CF0720x6C/'
+     config['input']['shared']['bcs_dir'] = '/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus/Icarus_Ostia/CF0720x6C_CF0720x6C/'
      config['input']['surface']['wemin'] = 26
      config['input']['shared']['rst_dir'] = out_dir+'/InData'+ '/'
      suffix = '_21z.tar'
@@ -47,7 +47,7 @@ def remap_config_ldas(config, RESTART_str, RESTART_PATH, RESTART_ID):
      if ((date_16 <= expdate) and (expdate < date_17)):
         fpver = 'GEOS-5.16/GEOSadas-5_16/'
         fplab = 'f516_fp'
-        config['input']['shared']['bcs_dir'] = '/discover/nobackup/ltakacs/bcs/Ganymed-4_0/Ganymed-4_0_Ostia/CF0720x6C_DE2880xPE1440/'
+        config['input']['shared']['bcs_dir'] = '/discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/Ganymed-4_0_Ostia/CF0720x6C_DE2880xPE1440/'
         suffix = '_21z.bin'
 
      if ((date_17 <= expdate) and (expdate < date_21)):

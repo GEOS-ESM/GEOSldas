@@ -59,11 +59,11 @@ module LDAS_TileCoordType
      real    :: max_lat      ! maximum latitude (bounding box for tile)
      integer :: i_indg       ! i index (w.r.t. *global* grid that cuts tiles) 
      integer :: j_indg       ! j index (w.r.t. *global* grid that cuts tiles)
-     ! For cubed-sphere tile spaces, hash_[x]_indg refers to a lat-lon "hash" grid that will 
+     ! For cubed-sphere tile spaces, pert_[x]_indg refers to a lat-lon perturbation grid that will 
      !   be created at runtime to support efficient mapping for perturbations and the EnKF analysis.
-     ! For EASE and LatLon tile spaces, hash_[x]_indg is identical to [x]_indg
-     integer :: hash_i_indg  ! i index (w.r.t. *global* "hash" grid for perts and EnKF) 
-     integer :: hash_j_indg  ! j index (w.r.t. *global* "hash" grid for perts and EnKF)
+     ! For EASE and LatLon tile spaces, pert_[x]_indg is identical to [x]_indg
+     integer :: pert_i_indg  ! i index (w.r.t. *global* pert_grid for perts and EnKF) 
+     integer :: pert_j_indg  ! j index (w.r.t. *global* pert_grid for perts and EnKF)
      real    :: frac_cell    ! area fraction of grid cell covered by tile
      real    :: frac_pfaf    ! fraction of Pfafstetter catchment for land tiles 
      real    :: area         ! area [km^2]
@@ -80,19 +80,19 @@ module LDAS_TileCoordType
   ! Possible grid types (structure field "gridtype"):
   !
   !   - "LatLon"     : regular lat/lon grid    (constant dlon, dlat)
-  !   - "EASE_Mxx"   : cylindrical EASE grid   (constant dlon, variable dlat)
+  !   - "EASEv1_Mxx" : cylindrical EASEv1 grid (constant dlon, variable dlat)
   !   - "EASEv2_Mxx" : cylindrical EASEv2 grid (constant dlon, variable dlat)
   !
   ! Grid orientation (convention):
   !
   !  "LatLon"     : 1-based indexing, SouthWest to NorthEast
-  !  "EASE_Mxx"   : 0-based indexing, NorthWest to SouthEast
+  !  "EASEv1_Mxx" : 0-based indexing, NorthWest to SouthEast
   !  "EASEv2_Mxx" : 0-based indexing, NorthWest to SouthEast
   !
   ! Grids are defined by the following fields:
   !    
   !  ---------------------------------------------------------
-  !  |           ||     "LatLon"       |    "EASE_Mxx"       |
+  !  |           ||     "LatLon"       |    "EASEv1_Mxx"     |
   !  |           ||                    |    "EASEv2_Mxx"     |
   !  ---------------------------------------------------------
   !  | indexing  ||  ind_base          |  ind_base           |
@@ -123,7 +123,7 @@ module LDAS_TileCoordType
      !          any subroutines or operators defined herein
      ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      
-     character(40) :: gridtype ! type of grid, eg. "LatLon", "EASE_M36", "EASEv2_M09", ...
+     character(40) :: gridtype ! type of grid, eg. "LatLon", "EASEv1_M36", "EASEv2_M09", ...
      integer       :: ind_base ! 0=zero-based indices (EASE), 1=one-based indices (LatLon)
      integer       :: i_dir    ! direction of indices (+1=W-to-E, -1=E-to-W)
      integer       :: j_dir    ! direction of indices (+1=S-to-N, -1=N-to-S)
@@ -133,7 +133,7 @@ module LDAS_TileCoordType
      integer       :: j_offg   ! minimum lat index (offset from *global* grid)
      !                         !  "LatLon"    : i_offg -> westernmost longitude
      !                         !                j_offg -> southernmost latitude
-     !                         !  "EASE_Mxx"  : i_offg -> westernmost longitude
+     !                         !  "EASEv1_Mxx": i_offg -> westernmost longitude
      !                         !                j_offg -> northernmost latitude
      !                         !  "EASEv2_Mxx": i_offg -> westernmost longitude
      !                         !                j_offg -> northernmost latitude
@@ -144,7 +144,7 @@ module LDAS_TileCoordType
      real          :: dlon     ! longitude grid spacing [deg]
      real          :: dlat     ! latitude grid spacing [deg]
      !                         !  "LatLon"    : constant
-     !                         !  "EASE_Mxx"  : *average* dlat over grid extent
+     !                         !  "EASEv1_Mxx": *average* dlat over grid extent
      !                         !  "EASEv2_Mxx": *average* dlat over grid extent
 
      !CLSM_ENSDRV_MPI is NOT updated. will not be saved and bcasted
@@ -161,9 +161,10 @@ module LDAS_TileCoordType
      type(tile_coord_type), pointer, contiguous :: tile_coord(:)=>null()
      type(tile_coord_type), pointer, contiguous :: tile_coord_f(:)=>null()
      integer, pointer    :: l2f(:)=>null()
-     type(grid_def_type) :: grid_g
-     type(grid_def_type) :: grid_f
-     type(grid_def_type) :: grid_l
+     type(grid_def_type) :: tgrid_g         ! tile_grid_g
+     type(grid_def_type) :: pgrid_g         ! pert_grid_g
+     type(grid_def_type) :: pgrid_f         ! pert_grid_f
+     type(grid_def_type) :: pgrid_l         ! pert_grid_l
   end type T_TILECOORD_STATE
 
   type TILECOORD_WRAP
@@ -213,7 +214,7 @@ contains
 
     type(grid_def_type), intent(in) :: grid_1, grid_2
     
-    if ( index(grid_1%gridtype,trim(grid_2%gridtype))>0        .and. &
+    if ( trim(grid_1%gridtype) == trim(grid_2%gridtype)        .and. &
          grid_1%ind_base == grid_2%ind_base                    .and. &
          grid_1%i_dir    == grid_2%i_dir                       .and. &
          grid_1%j_dir    == grid_2%j_dir                       .and. &
@@ -367,8 +368,8 @@ contains
     ! reichle, 24 July 2010
     ! reichle,  2 May  2013 - changed N_tile to intent(in)
     ! reichle,  7 Jan  2014 - changed to binary (unformatted) I/O
-    ! wjiang, reichle, 18 Aug 2020 - Added initialization of %hash_[x]_indg during read.
-    !                                Note that %hash_[x]_indg is NOT written out.
+    ! wjiang, reichle, 18 Aug 2020 - Added initialization of %pert_[x]_indg during read.
+    !                                Note that %pert_[x]_indg is NOT written out.
 
     implicit none
     
@@ -465,9 +466,9 @@ contains
        read (unitnum, iostat=istat) tmp_real; if (istat>0) call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
        tile_coord(:)%elev= tmp_real(:)
 
-       ! Initialize [x]_indg to hash_[x]_indg.  For cs tile spaces, hash_[x]_indg will be redefined
-       tile_coord(:)%hash_i_indg = tile_coord(:)%i_indg
-       tile_coord(:)%hash_j_indg = tile_coord(:)%j_indg
+       ! Initialize [x]_indg to pert_[x]_indg.  For cs tile spaces, pert_[x]_indg will be redefined
+       tile_coord(:)%pert_i_indg = tile_coord(:)%i_indg
+       tile_coord(:)%pert_j_indg = tile_coord(:)%j_indg
        tile_coord(:)%f_num = -9999 ! not assigned values yet
        deallocate(tmp_int, tmp_real)
     case default

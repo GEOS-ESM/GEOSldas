@@ -46,7 +46,7 @@ module preprocess_ldas_routines
   
   use LDAS_TileCoordRoutines,          ONLY:   &
        LDAS_create_grid_g,                     &
-       get_tile_grid,                          &
+       get_minExtent_grid,                     &
        io_domain_files
   
   use nr_ran2_gasdev,                  ONLY:   &
@@ -537,9 +537,9 @@ contains
          !  determine smallest subgrid of tile_grid_d that contains all
          !  catchments/tiles in domain
          
-         call get_tile_grid( N_cat_domain, tile_coord%i_indg, tile_coord%j_indg,              &
-              tile_coord%min_lon, tile_coord%min_lat, tile_coord%max_lon, tile_coord%max_lat, &
-              tile_grid_g, tile_grid_d) 
+         tile_grid_d = get_minExtent_grid( N_cat_domain, tile_coord%i_indg, tile_coord%j_indg, &
+              tile_coord%min_lon, tile_coord%min_lat, tile_coord%max_lon, tile_coord%max_lat,  &
+              tile_grid_g) 
          
          ! output domain files
          
@@ -2899,7 +2899,7 @@ contains
     call LDAS_create_grid_g( gridname, n_lon, n_lat,                        &
          tile_grid_g, i_indg_offset, j_indg_offset, ease_cell_area )
     
-    if (index(tile_grid_g%gridtype,'EASE')/=0)  ease_grid = .true.  ! 'EASE' and 'EASEv2'
+    if (index(tile_grid_g%gridtype,'EASE')/=0)  ease_grid = .true.  ! 'EASEv1' or 'EASEv2'
     if (index(tile_grid_g%gridtype,'SiB2')/=0)  col_order=1         ! old bcs
     
     allocate(tile_coord(N_tile))
@@ -2950,7 +2950,10 @@ contains
                   tile_coord(i)%frac_cell             !  7
              
              tile_coord(i)%frac_pfaf = nodata_generic
-             tile_coord(i)%area      = ease_cell_area*tile_coord(i)%frac_cell
+
+             ! compute area of tile in [km^2]  (units convention in tile_coord structure)
+
+             tile_coord(i)%area      = ease_cell_area*tile_coord(i)%frac_cell/1000./1000.  ! [km^2]
              
           else ! not ease grid
              
@@ -3025,9 +3028,9 @@ contains
     N_tile_land=i
     allocate(tile_coord_land(N_tile_land))
     tile_coord_land=tile_coord(1:N_tile_land)
-    ! hash_[x]_indg is not written into the tile_coord file and not needed in preprocessing
-    tile_coord_land%hash_i_indg = nint(nodata_generic)
-    tile_coord_land%hash_j_indg = nint(nodata_generic)
+    ! pert_[x]_indg is not written into the tile_coord file and not needed in preprocessing
+    tile_coord_land%pert_i_indg = nint(nodata_generic)
+    tile_coord_land%pert_j_indg = nint(nodata_generic)
     if(present(f2g)) then
        allocate(f2g(fid))
        f2g = f2g_tmp(1:fid)
