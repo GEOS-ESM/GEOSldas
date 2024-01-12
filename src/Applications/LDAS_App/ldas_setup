@@ -51,6 +51,13 @@ class LDASsetup:
             'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_PATH','GRIDNAME',
             'ADAS_EXPDIR', 'BCS_RESOLUTION' ]
 
+        # if build on sles15, BUILT_ON_SLES15 is "NOYES"
+        BUILT_ON_SLES15 = "NO@BUILT_ON_SLES15@"
+
+        if BUILT_ON_SLES15== "NO":
+          slef.BUILT_ON_SLES15 = False
+        else:
+          self.BUILT_ON_SLES15 = True
 
         # ------
         # Required resource manager input fields
@@ -1365,8 +1372,12 @@ class LDASsetup:
                     elif 'MY_ADAS_EXPDIR' in line :
                         if self.ladas_coupling > 0:
                            fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
-                    
-                        
+                    elif 'MY_CONSTRAINT' in line:
+                        if self.BUILD_ON_SLES15 :
+                           fout.write(line.replace('MY_CONSTRAINT', 'mil'))
+                        else:
+                           fout.write(line.replace('MY_CONSTRAINT', '"[cas|sky]"'))
+ 
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
                      
