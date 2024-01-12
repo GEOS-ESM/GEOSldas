@@ -55,7 +55,7 @@ class LDASsetup:
         BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
 
         if BUILT_ON_SLES15 == "TRUE":
-          slef.BUILT_ON_SLES15 = True
+          self.BUILT_ON_SLES15 = True
         else:
           self.BUILT_ON_SLES15 = False
 
@@ -700,7 +700,11 @@ class LDASsetup:
         print ('\nCorrect the tile file if it is an old EASE tile format... \n')
         EASEtile=self.bcsdir+'/MAPL_'+short_tile
         cmd = './preprocess_ldas.x correctease  '+ tile + ' '+ EASEtile  
-        print ("cmd:   " + cmd)
+        if self.BUILT_ON_SLES15 :
+          print ("Executables are built on SLES15 and should be run on SLES15:   " + cmd)
+        else:
+          print ("cmd:   " + cmd)
+
         sp.call(shlex.split(cmd))
 
         if os.path.isfile(EASEtile) :
