@@ -51,7 +51,7 @@ class LDASsetup:
             'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_PATH','GRIDNAME',
             'ADAS_EXPDIR', 'BCS_RESOLUTION' ]
 
-        # if build on sles15, BUILT_ON_SLES15 is "TRUE", else emply ""
+        # if built on sles15, BUILT_ON_SLES15 is "TRUE", else empty ""
         BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
 
         if BUILT_ON_SLES15 == "TRUE":
@@ -701,7 +701,7 @@ class LDASsetup:
         EASEtile=self.bcsdir+'/MAPL_'+short_tile
         cmd = './preprocess_ldas.x correctease  '+ tile + ' '+ EASEtile  
         if self.BUILT_ON_SLES15 :
-          print ("Executables are built on SLES15 and should be run on SLES15:   " + cmd)
+          print ("Executables were built on SLES15 and must be run on SLES15:   " + cmd)
         else:
           print ("cmd:   " + cmd)
 
@@ -1348,7 +1348,7 @@ class LDASsetup:
                         if self.BUILT_ON_SLES15 :
                           fout.write("#SBATCH --constraint=mil\n")
                         else:
-                          assert int(self.rqdRmInp['ntasks-per-node']) <= 46, 'ntasks-per-node should be smaller than 46 for cas'
+                          assert int(self.rqdRmInp['ntasks-per-node']) <= 46, 'ntasks-per-node should be <=46 for cas'
                           fout.write("#SBATCH --constraint=cas\n")
                            
                     elif 'MY_OSERVER_NODES' in line :
