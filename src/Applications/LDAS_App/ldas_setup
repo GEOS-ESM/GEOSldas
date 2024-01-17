@@ -1344,8 +1344,13 @@ class LDASsetup:
                     elif 'MY_NODES' in line :
                         line_ = line.replace('MY_NODES',str(self.optRmInp['nodes']))
                         fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
-                        if int(self.rqdRmInp['ntasks-per-node']) > 40:
-                           fout.write("#SBATCH --constraint=cas\n")
+                         
+                        if self.BUILT_ON_SLES15 :
+                          fout.write("#SBATCH --constraint=mil\n")
+                        else:
+                          assert int(self.rqdRmInp['ntasks-per-node']) <= 46, 'ntasks-per-node should be smaller than 46 for cas'
+                          fout.write("#SBATCH --constraint=cas\n")
+                           
                     elif 'MY_OSERVER_NODES' in line :
                         fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
                     elif 'MY_WRITERS_NPES' in line :
@@ -1376,12 +1381,6 @@ class LDASsetup:
                     elif 'MY_ADAS_EXPDIR' in line :
                         if self.ladas_coupling > 0:
                            fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
-                    elif 'MY_CONSTRAINT' in line:
-                        if self.BUILT_ON_SLES15 :
-                           fout.write(line.replace('MY_CONSTRAINT', 'mil'))
-                        else:
-                           fout.write(line.replace('MY_CONSTRAINT', '"[cas|sky]"'))
- 
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
                      

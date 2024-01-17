@@ -15,8 +15,6 @@
 #SBATCH --nodes=MY_NODES --ntasks-per-node=MY_NTASKS_PER_NODE
 #SBATCH --job-name=MY_JOB
 #SBATCH --qos=MY_QOS
-#SBATCH --constraint=MY_CONSTRAINT
-
 
 #######################################################################
 #    System Settings and Architecture Specific Environment Variables
