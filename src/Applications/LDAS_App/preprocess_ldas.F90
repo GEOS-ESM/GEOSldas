@@ -18,13 +18,13 @@ program main
   implicit none
   
   character(len=20 ) :: option
-  character(len=200) :: arg1
-  character(len=200) :: arg2
-  character(len=200) :: arg3
-  character(len=200) :: arg4
-  character(len=200) :: arg5
-  character(len=200) :: arg6
-  character(len=200) :: arg7
+  character(len=512) :: arg1
+  character(len=512) :: arg2
+  character(len=512) :: arg3
+  character(len=512) :: arg4
+  character(len=512) :: arg5
+  character(len=512) :: arg6
+  character(len=512) :: arg7
   
   character(len=200) :: orig_tile
   character(len=200) :: new_tile

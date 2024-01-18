@@ -43,9 +43,9 @@
 
 module LDAS_ensdrv_mpi
 
-!  use catch_constants, only: N_gt => CATCH_N_GT
+  use catch_constants, only: N_gt => CATCH_N_GT
   
-  use catch_types,     only: N_gt, N_snow, N_cat_progn, N_cat_diagS, N_cat_diagF
+  use catch_types,     only: N_cat_progn, N_cat_diagS, N_cat_diagF
 
   use enkf_types,      only: N_obs_ang_max
   
@@ -138,11 +138,11 @@ contains
     !     real    :: max_lat      ! maximum latitude (bounding box for tile)
     !     integer :: i_indg       ! i index (w.r.t. *global* grid that cuts tiles) 
     !     integer :: j_indg       ! j index (w.r.t. *global* grid that cuts tiles)
-    !     ! For cubed-sphere tile spaces, hash_[x]_indg refers to a lat-lon "hash" grid that will 
+    !     ! For cubed-sphere tile spaces, pert_[x]_indg refers to a lat-lon perturbation grid that will 
     !     !   be created at runtime to support efficient mapping for perturbations and the EnKF analysis.
-    !     ! For EASE and LatLon tile spaces, hash_[x]_indg is identical to [x]_indg
-    !     integer :: hash_i_indg  ! i index (w.r.t. *global* "hash" grid for perts and EnKF) 
-    !     integer :: hash_j_indg  ! j index (w.r.t. *global* "hash" grid for perts and EnKF)
+    !     ! For EASE and LatLon tile spaces, pert_[x]_indg is identical to [x]_indg
+    !     integer :: pert_i_indg  ! i index (w.r.t. *global* pert_grid for perts and EnKF) 
+    !     integer :: pert_j_indg  ! j index (w.r.t. *global* pert_grid for perts and EnKF)
     !     real    :: frac_cell    ! area fraction of grid cell covered by tile
     !     real    :: frac_pfaf    ! fraction of Pfafstetter catchment for land tiles 
     !     real    :: area         ! area [km^2]
@@ -161,7 +161,7 @@ contains
     
     iblock(1) = 4
     iblock(2) = 6
-    iblock(3) = 4 ! i_indg, j_indg, hash_i_indg and hash_j_indg
+    iblock(3) = 4 ! i_indg, j_indg, pert_i_indg and pert_j_indg
     iblock(4) = 4
     
     idisp(1)  = 0
@@ -469,13 +469,12 @@ contains
     ! real :: Snowf                ! total snowfall                          [kg/m2/s]
     ! real :: LWdown               ! downward longwave radiation             [W/m2]
     ! real :: SWdown               ! downward shortwave radiation            [W/m2]
-    ! real :: SWnet                ! downward net shortwave radiation        [W/m2]
     ! real :: PARdrct              ! Photosynth. Active Radiation (direct)   [W/m2]
     ! real :: PARdffs              ! Photosynth. Active Radiation (diffuse)  [W/m2]
     ! real :: Wind                 ! wind speed at RefH                      [m/s]
     ! real :: RefH                 ! reference height for Tair, Qair, Wind   [m]
     
-    N_real = 13
+    N_real = 12
 
     icount = 2
     
@@ -642,6 +641,7 @@ contains
     ! real    :: bh         
     ! real    :: bv         
     ! real    :: lewt       
+    ! real    :: vegopacity  
 
     icount = 2
     
@@ -653,7 +653,7 @@ contains
     itype(2)  = MPI_REAL
 
     iblock(1) = 2
-    iblock(2) = 16
+    iblock(2) = 17
         
     idisp(1)  = 0
     idisp(2)  = idisp(1) + iblock(1)*4

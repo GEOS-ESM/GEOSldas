@@ -90,7 +90,9 @@ module LDAS_PertTypes
 
   type T_PERT
     ! private
-     integer :: npert ! number of perturbations
+     integer :: npert ! number of perturbation
+     !In situation that a processor has no tiles, this processor can still participate parallel fft
+     integer :: fft_npert
      integer :: dtstep
      type(ESMF_Time) :: TimePrv, TimeNxt
      type(pert_param_type), pointer :: param(:)=>null()
@@ -104,8 +106,7 @@ module LDAS_PertTypes
       integer :: ens_id
       integer :: NUM_ENSEMBLE
       logical :: isCubedSphere
-     ! pert grids - local and full
-      type(grid_def_type) :: pgrid_l, pgrid_f,pgrid_g
+
       integer,allocatable :: i_indgs(:)
       integer,allocatable :: j_indgs(:)
      ! if it is cubed-sphere grid, swith to internal start

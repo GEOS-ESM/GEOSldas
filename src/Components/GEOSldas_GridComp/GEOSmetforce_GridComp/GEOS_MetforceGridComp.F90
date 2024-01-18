@@ -13,11 +13,11 @@ module GEOS_MetforceGridCompMod
   use LDAS_ensdrv_Globals, only: logunit,logit   !,root_logit
   use LDAS_DateTimeMod, only: date_time_type, date_time_print
   use LDAS_TileCoordType, only: tile_coord_type
-  use LDAS_TileCoordType, only: T_TILECOORD_STATE 
   use LDAS_TileCoordType, only: TILECOORD_WRAP
   use LDAS_ForceMod, only: LDAS_GetForcing => get_forcing
   use LDAS_ForceMod, only: LDAS_move_new_force_to_old
-  use LDAS_ForceMod, only: FileOpenedHash,GEOS_closefile
+  use LDAS_ForceMod, only: FileOpenedHash,GEOS_closefile, set_neighbor_offset
+  use LDAS_ForceMod, only: im_world_cs
   use LDAS_DriverTypes, only: met_force_type, assignment(=)
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_InterpMod, only: LDAS_TInterpForcing=>metforcing_tinterp
@@ -69,14 +69,6 @@ module GEOS_MetforceGridCompMod
   type METFORCE_WRAP
      type(T_METFORCE_STATE), pointer :: ptr=>null()
   end type METFORCE_WRAP
-
-  !! Wrapper to the tile_coord variable
-  !type T_TILECOORD_STATE
-  !   type(tile_coord_type), pointer, contiguous :: tile_coord(:)=>null()
-  !end type T_TILECOORD_STATE
-  !type TILECOORD_WRAP
-  !   type(T_TILECOORD_STATE), pointer :: ptr=>null()
-  !end type TILECOORD_WRAP
 
 contains
 
@@ -223,8 +215,8 @@ contains
 
     call MAPL_AddExportSpec(                                                    &
          gc,                                                                    &
-         SHORT_NAME = "RainfSnowf",                                                  &
-         LONG_NAME  = "rainf+snowf",                                         &
+         SHORT_NAME = "RainfSnowf",                                             &
+         LONG_NAME  = "rainf+snowf",                                            &
          UNITS      = "kg m-2 s-1",                                             &
          DIMS       = MAPL_DimsTileOnly,                                        &
          VLOCATION  = MAPL_VlocationNone,                                       &
@@ -235,7 +227,7 @@ contains
     call MAPL_AddExportSpec(                                                    &
          gc,                                                                    &
          SHORT_NAME = "LWdown",                                                 &
-         LONG_NAME  = "downward_longwave_radiation",                            &
+         LONG_NAME  = "surface_absorbed_longwave_flux",                         &
          UNITS      = "W m-2",                                                  &
          DIMS       = MAPL_DimsTileOnly,                                        &
          VLOCATION  = MAPL_VlocationNone,                                       &
@@ -247,17 +239,6 @@ contains
          gc,                                                                    &
          SHORT_NAME = "SWdown",                                                 &
          LONG_NAME  = "downward_shortwave_radiation",                           &
-         UNITS      = "W m-2",                                                  &
-         DIMS       = MAPL_DimsTileOnly,                                        &
-         VLOCATION  = MAPL_VlocationNone,                                       &
-         rc         = status                                                    &
-         )
-    VERIFY_(status)
-
-    call MAPL_AddExportSpec(                                                    &
-         gc,                                                                    &
-         SHORT_NAME = "SWnet",                                                  &
-         LONG_NAME  = "downward_net_shortwave_radiation",                       &
          UNITS      = "W m-2",                                                  &
          DIMS       = MAPL_DimsTileOnly,                                        &
          VLOCATION  = MAPL_VlocationNone,                                       &
@@ -578,14 +559,19 @@ contains
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     ! Misc variables
-    integer :: land_nt_local
+    integer :: land_nt_local, k, NUM_ENSEMBLE
     integer :: ForceDtStep
     type(met_force_type) :: mf_nodata
-    logical :: MERRA_file_specs,GEOS_Forcing
+    logical :: MERRA_file_specs, ensemble_forcing
+    logical :: backward_looking_fluxes  
 
     integer :: AEROSOL_DEPOSITION
     type(MAPL_LocStream) :: locstream
-
+    character(len=ESMF_MAXSTR) :: grid_type, ENS_FORCING_STR, ens_forcing_path
+    character(len=ESMF_MAXSTR) :: gridname
+    character(3)               :: ensid_string3
+    type(ESMF_Grid) :: agrid
+    integer :: dims(ESMF_MAXDIM)
     ! Begin...
 
     ! Get component's name and setup traceback handle
@@ -628,6 +614,21 @@ contains
     call MAPL_GetResource ( MAPL, AEROSOL_DEPOSITION, Label="AEROSOL_DEPOSITION:", &
          DEFAULT=0, RC=STATUS)
 
+    call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
+    VERIFY_(STATUS)
+
+    if(trim(grid_type) == "Cubed-Sphere" ) then
+       call ESMF_GridCompGet(gc, grid=agrid, rc=status)
+       VERIFY_(status)
+       call MAPL_GridGet(agrid, globalCellCountPerDim=dims, rc=status) 
+       VERIFY_(STATUS)
+       im_world_cs = dims(1)
+    endif
+
+    call MAPL_GetResource(MAPL, gridname,Label="GEOSldas.GRIDNAME:",RC=STATUS)
+    VERIFY_(STATUS)
+    if( index(trim(gridname), 'EASE') /=0) call set_neighbor_offset(0.0001) 
+
     ! Get MetForcing values and put them in Ldas' internal state
     ! Get resources needed to call LDAS_ForceMod::get_forcing()
     ! - hinterp=1 => Bilinear Interpolation -
@@ -669,9 +670,22 @@ contains
     ! -allocate-memory-for-avg-zenith-angle
     allocate(mf%zenav(land_nt_local), source=nodata_generic, stat=status)
     VERIFY_(status)
+    call MAPL_GetResource ( MAPL, ENS_FORCING_STR, Label="ENSEMBLE_FORCING:", DEFAULT="NO", RC=STATUS)
+    VERIFY_(STATUS)
+    ENS_FORCING_STR =  ESMF_UtilStringUpperCase(ENS_FORCING_STR, rc=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, NUM_ENSEMBLE, Label="NUM_LDAS_ENSEMBLE:", DEFAULT=1,       RC=STATUS)
+    VERIFY_(STATUS)
+    ensemble_forcing = (trim(ENS_FORCING_STR) == 'YES') 
+    if (ensemble_forcing .and. NUM_ENSEMBLE > 1) then
+      ! note: comp_name ends in "_eXXXX"; for GEOS ADAS forcing, extract hard-coded 3-digit ens id string
+      k = len(trim(comp_name))
+      ensid_string3 = comp_name(k-2:k)
+      call ESMF_CFIOStrTemplate(ens_forcing_path, trim(adjustl(mf%Path)),'GRADS', xid = ensid_string3, stat=status)
+      mf%Path = ens_forcing_path
+    endif
     ! Put MetForcing in Ldas' pvt internal state
     internal%mf = mf
-
     ! Create alarm for MetForcing
     ! -create-nonsticky-alarm-
     MetForcingAlarm = ESMF_AlarmCreate(                                         &
@@ -689,6 +703,7 @@ contains
     ! -convert-mf%TimePrv-to-LDAS-datetime-
     call esmf2ldas(mf%TimePrv, force_time_prv, rc=status)
     VERIFY_(status)
+    
     ! -now-get-the-initial-forcings-
     call LDAS_GetForcing(                                                       &
          force_time_prv,                                                        &
@@ -698,19 +713,18 @@ contains
          land_nt_local,                                                         &
          tile_coord,                                                            &
          internal%mf%hinterp,                                                   &
-         MERRA_file_specs,                                                      &
-         GEOS_Forcing,                                                          &
-         internal%mf%DataNxt,                                                   &
          AEROSOL_DEPOSITION,                                                    &
-         .true.                                                                 &
+         MERRA_file_specs,                                                      &
+         backward_looking_fluxes,                                               &
+         internal%mf%DataNxt,                                                   &
+         .true.                                                                 &      ! init
          )
     VERIFY_(status)
-    call LDAS_move_new_force_to_old(internal%mf%DataNxt,internal%mf%DataPrv,   &
-           MERRA_file_specs,GEOS_Forcing, AEROSOL_DEPOSITION)
-
-    ! DataPrv is not well defined here
-    ! print *, 'prv%tair max/min: ', maxval(internal%mf%DataPrv%Tair), minval(internal%mf%DataPrv%Tair)
-    ! print *, 'nxt%tair max/min: ', maxval(internal%mf%DataNxt%Tair), minval(internal%mf%DataNxt%Tair)
+    
+    if (backward_looking_fluxes)                                                &
+         call LDAS_move_new_force_to_old(                                       &
+         MERRA_file_specs, AEROSOL_DEPOSITION,                                  &
+         internal%mf%DataNxt, internal%mf%DataPrv )
 
     ! Turn timer off
     call MAPL_TimerOff(MAPL, "Initialize")
@@ -782,11 +796,12 @@ contains
     real, pointer :: LandTileLons(:)
     real, allocatable :: zth(:), slr(:), zth_tmp(:)
     type(met_force_type), allocatable :: mfDataNtp(:)
-    type(met_force_type), pointer :: DataTmp(:)=>null()
+    type(met_force_type), pointer, contiguous :: DataTmp(:)=>null()
     real, allocatable :: tmpreal(:)
     type(met_force_type) :: mf_nodata
 
-    logical :: MERRA_file_specs,GEOS_Forcing
+    logical :: MERRA_file_specs
+    logical :: backward_looking_fluxes 
     integer :: AEROSOL_DEPOSITION
     ! Export pointers
     real, pointer :: Tair(:)=>null()
@@ -798,7 +813,6 @@ contains
     real, pointer :: RainfSnowf(:)=>null()
     real, pointer :: LWdown(:)=>null()
     real, pointer :: SWdown(:)=>null()
-    real, pointer :: SWnet(:)=>null()
     real, pointer :: PARdrct(:)=>null()
     real, pointer :: PARdffs(:)=>null()
     real, pointer :: Wind(:)=>null()
@@ -927,16 +941,18 @@ contains
             land_nt_local,                                                      &
             tile_coord,                                                         &
             internal%mf%hinterp,                                                &
-            MERRA_file_specs,                                                   &
-            GEOS_Forcing,                                                       &
-            internal%mf%DataNxt,                                                &
             AEROSOL_DEPOSITION,                                                 &
-            .false.                                                             &
+            MERRA_file_specs,                                                   &
+            backward_looking_fluxes,                                            &
+            internal%mf%DataNxt,                                                &
+            .false.                                                             &      ! init
             )
-       call LDAS_move_new_force_to_old(internal%mf%DataNxt,internal%mf%DataPrv, &
-           MERRA_file_specs,GEOS_Forcing,AEROSOL_DEPOSITION)
-
-       !if(root_logit) write(logunit,*) trim(Iam)//'::force_time_nxt: ', date_time_print(force_time_nxt)
+       VERIFY_(status)
+       
+       if (backward_looking_fluxes)                                             &
+            call LDAS_move_new_force_to_old(                                    &
+            MERRA_file_specs, AEROSOL_DEPOSITION,                               &
+            internal%mf%DataNxt, internal%mf%DataPrv )
 
        ! -compute-average-zenith-angle-over-daylight-part-of-forcing-interval-
        call MAPL_SunGetInsolation(                                              &
@@ -1052,8 +1068,6 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(export, SWdown, 'SWdown', alloc=.true., rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(export, SWnet, 'SWnet', alloc=.true., rc=status)
-    VERIFY_(status)
     call MAPL_GetPointer(export, PARdrct, 'PARdrct', alloc=.true., rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(export, PARdffs, 'PARdffs', alloc=.true., rc=status)
@@ -1119,11 +1133,11 @@ contains
     RainfSnowf= Rainf+Snowf 
     LWdown = mfDataNtp%LWdown
     SWdown = mfDataNtp%SWdown
-    SWnet = mfDataNtp%SWnet
     PARdrct = mfDataNtp%PARdrct
     PARdffs = mfDataNtp%PARdffs
     Wind = mfDataNtp%Wind
     RefH = mfDataNtp%RefH
+
 
     if(AEROSOL_DEPOSITION /=0) then
       DUDP(:, 1) = mfDataNtp%DUDP001

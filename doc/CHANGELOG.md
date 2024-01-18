@@ -1,6 +1,6 @@
 
-GEOSldas History / Changelog
-===============================
+GEOSldas Releases and Change Log
+================================
 
 Description:
 ------------
@@ -15,7 +15,7 @@ Summary and Objective:
 ----------------------
 The development of the off-line (land-only) GEOS LDAS land modeling and assimilation 
 system started with the "land EnKF driver" for the GEOS Catchment model in the early 
-2000s.  
+2000s.
 
 From the mid 2000s, development was formalized as the "LDASsa" project under CVS version 
 control.
@@ -33,10 +33,310 @@ This README file contains the history of stable GEOSldas versions ("tags") in Gi
 Overview of Git Releases:
 ============================
 
+[v17.13.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.13.1) - 2023-06-26
+------------------------------
+
+- 0-diff vs. v17.13.0.
+
+- Infrastructure:
+  - GEOS_Util v2.0.1 ([PR #657](https://github.com/GEOS-ESM/GEOSldas/pull/657), [PR #658](https://github.com/GEOS-ESM/GEOSldas/pull/658)).
+
+- Bug fixes:
+  - Fixed error in remapping of restarts with GEOSldas (GEOSgcm_Util [PR#23](https://github.com/GEOS-ESM/GEOSgcm_Util/pull/23)).
+
+------------------------------
+[v17.13.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.13.0) - 2023-05-18
+------------------------------
+
+- 0-diff vs. v17.12.0 except:
+  - Not 0-diff for diagnostic (HISTORY) output when bit shaving is applied ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629)). 
+  - Not 0-diff for simulations with CatchCN when using `RESTART: 2` ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629)).
+
+- Science changes:
+  - Added options to microwave radiative transfer model: Mironov soil dielectric mixing model, SMAP L2_SM_P rough reflectivity parameters ([PR #644](https://github.com/GEOS-ESM/GEOSldas/pull/644)).
+  - Support for ensemble standard deviation output via HISTORY for selected variables ([PR #635](https://github.com/GEOS-ESM/GEOSldas/pull/635)).
+
+- GEOSgcm_GridComp:
+  - Updated to v2.1.1.
+    - Restructured `Raster/makebcs` and `mk_restarts` utilities: updated input paths, revised output directory tree ([PR #615](https://github.com/GEOS-ESM/GEOSldas/pull/615), [PR #634](https://github.com/GEOS-ESM/GEOSldas/pull/634), [GEOSgcm_GridComp PR#694](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/694), [GEOSgcm_GridComp PR#718](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/718), [GEOSgcm_GridComp PR#729](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/729)).
+    - CatchmentCNCLM45 restart bug fixes (new optional restart variables) ([GEOSgcm_GridComp PR#657](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/657))
+  - Cleaned up CatchCN restart routines ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629)). 
+
+- Utilities:
+  - Updated GMAO_Shared to v1.9.0 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Added GEOS_Util repo v2.0.0 ([PR #623](https://github.com/GEOS-ESM/GEOSldas/pull/623), [PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Added matlab utilities for EASEv2 grid ([PR #622](https://github.com/GEOS-ESM/GEOSldas/pull/622), [PR #640](https://github.com/GEOS-ESM/GEOSldas/pull/640)).
+
+- Infrastructure:
+  - ESMA_env v4.9.1 ([PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - ESMA_cmake v3.28.0 ([PR #618](https://github.com/GEOS-ESM/GEOSldas/pull/618), [PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+  - Updated MAPL to v2.39.1 ([PR #629](https://github.com/GEOS-ESM/GEOSldas/pull/629), [PR #646](https://github.com/GEOS-ESM/GEOSldas/pull/646)).
+
+- Documentation: 
+  - Improved documentation for input of heterogenous perturbations standard deviation from file ([PR #628](https://github.com/GEOS-ESM/GEOSldas/pull/628)).
+
+- Bug fixes and other minor changes:
+  - Fixed perturbations when root processor is not assigned any tiles ([PR #642](https://github.com/GEOS-ESM/GEOSldas/pull/642)).
+  - Added custom messages to Github label enforcers ([PR #616](https://github.com/GEOS-ESM/GEOSldas/pull/616)).
+  - Set unlimited stack size in `ldas_setup` ([PR #620](https://github.com/GEOS-ESM/GEOSldas/pull/620)).
+  - Cleaned up variable name (`pert_grid`) in perturbation and assimilation subroutines ([PR #637](https://github.com/GEOS-ESM/GEOSldas/pull/637)).
+
+------------------------------
+[v17.12.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.12.0) - 2022-12-16
+------------------------------
+
+- Not zero-diff vs. v17.11.1 for simulations with data assimilation in EASE-grid tile space.  Simulations in EASE-grid tile space without data assimilation are zero-diff except for roundoff differences in “tilegrids” and “tilecoord” parameters (`ll_lat`, `ll_lon`, `ur_lat`, `ur_lon`, `dlon`, `dlat`, `area`). Zero-diff for simulations in cube-sphere tile space with and without data assimilation.
+
+- Science changes:
+  - Support for MODIS-based snow albedo (GEOSgcm_GridComp [PR#618](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/618)).
+  - Support for CatchCN ensemble simulations ([PR #584](https://github.com/GEOS-ESM/GEOSldas/pull/584), GEOSgcm_GridComp [PR#645](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/645)).
+ 
+- Utilities:
+  - Re-mapping of restart files ([PR #551](https://github.com/GEOS-ESM/GEOSldas/pull/551), GMAO_Shared [PR#238](https://github.com/GEOS-ESM/GMAO_Shared/pull/238), GEOSgcm_GridComp [PR#571](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/571) and [PR#658](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/658)):
+    - New GMAO_Shared utility `remap_restarts.py`, including fixes to re-mapping of CatchCN restart variables (not fixed for `regrid.pl`).
+    - Deprecated perl script `regrid.pl`.
+    - New GEOSldas utility `process_rst.py` (replaces `process_rst.csh`).
+    - Re-mapping of LDASsa-formatted binary restarts is no longer supported.
+    - Trivial non-zero diff changes (presence/absence) in optional restart fields (`TSURF`, `WW`, `FR`, `CQ`, `CH`).
+    - Major cleanup of Catch[CN]-related routines for processing restarts in GEOSldas and GEOSgcm_GridComp.
+    - Updated `ldas_setup` to python3.
+  - Further cleanup and reorganization of EASE grid utilities and make_bcs ([PR #586](https://github.com/GEOS-ESM/GEOSldas/pull/586), GEOSgcm_GridComp [PR#601](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/601) and [PR#634]( https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/634)):
+    - Unified source code for EASEv1 and EASEv2 utilities, which causes roundoff differences.     
+  - Reorganized and added utilities in LDAS_App ([PR #569](https://github.com/GEOS-ESM/GEOSldas/pull/569)):
+    - Added matlab routines for generation of Tb scaling parameters, mwRTM parameters, and climatology files.
+    - Added LADAS-related utilities and sample config files, incl. option for ensemble forcing of LDAS coupled to deterministic simulation in Hybrid4DEnVar.
+    - Added script for rewinding existing GEOSldas run ([PR #606](https://github.com/GEOS-ESM/GEOSldas/pull/606)).
+
+- Interface:
+  - Increased character length of string variables to avoid truncation of input file paths/names ([PR #574](https://github.com/GEOS-ESM/GEOSldas/pull/574)).
+  - Changed ensemble member identifier string in HISTORY.rc to “_e[XXXX]” ([PR #584](https://github.com/GEOS-ESM/GEOSldas/pull/584)).
+  - Restored GEOSldas “debug” mode ([PR #587](https://github.com/GEOS-ESM/GEOSldas/pull/587), [PR #589](https://github.com/GEOS-ESM/GEOSldas/pull/589), and [PR #591](https://github.com/GEOS-ESM/GEOSldas/pull/591)).
+
+- Infrastructure:
+  - Updated environment, CMake, ecbuild, and MAPL ([PR #604](https://github.com/GEOS-ESM/GEOSldas/pull/604)):
+    - ESMA_env v4.8.0
+    - ESMA_cmake v3.21.0
+    - ecbuild v1.3.0
+    - MAPL 2.33.0
+  - GMAO_Shared v1.6.3
+  - GEOSgcm_GridComp v1.17.2
+
+- Documentation:
+  - Added README_LDAS_App ([PR #569](https://github.com/GEOS-ESM/GEOSldas/pull/569))
+
+- Bug fixes and other minor changes:
+  -  Fixed units labels of several CatchCNCLM45 restart variables (GEOSgcm_GridComp [PR#660](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/660))
+ 
+------------------------------
+[v17.11.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.11.1) - 2022-06-15
+------------------------------
+
+- Zero-diff vs. v17.11.0 (except revised exports PEATCLSM_WATERLEVEL, PEATCLSM_FSWCHANGE).
+  
+- Infrastructure:
+  - Updated environment, CMake, and MAPL ([PR #543](https://github.com/GEOS-ESM/GEOSldas/pull/543)):
+    - ESMA_env v3.13.0
+    - ESMA_cmake v3.12.0
+    - MAPL 2.19.0
+  - GMAO_Shared v1.5.5
+  - GEOSgcm_GridComp v1.15.5 (make_bcs and CatchCN cleanup [PR #576](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/576))
+  - Updated Circle-CI ([PR #543](https://github.com/GEOS-ESM/GEOSldas/pull/543)).
+
+- Bug fixes and other minor changes:
+  - Corrected exports for water table depth and free-standing water change over peat ([PR #556](https://github.com/GEOS-ESM/GEOSldas/pull/556), [GEOSgcm_GridComp PR #593](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/593)).
+ 
+------------------------------
+[v17.11.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.11.0) - 2022-03-04
+------------------------------
+
+- Zero-diff vs. v17.10.0 (except for double vs. single precision differences of lat/lon coordinates and metadata in HISTORY output).
+
+- Science changes:
+  - Catchment model with revised hydrology for peatlands (PEATCLSM) ([PR #524](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/524), [PR #515](https://github.com/GEOS-ESM/GEOSldas/pull/515)):
+    - PEATCLSM hydrology is used for tiles with porosity>=PEATCLSM_POROS_THRESHOLD (default: 0.90 m3/m3) ([Bechtold et al. 2019, doi:10.1029/2018MS001574](https://doi.org/10.1029/2018MS001574)).  
+    - In "NLv5" boundary conditions (bcs), peat tiles are identified through hybridization of PEATMAP and HWSD ancillary data and have porosity=0.93 m3/m3. 
+    - Standard Catchment hydrology is used for all tiles when using earlier bcs versions, which have a maximum porosity of 0.80 m3/m3 ([De Lannoy et al. 2015, doi:10.1002/2014MS000330](https://doi.org/10.1002/2014MS000330)).
+  - Modified EnKF update_type 10: for PEATCLSM peat tiles, "catdef" is included in EnKF State ([PR #529](https://github.com/GEOS-ESM/GEOSldas/pull/529)).
+  - Option to use climatological L-band microwave radiative transfer model (mwRTM) parameters derived from the SMAP L2 passive soil moisture retrievals ([PR #521](https://github.com/GEOS-ESM/GEOSldas/pull/521)).
+  - Option to use ensemble of surface meteorological forcing data ([PR #453](https://github.com/GEOS-ESM/GEOSldas/pull/453)).
+  - New export variables (WATERTABLED, FSWCHANGE, MWRTM_VEGOPACITY).
+
+- Interface change ([PR #521](https://github.com/GEOS-ESM/GEOSldas/pull/521)):
+  - Change in ldas_setup resource parameters:
+    - BCS_PATH   --> (BCS_PATH, BCS_RESOLUTION)
+    - MWRTM_FILE --> MWRTM_PATH
+    - Requires new or modified ldas_setup configuration (“exeinp”) files. 
+  - mwRTM parameter input file(s) must be provided in subdirectory “./[BCS_RESOLUTION]” and must be named "mwRTM_param.nc4" and (if present) "vegopacity.bin".
+
+- Infrastructure:
+  - Updated environment, CMake, ecbuild, and MAPL ([PR #537](https://github.com/GEOS-ESM/GEOSldas/pull/537)):
+    - ESMA_env v3.11.0
+    - ESMA_cmake v3.10.0
+    - ecbuild v1.2.0
+    - MAPL 2.18.0
+  - GMAO_Shared v1.5.1
+  - GEOSgcm_GridComp v1.15.1
+  - Updated Circle-CI ([PR #503](https://github.com/GEOS-ESM/GEOSldas/pull/503)).
+  - Made GEOSldas infrastructure more similar to that of GEOSgcm ([PR #501](https://github.com/GEOS-ESM/GEOSldas/pull/501)).
+
+- Documentation:
+  - Updated README.md, README.MetForcing_and_BCS.md, README.OutputSpecs.md, GEOSldas_HIST.rc, GEOSldas_LDAS.rc. 
+  - Cleanup of Catchment model constants ([PR #525](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/525), [PR #517](https://github.com/GEOS-ESM/GEOSldas/pull/517)).
+
+- Bug fixes and other minor changes:
+  - Output L-band Tb in single-member simulation without perturbations and without data assimilation (SMAP Nature Run) ([PR #505](https://github.com/GEOS-ESM/GEOSldas/pull/505)).  
+  - Added utility script to compress bit-shaved nc4 output ([PR #526](https://github.com/GEOS-ESM/GEOSldas/pull/526)).
+  - Removed EXPDSC and EXPSRC from GEOSldas_HIST.rc template ([PR #506](https://github.com/GEOS-ESM/GEOSldas/pull/506)).
+  - Dummy GEOSldas version info in CMake ([PR #516](https://github.com/GEOS-ESM/GEOSldas/pull/516)).
+  - Set MAPL_ENABLE_BOOTSTRAP to YES by default ([PR #523](https://github.com/GEOS-ESM/GEOSldas/pull/523)).
+  - Avoid conflicts of ldas_setup with user environment ([PR #518](https://github.com/GEOS-ESM/GEOSldas/pull/518)).
+
+------------------------------
+[v17.10.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.10.0) - 2021-12-21
+------------------------------
+
+- Zero-diff vs. v17.9.6.
+
+- Science changes:
+  - Added CatchmentCN-CLM4.5. 
+  - Added bilinear interpolation option for ERA5_LIS forcing.
+
+- Infrastructure:
+  - Updated MAPL (v2.14.1; fixes bit shaving error in GEOSldas v17.9.6 when a processor was not assigned any tiles).
+  - Bit shaving turned on by default in HISTORY.rc template (except for increments output).
+  - Updated ESMA_env (v3.8.0).
+  - Updated ESMA_cmake (v3.8.0).
+  - Updated GMAO_Shared (v1.5.0).
+  - Updated GEOSgcm_GridComp (v1.13.1; added CatchmentCN-CLM4.5, make_bcs refactoring and bug fixes, minor fixes).
+  - Updated ldas_setup to facilitate use of Cascade Lake nodes.
+
+- Documentation:
+  - Clarified parallel_build and external sub-repositories in README.md.
+  - Clarified NUM_SGMT in LDAS.rc template. 
+
+- Bug fixes and other minor changes:
+  - Fixed vegdyn restart issue when restarting an ensemble run from a single-member run for reduced domains.
+  - Minor changes to support weakly-coupled land-atmosphere DAS.
+  - Domain decomposition fix (ensure IMS>1).
+
+------------------------------
+[v17.9.6](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.6) - 2021-09-23
+------------------------------
+
+- Zero-diff vs. v17.9.4.
+
+- Science changes:
+  - For GEOS-FP and MERRA-2 forcing, corrected precipitation can be on a different grid than rest of forcing data. 
+
+- Infrastructure:
+  - Updated MAPL (v2.8.6, support for bit shaving of tile-space binary HISTORY output).
+  - Updated ESMA_cmake (v3.5.5).
+  - Updated GMAO_Shared (v1.4.6).
+  - Updated GEOSgcm_GridComp (v1.12.4, minor change for LADAS coupling).
+  - Updated Circle-CI.
+  - GitHub script to auto-create tarball (fully mepo'd) upon release.
+
+- Updated license (Apache 2.0).
+
+- Bug fixes and other minor changes:
+  - Minor fixes for GNU compiler.
+  - Fixed PAR handling in get_GEOSs2s().
+
+- Note: v17.9.6 fixes v17.9.5, which did not compile with GNU and was deleted soon after release.
+
+------------------------------
+[v17.9.4](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.4) - 2021-07-15
+------------------------------
+
+- Zero-diff vs. v17.9.3 for model-only simulations without perturbations using a build with standard optimization.
+
+- Not zero-diff for simulations with perturbations (including data assimilation) or any simulation using a build with aggressive optimization.
+
+- Science changes:
+  - Added S2S/AODAS and S2S/Forecast surface met forcing reader.
+
+- Infrastructure:
+  - Parallel FFT on each node using shared memory (non-zero-diff change for perturbations and data assimilation).
+  - Refined assignment of tiles to processors (non-zero-diff change with aggressive optimization).
+  - By default, limit MKL's freedom to choose algorithms during runtime (MKL_CBWR=AVX2), to ensure 0-diff across architectures.
+  - Updated ESMA_env (v3.3.0) --> Baselibs (6.2.4), ESMA_cmake (v3.5.0).
+  - Updated GMAO_Shared (v1.4.4).
+  - Updated GEOSgcm_GridComp (v1.12.3).
+
+- Documentation:
+  - Clarified help text for RESTART option in ldas_setup.
+
+- Bug fixes and other minor changes:
+  - Minor fixes to support debugging and non-Intel compilers (GNU).
+
+------------------------------
+[v17.9.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.3) - 2021-05-27
+------------------------------
+
+- Zero-diff vs. v17.9.2
+
+- Science changes:
+  - Added ERA5_LIS surface met forcing reader (nearest-neighbor interpolation).
+
+- Infrastructure:
+  - Revised interface to SLURM (see sample "batinp" configuration file from "ldas_setup").
+  - Added optional "output server" (oserver) nodes (default is none).
+  - Land analysis times now controlled with MAPL resource parameters ("LANDASSIM_DT", "LANDASSIM_T0").
+  - Updated MAPL (v2.7.0), ESMA_env (v3.2.1) --> Baselibs (6.1.0), ESMA_cmake (v3.4.2).
+  - Updated GMAO_Shared (v1.4.2).
+  - Updated GEOSgcm_GridComp (v1.12.2):
+    - Relocation of mk_restarts and Raster utilities.
+    - Bug fix for running Catchment-CN with constant CO2.
+
+- Cleanup and documentation:
+  - Major cleanup of met forcing (removed SWnet). 
+  - Cleanup of land land pert subroutines.
+  - Added legal documents ("CONTRIBUTING", "CODE_OF_CONDUCT") per NASA requirements.
+
+- Bug fixes and other minor changes:
+  - Updated read_obslog.m utility.  
+  - Improved GEOSldas exit message.
+  - Fixes for non-Intel compilers (GNU, NAG).
+  - Updated .gitignore (for mepo). 
+
+------------------------------
+[v17.9.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.2) - 2021-02-10
+------------------------------
+
+- Science changes:
+  - CatchCN model parameter and implementation changes for consistency with science-tested, published version of Lee et al. 2018 (doi:10.5194/bg-15-5635-2018).
+
+- Infrastructure:
+  - Updated MAPL (v2.4.0), Baselibs (6.0.27), ESMA_env (v3.1.3), ESMA_cmake (v3.3.5).
+  - Removed support for “manage_externals” (use only “mepo”).
+  - Output of analysis increments for each ensemble member.
+
+- Cleanup and documentation: 
+  - Added doc/README.ConfigurationFiles.md
+  - Added doc/README.OutputSpecs.md
+  - Updated README.md
+
+- Bug fixes and other minor changes:
+  - Soil temperature “export” variables now consistently in units of Kelvin.
+  - Updated LADAS_COUPLING option with coupling to ensemble component of ADAS through ensemble-average surface met forcing.
+  - For cube-sphere forcing, added check that forcing grid matches grid associated with tile space.
+  - Changed algorithm to calculate ensemble variance.
+  - Removed incorrect setting to 0 of non-GEOS flux-type forcing.
+  - For simulations in cube-sphere tile space, added entry for LANDPERT_INTERNAL_RESTART_FILE in LDAS.rc.
+  - Minor fixes for GNU compiler.
+  
+------------------------------
+[v17.9.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.1) - 2020-10-16
+------------------------------
+
+- Bug fixes and other minor changes:
+  - Bug fix for SMAP L1C Tb fore-minus-aft check.
+
+------------------------------
 [v17.9.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0) - 2020-08-27
 ------------------------------
 
-- Full release meant for SMAP L4_SM Version 5.
+- Full release for SMAP L4_SM Version 5.
 
 - Zero-diff vs. v17.9.0-beta.8
 
@@ -120,7 +420,7 @@ Overview of Git Releases:
 ------------------------------
 [v17.9.0-beta.5](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.5) - 2020-05-11
 ------------------------------
-- Pre-release meant for use under SLES12 at NCCS.  Still works for SLES11.
+- Pre-release for use under SLES12 at NCCS.  Still works for SLES11.
 
 - Science functionality:
   - Forecast error covariance inflation with scalar (globally constant) factor.
@@ -140,14 +440,14 @@ Overview of Git Releases:
 ------------------------------
 [v17.9.0-beta.4-SLES12](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.4-SLES12) - 2020-04-24
 ------------------------------
-- Pre-release meant for use under SLES12 at NCCS, otherwise identical to v17.9.0-beta.4-SLES11.
+- Pre-release for use under SLES12 at NCCS, otherwise identical to v17.9.0-beta.4-SLES11.
 - Works under SLES12 using the Intel-19 compiler.
 - Also works under SLES11 using the Intel-18 compiler but is not zero-diff across compilers/operating systems.
 
 ------------------------------
 [v17.9.0-beta.4-SLES11](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.4-SLES11) - 2020-04-23
 ------------------------------
-- Pre-release meant for use under SLES11 at NCCS. Under SLES12, use v17.9.0-beta.4-SLES12 (or newer).
+- Pre-release for use under SLES11 at NCCS. Under SLES12, use v17.9.0-beta.4-SLES12 (or newer).
 - Uses the Intel-18 compiler and also appears to work under SLES12. However, LDASsa with Intel-18 under SLES12 was found to create bad Fortran sequential binary files out of a subroutine that is very similar in LDASsa and GEOSldas.
 - Zero-diff vs. v17.9.0-beta.3 for Catchment only (except SMAP L1C Tb fore-minus-aft check).
 - Not zero-diff for CatchCN (via v1.8.3 of GEOS_GCMGridComp).
@@ -160,16 +460,16 @@ Overview of Git Releases:
   - New GEOS_SurfaceGridComp.rc file (via v1.8.3 of GEOS_GCMGridComp).
   - Parallel post-processing.
   - Cross-stream support for FP f525_p5 forcing.
-  - ~sbatch~ submission for pre-processing of restarts to comply with SLES12 requirements.
+  - "sbatch" submission for pre-processing of restarts to comply with SLES12 requirements.
   - Subdaily-to-daily concatenation processes before month is complete.
   - Temporary solution to create directories for ObsFcstAna files to enable extending an existing GEOSldas run without going through setup.
 
 - Bug fixes and other minor changes:
   - Updated README.md.
-  - ~obspertrseed~ restart file name when restarting from existing run.
+  - "obspertrseed" restart file name when restarting from existing run.
   - Subdaily-to-daily nc4 concatenation (indent error).
   - Fixes for GNU compiler in debug mode.
-  - Fixed ~landpert~ checkpoint output when on cube-sphere tiles.
+  - Fixed "landpert" checkpoint output when on cube-sphere tiles.
 
 ------------------------------
 [v17.9.0-beta.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v17.9.0-beta.3) - 2020-03-18
@@ -211,7 +511,7 @@ Overview of Git Releases:
 ------------------------------
 [v17.9.0-beta.0] - 2019-12-20
 ------------------------------
-- First tag for SMAP L4_SM Version 5, Catchment model consistent with f525land_fpp
+- First tag for SMAP L4_SM Version 5 development, Catchment model consistent with f525land_fpp
   - Changed default Z0_FORMULATION to 4 (incl. addition of simple tree SAI)
     (to be used with Icarus-NLv3 as default BCs; reverting to look-up veg heights)
   - Fix PAR perturbations bug affecting assim

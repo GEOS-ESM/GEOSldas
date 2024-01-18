@@ -1,5 +1,9 @@
 #!/bin/csh -f
 
+# GEOSldas job script ("lenkf" = Land Ensemble Kalman Filter)
+#
+# usage: lenkf.j [-debug]
+
 #######################################################################
 #                     Batch Parameters for Run Job
 #######################################################################
@@ -8,9 +12,8 @@
 #SBATCH --error=../scratch/GEOSldas_err_txt
 #SBATCH --account=MY_ACCOUNT
 #SBATCH --time=MY_WALLTIME
-#SBATCH --ntasks=MY_NTASKS
+#SBATCH --nodes=MY_NODES --ntasks-per-node=MY_NTASKS_PER_NODE
 #SBATCH --job-name=MY_JOB
-#SBATCH --constraint=MY_CONS
 #SBATCH --qos=MY_QOS
 
 #######################################################################
@@ -25,13 +28,30 @@ setenv EXPDOMAIN  MY_EXPDOMAIN
 setenv EXPDIR     MY_EXPDIR
 setenv ESMADIR    $EXPDIR/build/
 setenv GEOSBIN    $ESMADIR/bin/
+# need to unsetenv LD_LIBRARY_PATH for execution of LDAS within the coupled land-atm DAS
+unsetenv LD_LIBRARY_PATH
+
+set debug_flag = 0
+if ( "$1" == "-debug" ) then
+  set debug_flag = 1
+endif
+unset argv
+setenv argv
+
 source $GEOSBIN/g5_modules
 
 setenv I_MPI_DAPL_UD enable
 
+# By default, ensure 0-diff across processor architecture by limiting MKL's freedom to pick algorithms.
+# As of June 2021, MKL_CBWR=AVX2 is fastest setting that works for both haswell and skylake at NCCS.
+# Change to MKL_CBWR=AUTO for fastest execution at the expense of results becoming processor-dependent.
+#setenv MKL_CBWR "COMPATIBLE"
+#setenv MKL_CBWR "AUTO"
+setenv MKL_CBWR "AVX2"
+
 #setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${BASEDIR}/${ARCH}/lib
 # reversed sequence for LADAS_COUPLING (Sep 2020)  (needed when coupling with ADAS using different BASEDIR)
-setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${LD_LIBRARY_PATH} 
+setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${ESMADIR}/lib:${LD_LIBRARY_PATH} 
 
 if ( -e /etc/os-release ) then
   module load nco/4.8.1
@@ -49,41 +69,41 @@ setenv    SCRDIR         $EXPDIR/scratch
 setenv    MODEL          MY_MODEL
 setenv    MYNAME         `finger $USER | cut -d: -f3 | head -1`
 setenv    POSTPROC_HIST  MY_POSTPROC_HIST
-setenv    LADAS_COUPLING       MY_LADAS_COUPLING   # 1 --yes, 0 --no  
 
-#
-# DEBUGGER : 0 -- no debugger
-#          : 1 -- Totalview
-#          : 2 -- DDT
+# LADAS_COUPLING : 0 -- stand-alone LDAS (no coupling to ADAS)
+#                : 1 -- LDAS coupled to central (deterministic) component of ADAS
+#                : 2 -- LDAS coupled to atmospheric ensemble component of ADAS
 
-setenv  DEBUGGER  $1
-if ( "$1" == "" || $1 == 0 ) then  # if nothing is passed, no debuger
-   setenv  DEBUGGER  0
-else if ( $1 == 1 ) then
-   echo "Using Totalview to debug"
-else if ( $1 == 2 ) then 
-   echo "Using DDT to debug"
-else
-   echo "Please use 1 (Totalview ) or 2 (DDT) to debug"
-   exit
-endif
-
-#######################################################################
-#                   Set Experiment Run Parameters
-#######################################################################
-
-if (! -e $SCRDIR            ) mkdir -p $SCRDIR
+setenv    LADAS_COUPLING   MY_LADAS_COUPLING
+setenv    ENSEMBLE_FORCING MY_ENSEMBLE_FORCING
+setenv    ADAS_EXPDIR      MY_ADAS_EXPDIR
 
 set NENS = `grep NUM_LDAS_ENSEMBLE:  $HOMDIR/LDAS.rc | cut -d':' -f2`
 set END_DATE  = `grep     END_DATE:  $HOMDIR/CAP.rc | cut -d':' -f2`
 set NUM_SGMT  = `grep     NUM_SGMT:  $HOMDIR/CAP.rc | cut -d':' -f2`
 
+####################################################################### 
+#  if LADAS_COUPLING==2, compute ens avg of atmens forcing 
+####################################################################### 
+
+if ( $LADAS_COUPLING == 2 && $ENSEMBLE_FORCING == "NO" ) then
+   cd $HOMDIR
+   set force_in  = $ADAS_EXPDIR
+   set force_out = `grep MET_PATH: $HOMDIR/LDAS.rc | cut -d ':' -f2`
+   python  $GEOSBIN/average_ensemble_forcing.py $force_in $force_out $NENS 
+endif
+
+/bin/rm -f $HOMDIR/lenkf_job_completed.txt 
+
+#######################################################################
+#                   Set Experiment Run Parameters
+#######################################################################
+
 #######################################################################
 #        Move to Scratch Directory and Copy .rc .nml .rst files
 #######################################################################
 
-/bin/rm -f $HOMDIR/lenkf_job_completed.txt 
-
+if (! -e $SCRDIR            ) mkdir -p $SCRDIR
 cd $SCRDIR
 /bin/rm -rf *.*
 /bin/cp     $HOMDIR/cap_restart .
@@ -92,9 +112,29 @@ cd $SCRDIR
 
 set LSMCHOICE = `grep -n -m 1 "LSM_CHOICE" $HOMDIR/LDAS.rc | cut -d':' -f3`
 
-if( ${LSMCHOICE} == 2 ) then # CatchCN Only
-    ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/CO2_MonthlyMean_DiurnalCycle.nc4
-    ln -s /discover/nobackup/projects/gmao/ssd/land/l_data/LandBCs_files_for_mkCatchParam/V001/FPAR_CDF_Params-M09.nc4
+#######################################################################
+# if $LADAS_COUPLING == 1:  LDAS coupled to central ADAS simulation
+#######################################################################
+
+if ( $LADAS_COUPLING == 1 ) then
+
+   if ( $ENSEMBLE_FORCING == "YES" ) then
+
+      # create perturbed forcing from central simulation and atm ensemble
+
+      # python should come with ESMA_env g5_modules
+      #module load python/GEOSpyD/Ana2019.03_py3.7
+      set forcgrid = `grep GEOSldas.GRIDNAME LDAS.rc | cut -d':' -f2 | awk '{print $1}'`
+      setenv GRID $forcgrid
+      $GEOSBIN/enpert_forc.csh
+      cd $SCRDIR
+   else
+
+      # move central-simulation forcing held in met_forcing to scratch dir
+      echo "move lfo_Nx+- met forcing from $EXPDIR/input/met_forcing to $SCRDIR"
+      /bin/mv $EXPDIR/input/met_forcing/*lfo_Nx+-*nc4  $SCRDIR/.
+
+   endif
 endif
 
 #######################################################################
@@ -139,8 +179,9 @@ endif
 #######################################################################
 #                      Domain Decomposition
 #######################################################################
-
-set numprocs = `head -n 20 $HOMDIR/lenkf.j | grep ntasks | cut -d'=' -f2`
+set npes_nx = `grep NX: LDAS.rc | cut -d':' -f2 `
+set npes_ny = `grep NY: LDAS.rc | cut -d':' -f2 `
+@ numprocs = $npes_nx * $npes_ny
 if( -e IMS.rc ) then
    set oldtasks = `head -n 1 IMS.rc`
    if($numprocs != $oldtasks) then
@@ -327,29 +368,54 @@ while ( $counter <= ${NUM_SGMT} )
    
    # Run GEOSldas.x
    # --------------
-   
+   # clean up
+   $GEOSBIN/RmShmKeys_sshmpi.csh
+
    # Debugging
    # ---------
-   if( $DEBUGGER == 1) then
-       module load tool/tview-2018.0.5
-       totalview $GEOSBIN/GEOSldas.x
-       exit
-   endif 
-   if( $DEBUGGER == 2) then
-       module load tool/arm-forge-19.0.3
-       ddt $GEOSBIN/GEOSldas.x
-       exit
+   if ( $debug_flag == 1 ) then
+      echo ""
+      echo "------------------------------------------------------------------"
+      echo ""
+      echo "lenkf.j -debug:"
+      echo ""
+      echo "To start debugging, you must now go to the experiment's scratch directory."
+      echo "From there, source g5_modules and launch your debugging tool with GEOSldas.x, e.g.,"
+      echo ""           
+      echo "   cd        $SCRDIR
+      echo "   source    $GEOSBIN/g5_modules                        [for bash or zsh: source g5_modules.[z]sh]"           
+      echo "   module    load tview                                 [at NCCS]
+      echo "   totalview $GEOSBIN/GEOSldas.x"           
+      echo ""
+      echo "Availability of tools depends on the computing system and may require"
+      echo "loading modules.  For more information, check with your computing center."
+      echo "See also GEOSldas Wiki at https://github.com/GEOS-ESM/GEOSldas/wiki"
+      echo ""
+      exit
    endif
    
-   $GEOSBIN/RmShmKeys_sshmpi.csh
-   $RUN_CMD $numprocs $GEOSBIN/GEOSldas.x
+   @ oserver_nodes = MY_OSERVER_NODES
+   @ writers = MY_WRITERS_NPES
+
+   set total_npes = $SLURM_NTASKS
+
+   if ($oserver_nodes == 0) then
+      set oserver_options = ""
+   else
+      set oserver_options = "--oserver_type multigroup --nodes_output_server $oserver_nodes  --npes_backend_pernode $writers"
+   endif
+
+   $RUN_CMD $total_npes $GEOSBIN/GEOSldas.x --npes_model $numprocs $oserver_options 
    
    if( -e EGRESS.ldas ) then
       set rc = 0
+      echo GEOSldas Run Status: $rc
    else
       set rc = -1
+      echo GEOSldas Run Status: $rc
+      echo "ERROR: GEOSldas run FAILED, exit without post-processing"
+      exit
    endif
-   echo GEOSldas Run Status: $rc
     
    
    #######################################################################
@@ -605,6 +671,7 @@ EOF
           set ENSDIR = `echo ens${inens}`
        endif
        set ENSID = `echo $ENSDIR | cut -c4-7`
+       set ENSID = _e${ENSID}
        if ( $NENS == 1) set ENSID =''
        set THISDIR = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/
        if (! -e $THISDIR            ) mkdir -p $THISDIR
@@ -751,7 +818,7 @@ endif
 #                 Re-Submit Job
 #######################################################################
 
-if ( $LADAS_COUPLING == 1) then
+if ( $LADAS_COUPLING > 0 ) then
    if ( $rc == 0 ) then
       echo 'SUCCEEDED' > $HOMDIR/lenkf_job_completed.txt
    endif

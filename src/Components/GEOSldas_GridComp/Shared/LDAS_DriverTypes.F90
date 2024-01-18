@@ -21,6 +21,7 @@ module LDAS_DriverTypes
   !                        for MERRA-Land output specs
   ! reichle,  5 Apr 2013 - removed modis_alb_param_type fields "sc_albvr", "sc_albnr" 
   ! reichle, 23 Jul 2013 - renamed "modis_alb_param" --> "alb_param"
+  ! reichle, 23 Apr 2021 - removed "SWnet"
   !
   ! --------------------------------------------------------------------------
 
@@ -59,14 +60,13 @@ module LDAS_DriverTypes
      real :: Snowf                ! total snowfall                          [kg/m2/s]
      real :: LWdown               ! downward longwave radiation             [W/m2]
      real :: SWdown               ! downward shortwave radiation            [W/m2]
-     real :: SWnet                ! downward net shortwave radiation        [W/m2]
      real :: PARdrct              ! Photosynth. Active Radiation (direct)   [W/m2]
      real :: PARdffs              ! Photosynth. Active Radiation (diffuse)  [W/m2]
      real :: Wind                 ! wind speed at RefH                      [m/s]
      real :: RefH                 ! reference height for Tair, Qair, Wind   [m]
-!
-!GOSWIN
-!
+     
+     ! GOSWIM aerosol forcing
+     !
      real :: DUDP001              ! below all units are                     [kg/m2/s]
      real :: DUDP002
      real :: DUDP003
@@ -229,7 +229,6 @@ contains
     met_force%Snowf    = scalar
     met_force%LWdown   = scalar
     met_force%SWdown   = scalar
-    met_force%SWnet    = scalar
     met_force%PARdrct  = scalar
     met_force%PARdffs  = scalar
     met_force%Wind     = scalar
@@ -317,7 +316,6 @@ contains
     met_force_div_scalar%Snowf    =     met_force%Snowf    / scalar
     met_force_div_scalar%LWdown   =     met_force%LWdown   / scalar
     met_force_div_scalar%SWdown   =     met_force%SWdown   / scalar
-    met_force_div_scalar%SWnet    =     met_force%SWnet    / scalar
     met_force_div_scalar%PARdrct  =     met_force%PARdrct  / scalar
     met_force_div_scalar%PARdffs  =     met_force%PARdffs  / scalar
     met_force_div_scalar%Wind     =     met_force%Wind     / scalar
@@ -403,7 +401,6 @@ contains
     add_met_force%Snowf    = met_force_1%Snowf    + met_force_2%Snowf    
     add_met_force%LWdown   = met_force_1%LWdown   + met_force_2%LWdown   
     add_met_force%SWdown   = met_force_1%SWdown   + met_force_2%SWdown   
-    add_met_force%SWnet    = met_force_1%SWnet    + met_force_2%SWnet   
     add_met_force%PARdrct  = met_force_1%PARdrct  + met_force_2%PARdrct   
     add_met_force%PARdffs  = met_force_1%PARdffs  + met_force_2%PARdffs   
     add_met_force%Wind     = met_force_1%Wind     + met_force_2%Wind    

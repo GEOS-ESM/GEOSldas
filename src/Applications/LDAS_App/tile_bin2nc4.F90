@@ -3,21 +3,20 @@ PROGRAM tile_bin2nc4
   implicit none
   INCLUDE 'netcdf.inc'
 
-  integer       :: i,k,  n, iargc, NTILES
+  integer       :: i,k,  n, NTILES
   integer       :: NCFOutID, Vid, STATUS, CellID, TimID, nVars
-  character*256 :: Usage="tile_bin2nc4.x BINFILE DESCRIPTOR TILECOORD"
-  character*256 :: BINFILE, TILECOORD, DESCRIPTOR, arg(3)
-  character*100 :: MYNAME, BUF
+  character(256) :: Usage="tile_bin2nc4.x BINFILE DESCRIPTOR TILECOORD"
+  character(512) :: BINFILE, TILECOORD, DESCRIPTOR, arg(3)
+  character(128) :: MYNAME, BUF
   integer, dimension(8)               :: date_time_values
   character (22)                      :: time_stamp
-  character*100                       :: Str_Atr
   real, allocatable, dimension (:)    :: lons, lats, var
   integer, allocatable, dimension (:) :: tileid, i_index, j_index 
   integer       :: myunit1, myunit2
   real :: undef
   ! processing command line agruments
 
-  I = iargc()
+  I = command_argument_count()
   
   if( I /=3 ) then
      print *, "Wrong Number of arguments: ", i
@@ -26,10 +25,10 @@ PROGRAM tile_bin2nc4
   end if
 
   do n=1,I
-     call getarg(n,arg(n))
+     call get_command_argument(n,arg(n))
   enddo
 
-  call getenv ("MYNAME"        ,MYNAME        )
+  call get_environment_variable ("MYNAME"        ,MYNAME        )
   read(arg(1),'(a)') BINFILE
   read(arg(2),'(a)') DESCRIPTOR
   read(arg(3),'(a)') TILECOORD
@@ -189,13 +188,15 @@ PROGRAM tile_bin2nc4
 
     character(*), intent(in)           :: SHORT_NAME
     integer, intent (in), optional     :: LNAME, UNT
-    character(100)                     :: str_atr, LONG_NAME, UNITS
+    character(128)                     :: str_atr, LONG_NAME, UNITS
 
     SELECT case (trim(SHORT_NAME))
 
     ! For SM_L4 
     ! reichle, 20 May 2020: verified SHORT_NAME and corrected UNITS to match SMAP L4_SM Product Specs;  LONG_NAME (mostly) from GEOS_CatchGridComp.F90 
-
+    ! reichle, 14 Feb 2022: added "WATERTABLED" (now: "PEATCLSM_WATERLEVEL") and "FSWCHANGE" (now: "PEATCLSM_FSWCHANGE")
+    ! reichle, 21 Feb 2022: added "mwrtm_vegopacity"   
+       
     case ('sm_surface');                       LONG_NAME = 'water_surface_layer';                                              UNITS = 'm3 m-3'
     case ('sm_rootzone');                      LONG_NAME = 'water_root_zone';                                                  UNITS = 'm3 m-3'
     case ('sm_profile');                       LONG_NAME = 'water_ave_prof';                                                   UNITS = 'm3 m-3'
@@ -226,7 +227,7 @@ PROGRAM tile_bin2nc4
     case ('net_downward_shortwave_flux');      LONG_NAME = 'Net_shortwave_land';                                               UNITS = 'W m-2'
     case ('net_downward_longwave_flux');       LONG_NAME = 'Net_longwave_land';                                                UNITS = 'W m-2'
     case ('radiation_shortwave_downward_flux');LONG_NAME = 'Incident_shortwave_land';                                          UNITS = 'W m-2'
-    case ('radiation_longwave_absorbed_flux'); LONG_NAME = 'perturbed_surface_downwelling_longwave_flux';                      UNITS = 'W m-2'
+    case ('radiation_longwave_absorbed_flux'); LONG_NAME = 'surface_absorbed_longwave_flux';                                   UNITS = 'W m-2'
     case ('precipitation_total_surface_flux'); LONG_NAME = 'RainfSnowf';                                                       UNITS = 'kg m-2 s-1'
     case ('snowfall_surface_flux');            LONG_NAME = 'snowfall';                                                         UNITS = 'kg m-2 s-1'
     case ('surface_pressure');                 LONG_NAME = 'surface_pressure';                                                 UNITS = 'Pa'
@@ -236,6 +237,9 @@ PROGRAM tile_bin2nc4
     case ('windspeed_lowatmmodlay');           LONG_NAME = 'wind_speed_at_RefH';                                               UNITS = 'm s-1'
     case ('vegetation_greenness_fraction');    LONG_NAME = 'greeness_fraction';                                                UNITS = '1' 
     case ('leaf_area_index');                  LONG_NAME = 'leaf_area_index';                                                  UNITS = 'm2 m-2' 
+    case ('depth_to_water_table_from_surface_in_peat');  LONG_NAME = 'depth_to_water_table_from_surface_in_peat';              UNITS = 'm'
+    case ('free_surface_water_on_peat_flux');  LONG_NAME = 'change_in_free_surface_water_reservoir_on_peat';                   UNITS = 'kg m-2 s-1'
+    case ('mwrtm_vegopacity');                 LONG_NAME = 'Lband_microwave_vegopacity_normalized_with_cos_inc_angle';         UNITS = '1'
 
     ! additional defintions for SMAP Nature Run - reichle, 20 May 2020
 
@@ -251,8 +255,8 @@ PROGRAM tile_bin2nc4
     case ('TA');         LONG_NAME = 'air_temperature_at_RefH';                                          UNITS = 'K' 
     case ('Qair');       LONG_NAME = 'specific_humidity_at_RefH';                                        UNITS = 'kg kg-1'
     case ('QA');         LONG_NAME = 'specific_humidity_at_RefH';                                        UNITS = 'kg kg-1'
-    case ('LWdown');     LONG_NAME = 'downward_longwave_radiation"';                                     UNITS = 'W m-2'
-    case ('LWDNSRF');    LONG_NAME = 'perturbed_surface_downwelling_longwave_flux';                      UNITS = 'W m-2'
+    case ('LWdown');     LONG_NAME = 'surface_absorbed_longwave_flux';                                   UNITS = 'W m-2'
+    case ('LWDNSRF');    LONG_NAME = 'surface_absorbed_longwave_flux';                                   UNITS = 'W m-2'
     case ('SWdown');     LONG_NAME = 'downward_shortwave_radiation';                                     UNITS = 'W m-2'
     case ('Wind');       LONG_NAME = 'wind_speed_at_RefH';                                               UNITS = 'm s-1'
     case ('UU');         LONG_NAME = 'wind_speed_at_RefH';                                               UNITS = 'm s-1'
@@ -271,7 +275,20 @@ PROGRAM tile_bin2nc4
     case ('WESNN1');     LONG_NAME = 'snow_mass_layer_1';                                                UNITS = 'kg m-2'
     case ('WESNN2');     LONG_NAME = 'snow_mass_layer_2';                                                UNITS = 'kg m-2'
     case ('WESNN3');     LONG_NAME = 'snow_mass_layer_3';                                                UNITS = 'kg m-2'
-    case ('HLWUP');      LONG_NAME = 'surface_outgoing_longwave_flux';                                   UNITS = 'W m-2'
+    case ('HTSNNN1');    LONG_NAME = 'heat_content_snow_layer_1';                                        UNITS = 'J m-2'
+    case ('HTSNNN2');    LONG_NAME = 'heat_content_snow_layer_2';                                        UNITS = 'J m-2'
+    case ('HTSNNN3');    LONG_NAME = 'heat_content_snow_layer_3';                                        UNITS = 'J m-2'
+    case ('SNDZN1');     LONG_NAME = 'snow_depth_layer_1';                                               UNITS = 'm'
+    case ('SNDZN2');     LONG_NAME = 'snow_depth_layer_2';                                               UNITS = 'm'
+    case ('SNDZN3');     LONG_NAME = 'snow_depth_layer_3';                                               UNITS = 'm'
+    case ('FICE1');      LONG_NAME = 'snow_frozen_fraction_layer_1';                                     UNITS = '1'
+    case ('FICE2');      LONG_NAME = 'snow_frozen_fraction_layer_2';                                     UNITS = '1'
+    case ('FICE3');      LONG_NAME = 'snow_frozen_fraction_layer_3';                                     UNITS = '1'
+    case ('ALBVR');      LONG_NAME = 'surface_reflectivity_for_visible_beam';                            UNITS = '1'
+    case ('ALBVF');      LONG_NAME = 'surface_reflectivity_for_visible_diffuse';                         UNITS = '1'
+    case ('ALBNR');      LONG_NAME = 'surface_reflectivity_for_near_infared_beam';                       UNITS = '1'
+    case ('ALBNF');      LONG_NAME = 'surface_reflectivity_for_near_infrared_diffuse';                   UNITS = '1'
+    case ('HLWUP');      LONG_NAME = 'surface_emitted_longwave_flux';                                    UNITS = 'W m-2'
     case ('GWETPROF');   LONG_NAME = 'ave_prof_soil_wetness';                                            UNITS = '1'
     case ('GWETROOT');   LONG_NAME = 'root_zone_soil_wetness';                                           UNITS = '1'
     case ('GWETTOP');    LONG_NAME = 'surface_soil_wetness';                                             UNITS = '1'
@@ -286,12 +303,12 @@ PROGRAM tile_bin2nc4
     case ('TPSURF');     LONG_NAME = 'ave_catchment_temp_incl_snw';                                      UNITS = 'K' 
     case ('GRN');        LONG_NAME = 'greeness_fraction';                                                UNITS = '1' 
     case ('LAI');        LONG_NAME = 'leaf_area_index';                                                  UNITS = '1' 
-    case ('TP1');        LONG_NAME = 'soil_temperatures_layer_1';                                        UNITS = 'C' 
-    case ('TP2');        LONG_NAME = 'soil_temperatures_layer_2';                                        UNITS = 'C' 
-    case ('TP3');        LONG_NAME = 'soil_temperatures_layer_3';                                        UNITS = 'C' 
-    case ('TP4');        LONG_NAME = 'soil_temperatures_layer_4';                                        UNITS = 'C' 
-    case ('TP5');        LONG_NAME = 'soil_temperatures_layer_5';                                        UNITS = 'C' 
-    case ('TP6');        LONG_NAME = 'soil_temperatures_layer_6';                                        UNITS = 'C' 
+    case ('TP1');        LONG_NAME = 'soil_temperatures_layer_1';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP2');        LONG_NAME = 'soil_temperatures_layer_2';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP3');        LONG_NAME = 'soil_temperatures_layer_3';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP4');        LONG_NAME = 'soil_temperatures_layer_4';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP5');        LONG_NAME = 'soil_temperatures_layer_5';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
+    case ('TP6');        LONG_NAME = 'soil_temperatures_layer_6';                                        UNITS = 'K'             ! units now K, rreichle & borescan, 6 Nov 2020
     case ('PRECTOTLAND');LONG_NAME = 'Total_precipitation_land';                                         UNITS = 'kg m-2 s-1'
     case ('PRECSNOLAND');LONG_NAME = 'snowfall_land';                                                    UNITS = 'kg m-2 s-1'
     case ('SNOWMASS')   ;LONG_NAME = 'snow_mass';                                                        UNITS = 'kg m-2'
@@ -327,6 +344,8 @@ PROGRAM tile_bin2nc4
     case ('SPLAND');     LONG_NAME = 'rate_of_spurious_land_energy_source';                              UNITS = 'W m-2'
     case ('SPWATR');     LONG_NAME = 'rate_of_spurious_land_water_source';                               UNITS = 'kg m-2 s-1'
     case ('SPSNOW');     LONG_NAME = 'rate_of_spurious_snow_energy';                                     UNITS = 'W m-2'
+    case ('PEATCLSM_WATERLEVEL');LONG_NAME = 'depth_to_water_table_from_surface_in_peat';                UNITS = 'm'
+    case ('PEATCLSM_FSWCHANGE'); LONG_NAME = 'change_in_free_surface_water_reservoir_on_peat';           UNITS = 'kg m-2 s-1'
     case ('CNLAI');      LONG_NAME = 'CN_exposed_leaf-area_index';                                       UNITS = '1'
     case ('CNTLAI');     LONG_NAME = 'CN_total_leaf-area_index';                                         UNITS = '1'
     case ('CNSAI');      LONG_NAME = 'CN_exposed_stem-area_index';                                       UNITS = '1'
@@ -393,27 +412,44 @@ PROGRAM tile_bin2nc4
 
     ! land assimilation forecast and analysis for Catchment model diagnostics
 
-    case ('SFMC_FCST');    LONG_NAME = 'soil_moisture_surface_forecast';                                 UNITS = 'm3 m-3'
-    case ('RZMC_FCST');    LONG_NAME = 'soil_moisture_rootzone_forecast';                                UNITS = 'm3 m-3'
-    case ('PRMC_FCST');    LONG_NAME = 'soil_moisture_profile_forecast';                                 UNITS = 'm3 m-3'
-    case ('TSURF_FCST');   LONG_NAME = 'ave_catchment_temp_incl_snw_forecast';                           UNITS = 'K'
-    case ('TSOIL1_FCST');  LONG_NAME = 'soil_temperatures_layer_1_forecast';                             UNITS = 'K'
-    case ('SFMC_ANA');     LONG_NAME = 'soil_moisture_surface_analysis';                                 UNITS = 'm3 m-3'
-    case ('RZMC_ANA');     LONG_NAME = 'soil_moisture_rootzone_analysis';                                UNITS = 'm3 m-3'
-    case ('PRMC_ANA');     LONG_NAME = 'soil_moisture_profile_analysis';                                 UNITS = 'm3 m-3'
-    case ('TSURF_ANA');    LONG_NAME = 'ave_catchment_temp_incl_snw_analysis';                           UNITS = 'K'
-    case ('TSOIL1_ANA');   LONG_NAME = 'soil_temperatures_layer_1_analysis';                             UNITS = 'K'
+    case ('SFMC_FCST');          LONG_NAME = 'soil_moisture_surface_forecast';                           UNITS = 'm3 m-3'
+    case ('RZMC_FCST');          LONG_NAME = 'soil_moisture_rootzone_forecast';                          UNITS = 'm3 m-3'
+    case ('PRMC_FCST');          LONG_NAME = 'soil_moisture_profile_forecast';                           UNITS = 'm3 m-3'
+    case ('TSURF_FCST');         LONG_NAME = 'ave_catchment_temp_incl_snw_forecast';                     UNITS = 'K'
+    case ('TSOIL1_FCST');        LONG_NAME = 'soil_temperatures_layer_1_forecast';                       UNITS = 'K'
 
-    ! new fields for the irrigation model
+    case ('SFMC_FCST_ENSSTD');   LONG_NAME = 'soil_moisture_surface_forecast_ensstd';                    UNITS = 'm3 m-3'
+    case ('RZMC_FCST_ENSSTD');   LONG_NAME = 'soil_moisture_rootzone_forecast_ensstd';                   UNITS = 'm3 m-3'
+    case ('PRMC_FCST_ENSSTD');   LONG_NAME = 'soil_moisture_profile_forecast_ensstd';                    UNITS = 'm3 m-3'
+    case ('TSURF_FCST_ENSSTD');  LONG_NAME = 'ave_catchment_temp_incl_snw_forecast_ensstd';              UNITS = 'K'
+    case ('TSOIL1_FCST_ENSSTD'); LONG_NAME = 'soil_temperatures_layer_1_forecast_ensstd';                UNITS = 'K'
+
+    case ('SFMC_ANA');           LONG_NAME = 'soil_moisture_surface_analysis';                           UNITS = 'm3 m-3'
+    case ('RZMC_ANA');           LONG_NAME = 'soil_moisture_rootzone_analysis';                          UNITS = 'm3 m-3'
+    case ('PRMC_ANA');           LONG_NAME = 'soil_moisture_profile_analysis';                           UNITS = 'm3 m-3'
+    case ('TSURF_ANA');          LONG_NAME = 'ave_catchment_temp_incl_snw_analysis';                     UNITS = 'K'
+    case ('TSOIL1_ANA');         LONG_NAME = 'soil_temperatures_layer_1_analysis';                       UNITS = 'K'
+
+    case ('SFMC_ANA_ENSSTD');    LONG_NAME = 'soil_moisture_surface_analysis_ensstd';                    UNITS = 'm3 m-3'
+    case ('RZMC_ANA_ENSSTD');    LONG_NAME = 'soil_moisture_rootzone_analysis_ensstd';                   UNITS = 'm3 m-3'
+    case ('PRMC_ANA_ENSSTD');    LONG_NAME = 'soil_moisture_profile_analysis_ensstd';                    UNITS = 'm3 m-3'
+    case ('TSURF_ANA_ENSSTD');   LONG_NAME = 'ave_catchment_temp_incl_snw_analysis_ensstd';              UNITS = 'K'
+    case ('TSOIL1_ANA_ENSSTD');  LONG_NAME = 'soil_temperatures_layer_1_analysis_ensstd';                UNITS = 'K'
+
+    ! new irrigation fields
        
     case ('SPRINKLERRATE');LONG_NAME = 'sprinkler_irrigation_rate';                                      UNITS = 'kg m-2 s-1'
     case ('DRIPRATE');     LONG_NAME = 'drip_irrigation_rate';                                           UNITS = 'kg m-2 s-1'
     case ('FLOODRATE');    LONG_NAME = 'flood_irrigation_rate';                                          UNITS = 'kg m-2 s-1'
     case ('IRRLAND');      LONG_NAME = 'Total_irrigation_land';                                          UNITS = 'kg m-2 s-1'
+
+    ! other land assimilation fields
+       
+    case ('MWRTM_VEGOPACITY'); LONG_NAME = 'Lband_microwave_vegopacity_normalized_with_cos_inc_angle';   UNITS = '1'       
        
     ! default LONG_NAME and UNITS for nc4 files created by tile_bin2nc4.F90 (used for any SHORT_NAME not listed above):
 
-    case default;          LONG_NAME = 'not defined in tile_bin2nc4.F90';                                UNITS = 'not defined in tile_bin2nc4.F90';
+    case default;              LONG_NAME = 'not defined in tile_bin2nc4.F90';                            UNITS = 'not defined in tile_bin2nc4.F90';
 
     end select
 

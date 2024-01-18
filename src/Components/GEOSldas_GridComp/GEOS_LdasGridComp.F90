@@ -15,10 +15,10 @@ module GEOS_LdasGridCompMod
   use GEOS_EnsGridCompMod, only: EnsSetServices => SetServices
   use GEOS_LandAssimGridCompMod, only: LandAssimSetServices => SetServices
 
-  use LDAS_EASE_conv, only: ease_inverse
+  use EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
-  use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type
-  use LDAS_TileCoordRoutines, only: get_tile_grid, get_ij_ind_from_latlon, io_domain_files
+  use LDAS_TileCoordType, only: grid_def_type, io_grid_def_type, operator (==)
+  use LDAS_TileCoordRoutines, only: get_minExtent_grid, get_ij_ind_from_latlon, io_domain_files
   use LDAS_ConvertMod, only: esmf2ldas
   use LDAS_PertRoutinesMod, only: get_pert_grid
   use LDAS_ensdrv_functions,ONLY:  get_io_filename 
@@ -26,8 +26,8 @@ module GEOS_LdasGridCompMod
   use LDAS_ensdrv_mpi, only: MPI_tile_coord_type, MPI_grid_def_type
   use LDAS_ensdrv_mpi, only: init_MPI_types,mpicomm,numprocs,myid 
   use LDAS_ensdrv_mpi, only: root_proc
-  use LDAS_ensdrv_Globals, only: logunit,logit,root_logit,echo_clsm_ensdrv_glob_param
-  use lsm_routines,  only: lsmroutines_echo_constants  
+  use LDAS_ensdrv_Globals, only: logunit,logit,root_logit,echo_clsm_ensdrv_glob_param, get_ensid_string
+  use catch_constants, only: echo_catch_constants  
   use StieglitzSnow, only: StieglitzSnow_echo_constants
   use SurfParams,    only: SurfParams_init
 
@@ -51,12 +51,14 @@ module GEOS_LdasGridCompMod
   ! All children
   integer,allocatable :: LAND(:)
   integer,allocatable :: LANDPERT(:)
-  integer             :: METFORCE, ENSAVG, LANDASSIM
+  integer,allocatable :: METFORCE(:)
+  integer             :: ENSAVG, LANDASSIM
 
   ! other global variables
-  integer :: NUM_ENSEMBLE
+  integer :: NUM_ENSEMBLE       ! number of land ensemble members
   logical :: land_assim
   logical :: mwRTM
+  logical :: ensemble_forcing   ! switch between deterministic and ensemble forcing
   
 contains
 
@@ -75,17 +77,15 @@ contains
 
     ! ensemble set up:
 
-    integer :: i
-    integer,allocatable :: ens_id(:)
+    integer :: i, k
+    integer :: ens_id
     type(MAPL_MetaComp), pointer :: MAPL=>null()
-    type(ESMF_GridComp), pointer :: gcs(:)=>null() ! Children gridcomps
-    character(len=ESMF_MAXSTR), pointer :: gcnames(:)=>null() ! Children's names
     ! ErrLog variables
     integer :: status
     character(len=ESMF_MAXSTR) :: Iam
     character(len=ESMF_MAXSTR) :: comp_name
-    character(len=ESMF_MAXSTR) :: id_string,childname, fmt_str
-    character(len=ESMF_MAXSTR) :: LAND_ASSIM_STR, mwRTM_file
+    character(len=ESMF_MAXSTR) :: ensid_string,childname
+    character(len=ESMF_MAXSTR) :: LAND_ASSIM_STR, mwRTM_file, ENS_FORCING_STR
     integer                    :: ens_id_width
     ! Local variables
     type(T_TILECOORD_STATE), pointer :: tcinternal
@@ -144,6 +144,11 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, ENS_FORCING_STR, Label="ENSEMBLE_FORCING:", DEFAULT="NO", RC=STATUS)
+    VERIFY_(STATUS)
+    ENS_FORCING_STR =  ESMF_UtilStringUpperCase(ENS_FORCING_STR, rc=STATUS)
+    VERIFY_(STATUS)
+    ensemble_forcing = (trim(ENS_FORCING_STR) == 'YES')
 
     call MAPL_GetResource ( MAPL, LAND_ASSIM_STR, Label="LAND_ASSIM:", DEFAULT="NO", RC=STATUS)
     VERIFY_(STATUS)
@@ -160,27 +165,51 @@ contains
       _ASSERT( .not. (mwRTM .or. land_assim), "CatchCN is Not Ready for assimilation or mwRTM")
     endif
 
-    METFORCE = MAPL_AddChild(gc, name='METFORCE', ss=MetforceSetServices, rc=status)
-    VERIFY_(status)
+    if (ensemble_forcing) then
+       allocate(METFORCE(NUM_ENSEMBLE))
+    else
+       allocate(METFORCE(1))
+    endif
 
-    allocate(ens_id(NUM_ENSEMBLE),LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
-    _ASSERT( ens_id_width < 10, "need 1 billion ensemble members? increase ens_id_width first")
-    write (fmt_str, "(A2,I1,A1,I1,A1)") "(I", ens_id_width,".",ens_id_width,")" 
+    allocate(LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
+
+    ! ens_id_with = 2 + number of digits = total number of chars in ensid_string ("_eXXXX")
+    !
+    ! Assert ens_id_width<=2+9 so number of digits remains single-digit and "I1" can be
+    !   hardwired when assembling a format string.
+    ! Assert ens_id_width>=2+3 to avoid user configuration errors when LDAS is coupled into ADAS.
+    !   (Met forcing from the atm ensemble uses hardwired, 3-character ensemble IDs.) 
+
+    if (NUM_ENSEMBLE > 1) then
+       _ASSERT( ens_id_width < 12, "Must use ens_id_width <= 11  (2 for '_e' + 9 digits max)")
+       _ASSERT( ens_id_width >= 5, "Must use ens_id_width >=  5  (2 for '_e' + 3 digits min)")
+    endif
+
     do i=1,NUM_ENSEMBLE
-       ens_id(i) = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
-       if(NUM_ENSEMBLE == 1 ) then
-          id_string=''
-       else
-          write(id_string, fmt_str) ens_id(i)
-       endif
+       ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+       
+       call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)   ! "_eXXXX"
 
-       id_string=trim(id_string)
+       ! allow for Catchment ensemble simulation to be forced with single-member met inputs
+       if (.not. ensemble_forcing ) ensid_string = ''    
 
-       childname='LANDPERT'//trim(id_string)
+       childname='METFORCE'//trim(ensid_string)
+       METFORCE(i) = MAPL_AddChild(gc, name=trim(childname), ss=MetforceSetServices, rc=status)
+       VERIFY_(status)
+       ! exit after i=1 if using deterministic forcing
+       if (.not. ensemble_forcing ) exit
+    enddo
+
+    do i=1,NUM_ENSEMBLE
+       ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+
+       call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)
+
+       childname='LANDPERT'//trim(ensid_string)
        LANDPERT(i) = MAPL_AddChild(gc, name=childname, ss=LandPertSetServices, rc=status)
        VERIFY_(status)
 
-       childname='LAND'//trim(id_string)
+       childname='LAND'//trim(ensid_string)
        LAND(i) = MAPL_AddChild(gc, name=childname, ss=LandSetServices, rc=status)
        VERIFY_(status)
     enddo
@@ -196,12 +225,14 @@ contains
     ! Connections
     do i=1,NUM_ENSEMBLE
     ! -METFORCE-feeds-LANDPERT's-imports-
+       k = 1
+       if ( ensemble_forcing ) k = i
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
             SHORT_NAME = ['Tair   ', 'Qair   ', 'Psurf  ', 'Rainf_C', 'Rainf  ',   &
-                          'Snowf  ', 'LWdown ', 'SWdown ', 'SWnet  ', 'PARdrct',   &
-                          'PARdffs', 'Wind   ', 'RefH   '],                        &
-            SRC_ID = METFORCE,                                                     &
+                          'Snowf  ', 'LWdown ', 'SWdown ', 'PARdrct', 'PARdffs',   &
+                          'Wind   ', 'RefH   '],                                   &
+            SRC_ID = METFORCE(k),                                                     &
             DST_ID = LANDPERT(i),                                                  &
             rc = status                                                            &
             )
@@ -230,7 +261,7 @@ contains
                         'DUDP ', 'DUSV ', 'DUWT ', 'DUSD ', 'BCDP ', 'BCSV ',      &
                         'BCWT ', 'BCSD ', 'OCDP ', 'OCSV ', 'OCWT ', 'OCSD ',      &
                         'SUDP ', 'SUSV ', 'SUWT ', 'SUSD ', 'SSDP ', 'SSSV ' ],    &
-            SRC_ID = METFORCE,                                                     &
+            SRC_ID = METFORCE(k),                                                     &
             DST_NAME = ['PS  ', 'DZ  ',                                            &
                         'DUDP', 'DUSV', 'DUWT', 'DUSD', 'BCDP', 'BCSV',            &
                         'BCWT', 'BCSD', 'OCDP', 'OCSV', 'OCWT', 'OCSD',            &
@@ -367,15 +398,15 @@ contains
     logical :: IamRoot
 
     type(tile_coord_type), dimension(:), pointer :: tile_coord_f => null()
-    type(tile_coord_type), dimension(:), pointer :: tile_coord_l => null()
 
     integer,dimension(:),pointer :: f2g
     integer :: N_catf
     integer :: LSM_CHOICE
 
-    type(grid_def_type) :: tile_grid_g
-    type(grid_def_type) :: tile_grid_f
-    type(grid_def_type) :: tile_grid_l
+    type(grid_def_type) :: tile_grid_g, pert_grid_g
+    type(grid_def_type) :: tile_grid_f, pert_grid_f
+    type(grid_def_type) ::              pert_grid_l
+
     type(date_time_type):: start_time
     type(ESMF_Time)     :: CurrentTime
     !type(CubedSphereGridFactory) :: cubed_sphere_factory
@@ -425,9 +456,10 @@ contains
     VERIFY_(STATUS)
     call MAPL_GetResource ( MAPL, LSM_CHOICE, Label="LSM_CHOICE:", DEFAULT=1, RC=STATUS)
     VERIFY_(STATUS)
-    call SurfParams_init(LAND_PARAMS,LSM_CHOICE,rc=status)
+
+    call SurfParams_init(LAND_PARAMS,LSM_CHOICE,RC=STATUS)
     VERIFY_(STATUS)
-    
+
     call MAPL_GetResource(MAPL, grid_type,Label="GEOSldas.GRID_TYPE:",RC=STATUS)
     VERIFY_(STATUS)
 
@@ -585,39 +617,50 @@ contains
        close(10)
        call io_grid_def_type('w', logunit, tile_grid_f, 'tile_grid_f')
 
-       block 
-          type(grid_def_type) :: latlon_tmp_g
-          integer :: perturbations
+       ! get a grid for perturbations and EnKF:
+       !
+       !  tile grid                 !  pert grid
+       !  (defines tile space)      !  (used for perturbations and as "hash" grid in EnKF analysis)
+       ! ===========================================================================================================
+       !  lat/lon                   !  same as tile_grid (i.e., lat/lon)
+       ! -----------------------------------------------------------------------------------------------------------
+       !  EASEv[X]                  !  same as tile_grid (i.e., EASE)
+       ! -----------------------------------------------------------------------------------------------------------
+       !  cube-sphere               !  lat/lon grid of resolution similar to that of (cube-sphere) tile_grid
+       
+       pert_grid_g = get_pert_grid(tile_grid_g)
+       
+       if ( .not. (pert_grid_g==tile_grid_g) ) then
 
-          call MAPL_GetResource(MAPL, perturbations, 'PERTURBATIONS:', default=0, rc=status)
-          if(trim(grid_type) == "Cubed-Sphere" ) then
+          ! arrive here when tile_grid_g is cube-sphere and pert_grid_g is lat/lon after call to get_pert_grid() above
+ 
+          !1) get pert_i_indg, pert_j_indg for tiles in (full) domain relative to pert_grid_g
+          do i = 1, N_catf
+             call get_ij_ind_from_latlon(pert_grid_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
+              tile_coord_f(i)%pert_i_indg,tile_coord_f(i)%pert_j_indg)
+          enddo
+          !2) determine pert_grid_f
+          pert_grid_f = get_minExtent_grid(N_catf, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, &
+               tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
+               pert_grid_g)
 
-            _ASSERT(index(tile_grid_g%gridtype, 'c3') /=0, "tile_grid_g does not describe a cubed-sphere grid")
-            
-            !1) generate a lat-lon grid for landpert and land assim ( 4*N_lonX3*N_lon)
-            call get_pert_grid(tile_grid_g, latlon_tmp_g)
-            tile_grid_g = latlon_tmp_g
-            !2) get hash index
-            do i = 1, N_catf
-               call get_ij_ind_from_latlon(latlon_tmp_g,tile_coord_f(i)%com_lat,tile_coord_f(i)%com_lon, &
-                 tile_coord_f(i)%hash_i_indg,tile_coord_f(i)%hash_j_indg)
-            enddo
-            !3) re-generate tile_grid_f in Lat-Lon
-            call get_tile_grid(N_catf, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg,               &
-                 tile_coord_f%min_lon, tile_coord_f%min_lat, tile_coord_f%max_lon, tile_coord_f%max_lat, &
-                 tile_grid_g, tile_grid_f)
-            
-          endif
-       end block 
+       else
+          
+          pert_grid_f = tile_grid_f
 
+          ! note that %pert_i_indg and %pert_j_indg were initialized to %i_indg and %j_indg
+          !   in io_tile_coord_type() when tile_coord was read via io_domain_files()
+          
+       endif
     endif
     
     call MPI_BCAST(N_catf,1,MPI_INTEGER,0,mpicomm,mpierr)
     if (.not. IamRoot) allocate(tile_coord_f(N_catf))
 
     call MPI_BCAST(tile_coord_f,N_catf,    MPI_tile_coord_type,0,mpicomm, mpierr)
+    call MPI_BCAST(pert_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
+    call MPI_BCAST(pert_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
     call MPI_BCAST(tile_grid_g, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
-    call MPI_BCAST(tile_grid_f, 1,         MPI_grid_def_type,  0,mpicomm, mpierr)
 
     block
       integer, allocatable :: f2tile_id(:), tile_id2f(:)
@@ -648,28 +691,31 @@ contains
 
     allocate(tcinternal%tile_coord_f,source = tile_coord_f)
     
-    call get_tile_grid(land_nt_local,                                            &
-         tcinternal%tile_coord%hash_i_indg, tcinternal%tile_coord%hash_j_indg,   &
+    pert_grid_l = get_minExtent_grid(land_nt_local,                             &
+         tcinternal%tile_coord%pert_i_indg, tcinternal%tile_coord%pert_j_indg,   &
          tcinternal%tile_coord%min_lon,     tcinternal%tile_coord%min_lat,       &
          tcinternal%tile_coord%max_lon,     tcinternal%tile_coord%max_lat,       &
-         tile_grid_g,tile_grid_l)
-   
-    ! re-arrange tile_coord_f
+         pert_grid_g)
 
-    tcinternal%grid_g = tile_grid_g
-    tcinternal%grid_f = tile_grid_f
-    tcinternal%grid_l = tile_grid_l
+    tcinternal%pgrid_g = pert_grid_g
+    tcinternal%pgrid_f = pert_grid_f
+    tcinternal%pgrid_l = pert_grid_l
+    tcinternal%tgrid_g = tile_grid_g
 
-    call MAPL_GetObjectFromGC(gcs(METFORCE), CHILD_MAPL, rc=status)
-    VERIFY_(status) ! CHILD = METFORCE
-    call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
-    VERIFY_(status)
+    do i = 1, NUM_ENSEMBLE
+       call MAPL_GetObjectFromGC(gcs(METFORCE(i)), CHILD_MAPL, rc=status)
+       VERIFY_(status) ! CHILD = METFORCE
+       call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
+       VERIFY_(status)
+       call ESMF_UserCompSetInternalState(gcs(METFORCE(i)), 'TILE_COORD', tcwrap, status)
+       VERIFY_(status)
+       ! exit after i=1 if using deterministic forcing
+       if (.not. ensemble_forcing) exit
+    enddo
 
     call MAPL_GetObjectFromGC(gcs(ENSAVG), CHILD_MAPL, rc=status)
     VERIFY_(status) ! CHILD = ens_avg
     call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
-    VERIFY_(status)
-    call ESMF_UserCompSetInternalState(gcs(METFORCE), 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
 
     do i = 1,NUM_ENSEMBLE
@@ -722,7 +768,7 @@ contains
 
 
     if ( IamRoot) call echo_clsm_ensdrv_glob_param()
-    if ( IamRoot) call lsmroutines_echo_constants(logunit)
+    if ( IamRoot) call echo_catch_constants(logunit)
     if ( IamRoot) call StieglitzSnow_echo_constants(logunit)
 
 
@@ -765,19 +811,24 @@ contains
     type(ESMF_GridComp), pointer :: gcs(:)
     type(ESMF_State), pointer :: gim(:)
     type(ESMF_State), pointer :: gex(:)
+    type(ESMF_State) :: member_export
+
     character(len=ESMF_MAXSTR), pointer :: gcnames(:)
     type(ESMF_Time) :: ModelTimeCur
+    character(len=ESMF_MAXSTR) :: member_name
+    character(len=ESMF_MAXSTR) :: ensid_string
 
     ! MAPL variables
     type(MAPL_MetaComp), pointer :: MAPL
 
     ! Misc variables
-    integer :: igc,i
+    integer :: igc,i, ens_id, FIRST_ENS_ID, ens_id_width
     logical :: IAmRoot
-    integer :: mpierr
     integer :: LSM_CHOICE
+    type (ESMF_Field)                         :: field
 
-    ! Begin...
+
+     ! Begin...
 
     ! Get component's name and setup traceback handle
     call ESMF_GridCompget(gc, name=comp_name, rc=status)
@@ -794,6 +845,11 @@ contains
 
     ! Get information about children
     call MAPL_Get(MAPL, GCS=gcs, GIM=gim, GEX=gex, GCNAMES=gcnames, rc=status)
+    VERIFY_(STATUS)
+
+    call MAPL_GetResource ( MAPL, ens_id_width, Label="ENS_ID_WIDTH:",      DEFAULT=0,       RC=STATUS)
+    VERIFY_(STATUS)
+    call MAPL_GetResource ( MAPL, FIRST_ENS_ID, Label="FIRST_ENS_ID:", DEFAULT=0, RC=STATUS)
     VERIFY_(STATUS)
 
     ! MPI
@@ -834,11 +890,16 @@ contains
     enddo
 
 
-    igc = METFORCE
-    call MAPL_TimerOn(MAPL, gcnames(igc))
-    call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, userRC=status)
-    VERIFY_(status)
-    call MAPL_TimerOff(MAPL, gcnames(igc))
+    do i = 1, NUM_ENSEMBLE
+       igc = METFORCE(i)
+       call MAPL_TimerOn(MAPL, gcnames(igc))
+       call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, userRC=status)
+       VERIFY_(status)
+       call MAPL_TimerOff(MAPL, gcnames(igc))
+       ! exit after i=1 if using deterministic forcing
+       if (.not. ensemble_forcing) exit
+    enddo
+
 
     do i  = 1,NUM_ENSEMBLE
 
@@ -876,15 +937,26 @@ contains
        ! Use LAND's output as the input to calculate the ensemble average
        igc = LAND(i)
        if (LSM_CHOICE == 1) then
-          ! collect cat_param 
-          call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=3, userRC=status)
+          ! collect cat_param
+          ens_id = i-1 + FIRST_ENS_ID ! id start form FIRST_ENS_ID
+          call get_ensid_string(ensid_string, ens_id, ens_id_width, NUM_ENSEMBLE)  
+
+          member_name = 'CATCH'//trim(ensid_string)//"_Exports"
+
+          call ESMF_StateGet(gex(igc), trim(member_name), member_export, _RC)
+          call ESMF_StateGet(gex(igc), "Z2CH", field, _RC)
+          call ESMF_StateAddReplace(member_export, [field],_RC)
+          call ESMF_StateGet(gex(igc), "LAI", field, _RC)
+          call ESMF_StateAddReplace(member_export, [field],_RC)
+
+          call ESMF_GridCompRun(gcs(ENSAVG), importState=member_export, exportState=gex(ENSAVG), clock=clock,phase=3, userRC=status)
           VERIFY_(status)
-          call ESMF_GridCompRun(gcs(ENSAVG), importState=gex(igc), exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
+          call ESMF_GridCompRun(gcs(ENSAVG), importState=member_export, exportState=gex(ENSAVG), clock=clock,phase=2, userRC=status)
           VERIFY_(status)
 
           if( mwRTM ) then
              ! Calculate ensemble-average L-band Tb using LAND's output (add up and normalize after last member has been added)
-             call ESMF_GridCompRun(gcs(LANDASSIM), importState=gex(igc), exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
+             call ESMF_GridCompRun(gcs(LANDASSIM), importState=member_export, exportState=gex(LANDASSIM), clock=clock,phase=3, userRC=status)
              VERIFY_(status)
           endif
        endif

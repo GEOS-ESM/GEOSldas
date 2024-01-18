@@ -8,7 +8,7 @@ module GEOS_LandPertGridCompMod
   use ESMF
   use ESMF_CFIOMod, only: ESMF_CFIOStrTemplate
   use MAPL_Mod
-  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
+  use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer, c_ptr
   use LDAS_PertTypes, only: pert_param_type
   use LDAS_PertTypes, only: allocate_pert_param
   use LDAS_PertTypes, only: T_LANDPERT_STATE
@@ -16,7 +16,7 @@ module GEOS_LandPertGridCompMod
 
   use nr_ran2_gasdev, only: NRANDSEED, init_randseed
   use LDAS_ConvertMod, only: esmf2ldas
-  use LDAS_ensdrv_Globals, only: nodata_generic, nodata_tol_generic
+  use LDAS_ensdrv_Globals, only: nodata_generic, nodata_tol_generic, get_ensid_string
   use LDAS_DriverTypes, only: met_force_type
   use LDAS_DateTimeMod, only: date_time_type, date_time_print
   use RepairForcingMod, only: repair_forcing
@@ -24,14 +24,13 @@ module GEOS_LandPertGridCompMod
   use LDAS_TileCoordType, only: tile_coord_type
   use LDAS_TileCoordType, only: T_TILECOORD_STATE
   use LDAS_TileCoordType, only: TILECOORD_WRAP
-  use land_pert_routines, only: get_pert, propagate_pert
+  use land_pert_routines, only: get_pert, propagate_pert, clear_rf
   use land_pert_routines, only: get_init_pert_rseed
   use LDAS_PertRoutinesMod, only: apply_pert
   use LDAS_PertRoutinesMod, only: get_force_pert_param
   use LDAS_PertRoutinesMod, only: get_progn_pert_param
   use LDAS_PertRoutinesMod, only: read_ens_prop_inputs
   use LDAS_PertRoutinesMod, only: echo_pert_param
-  use LDAS_PertRoutinesMod, only: get_pert_grid
   use LDAS_PertRoutinesMod, only: interpolate_pert_to_timestep
   use LDAS_PertRoutinesMod, only: check_pert_dtstep
   use LDAS_PertRoutinesMod, only: GEOSldas_FORCE_PERT_DTSTEP
@@ -41,9 +40,6 @@ module GEOS_LandPertGridCompMod
   use LDAS_TileCoordRoutines, only: grid2tile, tile2grid_simple, tile_mask_grid
   use force_and_cat_progn_pert_types, only: N_FORCE_PERT_MAX
   use force_and_cat_progn_pert_types, only: N_PROGN_PERT_MAX
-  !use catch_types, only: cat_param_type
-  !use catch_incr, only: check_catch_progn
-  !use GEOS_EnsGridCompMod,      only: cat_param=>catch_param
  
   implicit none
 
@@ -188,8 +184,8 @@ contains
     FIRST_ENS_ID = GEOSldas_FIRST_ENS_ID
     ens_id = FIRST_ENS_ID
     if ( internal%NUM_ENSEMBLE > 1) then
-       !landpertxxxx
-       read(comp_name(9:12),*) ens_id
+       !landpert_eXXXX
+       read(comp_name(11:),*) ens_id
     endif
     internal%ens_id= ens_id
 
@@ -278,17 +274,6 @@ contains
          gc,                                                                    &
          SHORT_NAME = "SWdown",                                                 &
          LONG_NAME  = "downward_shortwave_radiation",                           &
-         UNITS      = "W m-2",                                                  &
-         DIMS       = MAPL_DimsTileOnly,                                        &
-         VLOCATION  = MAPL_VlocationNone,                                       &
-         rc         = status                                                    &
-         )
-    VERIFY_(status)
-
-    call MAPL_AddImportSpec(                                                    &
-         gc,                                                                    &
-         SHORT_NAME = "SWnet",                                                  &
-         LONG_NAME  = "downward_net_shortwave_radiation",                       &
          UNITS      = "W m-2",                                                  &
          DIMS       = MAPL_DimsTileOnly,                                        &
          VLOCATION  = MAPL_VlocationNone,                                       &
@@ -864,6 +849,7 @@ contains
     type(LANDPERT_WRAP) :: wrap
  
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     ! MAPL internal pointers
@@ -873,13 +859,11 @@ contains
     real(kind=ESMF_KIND_R8), pointer :: pert_rseed_r8(:)=>null()
 
     ! Misc variables
-    integer :: imjm(7), imjm_global(7) ! we need just the first 2
     integer :: model_dtstep
-    integer :: land_nt_local,m,n, i1, in, j1, jn
-    logical :: IAmRoot
-    integer :: ipert,n_lon,n_lat, n_lon_g, n_lat_g
+    integer :: land_nt_local, m, n, i1, in, j1, jn
+    logical :: IAmRoot, f_exist
+    integer :: n_lon, n_lat, n_lon_g, n_lat_g
     integer, allocatable :: pert_rseed(:)
-    real :: dlon, dlat,locallat,locallon
     type(ESMF_Grid) :: Grid
     character(len=ESMF_MAXSTR) :: id_string
     integer :: ens_id_width
@@ -909,7 +893,8 @@ contains
    ! Get component's internal tile_coord variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
-    tile_coord => tcwrap%ptr%tile_coord
+    tcinternal => tcwrap%ptr
+    tile_coord => tcinternal%tile_coord
 
     ! Are we perturbing variables?
     call MAPL_GetResource(MAPL, internal%PERTURBATIONS, 'PERTURBATIONS:', default=0, rc=status)
@@ -926,16 +911,6 @@ contains
     VERIFY_(status)
     IAmRoot = MAPL_Am_I_Root(vm)
 
-    ! Read force/progn perturbations time steps - convert to intervals
-   ! call read_ens_prop_inputs(kw_echo = .false., &
-   !         kw_force_pert_dtstep = internal%ForcePert%dtstep)
-   ! call ESMF_TimeIntervalSet(ForcePert_DT, s=internal%ForcePert%dtstep, rc=status)
-   ! VERIFY_(status)
-   ! call read_ens_prop_inputs(kw_echo = .false., &
-   !         kw_progn_pert_dtstep = internal%PrognPert%dtstep )
-   ! call ESMF_TimeIntervalSet(PrognPert_DT, s=internal%PrognPert%dtstep, rc=status)
-   ! VERIFY_(status)
-   ! -ForcePert-
 
     call MAPL_GetResource ( MAPL, out_path, Label="OUT_PATH:", DEFAULT="./", RC=STATUS)
     call MAPL_GetResource ( MAPL, exp_id, Label="EXP_ID:", DEFAULT="NO_ID", RC=STATUS)
@@ -955,62 +930,69 @@ contains
     GEOSldas_FORCE_PERT_DTSTEP = internal%ForcePert%dtstep
     GEOSldas_PROGN_PERT_DTSTEP = internal%PrognPert%dtstep
 
-    call get_pert_grid(tcwrap%ptr%grid_g,internal%pgrid_g)
-    call get_pert_grid(tcwrap%ptr%grid_f,internal%pgrid_f)
-    call get_pert_grid(tcwrap%ptr%grid_l,internal%pgrid_l)
- 
-    n_lon = internal%pgrid_l%n_lon
-    n_lat = internal%pgrid_l%n_lat
+    n_lon = tcinternal%pgrid_l%n_lon
+    n_lat = tcinternal%pgrid_l%n_lat
 
     call MAPL_GetResource( MAPL, ens_id_width,"ENS_ID_WIDTH:", default=4, RC=STATUS)
     VERIFY_(status)
 
    ! Pointers to mapl internals
     if ( internal%isCubedSphere ) then
-       n_lon_g = internal%pgrid_g%n_lon
-       n_lat_g = internal%pgrid_g%n_lat
+       n_lon_g = tcinternal%pgrid_g%n_lon
+       n_lat_g = tcinternal%pgrid_g%n_lat
        allocate(internal%fpert_ntrmdt(n_lon_g, n_lat_g, N_FORCE_PERT_MAX), source=0.0)
        allocate(internal%ppert_ntrmdt(n_lon_g, n_lat_g, N_PROGN_PERT_MAX), source=0.0)
        allocate(internal%pert_rseed_r8(NRANDSEED), source=0.0d0)
        
-       call MAPL_GetResource(MAPL, rst_fname_tmp, 'LANDPERT_INTERNAL_RESTART_FILE:',DEFAULT='NONE', rc=status)
-       VERIFY_(status)
-
-       id_string=""
-       if (internal%NUM_ENSEMBLE > 1) then
-         n = len(trim(COMP_NAME))
-         id_string = COMP_NAME(n-ens_id_width+1:n)
-       endif
-
-       call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_fname_tmp)),'GRADS', xid = trim(id_string), stat=status)
-
-       if (index(rst_fname, 'NONE') == 0) then
-
-          if ( IAmRoot) then
-            call read_pert_rst(trim(rst_fname),internal%fpert_ntrmdt,internal%ppert_ntrmdt, internal%pert_rseed_r8) 
-          endif
-          n = n_lat_g*n_lon_g*N_FORCE_PERT_MAX
-          call c_f_pointer(c_loc(internal%fpert_ntrmdt(1,1,1)), pert_ptr, [n])
-          call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
-          VERIFY_(status)
-          pert_ptr=>null()
-
-          n = n_lat_g*n_lon_g*N_PROGN_PERT_MAX
-          call c_f_pointer(c_loc(internal%ppert_ntrmdt(1,1,1)), pert_ptr, [n])
-          call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
-          VERIFY_(status)
-          pert_ptr=>null()
-
-          call MAPL_CommsBcast(vm, data=internal%pert_rseed_r8, N=NRANDSEED, ROOT=0,rc=status)
-          VERIFY_(status)
-       endif 
        fpert_ntrmdt => internal%fpert_ntrmdt      
        ppert_ntrmdt => internal%ppert_ntrmdt      
        pert_rseed_r8 => internal%pert_rseed_r8      
-       lon1 = internal%pgrid_l%i_offg + 1
-       lon2 = internal%pgrid_l%i_offg + n_lon
-       lat1 = internal%pgrid_l%j_offg + 1
-       lat2 = internal%pgrid_l%j_offg + n_lat
+
+       call MAPL_GetResource(MAPL, rst_fname_tmp, 'LANDPERT_INTERNAL_RESTART_FILE:',DEFAULT='NONE', rc=status)
+       VERIFY_(status)
+
+       call get_ensid_string(id_string,internal%ens_id, ens_id_width, internal%NUM_ENSEMBLE)
+ 
+       call ESMF_CFIOStrTemplate(rst_fname, trim(adjustl(rst_fname_tmp)),'GRADS', xid = trim(id_string), stat=status)
+
+       if (index(rst_fname, 'NONE') == 0 ) then
+          f_exist = .false.
+          if ( IAmRoot) then
+            inquire(file=rst_fname, exist=f_exist)
+            if (f_exist) call read_pert_rst(trim(rst_fname), fpert_ntrmdt, ppert_ntrmdt, pert_rseed_r8) 
+          endif
+          call MAPL_CommsBcast(vm, data=f_exist,  N=1, ROOT=0,rc=status) 
+          if (f_exist) then
+             n = n_lat_g*n_lon_g*N_FORCE_PERT_MAX
+
+             block
+               type(c_ptr) :: cptr
+               cptr = c_loc(fpert_ntrmdt(1,1,1))
+               call c_f_pointer(cptr, pert_ptr, [n])
+             end block
+
+             call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
+             VERIFY_(status)
+             pert_ptr=>null()
+
+             n = n_lat_g*n_lon_g*N_PROGN_PERT_MAX
+             block
+               type(c_ptr) :: cptr
+               cptr = c_loc(ppert_ntrmdt(1,1,1))
+               call c_f_pointer(cptr, pert_ptr, [n])
+             end block
+             call MAPL_CommsBcast(vm, data=pert_ptr,  N=n, ROOT=0,rc=status)
+             VERIFY_(status)
+             pert_ptr=>null()
+
+             call MAPL_CommsBcast(vm, data=pert_rseed_r8, N=NRANDSEED, ROOT=0,rc=status)
+             VERIFY_(status)
+          endif
+       endif 
+       lon1 = tcinternal%pgrid_l%i_offg + 1
+       lon2 = tcinternal%pgrid_l%i_offg + n_lon
+       lat1 = tcinternal%pgrid_l%j_offg + 1
+       lat2 = tcinternal%pgrid_l%j_offg + n_lat
     else
        call MAPL_Get(MAPL, INTERNAL_ESMF_STATE=MINTERNAL, rc=status)
        VERIFY_(status)
@@ -1025,10 +1007,10 @@ contains
        VERIFY_(status)
        call ESMF_GRID_INTERIOR  (GRID, I1,IN,J1,JN)
 
-       lon1 = internal%pgrid_l%i_offg + 1 ! global index, starting from 1
+       lon1 = tcinternal%pgrid_l%i_offg + 1 ! global index, starting from 1
        lon1 = lon1 - i1 + 1               ! relative to local
        lon2 = lon1 + n_lon - 1
-       lat1 = internal%pgrid_l%j_offg + 1 ! global index, starting from 1
+       lat1 = tcinternal%pgrid_l%j_offg + 1 ! global index, starting from 1
        lat1 = lat1 - j1 +1                ! relative to local
        lat2 = lat1 + n_lat - 1
     endif
@@ -1058,16 +1040,42 @@ contains
     VERIFY_(status) 
     allocate(internal%j_indgs(land_nt_local),stat=status)
     VERIFY_(status)
-    internal%i_indgs(:)=tile_coord(:)%hash_i_indg
-    internal%j_indgs(:)=tile_coord(:)%hash_j_indg
+    internal%i_indgs(:)=tile_coord(:)%pert_i_indg
+    internal%j_indgs(:)=tile_coord(:)%pert_j_indg
 
     ! Get pert options from *default* namelist files
     ! WARNING: get_force/progn_pert_param() calls allocate memory
 
-    call get_force_pert_param(internal%pgrid_l, internal%ForcePert%npert, internal%ForcePert%param)
+    call get_force_pert_param(tcinternal%pgrid_l, internal%ForcePert%npert, internal%ForcePert%param)
     _ASSERT(internal%ForcePert%npert==size(internal%ForcePert%param), "ForcePert: param size does not match npert")
-    call get_progn_pert_param(internal%pgrid_l, internal%PrognPert%npert, internal%PrognPert%param)
+
+    internal%ForcePert%fft_npert = internal%ForcePert%npert
+    call MAPL_CommsBcast(vm, data=internal%ForcePert%fft_npert, N=1, ROOT=0,rc=status)
+    if (size(internal%ForcePert%param) == 0 .and. internal%ForcePert%fft_npert >0 ) then
+       allocate(internal%ForcePert%param(internal%ForcePert%fft_npert))
+    endif
+    do n = 1, internal%ForcePert%fft_npert
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%xcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%ycorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%tcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%ForcePert%param(n)%coarsen,  N=1, ROOT=0,rc=status)
+    enddo
+
+    call get_progn_pert_param(tcinternal%pgrid_l, internal%PrognPert%npert, internal%PrognPert%param)
     _ASSERT(internal%PrognPert%npert==size(internal%PrognPert%param), "PrognPert: param size does not match npert")
+
+    internal%PrognPert%fft_npert = internal%PrognPert%npert
+    call MAPL_CommsBcast(vm, data=internal%PrognPert%fft_npert, N=1, ROOT=0,rc=status)
+    if (size(internal%PrognPert%param) == 0 .and. internal%PrognPert%fft_npert > 0) then
+       allocate(internal%PrognPert%param(internal%PrognPert%fft_npert))
+    endif
+
+    do n = 1, internal%PrognPert%fft_npert
+       call MAPL_CommsBcast(vm, data=internal%PrognPert%param(n)%xcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%PrognPert%param(n)%ycorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%PrognPert%param(n)%tcorr,    N=1, ROOT=0,rc=status)
+       call MAPL_CommsBcast(vm, data=internal%PrognPert%param(n)%coarsen,  N=1, ROOT=0,rc=status)
+    enddo
 
     N_force_pert = internal%ForcePert%npert
     N_progn_pert = internal%PrognPert%npert
@@ -1126,13 +1134,14 @@ contains
        call init_randseed(pert_rseed)
        ! -ForcePert-
        call propagate_pert(                                                     &
-            internal%ForcePert%npert,                                           &
-            internal%pgrid_l, internal%pgrid_f,                                 &
+            internal%ForcePert%fft_npert,                                       &
+            1,                                                                  &
+            tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
             ! arbitrary dtstep
             -1.0,                                                               &
             pert_rseed,                                                         &
             internal%ForcePert%param,                                           &
-            fpert_ntrmdt(lon1:lon2,lat1:lat2,     &
+            fpert_ntrmdt(lon1:lon2,lat1:lat2,                                   &
                          1:internal%ForcePert%npert),                           &
             ! initialize
             .true.                                                              &
@@ -1140,13 +1149,14 @@ contains
 
        ! -prognostics-
        call propagate_pert(                                                     &
-            internal%PrognPert%npert,                                           &
-            internal%pgrid_l, internal%pgrid_f,                                 &
+            internal%PrognPert%fft_npert,                                       &
+            1,                                                                  &
+            tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
             ! arbitrary dtstep
             -1.0,                                                               &
             pert_rseed,                                                         &
             internal%PrognPert%param,                                           &
-            ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),                       &
+            ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),       &
             ! initialize
             .true.                                                              &
             )
@@ -1157,7 +1167,7 @@ contains
     if(internal%ens_id == FIRST_ENS_ID ) fpert_enavg(:,:,:)=0. 
 
     do m = 1,internal%ForcePert%npert
-       call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
+       call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
        if(internal%ForcePert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
           fpert_enavg(:,:,m)=fpert_enavg(:,:,m)+fpert_ntrmdt(lon1:lon2,lat1:lat2,m)
           if( internal%ens_id-FIRST_ENS_ID == internal%NUM_ENSEMBLE-1) then
@@ -1169,7 +1179,7 @@ contains
     if(internal%ens_id == FIRST_ENS_ID) ppert_enavg(:,:,:)=0. 
 
     do m = 1,internal%PrognPert%npert  
-       call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
+       call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
        if(internal%PrognPert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
           ppert_enavg(:,:,m)=ppert_enavg(:,:,m)+ppert_ntrmdt(lon1:lon2,lat1:lat2,m)
           if( internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE-1) then
@@ -1206,7 +1216,7 @@ contains
     ! -Now-check-pert-dtstep-
     call check_pert_dtstep(                                                     &
          model_dtstep,                                                          &
-         current_time, stop_time,                                                 &
+         current_time, stop_time,                                               &
          internal%PrognPert%npert, internal%ForcePert%npert,                    &
          internal%PrognPert%dtstep, internal%ForcePert%dtstep                   &
          )
@@ -1296,6 +1306,7 @@ contains
     type(LANDPERT_WRAP) :: wrap
  
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     ! MAPL internal pointers
@@ -1307,9 +1318,8 @@ contains
     real, allocatable :: fpert_grid(:,:,:), ppert_grid(:,:,:)
     integer,allocatable :: pert_rseed(:)
 
-    integer :: land_nt_local,n,ipert,i,j,n_lon,n_lat
+    integer :: land_nt_local,ipert,n_lon,n_lat
     logical :: IAmRoot
-    real :: locallat,locallon
 
     ! Begin...
     ! phase2_initialized is a global variables shared by all ensemble member
@@ -1334,13 +1344,14 @@ contains
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
-    n_lon = internal%pgrid_l%n_lon
-    n_lat = internal%pgrid_l%n_lat
 
    ! Get component's internal tile_coord variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
-    tile_coord => tcwrap%ptr%tile_coord
+    tcinternal => tcwrap%ptr
+    tile_coord => tcinternal%tile_coord
+    n_lon = tcinternal%pgrid_l%n_lon
+    n_lat = tcinternal%pgrid_l%n_lat
 
     if (internal%PERTURBATIONS == 0) then ! no perturbations
        call MAPL_TimerOff(MAPL, "phase2_Initialize")
@@ -1402,7 +1413,9 @@ contains
 
     call get_pert(                                                              &
          internal%ForcePert%npert,                                              &
-         internal%pgrid_l, internal%pgrid_f,                                    &
+         internal%ForcePert%fft_npert,                                          &
+         1,                                                                     &
+         tcinternal%pgrid_l, tcinternal%pgrid_f,                                    &
          real(internal%ForcePert%dtstep),                                       &
          internal%ForcePert%param,                                              &
          pert_rseed,                                                            &
@@ -1410,21 +1423,14 @@ contains
          fpert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
-         ! propagate_pert in NOT called
+         ! propagate_pert is NOT called
          diagnose_pert_only=.true.                                              &
          )
 
     do ipert=1,internal%ForcePert%npert
-       !call MAPL_LocStreamTransform(                                            &
-       !     locstream,                                                          &
-       !     input=fpert_grid(:,:,ipert),                                        &
-       !     output=internal%ForcePert%DataPrv(:,ipert),                         &
-       !     rc=status                                                           &
-       !     )
-       !VERIFY_(status)
-       call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+       call grid2tile( tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 fpert_grid(:,:,ipert), internal%ForcePert%DataPrv(:,ipert))
-       call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
+       call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
     end do
     internal%ForcePert%DataNxt = internal%ForcePert%DataPrv
 
@@ -1439,7 +1445,9 @@ contains
     
     call get_pert(                                                              &
          internal%PrognPert%npert,                                              &
-         internal%pgrid_l, internal%pgrid_f,                                    &
+         internal%PrognPert%fft_npert,                                          &
+         1,                                                                     &
+         tcinternal%pgrid_l, tcinternal%pgrid_f,                                    &
          real(internal%PrognPert%dtstep),                                       &
          internal%PrognPert%param,                                              &
          pert_rseed,                                                            &
@@ -1447,21 +1455,14 @@ contains
          ppert_grid,                                                            &
          initialize_rseed=.false.,                                              &
          initialize_ntrmdt=.false.,                                             &
-        ! propagate_pert in NOT called
+        ! propagate_pert is NOT called
          diagnose_pert_only=.true.                                              &
          )
 
     do ipert=1,internal%PrognPert%npert
-       !call MAPL_LocStreamTransform(                                            &
-       !     locstream,                                                          &
-       !     input=ppert_grid(:,:,ipert),                                        &
-       !     output=internal%PrognPert%DataPrv(:,ipert),                         &
-       !     rc=status                                                           &
-       !     )
-       !VERIFY_(status)
-       call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
+       call grid2tile( tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataPrv(:,ipert))
-       call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
+       call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
     end do
     internal%PrognPert%DataNxt = internal%PrognPert%DataPrv
 
@@ -1523,6 +1524,7 @@ contains
     type(T_LANDPERT_STATE), pointer :: internal=>null()
     type(LANDPERT_WRAP) :: wrap
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(MAPL_LocStream) :: locstream
  
     ! MAPL internal pointers
@@ -1557,13 +1559,17 @@ contains
     VERIFY_(status)
     internal => wrap%ptr
 
-    n_lon=internal%pgrid_l%n_lon
-    n_lat=internal%pgrid_l%n_lat
-
     if (internal%PERTURBATIONS == 0) then ! no perturbations
        call MAPL_TimerOff(MAPL, "GenerateRaw")
        RETURN_(ESMF_SUCCESS)
     end if
+
+    call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
+    VERIFY_(status)
+    tcinternal => tcwrap%ptr
+
+    n_lon=tcinternal%pgrid_l%n_lon
+    n_lat=tcinternal%pgrid_l%n_lat
 
     ! Get locstream
     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
@@ -1612,22 +1618,20 @@ contains
        VERIFY_(STATUS)
        call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
        VERIFY_(STATUS)
-       call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
-       VERIFY_(status)
 
        nfpert = internal%ForcePert%npert
        nppert = internal%PrognPert%npert
-       tile_coord_f => tcwrap%ptr%tile_coord_f
+       tile_coord_f => tcinternal%tile_coord_f
        n_tile =  size(tile_coord_f,1)
        ! 1) grid2tile
        allocate(tile_data_f(land_nt_local,nfpert))
        allocate(tile_data_p(land_nt_local,nppert))
        do m = 1, nfpert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 fpert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_f(:,m)) 
        enddo
        do m = 1, nppert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 ppert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_p(:,m)) 
        enddo
        ! 2) gather tiledata
@@ -1654,21 +1658,17 @@ contains
        if (IamRoot) then
        ! 3) tile2grid. simple reverser of grid2tile without weighted averaging/no-data-handling
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, tcinternal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, tcinternal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
        
        ! 4) writing
           call MAPL_DateStampGet(clock, datestamp, rc=status)
           VERIFY_(STATUS)
 
-          id_string=''
-          if (internal%NUM_ENSEMBLE > 1) then
-            m = len(trim(COMP_NAME))
-            id_string = COMP_NAME(m-ens_id_width+1:m)
-          endif
+          call get_ensid_string(id_string,internal%ens_id, ens_id_width, internal%NUM_ENSEMBLE)
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint.'//datestamp//'.nc4'
 
@@ -1681,8 +1681,9 @@ contains
 
     ! -ForcePert-
        call propagate_pert(                                                   &
-          internal%ForcePert%npert,                                           &
-          internal%pgrid_l, internal%pgrid_f,                                 &
+          internal%ForcePert%fft_npert,                                       &
+          1,                                                                  &
+          tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
           real(internal%ForcePert%dtstep),                                    &
           pert_rseed,                                                         &
           internal%ForcePert%param,                                           &
@@ -1693,7 +1694,7 @@ contains
        if(internal%ens_id == FIRST_ENS_ID ) fpert_enavg(:,:,:)=0.    
 
        do m = 1,internal%ForcePert%npert
-          call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
+          call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,m))
           if(internal%ForcePert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
              fpert_enavg(:,:,m)=fpert_enavg(:,:,m)+fpert_ntrmdt(lon1:lon2,lat1:lat2,m)
              if( internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE-1) then              
@@ -1708,19 +1709,20 @@ contains
 
     ! -prognostics-
         call propagate_pert(                                                  &
-           internal%PrognPert%npert,                                          &
-           internal%pgrid_l, internal%pgrid_f,                                &
+           internal%PrognPert%fft_npert,                                      &
+           1,                                                                 &
+           tcinternal%pgrid_l, tcinternal%pgrid_f,                                &
            real(internal%PrognPert%dtstep),                                   &
            pert_rseed,                                                        &
            internal%PrognPert%param,                                          &
-           ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),                      &
+           ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),      &
            .false.                                                            &
           )
 
        if(internal%ens_id == FIRST_ENS_ID) ppert_enavg(:,:,:)=0.       
 
        do m = 1,internal%PrognPert%npert
-          call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
+          call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,m))
           if(internal%PrognPert%param(m)%zeromean .and. internal%NUM_ENSEMBLE >2) then
               ppert_enavg(:,:,m)=ppert_enavg(:,:,m)+ppert_ntrmdt(lon1:lon2,lat1:lat2,m)
               if( internal%ens_id - FIRST_ENS_ID == internal%NUM_ENSEMBLE -1) then                      
@@ -1797,7 +1799,6 @@ contains
     real, pointer :: Snowf(:)=>null()
     real, pointer :: LWdown(:)=>null()
     real, pointer :: SWdown(:)=>null()
-    real, pointer :: SWnet(:)=>null()
     real, pointer :: PARdrct(:)=>null()
     real, pointer :: PARdffs(:)=>null()
     real, pointer :: Wind(:)=>null()
@@ -1829,15 +1830,15 @@ contains
     real, allocatable :: FORCEPERT(:,:)
     real, allocatable :: fpert_grid(:,:,:)
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     integer :: n_lon,n_lat
-    integer :: ipert, itile
+    integer :: ipert
     integer, allocatable :: pert_rseed(:)
     logical :: IAmRoot
     integer :: land_nt_local
     type(pert_param_type), pointer :: PertParam=>null() ! pert param
-    real :: tmpRealArrDim1(1)
     real, allocatable :: tmpreal(:)
 
     ! Begin...
@@ -1864,13 +1865,14 @@ contains
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
-    n_lon = internal%pgrid_l%n_lon
-    n_lat = internal%pgrid_l%n_lat
 
    ! Get component's internal tile_coord variable
     call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
     VERIFY_(status)
-    tile_coord => tcwrap%ptr%tile_coord
+    tcinternal => tcwrap%ptr
+    n_lon = tcinternal%pgrid_l%n_lon
+    n_lat = tcinternal%pgrid_l%n_lat
+    tile_coord => tcinternal%tile_coord
 
     ! Get locstream
     call MAPL_Get(MAPL, LocStream=locstream,rc=status)
@@ -1944,20 +1946,21 @@ contains
           ! adjust mean
           fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert) =                           &
                 fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert)+fpert_enavg(:,:,:)
+
           call get_pert(                                                           &
                internal%ForcePert%npert,                                           &
-               internal%pgrid_l, internal%pgrid_f,                                 &
+               internal%ForcePert%fft_npert,                                       &
+               1,                                                                  &
+               tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
                real(internal%ForcePert%dtstep),                                    &
                internal%ForcePert%param,                                           &
                pert_rseed,                                                         &
-               fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),                       &
+               fpert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%ForcePert%npert),       &
                fpert_grid,                                                         &
                initialize_rseed=.false.,                                           &
                initialize_ntrmdt=.false.,                                          &
-               ! propagate_pert is called
-               !diagnose_pert_only=.false.                                          &
                ! Weiyuan notes: propagate_pert is called in GenerateRaw, not here
-               diagnose_pert_only=.true.                                          &
+               diagnose_pert_only=.true.                                           &
                )
 
           call MAPL_TimerOff(MAPL, '-GetPert')
@@ -1965,16 +1968,9 @@ contains
           ! -convert-nxt-gridded-perturbations-to-tile-
           call MAPL_TimerOn(MAPL, '-LocStreamTransform')
           do ipert=1,internal%ForcePert%npert
-             !call MAPL_LocStreamTransform(                                         &
-             !     locstream,                                                       &
-             !     input=fpert_grid(:,:,ipert),                                     &
-             !     output=internal%ForcePert%DataNxt(:,ipert),                      &
-             !     rc=status                                                        &
-             !     )
-             !VERIFY_(status)
-             call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_grid(:,:,ipert), &
+             call grid2tile( tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_grid(:,:,ipert), &
                   internal%ForcePert%DataNxt(:,ipert))
-             call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
+             call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), fpert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
           end do
        
           call MAPL_TimerOff(MAPL, '-LocStreamTransform')
@@ -2020,8 +2016,6 @@ contains
     VERIFY_(status)
     call MAPL_GetPointer(import, SWdown, 'SWdown', rc=status)
     VERIFY_(status)
-    call MAPL_GetPointer(import, SWnet, 'SWnet', rc=status)
-    VERIFY_(status)
     call MAPL_GetPointer(import, PARdrct, 'PARdrct', rc=status)
     VERIFY_(status)
     call MAPL_GetPointer(import, PARdffs, 'PARdffs', rc=status)
@@ -2045,7 +2039,6 @@ contains
     mfPert%Snowf = Snowf
     mfPert%LWdown = LWdown
     mfPert%SWdown = SWdown
-    mfPert%SWnet = SWnet
     mfPert%PARdrct = PARdrct
     mfPert%PARdffs = PARdffs
     mfPert%Wind = Wind
@@ -2067,27 +2060,13 @@ contains
           case('sw')
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%SWdown)
              call repair_forcing(land_nt_local, mfPert, fieldname='SWdown')
-             ! Special handling for SWnet
-             do itile=1,land_nt_local
-                if (abs(mfPert(itile)%SWnet-nodata_generic)>nodata_tol_generic) then
-                   tmpRealArrDim1(1) = mfPert(itile)%SWnet
-                   call apply_pert(PertParam, [FORCEPERT(itile,ipert)], tmpRealArrDim1)
-                   mfPert(itile)%SWnet = tmpRealArrDim1(1)
-                end if
-                ! reichle, 20 Dec 2011 - add perts to "PARdrct" and "PARdffs"
-                if (abs(mfPert(itile)%PARdrct-nodata_generic)>nodata_tol_generic) then
-                   ! assume PARdffs is available whenever PARdrct is
-                   tmpRealArrDim1(1) = mfPert(itile)%PARdrct
-                   call apply_pert(PertParam, [FORCEPERT(itile,ipert)], tmpRealArrDim1)
-                   mfPert(itile)%PARdrct = tmpRealArrDim1(1)
-                   tmpRealArrDim1(1) = mfPert(itile)%PARdffs
-                   call apply_pert(PertParam, [FORCEPERT(itile,ipert)], tmpRealArrDim1)
-                   mfPert(itile)%PARdffs = tmpRealArrDim1(1)         ! bug fix, rreichle+qliu, May 2019
-                end if
-             end do
-             call repair_forcing(land_nt_local, mfPert, fieldname='SWnet')
-             call repair_forcing(land_nt_local, mfPert, fieldname='PARdffs')
-             call repair_forcing(land_nt_local, mfPert, fieldname='PARdrct')
+             ! reichle, 20 Dec 2011 - add perts to "PARdrct" and "PARdffs"
+             ! wjiang+reichle, 22 Apr 2021 - "PARdrct" and "PARdffs" now 
+             !   backfilled in get_forcing(), arrive here with only "good" values
+             call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdrct)
+             call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%PARdffs)
+             ! must repair "PARdrct" and "PARdffs" together
+             call repair_forcing(land_nt_local, mfPert, fieldname='PAR')
           case('lw')
              call apply_pert(PertParam, FORCEPERT(:,ipert), mfPert%LWdown)
              call repair_forcing(land_nt_local, mfPert, fieldname='LWdown')
@@ -2160,16 +2139,10 @@ contains
     PSpert = Psurf
     DZpert = RefH
     ! -par-
-    where (abs(mfPert%PARdrct-nodata_generic)<nodata_tol_generic)
-       ! If PAR components are not available:
-       !   assume half of SWdown is photosynthetically active
-       !   assume half of PAR is direct, half diffuse
-       DRPARpert = 0.5*0.5*mfPert%SWdown
-       DFPARpert = DRPARpert
-    elsewhere
-       DRPARpert = mfPert%PARdrct
-       DFPARpert = mfPert%PARdffs
-    end where
+    ! wjiang+reichle, 22 Apr 2021 - "PARdrct" and "PARdffs" now 
+    !   backfilled in get_forcing(), arrive here with only "good" values
+    DRPARpert = mfPert%PARdrct
+    DFPARpert = mfPert%PARdffs
     ! -nir-and-uvr-
     ! S-V=I+U where S=SWdown, V=DRPAR+DFPAR, I=DRNIR+DFNIR, U=DRUVR+DFUVR
     ! => U=0.5*S-V, I=0.5*S
@@ -2294,17 +2267,17 @@ contains
     real, allocatable :: PROGNPERT(:,:)
     real, allocatable :: ppert_grid(:,:,:)
     type(TILECOORD_WRAP) :: tcwrap
+    type(T_TILECOORD_STATE), pointer :: tcinternal
     type(tile_coord_type), pointer :: tile_coord(:)=>null()
 
     integer :: n_lon,n_lat
-    integer :: ipert,ntiles
+    integer :: ipert
     integer, allocatable :: pert_rseed(:)
     logical :: IAmRoot
     integer :: land_nt_local
     type(pert_param_type), pointer :: PertParam=>null() ! pert param
     integer :: model_dtstep
     real :: dtmh
-    integer :: m
     ! Begin...
 
     ! Get my name and setup traceback handle
@@ -2316,9 +2289,6 @@ contains
     call MAPL_GetObjectFromGC(gc, MAPL, rc=status)
     VERIFY_(status)
 
-    ! Turn timers on
-    call MAPL_TimerOn(MAPL, "TOTAL")
-    call MAPL_TimerOn(MAPL, "Run_ApplyPrognPert")
 
     ! MPI
     call ESMF_VmGetCurrent(vm, rc=status)
@@ -2329,18 +2299,23 @@ contains
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
-    n_lon = internal%pgrid_l%n_lon
-    n_lat = internal%pgrid_l%n_lat
-
-   ! Get component's internal tile_coord variable
-    call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
-    VERIFY_(status)
-    tile_coord => tcwrap%ptr%tile_coord
- 
     ! if no perturbation, do nothing
     if(internal%PERTURBATIONS == 0) then
        RETURN_(ESMF_SUCCESS)
     endif
+    ! Turn timers on
+    call MAPL_TimerOn(MAPL, "TOTAL")
+    call MAPL_TimerOn(MAPL, "Run_ApplyPrognPert")
+
+
+   ! Get component's internal tile_coord variable
+    call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
+    VERIFY_(status)
+    tcinternal => tcwrap%ptr
+    n_lon = tcinternal%pgrid_l%n_lon
+    n_lat = tcinternal%pgrid_l%n_lat
+    tile_coord => tcinternal%tile_coord
+ 
     ! Pointers to imports
     call MAPL_GetPointer(import, tcPert, 'TCPert', rc=status)
     VERIFY_(status)
@@ -2454,34 +2429,27 @@ contains
 
        call get_pert(                                                           &
             internal%PrognPert%npert,                                           &
-            internal%pgrid_l, internal%pgrid_f,                                 &
+            internal%PrognPert%fft_npert,                                       &
+            1,                                                                  &
+            tcinternal%pgrid_l, tcinternal%pgrid_f,                                 &
             real(internal%PrognPert%dtstep),                                    &
             internal%PrognPert%param,                                           &
             pert_rseed,                                                         &
-            ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),                       &
+            ppert_ntrmdt(lon1:lon2,lat1:lat2,1:internal%PrognPert%npert),       &
             ppert_grid,                                                         &
             initialize_rseed=.false.,                                           &
             initialize_ntrmdt=.false.,                                          &
-            ! propagate_pert is called
-            ! diagnose_pert_only=.false.                                          &
-            !Weiyuan notes:  propagate_pert is called in GenerateRaw
-            diagnose_pert_only=.true.                                          &
+            ! Weiyuan notes: propagate_pert is called in GenerateRaw, not here
+            diagnose_pert_only=.true.                                           &
             )
-       call MAPL_TimerOn(MAPL, '-GetPert')
+       call MAPL_TimerOff(MAPL, '-GetPert')
 
        ! -convert-nxt-gridded-perturbations-to-tile-
        call MAPL_TimerOn(MAPL, '-LocStreamTransform')
        do ipert=1,internal%PrognPert%npert
-          !call MAPL_LocStreamTransform(                                         &
-          !     locstream,                                                       &
-          !     input=ppert_grid(:,:,ipert),                                     &
-          !     output=internal%PrognPert%DataNxt(:,ipert),                      &
-          !     rc=status                                                        &
-          !     )
-          !VERIFY_(status)
-          call grid2tile( internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
+          call grid2tile( tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_grid(:,:,ipert), &
                 internal%PrognPert%DataNxt(:,ipert))
-          call tile_mask_grid(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
+          call tile_mask_grid(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), ppert_ntrmdt(lon1:lon2,lat1:lat2,ipert))
        end do
        call MAPL_TimerOff(MAPL, '-LocStreamTransform')
 
@@ -2693,7 +2661,8 @@ contains
     type(LANDPERT_WRAP) :: wrap
     type(MAPL_LocStream) :: locstream
     type(TILECOORD_WRAP) :: tcwrap
-    integer :: m,n_lon,n_lat, land_nt_local, ens_id_width
+    type(T_TILECOORD_STATE), pointer :: tcinternal
+    integer :: m, land_nt_local, ens_id_width
 
     integer :: nfpert, nppert, n_tile
     type(tile_coord_type), pointer :: tile_coord_f(:)=>null()
@@ -2718,6 +2687,9 @@ contains
     call ESMF_UserCompGetInternalState(gc, 'Landpert_state', wrap, status)
     VERIFY_(status)
     internal => wrap%ptr
+    call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
+    VERIFY_(status)
+    tcinternal => tcwrap%ptr
 
     if ( internal%isCubedSphere .and. internal%PERTURBATIONS /= 0) then
        call MAPL_Get(MAPL, LocStream=locstream,rc=status)
@@ -2728,22 +2700,19 @@ contains
        VERIFY_(STATUS)
        call MAPL_TileMaskGet(tilegrid,  mask, rc=status)
        VERIFY_(STATUS)
-       call ESMF_UserCompGetInternalState(gc, 'TILE_COORD', tcwrap, status)
-       VERIFY_(status)
-
        nfpert = internal%ForcePert%npert
        nppert = internal%PrognPert%npert
-       tile_coord_f => tcwrap%ptr%tile_coord_f
+       tile_coord_f => tcinternal%tile_coord_f
        n_tile =  size(tile_coord_f,1)
        ! 1) grid2tile
        allocate(tile_data_f(land_nt_local,nfpert))
        allocate(tile_data_p(land_nt_local,nppert))
        do m = 1, nfpert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 internal%fpert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_f(:,m)) 
        enddo
        do m = 1, nppert
-         call grid2tile(internal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
+         call grid2tile(tcinternal%pgrid_l, land_nt_local, internal%i_indgs(:),internal%j_indgs(:), &
                 internal%ppert_ntrmdt(lon1:lon2,lat1:lat2,m), tile_data_p(:,m)) 
        enddo
        ! 2) gather tiledata
@@ -2772,18 +2741,15 @@ contains
        ! 3) tile2grid 
             ! this step is simply a reverse of grid2tile without any weighted   
           do m = 1, nfpert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, internal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, tcinternal%pgrid_g, tile_data_f_all(:,m), internal%fpert_ntrmdt(:,:,m))
           enddo
           do m = 1, nppert
-             call tile2grid_simple( N_tile, tile_coord_f%hash_i_indg, tile_coord_f%hash_j_indg, internal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
+             call tile2grid_simple( N_tile, tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg, tcinternal%pgrid_g, tile_data_p_all(:,m), internal%ppert_ntrmdt(:,:,m))
           enddo
 
         ! 4) writing
-          id_string=''
-          if (internal%NUM_ENSEMBLE > 1) then
-            m = len(trim(COMP_NAME))
-            id_string = COMP_NAME(m-ens_id_width+1:m)
-          endif
+
+          call get_ensid_string(id_string,internal%ens_id, ens_id_width, internal%NUM_ENSEMBLE)
 
           chk_fname = 'landpert'//trim(id_string)//'_internal_checkpoint'
           call write_pert_checkpoint(trim(chk_fname),internal%fpert_ntrmdt, internal%ppert_ntrmdt, internal%pert_rseed_r8)
@@ -2841,6 +2807,7 @@ contains
        VERIFY_(status)
     end if
 
+    call clear_rf()
     ! Call Finalize for every child
     call MAPL_GenericFinalize(gc, import, export, clock, rc=status)
     VERIFY_(status)
@@ -2961,85 +2928,4 @@ contains
        end subroutine check  
   end subroutine
 
-!  subroutine check_cat_progns(N_cat, cat_param, tc1, tc2, tc4,               &
-!!          qa1,qa2,qa4, capac                       &
-!          catdef,                                  &
-!          rzexc, srfexc,                                  &
-!         ghtcnt1,ghtcnt2,ghtcnt3,ghtcnt4,ghtcnt5,ghtcnt6, &
-!         wesnn1,wesnn2,wesnn3, &
-!         htsnnn1,htsnnn2,htsnnn3, &
-!         sndzn1, sndzn2,sndzn3)
-!       implicit none
-!       integer, intent(in) :: N_cat
-!       type(cat_param_type), dimension(N_cat), intent(in)    :: cat_param
-!       real,    dimension(       N_cat), intent(inout) :: TC1, TC2, TC4
-!       !real,    dimension(       N_cat), intent(inout) :: TC1, TC2, TC4, Qa1, Qa2, Qa4
-!       real,    dimension(       N_cat), intent(inout) :: CATDEF, RZEXC, SRFEXC
-!       real,    dimension(N_cat), intent(inout) :: GHTCNT1,GHTCNT2,GHTCNT3,GHTCNT4,GHTCNT5,GHTCNT6
-!       real,    dimension(N_cat), intent(inout) :: WESNN1, HTSNNN1, SNDZN1
-!       real,    dimension(N_cat), intent(inout) :: WESNN2, HTSNNN2, SNDZN2
-!       real,    dimension(N_cat), intent(inout) :: WESNN3, HTSNNN3, SNDZN3
-!
-!       real,    dimension(6,N_cat) :: GHTCNT
-!       real,    dimension(3,N_cat) :: WESNN, HTSNNN, SNDZN
-!       real,    dimension( N_cat)  :: Qa1, Qa2, Qa4, capac
-!
-!       GHTCNT(1,:)=GHTCNT1(:)
-!       GHTCNT(2,:)=GHTCNT2(:)
-!       GHTCNT(3,:)=GHTCNT3(:)
-!       GHTCNT(4,:)=GHTCNT4(:)
-!       GHTCNT(5,:)=GHTCNT5(:)
-!       GHTCNT(6,:)=GHTCNT6(:)
-!
-!       WESNN(1,:) = WESNN1(:)
-!       WESNN(2,:) = WESNN2(:)
-!       WESNN(3,:) = WESNN3(:)
-!
-!       sndzn(1,:) = sndzn1(:)
-!       sndzn(2,:) = sndzn2(:)
-!       sndzn(3,:) = sndzn3(:)
-!
-!       htsnnn(1,:) = htsnnn1(:)
-!       htsnnn(2,:) = htsnnn2(:)
-!       htsnnn(3,:) = htsnnn3(:)
-!
-!      ! just for the interface. QA event didn't change
-!      Qa1 = 0.0
-!      Qa2 = 0.0
-!      Qa4 = 0.0
-!      capac = 0.0
-!
-!       call check_catch_progn( N_cat, cat_param%vegcls, cat_param%dzsf,         &
-!         cat_param%vgwmax,  cat_param%cdcr1, cat_param%cdcr2,                &
-!         cat_param%psis, cat_param%bee, cat_param%poros, cat_param%wpwet,    &
-!         cat_param%ars1, cat_param%ars2, cat_param%ars3,                     &
-!         cat_param%ara1, cat_param%ara2, cat_param%ara3, cat_param%ara4,     &
-!         cat_param%arw1, cat_param%arw2, cat_param%arw3, cat_param%arw4,     &
-!         tc1, tc2, tc4,                        &
-!         qa1, qa2, qa4,                        &
-!         capac,catdef,                         &
-!         rzexc, srfexc,                        &
-!         ghtcnt, wesnn, htsnnn, sndzn )
-!
-!       GHTCNT1(:) = GHTCNT(1,:)
-!       GHTCNT2(:) = GHTCNT(2,:)
-!       GHTCNT3(:) = GHTCNT(3,:)
-!       GHTCNT4(:) = GHTCNT(4,:)
-!       GHTCNT5(:) = GHTCNT(5,:)
-!       GHTCNT6(:) = GHTCNT(6,:)
-!       
-!       WESNN1(:) = WESNN(1,:)
-!       WESNN2(:) = WESNN(2,:)
-!       WESNN3(:) = WESNN(3,:)
-!       
-!       sndzn1(:) = sndzn(1,:)
-!       sndzn2(:) = sndzn(2,:)
-!       sndzn3(:) = sndzn(3,:)
-!
-!       htsnnn1(:) = htsnnn(1,:)
-!       htsnnn2(:) = htsnnn(2,:)
-!       htsnnn3(:) = htsnnn(3,:)
-!
-! end subroutine check_cat_progns
-    
 end module GEOS_LandPertGridCompMod

@@ -12,7 +12,7 @@ module clsm_ensdrv_drv_routines
   ! reichle,  5 Apr 2013 - revised treatment of output collections
 
   use MAPL_ConstantsMod,                ONLY:     &
-       Tzero => MAPL_TICE
+       Tzero  => MAPL_TICE
   
   use catch_constants,                  ONLY:     &
        N_snow => CATCH_N_SNOW,                    &
@@ -68,12 +68,14 @@ contains
   
   ! ********************************************************************
     
-  subroutine check_cat_progn( N_cat, cat_param, cat_progn )
+  subroutine check_cat_progn( check_snow, N_cat, cat_param, cat_progn )
     
     ! wrapper for subroutine check_catch_progn() which has been 
     ! moved to "catch_iau.F90" in GEOScatch_GridComp - reichle, 3 Apr 2012
     
     implicit none
+    
+    logical, intent(in) :: check_snow
     
     integer, intent(in) :: N_cat
     
@@ -113,17 +115,19 @@ contains
 
     ! check for consistency and unphysical values
     
-    call check_catch_progn( N_cat, cat_param%vegcls, cat_param%dzsf,         &
-         cat_param%vgwmax,  cat_param%cdcr1, cat_param%cdcr2,                &
-         cat_param%psis, cat_param%bee, cat_param%poros, cat_param%wpwet,    &
-         cat_param%ars1, cat_param%ars2, cat_param%ars3,                     &
-         cat_param%ara1, cat_param%ara2, cat_param%ara3, cat_param%ara4,     &
-         cat_param%arw1, cat_param%arw2, cat_param%arw3, cat_param%arw4,     &
-         cat_progn%tc1, cat_progn%tc2, cat_progn%tc4,                        &
-         cat_progn%qa1, cat_progn%qa2, cat_progn%qa4,                        &
-         cat_progn%capac, cat_progn%catdef,                                  &
-         cat_progn%rzexc, cat_progn%srfexc,                                  &
-         ghtcnt, wesn, htsn, sndz            )
+    call check_catch_progn( N_cat,            cat_param%dzsf,                     &
+         cat_param%vgwmax,  cat_param%cdcr1,  cat_param%cdcr2,                    &
+         cat_param%psis,    cat_param%bee,    cat_param%poros, cat_param%wpwet,   &
+         cat_param%ars1,    cat_param%ars2,   cat_param%ars3,                     &
+         cat_param%ara1,    cat_param%ara2,   cat_param%ara3,  cat_param%ara4,    &
+         cat_param%arw1,    cat_param%arw2,   cat_param%arw3,  cat_param%arw4,    &
+         cat_param%bf1,     cat_param%bf2,                                        &
+         cat_progn%tc1,     cat_progn%tc2,    cat_progn%tc4,                      &
+         cat_progn%qa1,     cat_progn%qa2,    cat_progn%qa4,                      &
+         cat_progn%capac,   cat_progn%catdef,                                     &
+         cat_progn%rzexc,   cat_progn%srfexc,                                     &
+         ghtcnt, wesn, htsn, sndz,                                                &
+         check_snow=check_snow)
     
     ! copy 2-d arrays back into cat_progn fields
     
@@ -189,14 +193,14 @@ contains
     ! updated to new interface - reichle, 3 Apr 2012
     
     call catch_calc_soil_moist(                                     &
-         N_catd,                                                    &
-         cat_param%vegcls, cat_param%dzsf,  cat_param%vgwmax,       &
+         N_catd,           cat_param%dzsf,  cat_param%vgwmax,       &
          cat_param%cdcr1,  cat_param%cdcr2, cat_param%psis,         &
          cat_param%bee,    cat_param%poros, cat_param%wpwet,        &
          cat_param%ars1,   cat_param%ars2,  cat_param%ars3,         &
          cat_param%ara1,   cat_param%ara2,  cat_param%ara3,         &
          cat_param%ara4,   cat_param%arw1,  cat_param%arw2,         &
          cat_param%arw3,   cat_param%arw4,                          &
+         cat_param%bf1,    cat_param%bf2,                           &
          cat_progn%srfexc, cat_progn%rzexc, cat_progn%catdef,       &
          cat_diagS%ar1,    cat_diagS%ar2,   ar4,                    &
          cat_diagS%sfmc,   cat_diagS%rzmc,  cat_diagS%prmc)            

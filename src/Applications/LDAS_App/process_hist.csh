@@ -36,16 +36,30 @@ endif
 if($LSM_CHOICE == 1) then
    set GridComp = CATCH
    sed -i '/^>>>HIST_CATCHCN<<</d' $HISTRC
+   sed -i '/^>>>HIST_CATCHCNCLM45<<</d' $HISTRC
 endif
 
 if($LSM_CHOICE == 2) then
    set GridComp = CATCHCN
+   sed -i '/^>>>HIST_CATCHCNCLM45<<</d' $HISTRC
    sed -i 's/>>>HIST_CATCHCN<<</''/g' $HISTRC
+endif
+
+if($LSM_CHOICE == 3) then
+   set GridComp = CATCHCN
+   sed -i 's/>>>HIST_CATCHCN<<</''/g' $HISTRC
+   sed -i 's/>>>HIST_CATCHCNCLM45<<</''/g' $HISTRC
 endif
 
 if($NENS > 1) then
    set GridComp = ENSAVG
-   sed -i 's|VEGDYN|'VEGDYN0000'|g' $HISTRC
+   sed -i 's|VEGDYN|'VEGDYN_e0000'|g' $HISTRC
+   sed -i 's|TP1|'TSOIL1TILE'|g' $HISTRC
+   sed -i 's|TP2|'TSOIL2TILE'|g' $HISTRC
+   sed -i 's|TP3|'TSOIL3TILE'|g' $HISTRC
+   sed -i 's|TP4|'TSOIL4TILE'|g' $HISTRC
+   sed -i 's|TP5|'TSOIL5TILE'|g' $HISTRC
+   sed -i 's|TP6|'TSOIL6TILE'|g' $HISTRC
 #   sed -i 's|DATAATM|'DATAATM0000'|g' $HISTRC
 endif
 
