@@ -53,7 +53,7 @@ module enkf_types
   ! added OminusA information for adaptive filtering - reichle, 1 Feb 2007
   ! added "varname" field to "obs_param_type" - reichle 14 Jun 2011
   ! major revisions to "obs_type" fields - reichle 16 Jun 2011
-  ! added "units" field to "obs_param_tpye" - reichle 22 Nov 2011
+  ! added "units" field to "obs_param_type" - reichle 22 Nov 2011
 
   type :: obs_type
 
@@ -96,6 +96,11 @@ module enkf_types
      integer                       :: species   ! identifier for type of measurement
 
      integer                       :: orbit     ! type of (half-)orbit
+                                                !                     0 = n/a  [eg., in situ obs]
+                                                !                     1 = ascending
+                                                !                     2 = descending
+                                                !                     3 = ascending or descending
+                                                !                     4 = geostationary
 
      integer                       :: pol       ! polarization
                                                 ! 0 = n/a  [eg., multi-pol. retrieval]

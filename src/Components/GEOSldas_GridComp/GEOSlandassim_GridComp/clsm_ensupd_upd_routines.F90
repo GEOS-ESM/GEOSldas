@@ -1124,12 +1124,12 @@ contains
        
        select case (trim(obs_param(i)%varname))
           
-       case ('sfmc')
+       case ('sfmc', 'sfds')
           
           get_sfmc_l   = .true.
           get_sfmc_lH  = .true.
           get_tsurf_l  = .true.    ! needed for model-based QC
-          
+
        case ('rzmc')
           
           get_rzmc_l   = .true.
@@ -1641,7 +1641,7 @@ contains
              
              select case (trim(obs_param(this_species)%varname))
                 
-             case ('sfmc')
+             case ('sfmc', 'sfds')
                 
                 tmp_data(1:N_tmp)    = sfmc_lH(  ind_tmp(1:N_tmp), n_e )
                 
@@ -3595,15 +3595,16 @@ contains
 
     select_update_type: select case (update_type)
        
-    case (1) select_update_type   ! 1d soil moisture analysis; sfmc obs
+    case (1) select_update_type   ! 1d soil moisture analysis; sfmc and/or sfds obs
 
        ! this 1d update requires that obs are on same tile space as model
        
        if (logit) write (logunit,*) 'get 1d soil moisture increments; sfmc obs'
 
-       N_select_varnames  = 1
+       N_select_varnames  = 2
        
        select_varnames(1) = 'sfmc'
+       select_varnames(2) = 'sfds'
        
        call get_select_species(                                           &
             N_select_varnames, select_varnames(1:N_select_varnames),      &
@@ -3662,16 +3663,17 @@ contains
           
        end do
        
-    case (2) select_update_type   ! 3d soil moisture analysis; sfmc obs
+    case (2) select_update_type   ! 3d soil moisture analysis; sfmc and/or sfds obs
        
        ! update each tile separately using all observations within 
        ! the customized halo around each tile
        
        if (logit) write (logunit,*) 'get 3d soil moisture increments; sfmc obs'
 
-       N_select_varnames  = 1
+       N_select_varnames  = 2
        
        select_varnames(1) = 'sfmc'
+       select_varnames(2) = 'sfds'
 
        call get_select_species(                                           &
             N_select_varnames, select_varnames(1:N_select_varnames),      &

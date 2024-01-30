@@ -358,11 +358,11 @@ while 1
 
         tmp = reshape(squeeze(hist_data(tile, s, :)),1,[]);
         
-        data_out(s,tile,1) = nanmean(tmp);     % mean
-        data_out(s,tile,2) = nanstd(tmp);      % stdv
-        data_out(s,tile,3) = min(tmp);         % min
-        data_out(s,tile,4) = max(tmp);         % max
-        data_out(s,tile,5) = sum(~isnan(tmp)); % N_data
+        data_out(s,tile,1) = mean(      tmp,"omitnan");   % mean
+        data_out(s,tile,2) = std(       tmp,"omitnan");   % stdv
+        data_out(s,tile,3) = min(       tmp          );   % min
+        data_out(s,tile,4) = max(       tmp          );   % max
+        data_out(s,tile,5) = sum(~isnan(tmp)         );   % N_data
         
         % determine the CDF-parameters, or the edges for each
         % percentile
