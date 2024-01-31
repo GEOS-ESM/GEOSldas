@@ -69,11 +69,8 @@ setenv MKL_CBWR "AVX2"
 # reversed sequence for LADAS_COUPLING (Sep 2020)  (needed when coupling with ADAS using different BASEDIR)
 setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${ESMADIR}/lib:${LD_LIBRARY_PATH} 
 
-if ( -e /etc/os-release ) then
-  module load nco
-else
-  module load other/nco-4.6.8-gcc-5.3-sp3
-endif
+module load nco
+
 setenv RUN_CMD "$GEOSBIN/esma_mpirun -np "
 
 #######################################################################
