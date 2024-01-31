@@ -70,7 +70,7 @@ setenv MKL_CBWR "AVX2"
 setenv LD_LIBRARY_PATH ${BASEDIR}/${ARCH}/lib:${ESMADIR}/lib:${LD_LIBRARY_PATH} 
 
 if ( -e /etc/os-release ) then
-  module load nco/4.8.1
+  module load nco
 else
   module load other/nco-4.6.8-gcc-5.3-sp3
 endif
