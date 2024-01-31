@@ -1549,7 +1549,467 @@ contains
     if (associated(tmp_lat))      deallocate(tmp_lat)
 
   end subroutine read_obs_sm_ASCAT
+  
+  ! ****************************************************************************
 
+  subroutine read_obs_sm_ASCAT_EUMET(                                         &
+       date_time, dtstep_assim, N_catd, tile_coord,                           &
+       tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,                   &
+       this_obs_param,                                                        &
+       found_obs, ASCAT_sm, ASCAT_sm_std, ASCAT_lon, ASCAT_lat, ASCAT_time )
+    
+    !---------------------------------------------------------------------
+    ! 
+    ! Routine to read in ASCAT surface degree of saturation (sfds) obs from 
+    !   BUFR files for both ascending and descending passes. 
+    !
+    ! ASCAT_sm and ASCAT_sm_std outputs from this subroutine are in wetness fraction (i.e., 0-1) units!
+    !
+    ! Read in EUMETSAT level 2 soil moisture product 25 km (SMO), PPF software version 5.0.
+    !   Soil moisture derived from re-sampled (spatially averaged) backscatter (sigma0) values
+    !   on a 25-km orbit swath grid.  Input data files are in BUFR file format.
+    !
+    ! EUMETSAT BUFR files contain data for both ascending and descending half-orbits. 
+    !   The BUFR field DOMO ("Direction of motion of moving observing platform") could be used to 
+    !   separate Asc and Desc.  (The BUFR files do not contain any explicit orbit indicator variable.)
+    !   According to Pamela Schoebel-Pattiselanno, EUMETSAT User Services Helpdesk:
+    !   "When the value (of DOMO) is between 180 and 270 degrees, it is the descending part 
+    !    of the orbit.  When it is between 270 and 360 degrees, it is the ascending part."
+    !
+    ! Q. Liu,          Nov 2019 - based on read_obs_sm_ASCAT
+    ! A. Fox, reichle, Sep 2023 - updated
+    !
+    ! --------------------------------------------------------------------
+        
+    implicit none
+    
+    ! inputs:
+    
+    type(date_time_type), intent(in) :: date_time
+    
+    integer, intent(in) :: dtstep_assim, N_catd
+    
+    type(tile_coord_type), dimension(:), pointer :: tile_coord  ! input
+    
+    type(grid_def_type), intent(in) :: tile_grid_d
+    
+    integer, dimension(tile_grid_d%N_lon,tile_grid_d%N_lat), intent(in) :: &
+         N_tile_in_cell_ij
+    
+    integer, dimension(:,:,:), pointer :: tile_num_in_cell_ij   ! input
+    
+    type(obs_param_type), intent(in) :: this_obs_param
+    
+    ! outputs:
+   
+    logical, intent(out)                    :: found_obs
+
+    real,    intent(out), dimension(N_catd) :: ASCAT_sm              ! sfds obs          [fraction]  (i.e., 0-1)
+    real,    intent(out), dimension(N_catd) :: ASCAT_sm_std          ! sfds obs err std  [fraction]  (i.e., 0-1)
+    real,    intent(out), dimension(N_catd) :: ASCAT_lon, ASCAT_lat
+    real*8,  intent(out), dimension(N_catd) :: ASCAT_time            ! J2000 seconds
+    
+    ! ---------------
+    
+    ! Each obs file contains ~100-110 minutes (1 full orbit?) of observations (dt_ASCAT_obsfile).
+    ! File name indicates start time of swath.  
+    
+    integer,      parameter :: dt_ASCAT_obsfile = 110*60    ! seconds
+    
+    integer,      parameter :: N_fnames_max     = 15        ! max number of files per day
+
+    character(4), parameter :: J2000_epoch_id   = 'TT12'    ! see date_time_util.F90
+    
+    character( 15) :: str_date_time
+    character( 80) :: fname_of_fname_list
+    character(300) :: tmpfname
+
+    type(date_time_type) :: date_time_tmp
+    type(date_time_type) :: date_time_low, date_time_low_fname
+    type(date_time_type) :: date_time_up
+    
+    integer :: ii, ind, N_tmp, N_files, kk, N_obs, N_fnames, N_fnames_tmp, obs_dir_hier
+    
+    character(300), dimension(:), allocatable :: fnames, tmpfnames
+    
+    ! --------------------
+    !
+    ! variables for BUFR read
+
+    real*8, dimension(14) :: tmp_vdata
+
+    integer, parameter :: lnbufr  =     50       ! BUFR file unit number
+    integer, parameter :: max_rec =  50000       ! max number of obs after QC (expecting < 6 hr assim window)
+    integer, parameter :: max_obs = 250000       ! max number of obs read by subroutine (expecting < 6 hr assim window)
+
+    integer :: idate, iret, ireadmg, ireadsb
+
+    character(8) :: subset
+
+    ! --------------------
+
+    character(100), dimension(2*N_fnames_max)   :: fname_list  ! max 2 days of files
+
+    real,      dimension(:),     allocatable    :: tmp1_obs, tmp1_lat, tmp1_lon
+    real*8,    dimension(:),     allocatable    :: tmp1_jtime
+    real*8,    dimension(:,:),   allocatable    :: tmp_data
+
+    real,      dimension(:),     pointer        :: tmp_obs,  tmp_lat,  tmp_lon
+    real*8,    dimension(:),     pointer        :: tmp_jtime
+
+    integer,   dimension(:),     pointer        :: tmp_tile_num
+
+    integer,   dimension(N_catd)                :: N_obs_in_tile    
+
+    character(len=*),  parameter :: Iam = 'read_obs_sm_ASCAT_EUMET'
+    character(len=400)           :: err_msg
+
+    ! -------------------------------------------------------------------
+    
+    nullify( tmp_obs, tmp_lat, tmp_lon, tmp_tile_num, tmp_jtime )    
+    
+    ! ---------------
+    
+    ! initialize
+    
+    found_obs = .false.
+    
+    ! find files that are within half-open interval 
+    !   (date_time-dtstep_assim/2,date_time+dtstep_assim/2]
+
+    date_time_low = date_time    
+    call augment_date_time( -(dtstep_assim/2), date_time_low)
+    date_time_up = date_time    
+    call augment_date_time(  (dtstep_assim/2), date_time_up)
+    
+    ! calculate "extra" date_time_low to catch files w/ swath start time stamps before window 
+    !   but containing relevant obs
+    
+    date_time_low_fname = date_time_low
+    call augment_date_time( -dt_ASCAT_obsfile, date_time_low_fname)
+    
+    ! ----------------------------------------------------------------
+    !
+    ! read file with list of ASCAT file names for first day
+    
+    fname_of_fname_list = 'dummy'  ! make sure it is properly defined in obs_param nml
+
+    obs_dir_hier = 1
+    
+    call read_obs_fnames( date_time_low_fname, this_obs_param,                              &
+         fname_of_fname_list, N_fnames_max,                                                 &
+         N_fnames, fname_list(1:N_fnames_max), obs_dir_hier )
+    
+    ! if needed, read file with list of ASCAT file names for second day and add
+    !   file names into "fname_list"
+    
+    if (date_time_low_fname%day /= date_time_up%day) then
+       
+       call read_obs_fnames( date_time_up, this_obs_param,                                  &
+            fname_of_fname_list, N_fnames_max,                                              &
+            N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_fnames_max)), obs_dir_hier )
+       
+       N_fnames = N_fnames + N_fnames_tmp
+       
+    end if
+    
+    tmpfnames = fname_list(1:N_fnames)
+    
+    ! ----------------------------------------------------------------
+    !
+    ! find files that have obs within assimilation window
+    
+    N_tmp = 0   
+    
+    do kk = 1,N_fnames
+
+       tmpfname = fname_list(kk)
+
+       ! Are we in the required assimilation window?
+       !
+       ! e.g. Y2019/M07/M01-ASCA-ASCSMO02-NA-5.0-20190702075700.000000000Z-20190702084627-1350204.bfr
+       !
+       !      12345678901234567890123456789012345678901234567890123456789012345678901234567890 
+       !               1         2         3         4         5         6         7
+
+       str_date_time = tmpfname(36:49)
+      
+       read(str_date_time( 1: 4), *) date_time_tmp%year
+       read(str_date_time( 5: 6), *) date_time_tmp%month
+       read(str_date_time( 7: 8), *) date_time_tmp%day
+       read(str_date_time( 9:10), *) date_time_tmp%hour
+       read(str_date_time(11:12), *) date_time_tmp%min
+       read(str_date_time(13:14), *) date_time_tmp%sec
+       
+       if ( datetime_lt_refdatetime( date_time_low_fname, date_time_tmp ) .and.          &
+            datetime_le_refdatetime( date_time_tmp,       date_time_up  )       ) then 
+
+          N_tmp = N_tmp + 1
+
+          tmpfnames(N_tmp) = trim(this_obs_param%path) // '/' // trim(tmpfname)
+          
+       end if
+       
+    end do
+    
+    fnames  = tmpfnames(1:N_tmp)
+    N_files = N_tmp
+    
+    ! ----------------------------------------------------------------
+    !
+    ! loop through files and read obs + metadata into tmp_data
+    
+    if (N_files>0) then
+
+       ! read and process data if files are found
+
+       allocate(tmp1_lon(  max_rec   ))
+       allocate(tmp1_lat(  max_rec   ))
+       allocate(tmp1_obs(  max_rec   ))
+       allocate(tmp1_jtime(max_rec   ))
+       
+       allocate(tmp_data(  max_obs,14))
+       
+       N_obs = 0
+       
+       do kk = 1,N_files
+          
+          ! open bufr file
+          
+          call closbf(lnbufr)  ! if a file with unit number lnbufr is open in (or "linked" with) BUFR, close it
+          open(lnbufr, file=trim(fnames(kk)), action='read', form='unformatted')
+          call openbf(lnbufr, 'SEC3', lnbufr) 
+          call mtinfo( trim(this_obs_param%path) // '/BUFR_mastertable/', lnbufr+1, lnbufr+2)
+          call datelen(10)     ! select date/time format with 4-digit year (YYYYMMDDHH) 
+          
+          msg_report: do while( ireadmg(lnbufr,subset,idate) == 0 )
+             
+             loop_report: do while( ireadsb(lnbufr) == 0 )
+                
+                ! columns of tmp_data:                  1    2    3    4    5    6    7    8    9    10   11   12   13    14
+
+                call ufbint(lnbufr,tmp_vdata,14,1,iret,'YEAR MNTH DAYS HOUR MINU SECO SSOM SMPF SMCF ALFR TPCX IWFR CLATH CLONH')
+
+                N_obs = N_obs + 1
+
+                if (N_obs > max_obs) then
+                  err_msg = 'Attempting to read too many obs - how long is your assimilation window?'
+                  call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+                end if
+
+                tmp_data(N_obs,:) = tmp_vdata
+                
+             end do loop_report
+          end do msg_report
+          
+          call closbf(lnbufr)
+          close(lnbufr)
+          
+       end do ! end file loop
+
+       ! ----------------------------------------------------------------
+       !
+       ! select obs within assimilation window and from desired orbit direction; apply basic QC based on obs info
+       
+       N_tmp = 0 
+       
+       do kk = 1,N_obs
+          
+          date_time_tmp%year  = int(tmp_data(kk, 1))
+          date_time_tmp%month = int(tmp_data(kk, 2))
+          date_time_tmp%day   = int(tmp_data(kk, 3))
+          date_time_tmp%hour  = int(tmp_data(kk, 4))
+          date_time_tmp%min   = int(tmp_data(kk, 5))
+          date_time_tmp%sec   = int(tmp_data(kk, 6))
+          
+          ! skip if record outside of current assim window
+          if ( datetime_lt_refdatetime( date_time_tmp, date_time_low ) .and.           &
+               datetime_le_refdatetime( date_time_up, date_time_tmp )         ) cycle
+          
+          ! skip if record contains invalid soil moisture value
+          if ( tmp_data(kk, 7) > 100. .or. tmp_data(kk, 7) < 0. ) cycle
+          
+          ! to distinguish orbit directions, must read "DOMO" from BUFR file
+          !
+          !   180 <= DOMO <  270 : descending
+          !   270 <  DOMO <= 360 : ascending
+          !
+          ! if (index(this_obs_param%descr,'_A') /=0 .and. (tmp_data(kk, 8) < 270 .or. tmp_data(kk, 8) >  360)) cycle
+          ! if (index(this_obs_param%descr,'_D') /=0 .and. (tmp_data(kk, 8) < 180 .or. tmp_data(kk, 8) >= 270)) cycle
+          
+          ! skip if processing flag is set
+          if(int(tmp_data(kk, 8)) /= 0) cycle
+          
+          ! skip if correction flag is set ("good" values are 0 and 4)
+          if (.not. ( (int(tmp_data(kk, 9)) == 0) .or. (int(tmp_data(kk, 9)) == 4)) ) cycle
+          
+          ! skip if land fraction is missing or < 0.9
+          if(tmp_data(kk, 10) > 1. .or. tmp_data(kk, 10) < 0.9 ) cycle
+          
+          ! skip if topographic complexity > 10%
+          if(tmp_data(kk, 11) > 10.) cycle
+          
+          ! skip if inundation and wetland fraction > 10%
+          if(tmp_data(kk, 12) > 10.) cycle
+          
+          N_tmp = N_tmp + 1  ! passed all QC
+
+          if (N_tmp > max_rec) then
+            err_msg = 'Too many obs have passed QC - how long is your assimilation window?'
+            call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+          end if
+         
+          tmp1_jtime(N_tmp) = datetime_to_J2000seconds( date_time_tmp, J2000_epoch_id )
+          
+          tmp1_lat(  N_tmp) = tmp_data(kk, 13)            
+          tmp1_lon(  N_tmp) = tmp_data(kk, 14)
+
+          tmp1_obs(  N_tmp) = tmp_data(kk,  7)/100.  ! change units from percent (0-100) to fraction (0-1)
+          
+       end do
+
+       if (logit) then
+          
+          write (logunit,*) 'read_obs_sm_ASCAT_EUMET: read ', N_tmp, ' at date_time = ', date_time, ' from:'
+          do ii=1,N_files
+             write (logunit,*) trim(fnames(ii))
+          end do
+          write (logunit,*) '----------'
+          write (logunit,*) 'max(obs)=',maxval(tmp1_obs(1:N_tmp)), ',  min(obs)=',minval(tmp1_obs(1:N_tmp)), &
+               ',  avg(obs)=',sum(tmp1_obs(1:N_tmp))/N_tmp
+          
+       end if
+       
+       deallocate(fnames)
+
+       ! copy "good" obs with lat/lon/time into tmp_* (pointers)
+
+       allocate(tmp_jtime(N_tmp))    
+       allocate(tmp_lon(  N_tmp))
+       allocate(tmp_lat(  N_tmp))
+       allocate(tmp_obs(  N_tmp))
+
+       tmp_jtime = tmp1_jtime(1:N_tmp)
+       tmp_lon   = tmp1_lon(  1:N_tmp)
+       tmp_lat   = tmp1_lat(  1:N_tmp)
+       tmp_obs   = tmp1_obs(  1:N_tmp)
+   
+       deallocate(tmp1_jtime)
+       deallocate(tmp1_lon)
+       deallocate(tmp1_lat)
+       deallocate(tmp1_obs)
+       deallocate(tmp_data) 
+       
+    else
+       
+       N_tmp = 0
+       
+    end if
+    
+    ! ----------------------------------------------------------------
+    !
+    ! 2.) for each observation
+    !     a) determine grid cell that contains lat/lon
+    !     b) determine tile within grid cell that contains lat/lon
+
+    if (N_tmp>0) then
+       
+       allocate(tmp_tile_num(N_tmp))
+       
+       call get_tile_num_for_obs(N_catd, tile_coord,                 &
+            tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,     &
+            N_tmp, tmp_lat, tmp_lon,                                 &
+            this_obs_param,                                          &
+            tmp_tile_num )
+       
+       
+       ! ----------------------------------------------------------------
+       !
+       ! 3.) compute super-obs for each tile from all obs w/in that tile
+       !     (also eliminate observations that are not in domain)
+       
+       ASCAT_sm   = 0.
+       ASCAT_lon  = 0.
+       ASCAT_lat  = 0.
+       ASCAT_time = 0.0D0
+       
+       N_obs_in_tile = 0
+       
+       do ii=1,N_tmp
+          
+          ind = tmp_tile_num(ii)   ! 1<=tmp_tile_num<=N_catd (unless nodata)
+          
+          if (ind>0) then         ! this step eliminates obs outside domain
+             
+             ASCAT_sm(  ind) = ASCAT_sm(  ind) + tmp_obs(  ii)
+             ASCAT_lon( ind) = ASCAT_lon( ind) + tmp_lon(  ii)
+             ASCAT_lat( ind) = ASCAT_lat( ind) + tmp_lat(  ii)
+             ASCAT_time(ind) = ASCAT_time(ind) + tmp_jtime(ii)
+             
+             N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
+             
+          end if
+          
+       end do
+
+       ! normalize and set obs error std-dev
+
+       do ii=1,N_catd
+          
+          ! set observation error standard deviation 
+         
+          ASCAT_sm_std(ii) = this_obs_param%errstd/100.    ! change units from percent (0-100) to fraction (0-1)
+
+          ! normalize
+
+          if (N_obs_in_tile(ii)>1) then
+             
+             ASCAT_sm(    ii) = ASCAT_sm(  ii)/real(N_obs_in_tile(ii))
+             ASCAT_lon(   ii) = ASCAT_lon( ii)/real(N_obs_in_tile(ii))
+             ASCAT_lat(   ii) = ASCAT_lat( ii)/real(N_obs_in_tile(ii))
+             ASCAT_time(  ii) = ASCAT_time(ii)/real(N_obs_in_tile(ii),kind(0.0D0))
+             
+          elseif (N_obs_in_tile(ii)==0) then
+             
+             ASCAT_sm(    ii) = this_obs_param%nodata
+             ASCAT_lon(   ii) = this_obs_param%nodata
+             ASCAT_lat(   ii) = this_obs_param%nodata
+             ASCAT_time(  ii) = real(this_obs_param%nodata,kind(0.0D0))
+             ASCAT_sm_std(ii) = this_obs_param%nodata
+             
+          else
+             
+             ! nothing to do if N_obs_in_tile(ii)==1 (and assuming N_obs_in_tile is never negative)
+             
+          end if
+          
+       end do
+       
+       ! clean up
+       
+       if (associated(tmp_tile_num)) deallocate(tmp_tile_num)
+       
+       if (any(N_obs_in_tile>0)) then
+        
+          found_obs = .true.
+          
+       else 
+          
+          found_obs = .false.
+          
+       end if
+       
+    end if
+    
+    ! clean up
+    
+    if (associated(tmp_obs))      deallocate(tmp_obs)
+    if (associated(tmp_lon))      deallocate(tmp_lon)
+    if (associated(tmp_lat))      deallocate(tmp_lat)
+    if (associated(tmp_jtime))    deallocate(tmp_jtime)
+    
+  end subroutine read_obs_sm_ASCAT_EUMET
+  
   ! ***************************************************************************
 
   subroutine read_sm_ASCAT_bin( &
@@ -5725,7 +6185,7 @@ contains
         
     ! read file with list of SMAP file names for first day
     
-    call read_obs_SMAP_fnames( date_time_low_fname, this_obs_param,                &
+    call read_obs_fnames( date_time_low_fname, this_obs_param,                     &
          fname_of_fname_list, N_halforbits_max,                                    &
          N_fnames, fname_list(1:N_halforbits_max) )
     
@@ -5734,7 +6194,7 @@ contains
     
     if (date_time_low_fname%day /= date_time_upp%day) then
        
-       call read_obs_SMAP_fnames( date_time_upp, this_obs_param,                   &
+       call read_obs_fnames( date_time_upp, this_obs_param,                        &
             fname_of_fname_list, N_halforbits_max,                                 &
             N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_halforbits_max)) )
        
@@ -6561,7 +7021,7 @@ contains
         
     ! read file with list of SMAP file names for first day
     
-    call read_obs_SMAP_fnames( date_time_low_fname, this_obs_param,                &
+    call read_obs_fnames( date_time_low_fname, this_obs_param,                     &
          fname_of_fname_list, N_halforbits_max,                                    &
          N_fnames, fname_list(1:N_halforbits_max) )
     
@@ -6570,7 +7030,7 @@ contains
     
     if (date_time_low_fname%day /= date_time_upp%day) then
        
-       call read_obs_SMAP_fnames( date_time_upp, this_obs_param,                   &
+       call read_obs_fnames( date_time_upp, this_obs_param,                        &
             fname_of_fname_list, N_halforbits_max,                                 &
             N_fnames_tmp, fname_list((N_fnames+1):(N_fnames+N_halforbits_max)) )
        
@@ -7597,14 +8057,24 @@ contains
   
   ! *****************************************************************
   
-  subroutine read_obs_SMAP_fnames( date_time, this_obs_param,         &
-       fname_of_fname_list, N_max, N_fnames, fname_list )
+  subroutine read_obs_fnames( date_time, this_obs_param,         &
+       fname_of_fname_list, N_max, N_fnames, fname_list,         &
+       obs_dir_hier )
     
-    ! read the file within a SMAP Yyyyy/Mmm/Ddd directory that lists
-    !  the SMAP h5 file names; preface file names with "Yyyyy/Mmm/Ddd"
+    ! read the file within an obs Yyyyy/Mmm/Ddd directory that lists
+    !   the obs file names, preface file names with "Yyyyy/Mmm/Ddd",
+    !   and return in "fname_list"
+    !
+    ! optional input argument: 
+    !   obs_dir_hier==1 : preface file names with "Yyyyy/Mmm" instead 
+    !
+    ! this subroutine is needed when obs file names cannot be predicted
+    !   and must be provided in a short text file that lists the file names
+    !   (e.g., SMAP Tb or soil moisture h5 files, ASCAT soil moisture BUFR files)
     !
     ! reichle,  3 Jan 2014
     ! reichle,  8 Jun 2017: Use "%flistpath" and "%flistname" from "obs_param_type". 
+    ! A M Fox, reichle, 22 Sep 2023: added optional argument obs_dir_hier
     !
     ! ---------------------------------------------------------------------------------
     
@@ -7614,13 +8084,15 @@ contains
     
     type(obs_param_type),             intent(in)  :: this_obs_param
     
-    character( *),                   intent(in)  :: fname_of_fname_list
+    character( *),                    intent(in)  :: fname_of_fname_list
 
     integer,                          intent(in)  :: N_max
 
     integer,                          intent(out) :: N_fnames
 
     character(100), dimension(N_max), intent(out) :: fname_list
+    
+    integer, optional,                intent(in)  :: obs_dir_hier
     
     ! local variables
     
@@ -7630,12 +8102,13 @@ contains
     character( 80)       :: tmpstr80
 
     character( 14)       :: YYYYMMDDdir
+    character( 10)       :: YYYYMMdir
     character(  4)       :: YYYY
     character(  2)       :: MM, DD
 
     integer              :: ii, istat
 
-    character(len=*), parameter :: Iam = 'read_obs_SMAP_fnames'
+    character(len=*), parameter :: Iam = 'read_obs_fnames'
     character(len=400) :: err_msg
 
     ! ---------------------------------------------------------------------
@@ -7645,6 +8118,7 @@ contains
     write (DD  ,'(i2.2)') date_time%day
     
     YYYYMMDDdir = 'Y' // YYYY // '/M' // MM // '/D' // DD // '/'
+    YYYYMMdir =   'Y' // YYYY // '/M' // MM // '/'
 
     ! initialize default values
 
@@ -7659,7 +8133,7 @@ contains
     fname = trim(fpath_tmp) // '/' // YYYYMMDDdir // trim(fname_tmp)
     
     open( 10, file=fname, form='formatted', action='read', iostat=istat)
-    
+   
     if (istat/=0) then
        err_msg = 'cannot open file ' // trim(fname)
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
@@ -7685,14 +8159,30 @@ contains
              call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
           end if
 
-          ! preface file names with "Yyyyy/Mmm/Ddd"
-
+          ! preface file names with "Yyyyy/Mmm/Ddd" (default)
+          
           fname_list(ii) = YYYYMMDDdir // trim(tmpstr80)
+          
+          if (present(obs_dir_hier)) then
+             
+             if (obs_dir_hier == 1) then
+                
+                ! preface file names with "Yyyyy/Mmm"
+                
+                fname_list(ii) = YYYYMMdir // trim(tmpstr80)
+                
+             else
+                
+                err_msg = 'Unrecognized value of optional argument obs_dir_hier'
+                call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+                
+             end if
+          end if
           
        else
           
           exit
-             
+          
        end if
        
     end do
@@ -7701,7 +8191,7 @@ contains
 
     N_fnames = ii
 
-  end subroutine read_obs_SMAP_fnames
+  end subroutine read_obs_fnames
 
   ! *****************************************************************
 
@@ -7946,6 +8436,27 @@ contains
                 tmp_obs, tmp_std_obs )
            
         end if
+        
+    case ('ASCAT_META_SM','ASCAT_METB_SM','ASCAT_METC_SM' )
+
+        call read_obs_sm_ASCAT_EUMET(                                  &
+             date_time, dtstep_assim, N_catd, tile_coord,              &
+             tile_grid_d, N_tile_in_cell_ij, tile_num_in_cell_ij,      &
+             this_obs_param,                                           &
+             found_obs, tmp_obs, tmp_std_obs, tmp_lon, tmp_lat,        &
+             tmp_time)
+ 
+        ! scale observations to model climatology
+        
+        if (this_obs_param%scale .and. found_obs) then
+
+           scaled_obs = .true.
+
+           call scale_obs_sfmc_zscore( N_catd, tile_coord,             &
+                date_time, this_obs_param, tmp_lon, tmp_lat, tmp_time, &
+                tmp_obs, tmp_std_obs )
+           
+        end if        
 
     case ('isccp_tskin_gswp2_v1')
        
@@ -8127,7 +8638,7 @@ contains
          'SMAP_L1C_Tbh_E27_D', 'SMAP_L1C_Tbv_E27_D',    &
          'SMAP_L2AP_Tbh_A',    'SMAP_L2AP_Tbv_A',       &
          'SMAP_L2AP_Tbh_D',    'SMAP_L2AP_Tbv_D' )
-       
+
        call read_obs_SMAP_halforbit_Tb(                                     &
             date_time, N_catd, this_obs_param,                              &
             dtstep_assim, tile_coord, tile_grid_d,                          &
@@ -8144,7 +8655,7 @@ contains
                this_obs_param, tmp_obs, tmp_std_obs, tmp_assim )
 
        end if
-       
+      
     case('LaRC_tskin-GOESW', 'LaRC_tskin-GOESE', 'LaRC_tskin-MET09',  & 
          'LaRC_tskin-FY2E-', 'LaRC_tskin-MTST2')
               
@@ -8567,6 +9078,251 @@ contains
     
   end subroutine scale_obs_tskin_zscore
 
+ 
+  ! *****************************************************************
+  
+  subroutine scale_obs_sfmc_zscore( N_catd, tile_coord,         &
+       date_time, this_obs_param, tmp_lon, tmp_lat, tmp_time,   &
+       tmp_obs, tmp_std_obs )
+    
+    ! scale sfmc or sfds obs to model climatology via standard-normal-deviate (zscore)
+    ! scaling using seasonally varying (pentad) stats
+    ! Grid information is read from a NetCDF file   
+    ! 
+    ! Scaling parameters are read from a NetCDF file that contains the following:
+    !  variables:
+    !  int version ;
+    !  double ll_lon ;
+    !          ll_lon:standard_name = "longitude of lower left corner" ;
+    !  double ll_lat ;
+    !          ll_lat:standard_name = "latitude of lower left corner" ;
+    !  double d_lon ;
+    !          d_lon:standard_name = "longitude grid spacing" ;
+    !  double d_lat ;
+    !          d_lat:standard_name = "latitude grid spacing" ;
+    !  int pentad(pentad) ;
+    !          pentad:standard_name = "pentad" ;
+    !  double start_time(pentad) ;
+    !          start_time:standard_name = "start time" ;
+    !  double end_time(pentad) ;
+    !          end_time:standard_name = "end time" ;
+    !  double o_mean(pentad, lon, lat) ;
+    !          o_mean:standard_name = "observation mean" ;
+    !  double o_std(pentad, lon, lat) ;
+    !          o_std:standard_name = "observation standard deviation" ;
+    !  double m_mean(pentad, lon, lat) ;
+    !          m_mean:standard_name = "model mean" ;
+    !  double m_std(pentad, lon, lat) ;
+    !          m_std:standard_name = "model standard deviation" ;
+    !  double m_min(lon, lat) ;
+    !          m_min:standard_name = "model minimum" ;
+    !  double m_max(lon, lat) ;
+    !          m_max:standard_name = "model maximum" ;
+    !  double n_data(pentad, lon, lat) ;
+    !          n_data:standard_name = "number of data points" ;
+    !
+    ! A M Fox, reichle, April 2023
+    
+    use netcdf   
+    implicit none
+    
+    integer, intent(in) :: N_catd
+    
+    type(tile_coord_type), dimension(:), pointer :: tile_coord    ! input
+    
+    type(date_time_type), intent(in) :: date_time
+    
+    type(obs_param_type), intent(in) :: this_obs_param
+
+    real,    intent(in),    dimension(N_catd) :: tmp_lon, tmp_lat
+    real*8,  intent(in),    dimension(N_catd) :: tmp_time         ! J2000 seconds
+        
+    ! inout
+    
+    real,    intent(inout), dimension(N_catd) :: tmp_obs
+    real,    intent(inout), dimension(N_catd) :: tmp_std_obs
+       
+    ! -------------------
+    
+    character(300) :: fname
+    
+    integer :: i, ind, pp, j_ind, i_ind
+    integer :: ncid, varid, ierr, ierr2
+    integer :: pentad_dimid, lon_dimid, lat_dimid
+    integer :: N_pentad, N_lon, N_lat
+    integer :: pentad_varid, lon_varid, lat_varid
+    integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid, m_min_varid, m_max_varid
+    integer :: ll_lon_varid, ll_lat_varid, dlon_varid, dlat_varid
+    integer, dimension(3) :: start, icount
+
+    logical :: file_exists
+    
+    real :: tmpreal, this_lon, this_lat, ll_lon, ll_lat, dlon, dlat
+    
+    integer, dimension(:), allocatable :: sclprm_tile_id
+    integer, dimension(:), allocatable :: pentads
+    
+    real, dimension(:,:), allocatable  :: sclprm_mean_obs, sclprm_std_obs
+    real, dimension(:,:), allocatable  :: sclprm_mean_mod, sclprm_std_mod
+    real, dimension(:,:), allocatable  :: sclprm_min_mod,  sclprm_max_mod
+    
+    character(len=*), parameter        :: Iam = ' scale_obs_sfmc_zscore'
+    character(len=400) :: err_msg
+    
+    ! ------------------------------------------------------------------
+    
+    ! Read scaling parameters from file
+
+    fname = trim(this_obs_param%scalepath) // '/' // &
+         trim(this_obs_param%scalename) // '.nc4'
+    
+    if (logit) write (logunit,*)        'scaling obs species ', this_obs_param%species, ':'
+    if (logit) write (logunit,'(400A)') '  reading ', trim(fname)
+
+    ! Check if file exists
+
+    inquire(file=fname, exist=file_exists)
+          
+    if (.not. file_exists) then
+       
+       err_msg = 'Scaling parameter file not found'
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)             
+
+    end if
+    
+    ! Determine pentad to use
+
+    pp = date_time%pentad
+    
+    ! Open the NetCDF file
+
+    ierr = nf90_open(fname, nf90_nowrite, ncid)
+
+    ! Get the dimension and variable IDs
+
+    ierr = nf90_inq_varid(ncid, 'll_lon',  ll_lon_varid)
+    ierr = nf90_inq_varid(ncid, 'll_lat',  ll_lat_varid)
+    ierr = nf90_inq_varid(ncid, 'd_lon',   dlon_varid)
+    ierr = nf90_inq_varid(ncid, 'd_lat',   dlat_varid)
+
+    ! Get the dimension sizes
+
+    ierr = nf90_inq_dimid(ncid, 'pentad', pentad_dimid)
+    ierr = nf90_inq_dimid(ncid, 'lon',    lon_dimid)
+    ierr = nf90_inq_dimid(ncid, 'lat',    lat_dimid)
+    
+    ierr = nf90_inquire_dimension(ncid, pentad_dimid, len = N_pentad)
+    ierr = nf90_inquire_dimension(ncid, lon_dimid,    len = N_lon)
+    ierr = nf90_inquire_dimension(ncid, lat_dimid,    len = N_lat)
+    
+    ! Get the variable IDs
+
+    ierr = nf90_inq_varid(ncid, 'o_mean', o_mean_varid)
+    ierr = nf90_inq_varid(ncid, 'o_std',  o_std_varid)
+    ierr = nf90_inq_varid(ncid, 'm_mean', m_mean_varid)
+    ierr = nf90_inq_varid(ncid, 'm_std',  m_std_varid)
+    ierr = nf90_inq_varid(ncid, 'm_min',  m_min_varid)
+    ierr = nf90_inq_varid(ncid, 'm_max',  m_max_varid)    
+    
+    ! Read grid variables
+
+    ierr = nf90_get_var(ncid, ll_lon_varid, ll_lon)
+    ierr = nf90_get_var(ncid, ll_lat_varid, ll_lat)
+    ierr = nf90_get_var(ncid, dlon_varid,   dlon)
+    ierr = nf90_get_var(ncid, dlat_varid,   dlat)
+    
+    start  = [1,     1,     pp]
+    icount = [N_lat, N_lon, 1 ]
+    
+    ! Read mean and std variables
+
+    allocate(sclprm_mean_obs(N_lat, N_lon), sclprm_std_obs(N_lat, N_lon))
+    allocate(sclprm_mean_mod(N_lat, N_lon), sclprm_std_mod(N_lat, N_lon))
+    allocate(sclprm_min_mod( N_lat, N_lon), sclprm_max_mod(N_lat, N_lon))
+
+    ierr  = nf90_get_var(ncid, o_mean_varid, sclprm_mean_obs, start, icount)
+    ierr  = nf90_get_var(ncid, o_std_varid,  sclprm_std_obs,  start, icount)
+    ierr  = nf90_get_var(ncid, m_mean_varid, sclprm_mean_mod, start, icount)
+    ierr  = nf90_get_var(ncid, m_std_varid,  sclprm_std_mod,  start, icount)
+    ierr  = nf90_get_var(ncid, m_min_varid,  sclprm_min_mod)
+    ierr  = nf90_get_var(ncid, m_max_varid,  sclprm_max_mod)
+
+    ! Close the netcdf file
+
+    ierr = nf90_close(ncid)
+    
+    ! --------------------------------------------------------------
+    
+    ! Scale observations (at this point all obs are of same type because
+    ! of the way the subroutine is called from subroutine read_obs()
+    
+    do i=1,N_catd
+       
+       ! Check for no-data-values in observation (any neg value is no_data)
+
+       if (tmp_obs(i)>=0.) then
+          
+          ! ll_lon and ll_lat refer to lower left corner of grid cell
+          ! (as opposed to the grid point in the center of the grid cell)
+          
+          this_lon = tmp_lon(i)
+          this_lat = tmp_lat(i)
+          
+          ! Find indices for current tile lat and lon on scaling parameter grid
+
+          i_ind = ceiling((this_lon - ll_lon)/dlon) 
+          j_ind = ceiling((this_lat - ll_lat)/dlat) 
+          
+          ! Check for no-data-values in observation and fit parameters
+          ! (any negative number could be no-data-value for observations)
+          
+          if ( sclprm_mean_obs(j_ind, i_ind)>0.   .and.        &
+               sclprm_mean_mod(j_ind, i_ind)>0.   .and.        &
+               sclprm_std_obs(j_ind, i_ind)>=0.   .and.        &
+               sclprm_std_mod(j_ind, i_ind)>=0.         ) then
+             
+             ! Scale via standard normal deviates
+             
+             tmpreal = sclprm_std_mod(j_ind, i_ind)/sclprm_std_obs(j_ind, i_ind) 
+             
+             tmp_obs(i) = sclprm_mean_mod(j_ind, i_ind)                       &
+                  + tmpreal*(tmp_obs(i)-sclprm_mean_obs(j_ind, i_ind)) 
+             
+             ! Check of tmp_obs is within range of model climatology
+
+             if (tmp_obs(i)<sclprm_min_mod(j_ind, i_ind)) then
+
+                tmp_obs(i) = sclprm_min_mod(j_ind, i_ind)
+
+             elseif (tmp_obs(i)>sclprm_max_mod(j_ind, i_ind)) then
+
+                tmp_obs(i) = sclprm_max_mod(j_ind, i_ind)
+
+             end if
+            
+             ! Scale observation error std
+             
+             tmp_std_obs(i) = tmpreal*tmp_std_obs(i)
+             
+          else
+             
+             tmp_obs(i) = this_obs_param%nodata
+             
+          end if
+          
+       end if
+       
+    end do
+        
+    deallocate(sclprm_mean_obs)     
+    deallocate(sclprm_std_obs)      
+    deallocate(sclprm_mean_mod)     
+    deallocate(sclprm_std_mod)  
+    deallocate(sclprm_min_mod)
+    deallocate(sclprm_max_mod)    
+    
+  end subroutine scale_obs_sfmc_zscore
+  
   ! ********************************************************************************
   
   subroutine scale_obs_Tb_zscore( N_catd, tile_coord, date_time, this_obs_param,   &
@@ -9005,7 +9761,7 @@ contains
 
     implicit none
     
-    character(*),                               intent(in)  :: work_path
+    character(*),                                intent(in)  :: work_path
     character(*),                                intent(in)  :: exp_id
     
     type(date_time_type),                         intent(in)  :: date_time
@@ -9613,4 +10369,3 @@ end program test
 
 ! *******  EOF *************************************************************
 
-  
