@@ -7,24 +7,27 @@ import glob
 import subprocess as sp
 
 heads = """
-VERSION: 1
-EXPID:  GEOSldas_expid
-EXPDSC: GEOSldas_output
-EXPSRC: GEOSldas
+#
+#  Sample GEOSldas HISTORY.rc file for LADAS (atm ensemble)
+#
+#  This sample is for the GEOSldas instance that is coupled with the atmospheric 
+#  ensemble component of the Hy4dEnVar ADAS:
+#
+#  (1)  The definition of the "catch_progn_incr" ensemble collection was generated 
+#       with the utility script "generate_catchincr_hist.py", with the number of  
+#       ensemble members and their indexing matching those of the atmospheric  
+#       ensemble component of the Hy4dEnVar ADAS.
+#  (2)  The "catch_progn_incr" output is in tile space.  Its definition is generic 
+#       for any LADAS resolution.
+#
+##################################################################################
+
+EXPID:  MyGEOSldasAtmEns
 
 COLLECTIONS:
 """
 
 label = """
-::
-GRID_LABELS: PC720x361-DC
-::
-PC720x361-DC.GRID_TYPE: LatLon
-PC720x361-DC.IM_WORLD: 720
-PC720x361-DC.JM_WORLD: 361
-PC720x361-DC.POLE: PC
-PC720x361-DC.DATELINE: DC
-PC720x361-DC.LM: 1
 """
 
 hist_template = """
@@ -34,32 +37,32 @@ descr:       'Tile-space,3-Hourly,Instantaneous,Single-Level,Assimilation, Land 
 template:    '%y4%m2%d2_%h2%n2z.bin',
 mode:        'instantaneous',
 frequency:   030000,
-ref_time:    000000,
-fields:     'TCFSAT_INCR'    , 'CATCHINCR'      ,
-            'TCFTRN_INCR'    , 'CATCHINCR'      ,
-            'TCFWLT_INCR'    , 'CATCHINCR'      ,
-            'QCFSAT_INCR'    , 'CATCHINCR'      ,
-            'QCFTRN_INCR'    , 'CATCHINCR'      ,
-            'QCFWLT_INCR'    , 'CATCHINCR'      ,
-            'CAPAC_INCR'     , 'CATCHINCR'      ,
-            'CATDEF_INCR'    , 'CATCHINCR'      ,
-            'RZEXC_INCR'     , 'CATCHINCR'      ,
-            'SRFEXC_INCR'    , 'CATCHINCR'      ,
-            'GHTCNT1_INCR'   , 'CATCHINCR'      ,
-            'GHTCNT2_INCR'   , 'CATCHINCR'      ,
-            'GHTCNT3_INCR'   , 'CATCHINCR'      ,
-            'GHTCNT4_INCR'   , 'CATCHINCR'      ,
-            'GHTCNT5_INCR'   , 'CATCHINCR'      ,
-            'GHTCNT6_INCR'   , 'CATCHINCR'      ,
-            'WESNN1_INCR'    , 'CATCHINCR'      ,
-            'WESNN2_INCR'    , 'CATCHINCR'      ,
-            'WESNN3_INCR'    , 'CATCHINCR'      ,
-            'HTSNNN1_INCR'   , 'CATCHINCR'      ,
-            'HTSNNN2_INCR'   , 'CATCHINCR'      ,
-            'HTSNNN3_INCR'   , 'CATCHINCR'      ,
-            'SNDZN1_INCR'    , 'CATCHINCR'      ,
-            'SNDZN2_INCR'    , 'CATCHINCR'      ,
-            'SNDZN3_INCR'    , 'CATCHINCR'      ,
+ref_time:    013000,
+fields:     'TCFSAT_INCR'    , 'CATCHINCR_e'      ,
+            'TCFTRN_INCR'    , 'CATCHINCR_e'      ,
+            'TCFWLT_INCR'    , 'CATCHINCR_e'      ,
+            'QCFSAT_INCR'    , 'CATCHINCR_e'      ,
+            'QCFTRN_INCR'    , 'CATCHINCR_e'      ,
+            'QCFWLT_INCR'    , 'CATCHINCR_e'      ,
+            'CAPAC_INCR'     , 'CATCHINCR_e'      ,
+            'CATDEF_INCR'    , 'CATCHINCR_e'      ,
+            'RZEXC_INCR'     , 'CATCHINCR_e'      ,
+            'SRFEXC_INCR'    , 'CATCHINCR_e'      ,
+            'GHTCNT1_INCR'   , 'CATCHINCR_e'      ,
+            'GHTCNT2_INCR'   , 'CATCHINCR_e'      ,
+            'GHTCNT3_INCR'   , 'CATCHINCR_e'      ,
+            'GHTCNT4_INCR'   , 'CATCHINCR_e'      ,
+            'GHTCNT5_INCR'   , 'CATCHINCR_e'      ,
+            'GHTCNT6_INCR'   , 'CATCHINCR_e'      ,
+            'WESNN1_INCR'    , 'CATCHINCR_e'      ,
+            'WESNN2_INCR'    , 'CATCHINCR_e'      ,
+            'WESNN3_INCR'    , 'CATCHINCR_e'      ,
+            'HTSNNN1_INCR'   , 'CATCHINCR_e'      ,
+            'HTSNNN2_INCR'   , 'CATCHINCR_e'      ,
+            'HTSNNN3_INCR'   , 'CATCHINCR_e'      ,
+            'SNDZN1_INCR'    , 'CATCHINCR_e'      ,
+            'SNDZN2_INCR'    , 'CATCHINCR_e'      ,
+            'SNDZN3_INCR'    , 'CATCHINCR_e'      ,
 """
 
 nens = 32
@@ -68,17 +71,19 @@ with open('HISTORY.rc', 'w') as f:
     collection, body = hist_template.split('::\n')
     collection = collection.strip('\n').strip("'")  
     for i in range(nens):
+       i = i +1 
        ids = collection+f'{i:04}'
        f.write(f"'{ids}'\n")
     f.write(label)
     lines = body.split('\n')
     for i in range(nens):
+       i = i+1
        collect= collection+f'{i:04}.'
        for line in lines:
           newline = line
           if ":" in line :
              newline = collect+line
-          if "CATCHINCR" in newline:
-             newline = newline.replace('CATCHINCR',f'CATCHINCR{i:04}')
+          if "CATCHINCR_e" in newline:
+             newline = newline.replace('CATCHINCR_e',f'CATCHINCR_e{i:04}')
           f.write(newline+'\n')
        f.write('::\n') 
