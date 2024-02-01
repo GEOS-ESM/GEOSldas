@@ -7,25 +7,27 @@ import glob
 import subprocess as sp
 
 heads = """
-VERSION: 1
-EXPID:  GEOSldas_expid
-EXPDSC: GEOSldas_output
-EXPSRC: GEOSldas
+#
+#  Sample GEOSldas HISTORY.rc file for LADAS (atm ensemble)
+#
+#  This sample is for the GEOSldas instance that is coupled with the atmospheric 
+#  ensemble component of the Hy4dEnVar ADAS:
+#
+#  (1)  The definition of the "catch_progn_incr" ensemble collection was generated 
+#       with the utility script "generate_catchincr_hist.py", with the number of  
+#       ensemble members and their indexing matching those of the atmospheric  
+#       ensemble component of the Hy4dEnVar ADAS.
+#  (2)  The "catch_progn_incr" output is in tile space.  Its definition is generic 
+#       for any LADAS resolution.
+#
+##################################################################################
+
+EXPID:  MyGEOSldasAtmEns
 
 COLLECTIONS:
 """
 
 label = """
-::
-GRID_LABELS: PC720x361-DC
-::
-PC720x361-DC.GRID_TYPE: LatLon
-PC720x361-DC.IM_WORLD: 720
-PC720x361-DC.JM_WORLD: 361
-PC720x361-DC.POLE: PC
-PC720x361-DC.DATELINE: DC
-PC720x361-DC.LM: 1
-::
 """
 
 hist_template = """
@@ -69,7 +71,7 @@ with open('HISTORY.rc', 'w') as f:
     collection, body = hist_template.split('::\n')
     collection = collection.strip('\n').strip("'")  
     for i in range(nens):
-       i = i+1
+       i = i +1 
        ids = collection+f'{i:04}'
        f.write(f"'{ids}'\n")
     f.write(label)
