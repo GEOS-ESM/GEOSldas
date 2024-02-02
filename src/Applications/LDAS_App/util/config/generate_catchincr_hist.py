@@ -37,9 +37,6 @@ EXPID:  MyGEOSldasAtmEns
 COLLECTIONS:
 """
 
-label = """
-"""
-
 hist_template = """
 'catch_progn_incr'
 ::
@@ -84,7 +81,6 @@ with open('HISTORY.rc', 'w') as f:
        i = i +1 
        ids = collection+f'{i:04}'
        f.write(f"'{ids}'\n")
-    f.write(label)
     lines = body.split('\n')
     for i in range(nens):
        i = i+1
