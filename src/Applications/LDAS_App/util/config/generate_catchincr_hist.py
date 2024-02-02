@@ -2,6 +2,10 @@
 #
 # module load python/GEOSpyD/Ana2019.03_py3.7
 #
+# This script generates a sample HISTORY.rc file for GEOSldas to write Catchment
+#    model analysis increments in ensemble space, as needed in the weakly-coupled
+#    Hybrid-4DEnVar land-atm DAS (LADAS).
+
 import os
 import glob
 import subprocess as sp
@@ -10,15 +14,21 @@ heads = """
 #
 #  Sample GEOSldas HISTORY.rc file for LADAS (atm ensemble)
 #
-#  This sample is for the GEOSldas instance that is coupled with the atmospheric 
-#  ensemble component of the Hy4dEnVar ADAS:
+#  - This sample HISTORY.rc is for the GEOSldas instance that is weakly coupled with the 
+#       atmospheric ensemble component of the Hybrid-4DEnVar ADAS (ADASens).
 #
-#  (1)  The definition of the "catch_progn_incr" ensemble collection was generated 
-#       with the utility script "generate_catchincr_hist.py", with the number of  
-#       ensemble members and their indexing matching those of the atmospheric  
-#       ensemble component of the Hy4dEnVar ADAS.
-#  (2)  The "catch_progn_incr" output is in tile space.  Its definition is generic 
-#       for any LADAS resolution.
+#  - The sample file was generated with the utility script 
+#       "GEOSldas/src/Applications/LDAS_App/util/config/generate_catchincr_hist.py".
+#
+#  - The sample file triggers output of the GEOSldas "catch_progn_incr" collection in 
+#       ensemble space, which is needed by ADASens.
+#
+#  - The IDs of the ensemble members and their total number in GEOSldas must match
+#       those of ADASens.
+#
+#  - The "catch_progn_incr" output is in tile space, which must be the same for  
+#       GEOSldas and ADASens.
+#
 #
 ##################################################################################
 
