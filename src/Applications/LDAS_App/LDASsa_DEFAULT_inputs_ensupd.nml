@@ -32,7 +32,7 @@
 ! update_type =  8: 3d soil moisture/Tskin/ght(1);                                         TB obs
 ! update_type =  9: 1d Tskin/ght1 update;                                                  FT obs
 ! update_type = 10: 3d soil moisture/Tskin/ght(1) excl. catdef unless PEATCLSM tile;       TB obs
-! update_type = 11: Multivariate combination of 2 and 10;                                  sfmc and TB obs
+! update_type = 13: Multivariate combination of 2 and 10;                                  sfmc and TB obs
 
 update_type = 0
 
