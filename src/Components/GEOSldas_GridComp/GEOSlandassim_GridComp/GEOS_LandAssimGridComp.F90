@@ -1886,7 +1886,6 @@ contains
          )
     _VERIFY(status)   
 
-    
     if ( mwRTM ) then
 
        ! mwRTM_param already contains static parameters, only need vegopacity.
@@ -1905,10 +1904,10 @@ contains
     endif
 
     if(.not. allocated(mwRTM_param)) then
-   
+
        allocate(mwRTM_param(0))
-   
-     endif   
+
+    endif
 
     call get_enkf_increments(                                              &
          date_time_new,                                                    &
