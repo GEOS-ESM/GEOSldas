@@ -4449,8 +4449,8 @@ contains
             
             ! compute increments only snow-free and non-frozen tiles
             
-            if ( (SWE_ensavg(kk) < SWE_threshold)     .and.            &
-                 (tp1_ensavg(kk) > tp1_threshold)             ) then  
+            if ( (SWE_ensavg(kk) < SWE_threshold) .and. &
+                 (tp1_ensavg(kk) > tp1_threshold)) then  
                
                ! find observations within halo around tile kk
                
