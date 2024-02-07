@@ -3347,7 +3347,7 @@ contains
   
   ! *********************************************************************
 
-  subroutine cat_enkf_increments(                               & 
+  subroutine cat_enkf_increments(                               &
        N_ens, N_obs, N_catd, N_obs_param,                       &
        update_type, obs_param,                                  &
        tile_coord, l2f,                                         &
@@ -3363,6 +3363,7 @@ contains
     ! reichle, 18 Oct 2005 - return increments (instead of updated cat_progn)
     ! reichle, 17 Oct 2011 - added "l2f" for revised (MPI) analysis
     ! reichle, 20 Feb 2022 - modified update_type 10 for PEATCLSM
+    ! amfox, 6 Feb 2024 - added update type 13 for combination of ASCAT SM and SMAP Tb   
     !
     ! --------------------------------------------------------------
     
@@ -3424,7 +3425,7 @@ contains
 
     integer :: n, n_e, kk, ii, jj
     
-    integer :: N_state_max, N_state, N_selected_obs, N_select_varnames, N_select_species, N_varnames, N_select_species_Tb
+    integer :: N_state_max, N_state, N_selected_obs, N_select_varnames, N_select_species, N_select_species_Tb
     
     real    :: halo_minlon, halo_maxlon, halo_minlat, halo_maxlat
     real    :: tmp_minlon,  tmp_maxlon,  tmp_minlat,  tmp_maxlat
@@ -3436,7 +3437,7 @@ contains
     
     integer,           dimension(N_obs)   :: ind_obs
     
-    real, allocatable, dimension(:,:)     :: State_incr, State_incr_cum
+    real, allocatable, dimension(:,:)     :: State_incr
     real, allocatable, dimension(:,:)     :: Obs_cov      ! measurement error covariance
     
     real, allocatable, dimension(:)       :: State_lon, State_lat
@@ -3473,7 +3474,7 @@ contains
 
     type(obs_param_type)                  :: this_obs_param
 
-    logical :: nonZeroFound, found, smap_obs, ascat_obs
+    logical :: found
         
     ! -----------------------------------------------------------------------
 
@@ -3496,7 +3497,6 @@ contains
 
     N_select_varnames = 0
     N_select_species  = 0
-    N_varnames        = 0
 
     select_varnames   = ''
     select_species    = -8888  ! intentionally differs from init in get_select_species()
@@ -4539,16 +4539,6 @@ contains
                   
                   call assemble_obs_cov( N_selected_obs, N_obs_param, obs_param, &
                        Observations(ind_obs(1:N_selected_obs)), Obs_cov )
-                  
-                  ! EnKF update
-                  
-                  ! smap_obs = any(Observations(ind_obs(1:N_selected_obs))%species < 5) 
-                  ! ascat_obs = any(Observations(ind_obs(1:N_selected_obs))%species > 4) 
-
-                  ! if (smap_obs .and. ascat_obs) then  
-                  !   write (logunit,*) "Found tile with both obs types. Tile = ", halo_minlon, halo_maxlon, halo_minlat, halo_maxlat 
-                  !   write (logunit,*) "Observations(ind_obs(1:N_selected_obs))%species = ", Observations(ind_obs(1:N_selected_obs))%species
-                  ! end if
 
                   call enkf_increments(                                        &
                        N_state, N_selected_obs, N_ens,                         &
@@ -4614,7 +4604,6 @@ contains
     ! clean up
     
     if (allocated( State_incr ))         deallocate( State_incr )
-    if (allocated( State_incr_cum ))     deallocate( State_incr_cum )
     if (allocated( State_lon ))          deallocate( State_lon )
     if (allocated( State_lat ))          deallocate( State_lat )
     if (allocated( select_tilenum ))     deallocate( select_tilenum )
@@ -5176,7 +5165,7 @@ contains
             Iam // '(): reset for 1d update_type: ycompact = ', ycompact
        if (logit) write (logunit,*)
        
-    case (2,7,8,10, 13)  ! "3d" updates, check consistency of xcompact, ycompact
+    case (2,7,8,10,13)  ! "3d" updates, check consistency of xcompact, ycompact
        
        ! check xcompact/ycompact against corr scales of model error
        
