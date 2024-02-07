@@ -3452,7 +3452,6 @@ contains
     integer, dimension(:,:,:), pointer    :: tile_num_in_cell_ij    => null()
 
     character(len=*),  parameter          :: Iam = 'cat_enkf_increments'
-    character(len=400) :: err_msg
 
     real, dimension(     N_catd)          :: r_x, tmp_dlon
     real                                  :: r_y, tmp_dlat
@@ -4559,16 +4558,14 @@ contains
 
                      cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                      cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef  
-                     write(logunit,*) 'N3 After cat_progn_incr(kk,:)%srfexc = ', cat_progn_incr(kk,5)%srfexc                   
+                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef                    
 
                   elseif ( N_state==7 ) then
                      
                      cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                      cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State
-                     write(logunit,*) 'N7 After cat_progn_incr(kk,:)%srfexc = ', cat_progn_incr(kk,5)%srfexc 
-                     
+                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State 
+
                      cat_progn_incr(kk,:)%tc1    = State_incr(4,:)*scale_temp
                      cat_progn_incr(kk,:)%tc2    = State_incr(5,:)*scale_temp
                      cat_progn_incr(kk,:)%tc4    = State_incr(6,:)*scale_temp
@@ -4578,7 +4575,6 @@ contains
                      
                      cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                      cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                     write(logunit,*) 'N6 After cat_progn_incr(kk,:)%srfexc = ', cat_progn_incr(kk,5)%srfexc 
                      
                      cat_progn_incr(kk,:)%tc1    = State_incr(3,:)*scale_temp
                      cat_progn_incr(kk,:)%tc2    = State_incr(4,:)*scale_temp
