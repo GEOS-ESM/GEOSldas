@@ -683,7 +683,14 @@ EOF
           /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
           /bin/ln -rs  $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
        endif
-   
+       set rstf = 'irrigation'
+       echo ${rstf}${ENSID}_internal_checkpoint
+       if (-f ${rstf}${ENSID}_internal_checkpoint ) then
+          set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}
+          /bin/mv ${rstf}${ENSID}_internal_checkpoint $tmp_file
+          /bin/rm -f $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
+          /bin/ln -s  $tmp_file $EXPDIR/input/restart/${rstf}${ENSID}_internal_rst
+       endif
        set rstf = 'landpert'
        if (-f ${rstf}${ENSID}_internal_checkpoint ) then
           set tmp_file = $EXPDIR/output/$EXPDOMAIN/rs/$ENSDIR/Y${eYEAR}/M${eMON}/${EXPID}.${rstf}_internal_rst.${eYEAR}${eMON}${eDAY}_${eHour}${eMin}

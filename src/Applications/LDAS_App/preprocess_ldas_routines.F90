@@ -1787,9 +1787,17 @@ contains
              call var_iter%next()
              cycle
           endif
+
+          if (trim(vname) =='CROPCLASSNAME') then
+             call var_iter%next()
+             cycle
+          endif
           
           if (ndims == 1) then
              call MAPL_VarRead (InFmt,vname,tmp1)
+             if ((trim(vname) =='SPRINKLERRATE').OR. &
+                 (trim(vname) =='DRIPRATE').OR.      &
+                 (trim(vname) =='FLOODRATE'))  tmp1 = 0.
              call MAPL_VarWrite(OutFmt,vname,tmp1(f2g))
           else if (ndims == 2) then
              

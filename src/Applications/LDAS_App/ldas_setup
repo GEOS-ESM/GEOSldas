@@ -390,7 +390,15 @@ class LDASsetup:
                     vegdynRstFile=tmpRstDir+'/'+tmpFile
                     if not os.path.isfile(vegdynRstFile):
                         assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'restart from LDASsa should be global'
-            
+                    
+
+                    tmpFile=self.rqdExeInp['RESTART_ID']+'.irrigation_internal_rst'
+                    tmpRstDir=self.rqdExeInp['RESTART_PATH']+'/'.join([self.rqdExeInp['RESTART_ID'],'output',
+                                                                       self.rqdExeInp['RESTART_DOMAIN'],'rs',self.ensdirs[0]])    
+                    irrigationRstFile=tmpRstDir+'/'+tmpFile
+                    if not os.path.isfile(irrigationRstFile):
+                        assert int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1, 'restart from LDASsa should be global'
+               
                     tmpFile=self.rqdExeInp['RESTART_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
                     tmpRstDir=self.rqdExeInp['RESTART_PATH']+'/'.join([self.rqdExeInp['RESTART_ID'],'output',
                                                                        self.rqdExeInp['RESTART_DOMAIN'],'rs',self.ensdirs[0],y4m2])
@@ -880,22 +888,27 @@ class LDASsetup:
         #for ens in self.ensdirs :
         catchRstFile0  = ''
         vegdynRstFile0 = ''
+        irrigationRstFile0 = ''
         for iens in range(self.nens) :
             ensdir   = self.ensdirs[iens]
             ensid    = self.ensids[iens]
             myCatchRst = myRstDir+'/'+self.catch +ensid +'_internal_rst'
             myVegRst   = myRstDir+'/'+'vegdyn'+ensid +'_internal_rst'
+            myIrrRst   = myRstDir+'/'+'irrigation'+ensid +'_internal_rst'
             myPertRst  = myRstDir+'/'+ 'landpert' +ensid +'_internal_rst'
 
             catchRstFile  = ''
             vegdynRstFile = ''
+            irrigationRstFile = ''
             pertRstFile   = ''
             print ("restart: " + self.rqdExeInp['RESTART'])
-
+            self.present_irrfile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')  
             if self.rqdExeInp['RESTART'].isdigit() :
 
                 if int(self.rqdExeInp['RESTART']) == 0 or int(self.rqdExeInp['RESTART']) == 2 :
                     vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
+                    if len(self.present_irrfile) > 0:
+                        irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]
                     catchRstFile  = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+'_internal_rst.'+YYYYMMDD+'*')[0]
                 else : # RESTART == 1
                     catchRstFile = rstpath+ensdir +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
@@ -903,7 +916,13 @@ class LDASsetup:
                     if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
                        if not os.path.isfile(vegdynRstFile0):
                          vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
+                    irrigationRstFile= rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.irrigation_internal_rst.'+y4m2d2_h2m2
+                    if not os.path.isfile(irrigationRstFile): # no irrigation restart from LDASsa
+                        if len(self.present_irrfile) > 0:
+                            irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]       
             else :
+                if len(self.present_irrfile) > 0:
+                    irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]
                 vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
                 catchRstFile  = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+'_internal_rst.'+YYYYMMDD+'*')[0]
 
@@ -942,6 +961,23 @@ class LDASsetup:
                     vegdynRstFile0 = vegdynRstFile
             else :    
                 vegdynRstFile = vegdynRstFile0
+            # irrigation restart file
+            if os.path.isfile(irrigationRstFile) :
+                irrigationLocal = self.rstdir+ens +'/'+ y4m2 +'/'+self.rqdExeInp['EXP_ID']+'.irrigation_internal_rst.'+y4m2d2_h2m2
+                if self.islocal :
+                    print "Creating the local irrigation restart file... \n"
+                    cmd='./preprocess_ldas.x c_localirrrst '+ irrigationRstFile +' ' + irrigationLocal  
+                    print "cmd:   " + cmd
+                    sp.call(cmd,shell=True)
+                else :
+                    shutil.copy(irrigationRstFile,irrigationLocal)
+
+                irrigationRstFile = irrigationLocal
+
+                if '0000' in ensdir :
+                    irrigationRstFile0 = irrigationRstFile
+            else :    
+                irrigationRstFile = irrigationRstFile0
 
             if (self.has_geos_pert and self.perturb == 1) :
                 pertRstFile = rstpath+ensdir +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.landpert_internal_rst.'+y4m2d2_h2m2
@@ -953,6 +989,8 @@ class LDASsetup:
             print ('vegdynRstFile: ' +  vegdynRstFile)
             os.symlink(catchRstFile, myCatchRst)
             os.symlink(vegdynRstFile,  myVegRst)
+            if os.path.isfile(irrigationRstFile):
+                os.symlink(irrigationRstFile,  myIrrRst)
             if ( self.has_geos_pert and  self.perturb == 1 ):
                os.symlink(pertRstFile,  myPertRst)
 
@@ -1156,7 +1194,12 @@ class LDASsetup:
                 if 'VEGDYN_INTERNAL_RESTART_TYPE' in ldasrcInp :
                     # avoid duplicate
                     del ldasrcInp['VEGDYN_INTERNAL_RESTART_TYPE']
-        
+                if 'IRRIGATION_INTERNAL_RESTART_TYPE' in ldasrcInp :
+                    # avoid duplicate
+                    del ldasrcInp['IRRIGATION_INTERNAL_RESTART_TYPE']
+
+
+
                 rstkey=[catch_,'VEGDYN']
                 rstval=[self.catch,'vegdyn']
 
@@ -1183,10 +1226,22 @@ class LDASsetup:
                    keyn='LANDASSIM_OBSPERTRSEED_CHECKPOINT_FILE'
                    valn='landassim_obspertrseed'+tmpl_+'_checkpoint'
                    ldasrcInp[keyn]= valn
-       
+    
                 for key,val in zip(rstkey,rstval) :
                     keyn = key+ '_INTERNAL_RESTART_FILE'
                     valn = '../input/restart/'+val+tmpl_+'_internal_rst'
+                    ldasrcInp[keyn]= valn
+
+                rstkey=[catch_,'IRRIGATION']
+                rstval=[self.catch,'irrigation']
+                
+                for key,val in zip(rstkey,rstval) :
+                    keyn = key+ '_INTERNAL_RESTART_FILE'
+                    valn = '../input/restart/'+val+tmpl_+'_internal_rst'
+                    ldasrcInp[keyn]= valn
+
+                    keyn = key+ '_INTERNAL_CHECKPOINT_FILE'
+                    valn = val+'_internal_checkpoint'
                     ldasrcInp[keyn]= valn
                         
                 # checkpoint file and its type

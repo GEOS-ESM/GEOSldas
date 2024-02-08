@@ -40,6 +40,8 @@ program main
   character(len=512) :: new_BC
   character(len=512) :: orig_Veg
   character(len=512) :: new_veg
+  character(len=512) :: orig_irr
+  character(len=512) :: new_irr
   character(len=512) :: orig_ease
   character(len=512) :: new_ease
   character(len=12 ) :: ymdhm
@@ -89,6 +91,13 @@ program main
      new_veg  = arg2
 
      call  createLocalVegRestart(orig_veg, new_veg)      
+  
+  else if (trim(option) == "c_localirrrst") then
+
+     orig_irr = arg1
+     new_irr  = arg2
+
+     call createLocalCatchRestart(orig_irr, new_irr)
 
   else if (trim(option) == "c_localmwrtmrst") then
 

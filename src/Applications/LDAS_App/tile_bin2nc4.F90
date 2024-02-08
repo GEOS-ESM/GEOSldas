@@ -436,6 +436,14 @@ PROGRAM tile_bin2nc4
     case ('TSURF_ANA_ENSSTD');   LONG_NAME = 'ave_catchment_temp_incl_snw_analysis_ensstd';              UNITS = 'K'
     case ('TSOIL1_ANA_ENSSTD');  LONG_NAME = 'soil_temperatures_layer_1_analysis_ensstd';                UNITS = 'K'
 
+    ! new fields for the irrigation model
+       
+    case ('SPRINKLERRATE');LONG_NAME = 'sprinkler_irrigation_rate';                                      UNITS = 'kg m-2 s-1'
+    case ('DRIPRATE');     LONG_NAME = 'drip_irrigation_rate';                                           UNITS = 'kg m-2 s-1'
+    case ('FLOODRATE');    LONG_NAME = 'flood_irrigation_rate';                                          UNITS = 'kg m-2 s-1'
+    case ('IRRLAND');      LONG_NAME = 'Total_irrigation_land';
+            
+            
     ! other land assimilation fields
        
     case ('MWRTM_VEGOPACITY'); LONG_NAME = 'Lband_microwave_vegopacity_normalized_with_cos_inc_angle';   UNITS = '1'       
