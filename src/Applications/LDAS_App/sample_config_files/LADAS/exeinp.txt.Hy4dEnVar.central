@@ -16,7 +16,7 @@ LADAS_COUPLING:    1
 ADAS_EXPDIR:       [full_path]/[ADAS_EXPDIR]
 
 MET_TAG:           [ADAS_EXPID]__Nx+- 
-MET_PATH:          [ADAS_EXPDIR]/lana/forc 
+MET_PATH:          ../../scratch  
 # option to use perturbed forcing created from central simulation and atm ensemble
 # MET_PATH:          [ADAS_EXPDIR]/atmens/rgdlfo
 
