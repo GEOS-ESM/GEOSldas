@@ -916,7 +916,7 @@ class LDASsetup:
                     if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
                        if not os.path.isfile(vegdynRstFile0):
                          vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
-                    irrigationRstFile= rstpath+ens +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.irrigation_internal_rst.'+y4m2d2_h2m2
+                    irrigationRstFile= rstpath+ensdir +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.irrigation_internal_rst.'+y4m2d2_h2m2
                     if not os.path.isfile(irrigationRstFile): # no irrigation restart from LDASsa
                         if len(self.present_irrfile) > 0:
                             irrigationRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'irrigation_*.dat')[0]       
@@ -963,11 +963,11 @@ class LDASsetup:
                 vegdynRstFile = vegdynRstFile0
             # irrigation restart file
             if os.path.isfile(irrigationRstFile) :
-                irrigationLocal = self.rstdir+ens +'/'+ y4m2 +'/'+self.rqdExeInp['EXP_ID']+'.irrigation_internal_rst.'+y4m2d2_h2m2
+                irrigationLocal = self.rstdir+ensdir +'/'+ y4m2 +'/'+self.rqdExeInp['EXP_ID']+'.irrigation_internal_rst.'+y4m2d2_h2m2
                 if self.islocal :
-                    print "Creating the local irrigation restart file... \n"
+                    print ("Creating the local irrigation restart file... \n")
                     cmd='./preprocess_ldas.x c_localirrrst '+ irrigationRstFile +' ' + irrigationLocal  
-                    print "cmd:   " + cmd
+                    print ("cmd:   " + cmd)
                     sp.call(cmd,shell=True)
                 else :
                     shutil.copy(irrigationRstFile,irrigationLocal)
