@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
-# This code works with the python version loaded by ldas v17.13.1 g5_module: 
-# python/GEOSpyD/Min4.11.0_py3.9_AND_Min4.8.3_py2.7 
+# This code works with the python version loaded by g5_modules associated with GEOSldas v17.13.1: 
+#    python/GEOSpyD/Min4.11.0_py3.9_AND_Min4.8.3_py2.7 
 #
 # This script generates a sample HISTORY.rc file for GEOSldas to write Catchment
 #    model analysis increments in ensemble space, as needed in the weakly-coupled
