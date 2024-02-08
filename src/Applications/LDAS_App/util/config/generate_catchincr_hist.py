@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
-# module load python/GEOSpyD/Ana2019.03_py3.7
+# This code works with the python version loaded by ldas v17.13.1 g5_module: 
+# python/GEOSpyD/Min4.11.0_py3.9_AND_Min4.8.3_py2.7 
 #
 # This script generates a sample HISTORY.rc file for GEOSldas to write Catchment
 #    model analysis increments in ensemble space, as needed in the weakly-coupled
@@ -83,18 +84,22 @@ with open('HISTORY.rc', 'w') as f:
     collection = collection.strip('\n').strip("'")  
     for i in range(nens):
        i = i +1 
-       ids = collection+f'{i:04}'
-       f.write(f"'{ids}'\n")
+       sfx = '%04d'%(i)
+       ids = collection+sfx
+       f.write(ids+'\n')
     f.write(label)
     lines = body.split('\n')
     for i in range(nens):
        i = i+1
-       collect= collection+f'{i:04}.'
+       sfx = '%04d'%(i)
+       collect= collection+sfx
        for line in lines:
           newline = line
           if ":" in line :
              newline = collect+line
           if "CATCHINCR_e" in newline:
-             newline = newline.replace('CATCHINCR_e',f'CATCHINCR_e{i:04}')
+             sfx = '%04d'%(i) 
+             frep = 'CATCHINCR_e'+sfx
+             newline = newline.replace('CATCHINCR_e',frep)
           f.write(newline+'\n')
        f.write('::\n') 
