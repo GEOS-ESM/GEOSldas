@@ -85,14 +85,14 @@ with open('HISTORY.rc', 'w') as f:
     for i in range(nens):
        i = i +1 
        sfx = '%04d'%(i)
-       ids = collection+sfx
+       ids = "'"+collection+sfx+"'"
        f.write(ids+'\n')
     f.write(label)
     lines = body.split('\n')
     for i in range(nens):
        i = i+1
        sfx = '%04d'%(i)
-       collect= collection+sfx
+       collect= collection+sfx+"."
        for line in lines:
           newline = line
           if ":" in line :
