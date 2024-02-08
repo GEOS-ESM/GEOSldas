@@ -11,6 +11,16 @@ import os
 import glob
 import subprocess as sp
 
+# ------------------------------------------------------------------
+#
+# specify number of ensemble members here:
+
+nens = 32
+
+# ------------------------------------------------------------------
+#
+# some definitions of text elements in HISTORY.rc file
+
 heads = """
 #
 #  Sample GEOSldas HISTORY.rc file for LADAS (atm ensemble)
@@ -77,7 +87,11 @@ fields:     'TCFSAT_INCR'    , 'CATCHINCR_e'      ,
             'SNDZN3_INCR'    , 'CATCHINCR_e'      ,
 """
 
-nens = 32
+# ------------------------------------------------------------------
+#
+# write file "HISTORY.rc" with nens "catch_progn_incrXXXX" collections, 
+#   one for each ensemble member
+
 with open('HISTORY.rc', 'w') as f:
     f.write(heads)
     collection, body = hist_template.split('::\n')
@@ -103,3 +117,5 @@ with open('HISTORY.rc', 'w') as f:
              newline = newline.replace('CATCHINCR_e',frep)
           f.write(newline+'\n')
        f.write('::\n') 
+
+# ====================== EOF =====================================
