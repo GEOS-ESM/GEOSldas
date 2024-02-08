@@ -51,6 +51,13 @@ class LDASsetup:
             'MINLON','MAXLON','MINLAT','MAXLAT','EXCLUDE_FILE','INCLUDE_FILE','MWRTM_PATH','GRIDNAME',
             'ADAS_EXPDIR', 'BCS_RESOLUTION' ]
 
+        # if built on sles15, BUILT_ON_SLES15 is "TRUE", else empty ""
+        BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
+
+        if BUILT_ON_SLES15 == "TRUE":
+          self.BUILT_ON_SLES15 = True
+        else:
+          self.BUILT_ON_SLES15 = False
 
         # ------
         # Required resource manager input fields
@@ -693,7 +700,11 @@ class LDASsetup:
         print ('\nCorrect the tile file if it is an old EASE tile format... \n')
         EASEtile=self.bcsdir+'/MAPL_'+short_tile
         cmd = './preprocess_ldas.x correctease  '+ tile + ' '+ EASEtile  
-        print ("cmd:   " + cmd)
+        if self.BUILT_ON_SLES15 :
+          print ("Executables were built on SLES15 and must be run on SLES15:   " + cmd)
+        else:
+          print ("cmd:   " + cmd)
+
         sp.call(shlex.split(cmd))
 
         if os.path.isfile(EASEtile) :
@@ -1333,8 +1344,13 @@ class LDASsetup:
                     elif 'MY_NODES' in line :
                         line_ = line.replace('MY_NODES',str(self.optRmInp['nodes']))
                         fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
-                        if int(self.rqdRmInp['ntasks-per-node']) > 40:
-                           fout.write("#SBATCH --constraint=cas\n")
+                         
+                        if self.BUILT_ON_SLES15 :
+                          fout.write("#SBATCH --constraint=mil\n")
+                        else:
+                          assert int(self.rqdRmInp['ntasks-per-node']) <= 46, 'ntasks-per-node should be <=46 for cas'
+                          fout.write("#SBATCH --constraint=cas\n")
+                           
                     elif 'MY_OSERVER_NODES' in line :
                         fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
                     elif 'MY_WRITERS_NPES' in line :
@@ -1365,8 +1381,6 @@ class LDASsetup:
                     elif 'MY_ADAS_EXPDIR' in line :
                         if self.ladas_coupling > 0:
                            fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
-                    
-                        
                     else :
                         fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
                      
