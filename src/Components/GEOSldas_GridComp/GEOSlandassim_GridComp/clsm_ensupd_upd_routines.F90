@@ -3363,7 +3363,7 @@ contains
     ! reichle, 18 Oct 2005 - return increments (instead of updated cat_progn)
     ! reichle, 17 Oct 2011 - added "l2f" for revised (MPI) analysis
     ! reichle, 20 Feb 2022 - modified update_type 10 for PEATCLSM
-    ! amfox, 6 Feb 2024 - added update type 13 for combination of ASCAT SM and SMAP Tb   
+    ! amfox,    6 Feb 2024 - added update type 13 for combination of ASCAT SM and SMAP Tb   
     !
     ! --------------------------------------------------------------
     
@@ -3473,7 +3473,7 @@ contains
 
     type(obs_param_type)                  :: this_obs_param
 
-    logical :: found
+    logical :: found_Tb_obs
         
     ! -----------------------------------------------------------------------
 
@@ -3666,7 +3666,7 @@ contains
           
        end do
        
-    case (2) select_update_type   ! 3d soil moisture analysis; sfmc and/or sfds obs
+    case (2) select_update_type   ! 3d soil moisture analysis; sfmc+sfds obs
        
        ! update each tile separately using all observations within 
        ! the customized halo around each tile
@@ -4407,190 +4407,194 @@ contains
 
        ! ----------------------------------
 
-      case (13) select_update_type   ! 3d analysis
+    case (13) select_update_type   ! 3d soil moisture/Tskin/ght(1) analysis; Tb+sfmc+sfds obs
+       
+       ! combines update_types 2 and 10
+       !
+       ! update each tile separately using all observations within customized halo around each tile
+       !
+       ! amfox, 14 September 2023
+       
+       if (logit) write (logunit,*) 'get 3d soil moisture/Tskin/ght(1) increments; Tb+sfmc obs'
+       
+       N_select_varnames  = 0
+       
+       if (any(obs_param%varname == 'Tb')) then
+          N_select_varnames = N_select_varnames + 1
+          select_varnames(N_select_varnames) = 'Tb'     
+       end if
+       
+       if (any(obs_param%varname == 'sfmc')) then
+          N_select_varnames = N_select_varnames + 1
+          select_varnames(N_select_varnames) = 'sfmc'     
+       end if
 
-         ! update each tile separately using all observations within customized halo around each tile
-         !
-         ! amfox, 14 September 2023
-         
-         if (logit) write (logunit,*) 'Get increments for all observation types in obs_param'
-  
-         N_select_varnames  = 0
-                  
-         if (any(obs_param%varname == 'Tb')) then
-            N_select_varnames = N_select_varnames + 1
-            select_varnames(N_select_varnames) = 'Tb'     
-         end if 
-
-         if (any(obs_param%varname == 'sfds')) then
-            N_select_varnames = N_select_varnames + 1
-            select_varnames(N_select_varnames) = 'sfds'     
-         end if
-
-         ! Will get all species associated with Tb or sfds observations
-
-         call get_select_species(                                           &
-              N_select_varnames, select_varnames(1:N_select_varnames),      &
-              N_obs_param, obs_param, N_select_species, select_species )         
-
-         ! Determine which species are Tb
-         call get_select_species(1, 'Tb', N_obs_param, obs_param, N_select_species_Tb, select_species_Tb )
-      
-
-         N_state_max = 7
-         
-         allocate( State_incr(N_state_max,N_ens)) 
-         allocate( State_lon( N_state_max      ))
-         allocate( State_lat( N_state_max      ))
-         
-         do kk=1,N_catd     
-            
-            N_state = 0
-            
-            ! compute increments only snow-free and non-frozen tiles
-            
-            if ( (SWE_ensavg(kk) < SWE_threshold) .and. &
-                 (tp1_ensavg(kk) > tp1_threshold)) then  
-               
-               ! find observations within halo around tile kk
-               
-               halo_minlon = tile_coord(kk)%com_lon - xcompact
-               halo_maxlon = tile_coord(kk)%com_lon + xcompact
-               halo_minlat = tile_coord(kk)%com_lat - ycompact
-               halo_maxlat = tile_coord(kk)%com_lat + ycompact
-               
-               ! simple approach to dateline issue (cut halo back to at most -180:180, -90:90)
-               ! - reichle, 28 May 2013
-               
-               halo_minlon = max(halo_minlon,-180.)
-               halo_maxlon = min(halo_maxlon, 180.)
-               halo_minlat = max(halo_minlat, -90.)
-               halo_maxlat = min(halo_maxlat,  90.)
-               
-               call get_ind_obs_lat_lon_box(                               &
-                    N_obs,            Observations,                        &
-                    halo_minlon, halo_maxlon, halo_minlat, halo_maxlat,    &
-                    N_select_species, select_species(1:N_select_species),  &
-                    N_selected_obs,   ind_obs )
-               
-               if (N_selected_obs>0) then
-
-                  ! Determine if Tb observations are present
-
-                  do ii = 1,N_select_species_Tb
-                     do jj = 1,N_selected_obs
-                     if (select_species_Tb(ii) == Observations(ind_obs(jj))%species) then
-                        found = .true.
-                        exit
-                     end if
-                     end do
-                     if (found) then
-                        exit
-                     end if
-                  end do
-
-                  if (found) then
-                        if (cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
-                           N_state = 7
-                        else
-                           N_state = 6
-                        end if
-                     else
-                        N_state = 3
-                  end if                 
+       if (any(obs_param%varname == 'sfds')) then
+          N_select_varnames = N_select_varnames + 1
+          select_varnames(N_select_varnames) = 'sfds'     
+       end if
+       
+       ! Will get all species associated with Tb or sfds observations
+       
+       call get_select_species(                                           &
+            N_select_varnames, select_varnames(1:N_select_varnames),      &
+            N_obs_param, obs_param, N_select_species, select_species )         
+       
+       ! Determine which species are Tb
+       
+       call get_select_species(1, 'Tb', N_obs_param, obs_param, N_select_species_Tb, select_species_Tb )
+       
+       N_state_max = 7
+       
+       allocate( State_incr(N_state_max,N_ens)) 
+       allocate( State_lon( N_state_max      ))
+       allocate( State_lat( N_state_max      ))
+       
+       do kk=1,N_catd     
           
-                  ! assemble State_minus
-                  ! (on  input, cat_progn contains cat_progn_minus)
-                  
-                  if ( N_state==3 ) then 
-
-                     State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc)
-                     State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc)
-                     State_incr(3,:) = (cat_progn( kk,:)%catdef/scale_catdef)
-
-                  elseif ( N_state==7 ) then
-                     
-                     State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
-                     State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
-                     State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef   ! catdef in State
-                     
-                     State_incr(4,:) = cat_progn( kk,:)%tc1   /scale_temp
-                     State_incr(5,:) = cat_progn( kk,:)%tc2   /scale_temp
-                     State_incr(6,:) = cat_progn( kk,:)%tc4   /scale_temp
-                     State_incr(7,:) = cat_progn( kk,:)%ght(1)/scale_ght1
-                     
-                  else
-                     
-                     State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
-                     State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
-                     
-                     State_incr(3,:) = cat_progn( kk,:)%tc1   /scale_temp
-                     State_incr(4,:) = cat_progn( kk,:)%tc2   /scale_temp
-                     State_incr(5,:) = cat_progn( kk,:)%tc4   /scale_temp
-                     State_incr(6,:) = cat_progn( kk,:)%ght(1)/scale_ght1
-  
-                  end if
-                  
-                  State_lon(   :) = tile_coord(kk  )%com_lon
-                  State_lat(   :) = tile_coord(kk  )%com_lat
-                  
-                  allocate(Obs_cov(N_selected_obs,N_selected_obs))
-                  
-                  call assemble_obs_cov( N_selected_obs, N_obs_param, obs_param, &
-                       Observations(ind_obs(1:N_selected_obs)), Obs_cov )
-
-                  call enkf_increments(                                        &
-                       N_state, N_selected_obs, N_ens,                         &
-                       Observations(ind_obs(1:N_selected_obs)),                &
-                       Obs_pred(ind_obs(1:N_selected_obs),:),                  &
-                       Obs_pert(ind_obs(1:N_selected_obs),:),                  &
-                       Obs_cov,                                                &
-                       State_incr(1:N_state,:),                                &
-                       State_lon( 1:N_state  ),                                &
-                       State_lat( 1:N_state  ),                                &
-                       xcompact, ycompact,                                     &
-                       fcsterr_inflation_fac )             
-                  
-                  deallocate(Obs_cov)
-                  
-                  ! assemble cat_progn increments
-                  if ( N_state==3 ) then
-
-                     cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
-                     cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef                    
-
-                  elseif ( N_state==7 ) then
-                     
-                     cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
-                     cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                     cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State 
-
-                     cat_progn_incr(kk,:)%tc1    = State_incr(4,:)*scale_temp
-                     cat_progn_incr(kk,:)%tc2    = State_incr(5,:)*scale_temp
-                     cat_progn_incr(kk,:)%tc4    = State_incr(6,:)*scale_temp
-                     cat_progn_incr(kk,:)%ght(1) = State_incr(7,:)*scale_ght1
-
-                  else
-                     
-                     cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
-                     cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                     
-                     cat_progn_incr(kk,:)%tc1    = State_incr(3,:)*scale_temp
-                     cat_progn_incr(kk,:)%tc2    = State_incr(4,:)*scale_temp
-                     cat_progn_incr(kk,:)%tc4    = State_incr(5,:)*scale_temp
-                     cat_progn_incr(kk,:)%ght(1) = State_incr(6,:)*scale_ght1
-                     
-                  end if
-                  
-               end if
+          N_state = 3    ! for now, assume only sfmc and/or sfds obs
+          
+          ! compute increments only snow-free and non-frozen tiles
+          
+          if ( (SWE_ensavg(kk) < SWE_threshold) .and. &
+               (tp1_ensavg(kk) > tp1_threshold)) then  
+             
+             ! find observations within halo around tile kk
+             
+             halo_minlon = tile_coord(kk)%com_lon - xcompact
+             halo_maxlon = tile_coord(kk)%com_lon + xcompact
+             halo_minlat = tile_coord(kk)%com_lat - ycompact
+             halo_maxlat = tile_coord(kk)%com_lat + ycompact
+             
+             ! simple approach to dateline issue (cut halo back to at most -180:180, -90:90)
+             ! - reichle, 28 May 2013
+             
+             halo_minlon = max(halo_minlon,-180.)
+             halo_maxlon = min(halo_maxlon, 180.)
+             halo_minlat = max(halo_minlat, -90.)
+             halo_maxlat = min(halo_maxlat,  90.)
+             
+             call get_ind_obs_lat_lon_box(                               &
+                  N_obs,            Observations,                        &
+                  halo_minlon, halo_maxlon, halo_minlat, halo_maxlat,    &
+                  N_select_species, select_species(1:N_select_species),  &
+                  N_selected_obs,   ind_obs )
+             
+             if (N_selected_obs>0) then
+                
+                ! Determine if Tb observations are present
+                
+                do ii = 1,N_select_species_Tb
+                   do jj = 1,N_selected_obs
+                      if (select_species_Tb(ii) == Observations(ind_obs(jj))%species) then
+                         found_Tb_obs = .true.
+                         exit
+                      end if
+                   end do
+                   if (found_Tb_obs) exit
+                end do
+                
+                if (found_Tb_obs) then
+                   if (cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
+                      N_state = 7
+                   else
+                      N_state = 6
+                   end if
+                end if
+                
+                ! assemble State_minus
+                ! (on  input, cat_progn contains cat_progn_minus)
+                
+                if     ( N_state==3 ) then 
+                   
+                   State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc)
+                   State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc)
+                   State_incr(3,:) = (cat_progn( kk,:)%catdef/scale_catdef)
+                   
+                elseif ( N_state==7 ) then
+                   
+                   State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
+                   State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
+                   State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef   ! catdef in State
+                   
+                   State_incr(4,:) = cat_progn( kk,:)%tc1   /scale_temp
+                   State_incr(5,:) = cat_progn( kk,:)%tc2   /scale_temp
+                   State_incr(6,:) = cat_progn( kk,:)%tc4   /scale_temp
+                   State_incr(7,:) = cat_progn( kk,:)%ght(1)/scale_ght1
+                   
+                else
+                   
+                   State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
+                   State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
+                   
+                   State_incr(3,:) = cat_progn( kk,:)%tc1   /scale_temp
+                   State_incr(4,:) = cat_progn( kk,:)%tc2   /scale_temp
+                   State_incr(5,:) = cat_progn( kk,:)%tc4   /scale_temp
+                   State_incr(6,:) = cat_progn( kk,:)%ght(1)/scale_ght1
+                   
+                end if
+                
+                State_lon(   :) = tile_coord(kk  )%com_lon
+                State_lat(   :) = tile_coord(kk  )%com_lat
+                
+                allocate(Obs_cov(N_selected_obs,N_selected_obs))
                
-            end if     ! thresholds
-            
-         end do       
+                call assemble_obs_cov( N_selected_obs, N_obs_param, obs_param, &
+                     Observations(ind_obs(1:N_selected_obs)), Obs_cov )
+                
+                call enkf_increments(                                        &
+                     N_state, N_selected_obs, N_ens,                         &
+                     Observations(ind_obs(1:N_selected_obs)),                &
+                     Obs_pred(ind_obs(1:N_selected_obs),:),                  &
+                     Obs_pert(ind_obs(1:N_selected_obs),:),                  &
+                     Obs_cov,                                                &
+                     State_incr(1:N_state,:),                                &
+                     State_lon( 1:N_state  ),                                &
+                     State_lat( 1:N_state  ),                                &
+                     xcompact, ycompact,                                     &
+                     fcsterr_inflation_fac )             
+                
+                deallocate(Obs_cov)
+                
+                ! assemble cat_progn increments
 
+                if ( N_state==3 ) then
+                   
+                   cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
+                   cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
+                   cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef                    
+                   
+                elseif ( N_state==7 ) then
+                   
+                   cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
+                   cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
+                   cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State 
+                   
+                   cat_progn_incr(kk,:)%tc1    = State_incr(4,:)*scale_temp
+                   cat_progn_incr(kk,:)%tc2    = State_incr(5,:)*scale_temp
+                   cat_progn_incr(kk,:)%tc4    = State_incr(6,:)*scale_temp
+                   cat_progn_incr(kk,:)%ght(1) = State_incr(7,:)*scale_ght1
+                   
+                else
+                   
+                   cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
+                   cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
+                   
+                   cat_progn_incr(kk,:)%tc1    = State_incr(3,:)*scale_temp
+                   cat_progn_incr(kk,:)%tc2    = State_incr(4,:)*scale_temp
+                   cat_progn_incr(kk,:)%tc4    = State_incr(5,:)*scale_temp
+                   cat_progn_incr(kk,:)%ght(1) = State_incr(6,:)*scale_ght1
+                   
+                end if
+                
+             end if
+             
+          end if     ! thresholds
+          
+       end do
+       
        ! ----------------------------------
-
+       
     case default
        
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown update_type')
