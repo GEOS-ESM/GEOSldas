@@ -1646,16 +1646,16 @@ contains
 
     character(100), dimension(2*N_fnames_max)   :: fname_list  ! max 2 days of files
 
-    real,      dimension(:),     allocatable    :: tmp1_obs, tmp1_lat, tmp1_lon
+    real,      dimension(:),     allocatable    :: tmp1_obs, tmp1_lat, tmp1_lon, tmp1_qcc
     real*8,    dimension(:),     allocatable    :: tmp1_jtime
     real*8,    dimension(:,:),   allocatable    :: tmp_data
 
     real,      dimension(:),     pointer        :: tmp_obs,  tmp_lat,  tmp_lon
     real*8,    dimension(:),     pointer        :: tmp_jtime
 
-    integer,   dimension(:),     pointer        :: tmp_tile_num
+    integer,   dimension(:),     pointer        :: tmp_tile_num, tmp_qcc
 
-    integer,   dimension(N_catd)                :: N_obs_in_tile    
+    integer,   dimension(N_catd)                :: N_obs_in_tile, qcc_in_tile    
 
     character(len=*),  parameter :: Iam = 'read_obs_sm_ASCAT_EUMET'
     character(len=400)           :: err_msg
@@ -1762,6 +1762,7 @@ contains
        allocate(tmp1_lon(  max_rec   ))
        allocate(tmp1_lat(  max_rec   ))
        allocate(tmp1_obs(  max_rec   ))
+       allocate(tmp1_qcc(  max_rec   ))
        allocate(tmp1_jtime(max_rec   ))
        
        allocate(tmp_data(  max_obs,14))
@@ -1861,6 +1862,7 @@ contains
           tmp1_lon(  N_tmp) = tmp_data(kk, 14)
 
           tmp1_obs(  N_tmp) = tmp_data(kk,  7)/100.  ! change units from percent (0-100) to fraction (0-1)
+          tmp1_qcc(  N_tmp) = tmp_data(kk,  9)       ! QC code
           
        end do
 
@@ -1884,16 +1886,19 @@ contains
        allocate(tmp_lon(  N_tmp))
        allocate(tmp_lat(  N_tmp))
        allocate(tmp_obs(  N_tmp))
+       allocate(tmp_qcc(  N_tmp))
 
        tmp_jtime = tmp1_jtime(1:N_tmp)
        tmp_lon   = tmp1_lon(  1:N_tmp)
        tmp_lat   = tmp1_lat(  1:N_tmp)
        tmp_obs   = tmp1_obs(  1:N_tmp)
+       tmp_qcc   = tmp1_qcc(  1:N_tmp)
    
        deallocate(tmp1_jtime)
        deallocate(tmp1_lon)
        deallocate(tmp1_lat)
        deallocate(tmp1_obs)
+       deallocate(tmp1_qcc)
        deallocate(tmp_data) 
        
     else
@@ -1941,7 +1946,8 @@ contains
              ASCAT_lon( ind) = ASCAT_lon( ind) + tmp_lon(  ii)
              ASCAT_lat( ind) = ASCAT_lat( ind) + tmp_lat(  ii)
              ASCAT_time(ind) = ASCAT_time(ind) + tmp_jtime(ii)
-             
+
+             qcc_in_tile(ind) = max(qcc_in_tile(ind),tmp_qcc(ii)) ! keep highest QC code if there are multiple obs in the same tile
              N_obs_in_tile(ind) = N_obs_in_tile(ind) + 1
              
           end if
@@ -1955,6 +1961,11 @@ contains
           ! set observation error standard deviation 
          
           ASCAT_sm_std(ii) = this_obs_param%errstd/100.    ! change units from percent (0-100) to fraction (0-1)
+
+          ! Inflate obs error std-dev for obs with higher QC code
+          if (qcc_in_tile(ii) > 0) then
+            ASCAT_sm_std(ii) = 5.0 * ASCAT_sm_std(ii)
+          end if
 
           ! normalize
 
@@ -2000,6 +2011,7 @@ contains
     ! clean up
     
     if (associated(tmp_obs))      deallocate(tmp_obs)
+    if (associated(tmp_qcc))      deallocate(tmp_qcc)
     if (associated(tmp_lon))      deallocate(tmp_lon)
     if (associated(tmp_lat))      deallocate(tmp_lat)
     if (associated(tmp_jtime))    deallocate(tmp_jtime)
