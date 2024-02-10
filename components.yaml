@@ -48,6 +48,6 @@ MAPL:
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: develop
+  branch: bugfix/rreichle/snow_excs
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
