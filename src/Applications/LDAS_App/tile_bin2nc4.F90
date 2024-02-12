@@ -438,10 +438,10 @@ PROGRAM tile_bin2nc4
 
     ! new fields for the irrigation model
        
-    case ('SPRINKLERRATE');LONG_NAME = 'sprinkler_irrigation_rate';                                      UNITS = 'kg m-2 s-1'
-    case ('DRIPRATE');     LONG_NAME = 'drip_irrigation_rate';                                           UNITS = 'kg m-2 s-1'
-    case ('FLOODRATE');    LONG_NAME = 'flood_irrigation_rate';                                          UNITS = 'kg m-2 s-1'
-    case ('IRRLAND');      LONG_NAME = 'Total_irrigation_land';
+    case ('SPRINKLERRATE');      LONG_NAME = 'sprinkler_irrigation_rate';                                UNITS = 'kg m-2 s-1'
+    case ('DRIPRATE');           LONG_NAME = 'drip_irrigation_rate';                                     UNITS = 'kg m-2 s-1'
+    case ('FLOODRATE');          LONG_NAME = 'flood_irrigation_rate';                                    UNITS = 'kg m-2 s-1'
+    case ('IRRLAND');            LONG_NAME = 'Total_irrigation_land';
             
             
     ! other land assimilation fields

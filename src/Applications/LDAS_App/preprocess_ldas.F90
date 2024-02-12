@@ -4,15 +4,16 @@
 
 program main
 
-  use preprocess_ldas_routines,     ONLY:    &
-       createf2g,                            &
-       createLocalTilefile,                  &
-       createLocalBC,                        &
-       createLocalVegRestart,                &
-       createLocalmwRTMRestart,              &
-       createLocalCatchRestart,              &
-       correctEase,                          &
-       convert_pert_rst,                     &
+  use preprocess_ldas_routines,     ONLY:      &
+       createf2g,                              &
+       createLocalTilefile,                    &
+       createLocalBC,                          &
+       createLocalVegRestart,                  &
+       createLocalmwRTMRestart,                &
+       createLocalCatchRestart,                &
+       write3D_nc => createLocalCatchRestart,  &
+       correctEase,                            &
+       convert_pert_rst,                       &
        optimize_latlon
   
   implicit none
@@ -25,7 +26,6 @@ program main
   character(len=512) :: arg5
   character(len=512) :: arg6
   character(len=512) :: arg7
-  
   character(len=512) :: orig_tile
   character(len=512) :: new_tile
   character(len=512) :: domain_def_file
@@ -97,7 +97,7 @@ program main
      orig_irr = arg1
      new_irr  = arg2
 
-     call createLocalCatchRestart(orig_irr, new_irr)
+     call write3D_nc (orig_irr, new_irr)
 
   else if (trim(option) == "c_localmwrtmrst") then
 
