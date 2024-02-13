@@ -7,12 +7,14 @@ model_dir_gen="/shared/models/GEOSldas_pso_g1_ksat/GEOSldas"
 # what is the directory where we should place the experiment
 exp_dir_gen="/lustre/catchment/exps"
 # what is the name of this experiment
-exp_name="GEOSldas_CN45_med_default_1996_2015"
+exp_name="GEOSldas_CN45_med_default_pft_g1_1996_2020_camels"
 # where is the list of tiles to run?
 include_name="/shared/pso/step_1_choose_tiles/outputs/include"
 # how many particles are we running for the pso?
 # if want just a normal run, make this 1
 num_members=1
+# where is the history.rc file?
+hist_rc_loc="${model_dir_gen}/src/Applications/LDAS_App/HISTORY.rc"
 
 # directly based off of user input (shouldn't need to edit)
 # what is the exeinp file
@@ -21,8 +23,6 @@ exeinp="${model_dir_gen}/GEOSldas_CN45_exeinp_default.txt"
 batinp="${model_dir_gen}/GEOSldas_CN45_batinp_default.txt"
 # what is the full directory where we will palce the experiment
 exp_dir="${exp_dir_gen}/${exp_name}"
-# where is the history.rc file?
-hist_rc_loc="${model_dir_gen}/src/Applications/LDAS_App/HISTORY.rc"
 # what experiment do we need to remove to set this up
 exp_to_rm="${exp_dir_gen}/${exp_name}"
 # we will copy the include file to this model. where are we copying to?

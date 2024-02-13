@@ -8,7 +8,7 @@ def main():
     # location to save outputs of new global best model runs
     save_path = '/shared/pso_outputs/fake'
     # should Fluxcom ET be used as a constraint in objective function?
-    et_constraint = True
+    et_constraint = False
     # should USGS WaterWatch runoff be used as a constraint in objective
     # function?
     streamflow_constraint = True
@@ -20,8 +20,8 @@ def main():
     )
     # the location of the streamflow truth file for the PSO
     stream_truth_fname = (
-        '/shared/pso/step_3.1_process_streamflow/outputs/' +
-        'streamflow_data_mm_per_month_200101_201512.csv'
+        '/shared/pso/step_3.1.1_process_camels/outputs/' +
+        'camels_truth_1998-01-01_2012-12-31_mm_day.csv'
     )
     # location of the intersection info .pkl file that relates catchment tiles
     # to huc watershed
@@ -34,8 +34,8 @@ def main():
     )
     # date range over which to calculate the objective function
     # this is inclusive
-    start = datetime.date(2002,1,1)
-    end = datetime.date(2002,12,31)
+    start = datetime.date(2006,1,1)
+    end = datetime.date(2006,12,31)
     # number of iterations with no change to global best before convergence
     conv_thresh = 1
     # number of iterations at which to declare does not converge

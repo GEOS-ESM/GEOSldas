@@ -510,7 +510,7 @@ class pso:
         # make this a numpy array
         et_truth_np = np.array(et_truth)
         # get number of steps and pixels from ET truth dataset
-        model_num_steps,model_num_pixels = np.shape(et_truth_np)
+        dummy,model_num_pixels = np.shape(et_truth_np)
         # were also going to need the list of all of the pixels that we are
         # running
         tiles = pd.read_csv(all_pix_fname,header=None)
@@ -524,25 +524,25 @@ class pso:
         stream_truth = pd.read_csv(stream_truth_fname)
         # set the index and isolate only times that we want
         stream_truth = stream_truth.set_index('time')
-        start_fmt = int(self.params['start'].strftime('%Y%m'))
-        end_fmt = int(self.params['end'].strftime('%Y%m'))
+        start_fmt = int(self.params['start'].strftime('%Y%m%d'))
+        end_fmt = int(self.params['end'].strftime('%Y%m%d'))
         stream_truth = stream_truth.loc[start_fmt:end_fmt]
         # make this a numpy array
         stream_truth_np = np.array(stream_truth)
         # get number of catchments and number of steps from catchment truth
         # dataset
         stream_num_steps,stream_num_hucs = np.shape(stream_truth_np)
+        model_num_steps = stream_num_steps
+        this_part_strm_huc = np.zeros((stream_num_steps,stream_num_hucs))
         # get model output and calculate rmse for each particle
         for part in range(num_particles):
+            print(part)
             if et_constraint:
                 # initilize the et model output array
                 this_part_et = np.zeros((model_num_steps,model_num_pixels))
             if streamflow_constraint:
                 this_part_stream_day = np.zeros(
                     (model_num_steps,model_num_pixels)
-                )
-                this_part_stream_mon = np.zeros(
-                    (stream_num_steps,stream_num_hucs)
                 )
             # set the base dir where the model output is stored
             base_dir = os.path.join(
@@ -606,49 +606,17 @@ class pso:
                     for t,ti in enumerate(this_tiles):
                         this_ti_idx = int(np.where(all_tiles == ti)[0][0])
                         this_tiles_idx = np.append(this_tiles_idx,this_ti_idx)
-                    # set the date information that we need to get the files
-                    curr = copy.deepcopy(self.params['start'])
-                    last_month = curr.strftime('%m')
-                    days_elapsed = 0
-                    months_elapsed = 0
-                    last_days_elapsed = 0
-                    # loop over all days until we hit the endo f the period
-                    while curr <= (self.params['end'] + datetime.timedelta(days=1)):
-                        # get this month
-                        this_month = curr.strftime('%m')
-                        # if it's a new month
-                        if this_month != last_month:
-                            # copy the part of the record that is just this month
-                            this_mon_strm = copy.deepcopy(
-                                this_part_stream_day[
-                                    last_days_elapsed:days_elapsed,
-                                    this_tiles_idx
-                                ]
-                            )
-                            # take the weighted average across all tiles
-                            this_mon_strm_avg = np.average(
-                                this_mon_strm,
-                                axis=1,
-                                weights=this_perc
-                            )
-                            # take the sum across all days since each day is
-                            # already in mm/month
-                            this_mon_strm_avg = np.sum(
-                                this_mon_strm_avg
-                            )
-                            # assign this to the correct month and watershed
-                            this_part_stream_mon[months_elapsed,w] = (
-                                this_mon_strm_avg
-                            )
-                            # this is where we stopped last time
-                            last_days_elapsed = copy.deepcopy(days_elapsed)
-                            last_month = curr.strftime('%m')
-                            # another month has elapsed
-                            months_elapsed += 1
-                        # another day has elapsed
-                        days_elapsed += 1
-                        # update the current date
-                        curr += datetime.timedelta(days=1)
+                    # get the strm from tiles contributing to this watershed
+                    this_wat_strm = copy.deepcopy(
+                        this_part_stream_day[:,this_tiles_idx]
+                    )
+                    # take weighted average to get the streamflow for each day
+                    this_wat_strm_avg = np.average(
+                        this_wat_strm,
+                        axis=1,
+                        weights=this_perc
+                    )
+                    this_part_strm_huc[:,w] = this_wat_strm_avg
             if et_constraint:
                 usable_data_idx = np.where(
                     (this_part_et > 0) &
@@ -667,26 +635,21 @@ class pso:
                 avg_fluxcom_et  = np.mean(et_truth_np[usable_data_idx])
                 this_et_obj_norm = this_et_obj/avg_fluxcom_et
             if streamflow_constraint:
+                usable_data_idx = np.where(
+                    np.isnan(this_part_strm_huc) == False
+                )
                 this_strm_obj = np.sqrt(
                     (
                         (
-                            this_part_stream_mon -
-                            stream_truth_np
+                            this_part_strm_huc[usable_data_idx] -
+                            stream_truth_np[usable_data_idx]
                         )**2
                     ).mean()
                 )
                 # and now we need to normalize by average streamflow for
                 # waterwatch
-                avg_waterwatch_strm = np.mean(stream_truth_np)
+                avg_waterwatch_strm = np.mean(stream_truth_np[usable_data_idx])
                 this_strm_obj_norm = this_strm_obj/avg_waterwatch_strm
-            print('wat')
-            print(wat)
-            print('this_strm_obj')
-            print(this_strm_obj)
-            print('avg_waterwatch_strm')
-            print(avg_waterwatch_strm)
-            print('this_strm_obj_norm')
-            print(this_strm_obj_norm)
             # now let's calculate the final objective value for this particle
             # based off of what we are using as constraints.
             # if only using ET or only use streamflow as constraints, then the

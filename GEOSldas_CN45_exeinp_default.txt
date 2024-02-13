@@ -15,10 +15,10 @@
 ############################################################
 
 EXP_ID: 0
-EXP_DOMAIN:SMAP_EASEv2_M09
+EXP_DOMAIN:SMAP_EASEv2_M36
 NUM_LDAS_ENSEMBLE: 1
 BEG_DATE: 19960101 000000
-END_DATE: 20160101 000000
+END_DATE: 20210101 000000
 
 ############################################################
 #                                                          #
@@ -114,7 +114,7 @@ FORCE_DTSTEP: 3600
 ############################################################
 
 BCS_PATH: /home/ubuntu/Icarus-NLv3_EASE/
-BCS_RESOLUTION: SMAP_EASEv2_M09
+BCS_RESOLUTION: SMAP_EASEv2_M36
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#
 #                                                        #
