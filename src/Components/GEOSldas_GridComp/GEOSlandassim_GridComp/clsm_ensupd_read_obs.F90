@@ -1963,7 +1963,7 @@ contains
           ASCAT_sm_std(ii) = this_obs_param%errstd/100.    ! change units from percent (0-100) to fraction (0-1)
 
           ! Inflate obs error std-dev for obs with higher QC code
-          if (qcc_in_tile(ii) > 0) then
+          if (qcc_in_tile(ii) > 1) then
             ASCAT_sm_std(ii) = 5.0 * ASCAT_sm_std(ii)
           end if
 
