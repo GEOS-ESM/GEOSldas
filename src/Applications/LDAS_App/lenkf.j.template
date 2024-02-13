@@ -16,6 +16,15 @@
 #SBATCH --job-name=MY_JOB
 #SBATCH --qos=MY_QOS
 
+#PBS -l walltime=MY_WALLTIME
+#PBS -l select=MY_NODES:ncpus=40:mpiprocs=40:model=MY_CONSTRAINT
+#PBS -N MY_JOB
+#PBS -q MY_QOS
+#PBS -W group_list=MY_ACCOUNT
+#PBS -o ../scratch/GEOSldas_log_txt
+#PBS -e ../scratch/GEOSldas_err_txt
+#PBS -j oe     
+
 #######################################################################
 #    System Settings and Architecture Specific Environment Variables
 #######################################################################
@@ -834,5 +843,6 @@ else
    cd   $HOMDIR
    #don't change below line(not even extra space)
    if($capdate<$enddate) sbatch $HOMDIR/lenkf.j
+   if($capdate<$enddate) qsub $HOMDIR/lenkf.j
   endif
 endif
