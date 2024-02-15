@@ -132,7 +132,7 @@ COLLECTIONS:
                                'TP5'        , 'GridComp'  ,
                                'TP6'        , 'GridComp'  ,
                                'PRLAND'     , 'GridComp'  , 'PRECTOTLAND'  ,
-     >>>HIST_IRRIG<<<          'IRRLAND'    , 'GridComp'  ,
+>>>HIST_IRRIG<<<               'IRRLAND'    , 'GridComp'  ,
 			       'SNOLAND'    , 'GridComp'  , 'PRECSNOLAND'  ,
                                'TSLAND'     , 'GridComp'  , 'SNOMAS'       ,
                                'SNOWDP'     , 'GridComp'  , 'SNODP'        ,

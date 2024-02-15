@@ -71,7 +71,7 @@ else
    sed -i 's/>>>HIST_AEROSOL<<</''/g' $HISTRC
 endif
 
-if(($RUN_IRRIG == 0) || ($RUN_IRRIG == .FALSE.)) then
+if($RUN_IRRIG == 0) then
    sed -i '/^>>>HIST_IRRIG<<</d' $HISTRC
 else
    sed -i 's/>>>HIST_IRRIG<<</''/g' $HISTRC
