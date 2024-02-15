@@ -37,6 +37,7 @@ GEOS_Util:
   local: ./src/Shared/@GMAO_Shared/@GEOS_Util
   remote: ../GEOS_Util.git
   tag: v2.0.3
+  sparse: ./config/GEOS_Util.sparse
   develop: main
 
 MAPL:
