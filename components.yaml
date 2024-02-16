@@ -45,9 +45,22 @@ MAPL:
   tag: v2.42.1
   develop: develop
 
+
+GEOSldas_GridComp:
+  local: ./src/Components/@GEOSldas_GridComp
+  remote: ../GEOSldas_GridComp.git
+  branch: develop
+  develop: develop
+
 GEOSgcm_GridComp:
-  local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
+  local: ./src/Components/@GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
   branch: develop
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
+  develop: develop
+
+LDAS_App:
+  local: ./src/Applications/@LDAS_App
+  remote: ../LDAS_App.git
+  branch: develop
   develop: develop

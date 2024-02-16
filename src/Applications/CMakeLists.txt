@@ -1,1 +1,1 @@
-add_subdirectory (LDAS_App)
+esma_add_subdirectory (LDAS_App)
