@@ -5,7 +5,7 @@ GEOSldas:
 env:
   local: ./@env
   remote: ../ESMA_env.git
-  tag: v4.23.0
+  branch: feature/mathomp4/baselibs-7.18.1
   develop: main
 
 cmake:
