@@ -345,8 +345,9 @@ class LDASsetup:
             self.catch = 'catch'
         if  int(self.rqdExeInp['LSM_CHOICE']) == 2 :
             self.catch = 'catchcnclm40'
-        if  int(self.rqdExeInp['LSM_CHOICE']) == 3 : 
-            self.catch = 'catchcnclm45'
+
+        assert int(self.rqdExeInp['LSM_CHOICE']) <= 2, "\nLSM_CHOICE=3 (Catchment-CN4.5) is no longer supported. Please set LSM_CHOICE to 1 (Catchment) or 2 (Catchment-CN4.0)"
+
         if 'POSTPROC_HIST' not in self.rqdExeInp:
             self.rqdExeInp['POSTPROC_HIST'] = 0
 
