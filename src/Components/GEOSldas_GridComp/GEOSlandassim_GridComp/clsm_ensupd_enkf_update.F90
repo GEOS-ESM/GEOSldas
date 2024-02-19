@@ -1333,8 +1333,8 @@ contains
     case (6,8,9,10,13) select_update_type    ! soil moisture and temperature update
 
       ! for update_type 10, catdef increments may be zero by design     
-      ! for update_type 13, could be multiple zero increments  
-       
+      ! for update_type 13, could produce multiple zero increments (i.e. tc1, tc2, tc4 will be unchanged if soil moisture observations only) 
+
        if (logit) write (logunit,*) &
             'apply_enkf_increments(): applying soil moisture and Tskin/ght1 increments'
        
