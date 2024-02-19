@@ -4419,20 +4419,24 @@ contains
        
        N_select_varnames  = 0
        
-       if (any(obs_param%varname == 'Tb')) then
-          N_select_varnames = N_select_varnames + 1
-          select_varnames(N_select_varnames) = 'Tb'     
-       end if
+       do ii = 1,N_obs_param
        
-       if (any(obs_param%varname == 'sfmc')) then
-          N_select_varnames = N_select_varnames + 1
-          select_varnames(N_select_varnames) = 'sfmc'     
-       end if
+         if (trim(obs_param(ii)%varname) == 'Tb') then
+            N_select_varnames = N_select_varnames + 1
+            select_varnames(N_select_varnames) = 'Tb'     
+         end if
+         
+         if (trim(obs_param(ii)%varname) == 'sfmc') then
+            N_select_varnames = N_select_varnames + 1
+            select_varnames(N_select_varnames) = 'sfmc'     
+         end if
 
-       if (any(obs_param%varname == 'sfds')) then
-          N_select_varnames = N_select_varnames + 1
-          select_varnames(N_select_varnames) = 'sfds'     
-       end if
+         if (trim(obs_param(ii)%varname) == 'sfds') then
+            N_select_varnames = N_select_varnames + 1
+            select_varnames(N_select_varnames) = 'sfds'     
+         end if
+
+       end do
        
        ! Will get all species associated with Tb or sfds observations
        
