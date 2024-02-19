@@ -410,6 +410,7 @@ contains
     ! MAPL variables
     type(MAPL_LocStream) :: surf_locstream
     type(MAPL_LocStream) :: land_locstream
+    type(MAPL_LocStream) :: landice_locstream
     type(MAPL_MetaComp), pointer :: MAPL=>null() ! GC's MAPL obj
     type(MAPL_MetaComp), pointer :: CHILD_MAPL=>null() ! Child's MAPL obj
 
@@ -607,11 +608,22 @@ contains
     call MAPL_LocStreamCreate(                                                  &
          land_locstream,                                                        &
          surf_locstream,                                                        &
-         name=gcnames(LAND(1)),                                                    &
+         name=gcnames(LAND(1)),                                                 &
          mask=[MAPL_LAND],                                                      &
          rc=status                                                              &
          )
     VERIFY_(status)
+
+    call MAPL_LocStreamCreate(                                                  &
+         landice_locstream,                                                     &
+         surf_locstream,                                                        &
+         name=gcnames(LANDICE(1)),                                              &
+         mask=[MAPL_LANDICE],                                                   &
+         rc=status                                                              &
+         )
+    VERIFY_(status)
+
+
     call MAPL_TimerOff(MAPL, "-LocStreamCreate")
     ! Convert LAND's LocStream to LDAS' tile_coord and save it in the GridComp
     ! -get-tile-information-from-land's-locstream-
@@ -769,14 +781,13 @@ contains
 
        call MAPL_GetObjectFromGC(gcs(LANDICE(i)), CHILD_MAPL, rc=status)
        VERIFY_(status)
-       call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
+       call MAPL_Set(CHILD_MAPL, LocStream=landice_locstream, rc=status)
        VERIFY_(status)
 
        call MAPL_GetObjectFromGC(gcs(LANDPERT(i)), CHILD_MAPL, rc=status)
        VERIFY_(status) ! CHILD = LANDPERT
        call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
        VERIFY_(status)
-
 
        ! Add LAND's tile_coord to children's GridComps
        call ESMF_UserCompSetInternalState(gcs(LAND(i)), 'TILE_COORD', tcwrap, status)
@@ -987,6 +998,7 @@ contains
        VERIFY_(status)
        call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=2, userRC=status)
        VERIFY_(status)
+       call MAPL_TimerOff(MAPL, gcnames(igc))
 
 
        ! ApplyPrognPert - moved: now before calculating ensemble average that is picked up by land analysis and HISTORY; reichle 28 May 2020 
