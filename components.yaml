@@ -11,13 +11,20 @@ env:
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  tag: v3.36.0
+  tag: v3.40.0
   develop: develop
 
 ecbuild:
   local: ./@cmake/@ecbuild
   remote: ../ecbuild.git
   tag: geos/v1.3.0
+
+NCEP_Shared:
+  local: ./src/Shared/@NCEP_Shared
+  remote: ../NCEP_Shared.git
+  tag: v1.3.0
+  sparse: ./config/NCEP_Shared.sparse
+  develop: main
 
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
@@ -41,6 +48,6 @@ MAPL:
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: develop
+  tag: SMAP_NRv11 
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
