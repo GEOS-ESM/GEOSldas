@@ -5,7 +5,7 @@ clear
 % -------------------------------------------------------------------
 
 % addpath('../../shared/matlab/');
-addpath('/discover/nobackup/amfox/current_GEOSldas/GEOSldas/src/Applications/LDAS_App/util/shared/matlab')
+addpath('/discover/nobackup/amfox/current_GEOSldas/GEOSldas/src/Components/GEOSldas_GridComp/GEOSldas_App/util/shared/matlab')
 
 % Define the Open Loop experiment path, run name, domain, and output prefix
 
@@ -33,7 +33,7 @@ combine_species_stats = 1;   % 1 to combine all species into single set of stati
 
 grid_resolution = 0.25;
 
-% Define moving window size over which statistics are calculated, 
+% Define moving window size over which statistics are calculated,
 % and minimum number of data points required to calculate statistics
 
 w_days    = 75;
@@ -68,20 +68,20 @@ cnt = 0;
 for month = run_months
     % Initialize the earliest and latest year variables
     cnt = cnt + 1;
-    
+
     % Check if the current year/month combination is earlier than the earliest
     if datenum(start_year, month, 1) < datenum(start_year, start_month, 1)
         earliest_year(cnt) = start_year+1;
     else
         earliest_year(cnt) = start_year;
     end
-    
+
     % Check if the current year/month combination is later than the latest
     if datenum(end_year, month, 1) > datenum(end_year, end_month,1)
         latest_year(cnt) = end_year-1;
     else
         latest_year(cnt) = end_year;
-    end 
+    end
 end
 
 % assume "ldas_obsparam" file is available at 0z on first day of start_month/start_year

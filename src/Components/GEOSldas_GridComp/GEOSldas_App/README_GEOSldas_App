@@ -1,34 +1,34 @@
-README_LDAS_App:         README file for GEOSldas/src/Applications/LDAS_App
+README_GEOSldas_App:         README file for GEOSldas/src/Components/GEOSldas_GridComp/GEOSldas_App
 
 rreichle,  8 July 2022:  Initial version
 
 This directory contains a collection of programs, scripts, and config files, specifically:
 
-[..]/LDAS_App/
+[..]/GEOSldas_App/
 
 - Config files and programs/scripts needed by ldas_setup or lenkf.j (GEOSldas job script).
 
-[..]/LDAS_App/ens_forcing/
+[..]/GEOSldas_App/ens_forcing/
 
 - Scripts needed by lenkf.j to process ensemble-based forcing (primarily for LADAS).
 
-[..]/LDAS_App/sample_config_files/
+[..]/GEOSldas_App/sample_config_files/
 
-- Sample config files for ldas_setup and HISTORY. 
+- Sample config files for ldas_setup and HISTORY.
 
-[..]/LDAS_App/util/config/
+[..]/GEOSldas_App/util/config/
 
 - Miscellaneous scripts to (manually) create/modify config files.
 
-[..]/LDAS_App/util/inputs/
+[..]/GEOSldas_App/util/inputs/
 
 - Miscellaneous scripts to (manually) create/modify input files.
 
-[..]/LDAS_App/util/postproc/
+[..]/GEOSldas_App/util/postproc/
 
-- Miscellaneous scripts for post-processing GEOSldas output. 
+- Miscellaneous scripts for post-processing GEOSldas output.
 
-[..]/LDAS_App/util/shared/
+[..]/GEOSldas_App/util/shared/
 
 - Miscellaneous shared reader and helper scripts (primarily matlab).
 
