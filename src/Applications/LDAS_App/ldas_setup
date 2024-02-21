@@ -19,7 +19,7 @@ from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
 from remap_utils import *
 from remap_catchANDcn  import *
-from process_rst import *
+from remap_config_ldas import *
 
 """
 This script is intended to be run from any installed directory with GEOSldas.x and ldas_setup
@@ -122,6 +122,10 @@ class LDASsetup:
         self.in_rstfile = None
         self.in_tilefile = 'None' # default string
         self.ens_id_width = 6     # _eXXXX
+        self.bcs_land = ''
+        self.bcs_geom = ''
+        self.bcs_landshared = ''
+
         # ------
         # Read exe input file which is required to set up the dir
         # ------
@@ -251,9 +255,10 @@ class LDASsetup:
             _d = _d+ _difftime
 
         # make sure path is path
-        if self.rqdExeInp['BCS_PATH'][-1] != '/':
-           self.rqdExeInp['BCS_PATH'] = self.rqdExeInp['BCS_PATH']+'/'
-        self.rqdExeInp['BCS_PATH'] = self.rqdExeInp['BCS_PATH']+self.rqdExeInp['BCS_RESOLUTION']+'/'    
+        self.bcs_land   = self.rqdExeInp['BCS_PATH']+ '/land/' + self.rqdExeInp['BCS_RESOLUTION']+'/'
+        self.bcs_geom   = self.rqdExeInp['BCS_PATH']+ '/geometry/' + self.rqdExeInp['BCS_RESOLUTION']+'/'
+        self.bcs_landshared = self.rqdExeInp['BCS_PATH']+ '/land/shared/'
+
         if self.rqdExeInp['MET_PATH'][-1] != '/':
            self.rqdExeInp['MET_PATH'] = self.rqdExeInp['MET_PATH']+'/'
         if self.rqdExeInp['RESTART_PATH'][-1] != '/':
@@ -261,7 +266,7 @@ class LDASsetup:
 
         # make sure catchment and vegdyn restart files ( at least one for each) exist
         if 'CATCH_DEF_FILE' not in self.rqdExeInp:
-            self.rqdExeInp['CATCH_DEF_FILE']=self.rqdExeInp['BCS_PATH']+'clsm/catchment.def'
+            self.rqdExeInp['CATCH_DEF_FILE']= self.bcs_land + 'clsm/catchment.def'
         assert os.path.isfile(self.rqdExeInp['CATCH_DEF_FILE']),"[%s] file does not exist " % self.rqdExeInp['CATCH_DEF_FILE']
 
         self.rqdExeInp['RST_FROM_GLOBAL'] = 1
@@ -280,21 +285,21 @@ class LDASsetup:
 
         self.rqdExeInp['LNFM_FILE'] = ''
         if int(self.rqdExeInp['RST_FROM_GLOBAL']) == 1 :
-            self.rqdExeInp['TILING_FILE'] =glob.glob(self.rqdExeInp['BCS_PATH']+'*.til')[0]
-            self.rqdExeInp['GRN_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'green_clim_*.data')[0]
-            self.rqdExeInp['LAI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'lai_clim_*.data')[0]
-            tmp_ = glob.glob(self.rqdExeInp['BCS_PATH']+'lnfm_clim_*.data')
+            self.rqdExeInp['TILING_FILE'] =glob.glob(self.bcs_geom + '*.til')[0]
+            self.rqdExeInp['GRN_FILE']= glob.glob(self.bcs_land + 'green_clim_*.data')[0]
+            self.rqdExeInp['LAI_FILE']= glob.glob(self.bcs_land + 'lai_clim_*.data')[0]
+            tmp_ = glob.glob(self.bcs_land + 'lnfm_clim_*.data')
             if (len(tmp_) ==1) :
                self.rqdExeInp['LNFM_FILE'] = tmp_[0]
-            self.rqdExeInp['NDVI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'ndvi_clim_*.data')[0]
-            self.rqdExeInp['NIRDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'nirdf_*.dat')[0]
-            self.rqdExeInp['VISDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'visdf_*.dat')[0]
+            self.rqdExeInp['NDVI_FILE'] = glob.glob(self.bcs_land + 'ndvi_clim_*.data')[0]
+            self.rqdExeInp['NIRDF_FILE']= glob.glob(self.bcs_land + 'nirdf_*.dat')[0]
+            self.rqdExeInp['VISDF_FILE']= glob.glob(self.bcs_land + 'visdf_*.dat')[0]
         else :
             inpdir=self.rqdExeInp['RESTART_PATH']+self.rqdExeInp['RESTART_ID']+'/input/'
             self.rqdExeInp['TILING_FILE'] =os.path.realpath(glob.glob(inpdir+'*tile.data')[0])
             self.rqdExeInp['GRN_FILE']=    os.path.realpath(glob.glob(inpdir+'green*data')[0])
             self.rqdExeInp['LAI_FILE']=    os.path.realpath(glob.glob(inpdir+'lai*data')[0])
-            tmp_ = glob.glob(self.rqdExeInp['BCS_PATH']+'lnfm_clim_*.data')
+            tmp_ = glob.glob(self.bcs_land + 'lnfm_clim_*.data')
             if (len(tmp_) == 1) :
                self.rqdExeInp['LNFM_FILE'] = tmp_[0]
             self.rqdExeInp['NDVI_FILE']=    os.path.realpath(glob.glob(inpdir+'ndvi*data')[0])
@@ -318,16 +323,16 @@ class LDASsetup:
                    
                 if os.path.isfile(ldas_domain) :
                     _numd = int(linecache.getline(ldas_domain, 1).strip())
-                    self.rqdExeInp['TILING_FILE'] =glob.glob(self.rqdExeInp['BCS_PATH']+'*.til')[0]
-                    self.rqdExeInp['GRN_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'green_clim_*.data')[0]
-                    self.rqdExeInp['LAI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'lai_clim_*.data')[0]
-                    tmp_ = glob.glob(self.rqdExeInp['BCS_PATH']+'lnfm_clim_*.data')
+                    self.rqdExeInp['TILING_FILE'] =glob.glob(self.bcs_geom + '*.til')[0]
+                    self.rqdExeInp['GRN_FILE']= glob.glob(self.bcs_land + 'green_clim_*.data')[0]
+                    self.rqdExeInp['LAI_FILE']= glob.glob(self.bcs_land + 'lai_clim_*.data')[0]
+                    tmp_ = glob.glob(self.bcs_land + 'lnfm_clim_*.data')
                     if (len(tmp_) == 1) :
                        self.rqdExeInp['LNFM_FILE'] = tmp_[0]
-                    self.rqdExeInp['LNFM_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'lnfm_clim_*.data')[0]
-                    self.rqdExeInp['NDVI_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'ndvi_clim_*.data')[0]
-                    self.rqdExeInp['NIRDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'nirdf_*.dat')[0]
-                    self.rqdExeInp['VISDF_FILE']= glob.glob(self.rqdExeInp['BCS_PATH']+'visdf_*.dat')[0]                
+                    self.rqdExeInp['LNFM_FILE'] = glob.glob(self.bcs_land + 'lnfm_clim_*.data')[0]
+                    self.rqdExeInp['NDVI_FILE'] = glob.glob(self.bcs_land + 'ndvi_clim_*.data')[0]
+                    self.rqdExeInp['NIRDF_FILE']= glob.glob(self.bcs_land + 'nirdf_*.dat')[0]
+                    self.rqdExeInp['VISDF_FILE']= glob.glob(self.bcs_land + 'visdf_*.dat')[0]                
             
         if 'GRIDNAME' not in self.rqdExeInp :
             tmptile =self.rqdExeInp['TILING_FILE']
@@ -800,7 +805,7 @@ class LDASsetup:
            os.symlink(bc,myBC)
 
         if ("catchcn" in self.catch):
-           os.symlink(self.rqdExeInp['BCS_PATH']+'../land/shared/CO2_MonthlyMean_DiurnalCycle.nc4', \
+           os.symlink(self.bcs_landshared + 'CO2_MonthlyMean_DiurnalCycle.nc4', \
                        self.inpdir+'/CO2_MonthlyMean_DiurnalCycle.nc4')
 
         # create and link restart 
@@ -819,7 +824,7 @@ class LDASsetup:
                   self.rqdExeInp['RESTART_ID'] + \
                   '/output/'+self.rqdExeInp['RESTART_DOMAIN']+'/rc_out/'
 
-        # pass into process_rst
+        # pass into remap_config_ldas
         sponsorid = self.rqdRmInp['account']
         exp_id    = self.rqdExeInp['EXP_ID']
         exp_dir   = self.exphome
@@ -843,17 +848,19 @@ class LDASsetup:
                os.symlink(_seeds, myRstDir+ '/landassim_obspertrseed'+ _ensid +'_rst')
                self.has_landassim_seed = True
         mk_outdir = self.exphome+'/'+exp_id+'/mk_restarts/' 
-        cmd= '  '.join(['./process_rst.csh', sponsorid, exp_id, mk_outdir,
-                        out_bcdir, out_tilefile, self.catch, RESTART_str, YYYYMMDDHH,
-                        self.in_rstfile, self.in_tilefile, dzsf, wemin_in, wemin_out])
 
         if (RESTART_str != '1'):
+           bcs_path = self.rqdExeInp['BCS_PATH']
+           while bcs_path[-1] == '/' : bcs_path = bcs_path[0:-1]
+           bc_base    = os.path.dirname(bcs_path)
+           bc_version = os.path.basename(bcs_path)
+
            remap_tpl = os.path.dirname(os.path.realpath(__file__)) + '/remap_params.tpl'
            config = yaml_to_config(remap_tpl)
 
            config['slurm']['account'] = self.rqdRmInp['account'] 
            config['slurm']['qos'] = 'debug' 
-           config['slurm']['qos'] =  'cas'
+           config['slurm']['constraint'] =  'cas|sky'
 
            config['input']['surface']['catch_tilefile']  = self.in_tilefile
            config['input']['shared']['expid']            = self.rqdExeInp['RESTART_ID']
@@ -865,7 +872,10 @@ class LDASsetup:
            config['output']['shared']['out_dir']         = mk_outdir
            config['output']['surface']['catch_remap']    = True
            config['output']['surface']['catch_tilefile'] = self.rqdExeInp['TILING_FILE']
-           config['output']['shared']['bcs_dir']         = self.rqdExeInp['BCS_PATH']
+           config['output']['shared']['bc_base']         = bc_base
+           config['output']['shared']['bc_version']      = bc_version
+           config['output']['surface']['EASE_grid']      = self.rqdExeInp['BCS_RESOLUTION']
+           
            config['output']['shared']['expid']           = self.rqdExeInp['EXP_ID']
            config['output']['surface']['surflay']        = dzsf
            config['output']['surface']['wemin']          = wemin_out
@@ -874,20 +884,6 @@ class LDASsetup:
 
            catch_obj = catchANDcn(config_obj = config)
            catch_obj.remap()
-
-           #print "cmd:   " + cmd
-           #os.system(cmd)
-
-           #done_rst=self.exphome+'/'+exp_id+'/mk_restarts/done_rst_file'
-           #print "Please hold on for a while until the restart file is created  ....."
-           #_animation = "|/-\\"
-           #_idx = 0
-           #while not os.path.isfile(done_rst):
-           #  sys.stdout.write('\r'+_animation[_idx % len(_animation)])
-           #  sys.stdout.flush()
-           #  _idx += 1
-           #  time.sleep(1.)
-
 
         #for ens in self.ensdirs :
         catchRstFile0  = ''
@@ -907,16 +903,16 @@ class LDASsetup:
             if self.rqdExeInp['RESTART'].isdigit() :
 
                 if int(self.rqdExeInp['RESTART']) == 0 or int(self.rqdExeInp['RESTART']) == 2 :
-                    vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
+                    vegdynRstFile = glob.glob(self.bcs_land + 'vegdyn_*.dat')[0]
                     catchRstFile  = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+'_internal_rst.'+YYYYMMDD+'*')[0]
                 else : # RESTART == 1
                     catchRstFile = rstpath+ensdir +'/'+ y4m2+'/'+self.rqdExeInp['RESTART_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
                     vegdynRstFile= rstpath+ensdir +'/'+self.rqdExeInp['RESTART_ID']+ '.vegdyn_internal_rst'
                     if not os.path.isfile(vegdynRstFile): # no vegdyn restart from LDASsa
                        if not os.path.isfile(vegdynRstFile0):
-                         vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
+                         vegdynRstFile = glob.glob(self.bcs_land + 'vegdyn_*.dat')[0]
             else :
-                vegdynRstFile = glob.glob(self.rqdExeInp['BCS_PATH']+'vegdyn_*.dat')[0]
+                vegdynRstFile = glob.glob(self.bcs_land + 'vegdyn_*.dat')[0]
                 catchRstFile  = glob.glob(self.exphome+'/'+exp_id+'/mk_restarts/*'+self.catch+'_internal_rst.'+YYYYMMDD+'*')[0]
 
             # catchment restart file
