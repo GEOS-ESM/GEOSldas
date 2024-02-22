@@ -419,7 +419,11 @@ while ( $counter <= ${NUM_SGMT} )
    @ oserver_nodes = MY_OSERVER_NODES
    @ writers = MY_WRITERS_NPES
 
-   set total_npes = $SLURM_NTASKS
+   if (! $?SLURM_NTASKS) then
+     set total_npes = `wc -l $PBS_NODEFILE | awk '{print $1}'`
+   else
+     set total_npes = $SLURM_NTASKS
+   endif
 
    if ($oserver_nodes == 0) then
       set oserver_options = ""
