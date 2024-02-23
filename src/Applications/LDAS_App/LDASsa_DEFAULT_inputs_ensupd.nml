@@ -2169,6 +2169,45 @@ obs_param_nml(51)%ycorr          = 0.25
 obs_param_nml(51)%adapt          = 0
 
 ! --------------------------------------------------------------------
+!
+!  52 = MODIS Aqua snow cover area fraction (SCF)
+!
+! MOD10C1.*.061: MODIS Aqua SCF, 0.05deg CMG, daytime (01:30pm local) ascending overpass, version V61
+!
+! for rule-based snow cover analysis (no obs error/pert specs)
+
+obs_param_nml(52)%descr          = 'MYD10C1'
+obs_param_nml(52)%orbit          = 1
+obs_param_nml(52)%pol            = 0
+obs_param_nml(52)%N_ang          = 0
+obs_param_nml(52)%freq           = 0.
+obs_param_nml(52)%FOV            = 0.
+obs_param_nml(52)%FOV_units      = 'deg'
+obs_param_nml(52)%assim          = .false.
+obs_param_nml(52)%scale          = .false.
+obs_param_nml(52)%getinnov       = .false.
+obs_param_nml(52)%RTM_ID         = 0
+obs_param_nml(52)%bias_Npar      = 0
+obs_param_nml(52)%bias_trel      = 864000
+obs_param_nml(52)%bias_tcut      = 432000
+obs_param_nml(52)%nodata         = -9999.
+obs_param_nml(52)%varname        = 'asnow'
+obs_param_nml(52)%units          = 'm2/m2'
+obs_param_nml(52)%path           = '/discover/nobackup/projects/S2SHMA/MODIS/MYD10C1_V61/'
+obs_param_nml(52)%name           = 'MYD10C1.Ayyyyddd.061.hdf'
+obs_param_nml(52)%scalepath      = ''
+obs_param_nml(52)%scalename      = ''
+obs_param_nml(52)%flistpath      = ''
+obs_param_nml(52)%flistname      = ''
+obs_param_nml(52)%errstd         = -9999.
+obs_param_nml(52)%std_normal_max = -9999.
+obs_param_nml(52)%zeromean       = .false.
+obs_param_nml(52)%coarsen_pert   = .false.
+obs_param_nml(52)%xcorr          = 0.
+obs_param_nml(52)%ycorr          = 0.
+obs_param_nml(52)%adapt          = 0
+
+! --------------------------------------------------------------------
 
 /
 
