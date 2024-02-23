@@ -5663,12 +5663,18 @@ contains
 
        fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
             YYYY // MM // DD // '_' // trim(HHMM) // '.V01.' // trim(file_ext)
-       
+    
+       fname_tmp = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+            YYYY // MM // DD // '.V01.' // trim(file_ext)
+   
     else
        
        fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
             YYYY // MM // DD // '_' // trim(HHMM) // 'z.'    // trim(file_ext)
-       
+      
+       fname_tmp = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+            YYYY // MM // DD // '.'    // trim(file_ext)
+ 
     end if
 
     ! assemble dir name with "/Yyy" (year) dir but without "/Mmm" (month) dir
@@ -5693,8 +5699,6 @@ contains
     fname_full_tmp1 = trim(fname_full)                 ! remember for error log below
     
     ! second try: look for daily file in year/month dir 
-    is = index(fname,'z.nc')
-    fname_tmp = fname(1:is-6)//'.'//trim(file_ext)
     fname_full = trim(fdir) // 'M' // MM // '/' // trim(fname_tmp)
 
     inquire(file=fname_full, exist=file_exists)
