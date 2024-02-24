@@ -53,11 +53,12 @@ class LDASsetup:
 
         # if built on sles15, BUILT_ON_SLES15 is "TRUE", else empty ""
         BUILT_ON_SLES15 = "@BUILT_ON_SLES15@"
-
         if BUILT_ON_SLES15 == "TRUE":
           self.BUILT_ON_SLES15 = True
         else:
           self.BUILT_ON_SLES15 = False
+
+        self.GEOS_SITE       = "@GEOS_SITE@"
 
         # ------
         # Required resource manager input fields
@@ -860,7 +861,6 @@ class LDASsetup:
 
            config['slurm']['account'] = self.rqdRmInp['account'] 
            config['slurm']['qos'] = 'debug' 
-           config['slurm']['constraint'] =  'cas|sky'
 
            config['input']['surface']['catch_tilefile']  = self.in_tilefile
            config['input']['shared']['expid']            = self.rqdExeInp['RESTART_ID']
@@ -1246,8 +1246,11 @@ class LDASsetup:
         fout =open(self.rundir+'/ldas_batchrun.j','w')
         fout.write("#!/bin/bash -f\n")
         jobid = None
+        SBATCHQSUB = 'sbatch'
         expid = self.rqdExeInp['EXP_ID']
-        fout.write("\nsed -i 's/if($capdate<$enddate) sbatch /#if($capdate<$enddate) sbatch /g' lenkf.j\n\n")
+        if self.GEOS_SITE == 'NAS':
+          SBATCHQSUB = 'qsub'
+        fout.write("\nsed -i 's/if($capdate<$enddate) "+SBATCHQSUB+"/#if($capdate<$enddate) "+SBATCHQSUB+"/g' lenkf.j\n\n")
         nSegments = self.nSegments
         for iseg in range(nSegments):
             if iseg ==0 :
@@ -1281,7 +1284,7 @@ class LDASsetup:
                 #fout.write("jobid%d=$(echo $(sbatch --dependency=afterany:$jobid%d --output=%s --error=%s lenkf.j) | cut -d' ' -f 4)\n"%(iseg,iseg-1,_logfile, _errfile))
                 fout.write("jobid%d=$(echo $(sbatch --dependency=afterok:$jobid%d lenkf.j) | cut -d' ' -f 4)\n"%(iseg,iseg-1))
                 fout.write("echo $jobid%d\n"%iseg )
-        fout.write("\nsed -i 's/#if($capdate<$enddate) sbatch/if($capdate<$enddate) sbatch /g' lenkf.j")
+        fout.write("\nsed -i 's/#if($capdate<$enddate) "+SBATCHQSUB+"/if($capdate<$enddate) "+SBATCHQSUB+"/g' lenkf.j\n\n")
         fout.close()
 
         sp.call(['chmod', '755', self.rundir+'/ldas_batchrun.j']) 
@@ -1300,6 +1303,7 @@ class LDASsetup:
         shutil.copy(lenkf,'lenkf.j')
 
         my_qos='allnccs'
+        if self.GEOS_SITE == 'NAS': my_qos = 'normal'
         if 'qos' in self.optRmInp :
             my_qos = self.optRmInp['qos']
 
@@ -1334,26 +1338,40 @@ class LDASsetup:
         with open(lenkf,'rt') as fin:
             with open('lenkf.j','wt') as fout :
                 for line in fin :
+                    if self.GEOS_SITE == 'NAS':
+                       if '#SBATCH' in line:
+                         continue
+                       if 'sbatch $HOMDIR/lenkf.j' in line:
+                         continue
+
+                    if self.GEOS_SITE == 'NCCS':
+                       if '#PBS' in line:
+                         continue
+                       if 'qsub $HOMDIR/lenkf.j' in line:
+                         continue
+
                     if 'MY_ACCOUNT' in line :
                         fout.write(line.replace('MY_ACCOUNT',self.rqdRmInp['account']))
                     elif 'MY_WALLTIME' in line :
                         fout.write(line.replace('MY_WALLTIME',self.rqdRmInp['walltime']))
                     elif 'MY_NODES' in line :
                         line_ = line.replace('MY_NODES',str(self.optRmInp['nodes']))
-                        fout.write(line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node'])))
-                         
-                        if self.BUILT_ON_SLES15 :
-                          fout.write("#SBATCH --constraint=mil\n")
-                        else:
-                          assert int(self.rqdRmInp['ntasks-per-node']) <= 46, 'ntasks-per-node should be <=46 for cas'
-                          fout.write("#SBATCH --constraint=cas\n")
+                        line_ = line_.replace('MY_NTASKS_PER_NODE',str(self.rqdRmInp['ntasks-per-node']))
+                        line_ = line_.replace('MY_CONSTRAINT', 'cas_ait')
+                        fout.write(line_)
+                        if self.GEOS_SITE == "NCCS" : 
+                          if self.BUILT_ON_SLES15 :
+                            fout.write("#SBATCH --constraint=mil\n")
+                          else:
+                            assert int(self.rqdRmInp['ntasks-per-node']) <= 46, 'ntasks-per-node should be <=46 for cas'
+                            fout.write("#SBATCH --constraint=cas\n")
                            
                     elif 'MY_OSERVER_NODES' in line :
                         fout.write(line.replace('MY_OSERVER_NODES',str(self.optRmInp['oserver_nodes'])))
                     elif 'MY_WRITERS_NPES' in line :
                         fout.write(line.replace('MY_WRITERS_NPES', str(self.optRmInp['writers-per-node'])))
                     elif 'MY_QOS' in line :
-                        if 'allnccs' not in my_qos:
+                        if 'allnccs' not in my_qos or 'normal' not in my_qos:
                            fout.write(line.replace('MY_QOS',my_qos))
                     elif 'MY_JOB' in line :
                         fout.write(line.replace('MY_JOB',my_job))
