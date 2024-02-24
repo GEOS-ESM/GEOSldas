@@ -5754,6 +5754,7 @@ contains
           print '(400A)',  trim(Iam) // ': Could not find any of the following files:'
           print '(400A)',  trim(fname_full_tmp1)
           print '(400A)',  trim(fname_full_tmp2)
+          print '(400A)',  trim(fname_full_tmp3)
           print '(400A)',  trim(fname_full)
        endif
     endif
