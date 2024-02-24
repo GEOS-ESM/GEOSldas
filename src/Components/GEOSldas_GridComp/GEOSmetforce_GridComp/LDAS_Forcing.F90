@@ -3696,7 +3696,7 @@ contains
           if ( (use_prec_corr) .and. (GEOSgcm_defs(GEOSgcm_var,1)(1:4)=='PREC') ) then
              
              call get_GEOS_corr_prec_filename(fname_full,file_exists,date_time_tmp,        &
-                  prec_path_tmp, met_tag_tmp, GEOSgcm_defs(GEOSgcm_var,:), precip_corr_file_ext,daily_precipcorr_files )
+                  prec_path_tmp, met_tag_tmp, GEOSgcm_defs(GEOSgcm_var,:), precip_corr_file_ext, daily_precipcorr_files)
 
              single_time_in_file = .not. daily_precipcorr_files  ! corr precip files are always hourly (incl. MERRA-2)
 
@@ -5622,7 +5622,7 @@ contains
   ! ****************************************************************
 
   subroutine get_GEOS_corr_prec_filename(fname_full,file_exists, date_time, met_path, met_tag, &
-       GEOSgcm_defs, file_ext,daily_files )
+       GEOSgcm_defs, file_ext, daily_files)
     
     implicit none
     character(*),                 intent(inout) :: fname_full
@@ -5642,7 +5642,7 @@ contains
     character(  4) :: YYYY,  HHMM
     character(  2) :: MM,    DD
 
-    integer        :: tmpind, tmpindend,is
+    integer        :: tmpind, tmpindend
 
     character(len=*), parameter :: Iam = 'get_GEOS_corr_prec_filename'
 
@@ -5661,19 +5661,19 @@ contains
        !  (as of 7 May 2020, no V02 or higher was issued for GEOS FP "lfo" products 
        !   going back to Jun 2013)
 
-       fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+       fname     = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
             YYYY // MM // DD // '_' // trim(HHMM) // '.V01.' // trim(file_ext)
     
        fname_tmp = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
-            YYYY // MM // DD // '.V01.' // trim(file_ext)
+            YYYY // MM // DD //                      '.V01.' // trim(file_ext)
    
     else
        
-       fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+       fname     = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
             YYYY // MM // DD // '_' // trim(HHMM) // 'z.'    // trim(file_ext)
       
        fname_tmp = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
-            YYYY // MM // DD // '.'    // trim(file_ext)
+            YYYY // MM // DD //                       '.'    // trim(file_ext)
  
     end if
 
@@ -5705,8 +5705,9 @@ contains
 
     if (file_exists) then
         daily_files = .true.
-        return
-    endif                            ! done
+        return                                         ! done
+    endif                            
+
     fname_full_tmp2 = trim(fname_full)                 ! remember for error log below
 
     ! third try: *without* "/Mmm" (month) dir 
