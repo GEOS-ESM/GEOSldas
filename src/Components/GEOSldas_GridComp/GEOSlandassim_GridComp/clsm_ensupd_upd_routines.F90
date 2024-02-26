@@ -4461,7 +4461,7 @@ contains
        
        do kk=1,N_catd     
           
-          N_state = 3    ! for now, assume only sfmc and/or sfds obs
+          N_state = 2    ! for now, assume only sfmc and/or sfds observations an no peatland catchments
           
           ! compute increments only snow-free and non-frozen tiles
           
@@ -4490,6 +4490,12 @@ contains
                   N_selected_obs,   ind_obs )
              
              if (N_selected_obs>0) then
+
+                ! Determine if peatland catchment and set N_state accordingly for SM observations
+                
+                if (cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
+                   N_state = 3
+                end if
                 
                 ! Determine if Tb observations are present
                 
@@ -4514,11 +4520,16 @@ contains
                 ! assemble State_minus
                 ! (on  input, cat_progn contains cat_progn_minus)
                 
-                if     ( N_state==3 ) then 
+                if     ( N_state==2 ) then 
                    
-                   State_incr(1,:) = (cat_progn( kk,:)%srfexc/scale_srfexc)
-                   State_incr(2,:) = (cat_progn( kk,:)%rzexc /scale_rzexc)
-                   State_incr(3,:) = (cat_progn( kk,:)%catdef/scale_catdef)
+                  State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
+                  State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
+
+                elseif ( N_state==3 ) then 
+                   
+                   State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
+                   State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
+                   State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef   ! catdef in State
                    
                 elseif ( N_state==7 ) then
                    
@@ -4567,11 +4578,16 @@ contains
                 
                 ! assemble cat_progn increments
 
-                if ( N_state==3 ) then
+                if     ( N_state==2 ) then
+                   
+                  cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
+                  cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
+
+                elseif ( N_state==3 ) then
                    
                    cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                    cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                   cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef                    
+                   cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State                 
                    
                 elseif ( N_state==7 ) then
                    
