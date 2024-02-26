@@ -1576,7 +1576,8 @@ contains
     ! A. Fox, reichle, Sep 2023 - updated
     !
     ! --------------------------------------------------------------------
-        
+    
+    use netcdf   
     implicit none
     
     ! inputs:
@@ -1641,6 +1642,22 @@ contains
     integer :: idate, iret, ireadmg, ireadsb
 
     character(8) :: subset
+
+    ! --------------------
+    !
+    ! Variables for mask read
+
+    real, dimension(:), allocatable :: lat_mask, lon_mask
+    real :: lat_target, lon_target, dist, dist_min
+
+    integer(kind=1), dimension(:), allocatable :: mask
+    integer :: ncid, varid_mask, ierr, varid_lat, varid_lon, gpi_dimid
+    integer :: N_mask, idx_nearest
+    
+    character(300) :: mask_filename
+    character(300) :: mask_name
+
+    logical :: file_exists
 
     ! --------------------
 
@@ -1805,6 +1822,57 @@ contains
 
        ! ----------------------------------------------------------------
        !
+       ! Read in ASCAT mask file
+
+       !  TODO: Decide how to handle mask file name and path (e.g., from obs_param nml)
+       mask_filename = trim(this_obs_param%flistpath) // '/' // 'ASCAT_mask' // '.nc'
+       ! mask_filename = trim(this_obs_param%flistpath) // '/' // & 
+       !                     'subsurface_scattering_ASCAT_ERA5_Land' // '.nc'
+    
+       if (logit) write (logunit,'(400A)') '  reading ', trim(mask_filename)
+         
+       ! Check if file exists
+         
+       inquire(file=mask_filename, exist=file_exists)
+        
+       if (.not. file_exists) then
+          err_msg = 'Mask file not found'
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       end if
+
+       ! Openthe netCDF mask file
+       ierr = nf90_open(mask_filename, nf90_nowrite, ncid)
+
+       ! TODO: Check how to handle alternative mask names
+       ! Get the variable ID
+       mask_name = 'mask'              ! Case using "ASCAT_mask.nc"
+       ! mask_name = 'subsurface_mask' ! Case using "subsurface_scattering_ASCAT_ERA5_Land.nc"
+     
+       ierr = nf90_inq_varid(ncid, mask_name, varid_mask)
+       ierr = nf90_inq_varid(ncid, 'lat', varid_lat)
+       ierr = nf90_inq_varid(ncid, 'lon', varid_lon)
+       
+       ! Get the variable dimensions
+       ierr = nf90_inq_dimid(ncid, 'gpi', gpi_dimid)
+       
+       ! Get the dimension size
+       ierr = nf90_inquire_dimension(ncid, gpi_dimid, len = N_mask)
+     
+       ! Allocate memory for the variables
+       allocate(mask(N_mask))
+       allocate(lat_mask(N_mask))
+       allocate(lon_mask(N_mask))
+     
+       ! Read the variables
+       ierr = nf90_get_var(ncid, varid_mask, mask)
+       ierr = nf90_get_var(ncid, varid_lat, lat_mask)
+       ierr = nf90_get_var(ncid, varid_lon, lon_mask)
+       
+       ! Close the netCDF mask file
+       ierr = nf90_close(ncid)
+
+       ! ----------------------------------------------------------------
+       !
        ! select obs within assimilation window and from desired orbit direction; apply basic QC based on obs info
        
        N_tmp = 0 
@@ -1847,6 +1915,24 @@ contains
           
           ! skip if inundation and wetland fraction > 10%
           if(tmp_data(kk, 12) > 10.) cycle
+
+          ! skip if masked
+          lat_target = tmp_data(kk, 13)
+          lon_target = tmp_data(kk, 14)
+
+          dist_min = huge(dist_min)
+          idx_nearest = 0
+          
+          ! find nearest mask point (probably slow)
+          do ii = 1,N_mask
+             dist = (lat_mask(ii)-lat_target)**2 + (lon_mask(ii)-lon_target)**2
+             if (dist < dist_min) then
+                dist_min = dist
+                idx_nearest = ii
+             end if
+          end do
+
+          if (mask(idx_nearest) /= 0) cycle
           
           N_tmp = N_tmp + 1  ! passed all QC
 
@@ -1894,7 +1980,10 @@ contains
        deallocate(tmp1_lon)
        deallocate(tmp1_lat)
        deallocate(tmp1_obs)
-       deallocate(tmp_data) 
+       deallocate(tmp_data)
+       deallocate(mask)
+       deallocate(lat_mask)
+       deallocate(lon_mask)
        
     else
        
