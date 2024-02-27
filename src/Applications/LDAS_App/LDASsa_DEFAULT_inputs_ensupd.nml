@@ -19,20 +19,22 @@
 ! update type - for details see subroutine cat_enkf_update()
 !               (note: all 3d updates use compact support)
 !
-! local = "1d", regional = "3d"
+!   local = "1d", regional = "3d"
 !
-! update_type =  0: NO assimilation, NO bias correction 
-! update_type =  1: 1d soil moisture analysis;                                             sfmc obs
-! update_type =  2: 3d soil moisture analysis;                                             sfmc obs
-! update_type =  3: 1d Tskin (assim incr NOT applied, use w/ bias corr) analysis;          Tskin obs
-! update_type =  4: 1d Tskin/ght1 (assim incr applied, use w/ or w/o bias corr) analysis;  Tskin obs
-! update_type =  5: 1d Tskin/ght1 (assim incr NOT applied, use w/ bias corr) analysis;     Tskin obs
-! update_type =  6: 1d soil moisture/Tskin/ght(1);                                         TB obs
-! update_type =  7: 3d Tskin/ght1 update;                                                  Tskin obs 
-! update_type =  8: 3d soil moisture/Tskin/ght(1);                                         TB obs
-! update_type =  9: 1d Tskin/ght1 update;                                                  FT obs
-! update_type = 10: 3d soil moisture/Tskin/ght(1) excl. catdef unless PEATCLSM tile;       TB obs
-! update_type = 13: Multivariate combination of 2 and 10;                                  sfmc and TB obs
+!   # = no longer supported
+!
+!   update_type =  0: NO assimilation, NO bias correction 
+! # update_type =  1: 1d soil moisture analysis;                                             sfmc obs
+! # update_type =  2: 3d soil moisture analysis;                                             sfmc obs
+!   update_type =  3: 1d Tskin (assim incr NOT applied, use w/ bias corr) analysis;          Tskin obs
+!   update_type =  4: 1d Tskin/ght1 (assim incr applied, use w/ or w/o bias corr) analysis;  Tskin obs
+!   update_type =  5: 1d Tskin/ght1 (assim incr NOT applied, use w/ bias corr) analysis;     Tskin obs
+!   update_type =  6: 1d soil moisture/Tskin/ght(1);                                         TB obs
+!   update_type =  7: 3d Tskin/ght1 update;                                                  Tskin obs 
+!   update_type =  8: 3d soil moisture/Tskin/ght(1);                                         TB obs
+!   update_type =  9: 1d Tskin/ght1 update;                                                  FT obs
+!   update_type = 10: 3d soil moisture/Tskin/ght(1) excl. catdef unless PEATCLSM tile;       TB obs
+!   update_type = 13: 3d soil moisture/Tskin/ght(1) excl. catdef unless PEATCLSM tile;       sfmc and TB obs
 
 update_type = 0
 
