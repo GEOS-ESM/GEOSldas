@@ -21,7 +21,7 @@ ecbuild_add_executable (
    
 set (scripts
    process_hist.csh 
-   process_rst.py 
+   remap_config_ldas.py 
    ens_forcing/average_ensemble_forcing.py 
    ens_forcing/ensemble_forc.py 
    ens_forcing/regrid_forc.csh 
