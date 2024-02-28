@@ -1330,10 +1330,12 @@ contains
 
        cat_progn_has_changed = .false.
 
-    case (6,8,9,10) select_update_type    ! soil moisture and temperature update
+    case (6,8,9,10,13) select_update_type    ! soil moisture and temperature update
 
-       ! for update_type 10, catdef increments may be zero by design       
-       
+       ! some of the increments fields below may be zero by design 
+       ! (e.g., tc[X]=ght(1)=0 in update_type=13 when only sfmc or sfds obs are assimilated;
+       !  or catdef=0 in update_type 10 or 13 when tile has mineral soil)
+
        if (logit) write (logunit,*) &
             'apply_enkf_increments(): applying soil moisture and Tskin/ght1 increments'
        
