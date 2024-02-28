@@ -3604,6 +3604,10 @@ contains
        
        if (logit) write (logunit,*) 'get 1d soil moisture increments; sfmc obs'
 
+       ! disable update_type=1 (b/c it includes catdef in state vector for mineral soil)
+
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'update_type=1 no longer supported; use update_type=13 instead')
+
        N_select_varnames  = 2
        
        select_varnames(1) = 'sfmc'
@@ -3672,6 +3676,10 @@ contains
        ! the customized halo around each tile
        
        if (logit) write (logunit,*) 'get 3d soil moisture increments; sfmc obs'
+
+       ! disable update_type=2 (b/c it includes catdef in state vector for mineral soil)
+
+       call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'update_type=2 no longer supported; use update_type=13 instead')
 
        N_select_varnames  = 2
        
@@ -4409,11 +4417,18 @@ contains
 
     case (13) select_update_type   ! 3d soil moisture/Tskin/ght(1) analysis; Tb+sfmc+sfds obs
        
-       ! combines update_types 2 and 10
-       !
        ! update each tile separately using all observations within customized halo around each tile
        !
-       ! amfox, 14 September 2023
+       ! state vector differs for each tile depending on assimilated obs and soil type 
+       !
+       ! obs             | soil    | N_state | state vector
+       ! ----------------------------------------------------------------------
+       ! sfcm/sfds only  | mineral |     2   | srfexc, rzexc
+       ! sfcm/sfds only  | peat    |     3   | srfexc, rzexc, catdef, 
+       ! sfcm/sfds & Tb  | mineral |     6   | srfexc, rzexc,         tc[x], ght(1)
+       ! sfcm/sfds & Tb  | peat    |     7   | srfexc, rzexc, catdef, tc[x], ght(1)
+       !
+       ! amfox+rreichle, 26 Feb 2024
        
        if (logit) write (logunit,*) 'get 3d soil moisture/Tskin/ght(1) increments; Tb+sfmc obs'
        
@@ -4461,12 +4476,12 @@ contains
        
        do kk=1,N_catd     
           
-          N_state = 2    ! for now, assume only sfmc and/or sfds observations an no peatland catchments
+          N_state = 2    ! initialize (always have srfexc and rzexc in state vector)
           
-          ! compute increments only snow-free and non-frozen tiles
+          ! compute increments only for snow-free and non-frozen tiles
           
-          if ( (SWE_ensavg(kk) < SWE_threshold) .and. &
-               (tp1_ensavg(kk) > tp1_threshold)) then  
+          if ( (SWE_ensavg(kk) < SWE_threshold) .and.            &
+               (tp1_ensavg(kk) > tp1_threshold)       ) then  
              
              ! find observations within halo around tile kk
              
@@ -4491,14 +4506,10 @@ contains
              
              if (N_selected_obs>0) then
 
-                ! Determine if peatland catchment and set N_state accordingly for SM observations
-                
-                if (cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
-                   N_state = 3
-                end if
-                
                 ! Determine if Tb observations are present
                 
+                found_Tb_obs = .false.
+
                 do ii = 1,N_select_species_Tb
                    do jj = 1,N_selected_obs
                       if (select_species_Tb(ii) == Observations(ind_obs(jj))%species) then
@@ -4509,13 +4520,13 @@ contains
                    if (found_Tb_obs) exit
                 end do
                 
-                if (found_Tb_obs) then
-                   if (cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD) then
-                      N_state = 7
-                   else
-                      N_state = 6
-                   end if
-                end if
+                ! if Tb_obs are present, add tc[X] and ght(1) to state vector
+
+                if (found_Tb_obs)                                   N_state = N_state + 4
+                
+                ! for peatland tile, add catdef to state vector
+                
+                if (cat_param(kk)%poros>=PEATCLSM_POROS_THRESHOLD)  N_state = N_state + 1
                 
                 ! assemble State_minus
                 ! (on  input, cat_progn contains cat_progn_minus)
@@ -4531,11 +4542,10 @@ contains
                    State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
                    State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef   ! catdef in State
                    
-                elseif ( N_state==7 ) then
+                elseif ( N_state==6 ) then
                    
                    State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
                    State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
-                   State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef   ! catdef in State
                    
                    State_incr(4,:) = cat_progn( kk,:)%tc1   /scale_temp
                    State_incr(5,:) = cat_progn( kk,:)%tc2   /scale_temp
@@ -4546,6 +4556,7 @@ contains
                    
                    State_incr(1,:) = cat_progn( kk,:)%srfexc/scale_srfexc
                    State_incr(2,:) = cat_progn( kk,:)%rzexc /scale_rzexc
+                   State_incr(3,:) = cat_progn( kk,:)%catdef/scale_catdef   ! catdef in State
                    
                    State_incr(3,:) = cat_progn( kk,:)%tc1   /scale_temp
                    State_incr(4,:) = cat_progn( kk,:)%tc2   /scale_temp
@@ -4589,11 +4600,10 @@ contains
                    cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
                    cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State                 
                    
-                elseif ( N_state==7 ) then
+                elseif ( N_state==6 ) then
                    
                    cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                    cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
-                   cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State 
                    
                    cat_progn_incr(kk,:)%tc1    = State_incr(4,:)*scale_temp
                    cat_progn_incr(kk,:)%tc2    = State_incr(5,:)*scale_temp
@@ -4604,6 +4614,7 @@ contains
                    
                    cat_progn_incr(kk,:)%srfexc = State_incr(1,:)*scale_srfexc
                    cat_progn_incr(kk,:)%rzexc  = State_incr(2,:)*scale_rzexc
+                   cat_progn_incr(kk,:)%catdef = State_incr(3,:)*scale_catdef   ! catdef in State 
                    
                    cat_progn_incr(kk,:)%tc1    = State_incr(3,:)*scale_temp
                    cat_progn_incr(kk,:)%tc2    = State_incr(4,:)*scale_temp
