@@ -1647,8 +1647,8 @@ contains
     !
     ! Variables for mask read
 
-    real, dimension(:), allocatable :: lat_mask, lon_mask
-    real :: lat_target, lon_target, dist, dist_min
+    real, dimension(:), allocatable :: lat_mask, lon_mask, dist
+    real :: lat_target, lon_target, dist_min
 
     integer(kind=1), dimension(:), allocatable :: mask
     integer :: ncid, varid_mask, ierr, varid_lat, varid_lon, gpi_dimid
@@ -1862,6 +1862,7 @@ contains
        allocate(mask(N_mask))
        allocate(lat_mask(N_mask))
        allocate(lon_mask(N_mask))
+       allocate(dist(N_mask))
      
        ! Read the variables
        ierr = nf90_get_var(ncid, varid_mask, mask)
@@ -1924,13 +1925,16 @@ contains
           idx_nearest = 0
           
           ! find nearest mask point (probably slow)
-          do ii = 1,N_mask
-             dist = (lat_mask(ii)-lat_target)**2 + (lon_mask(ii)-lon_target)**2
-             if (dist < dist_min) then
-                dist_min = dist
-                idx_nearest = ii
-             end if
-          end do
+          ! do ii = 1,N_mask
+          !   dist = (lat_mask(ii)-lat_target)**2 + (lon_mask(ii)-lon_target)**2
+          !   if (dist < dist_min) then
+          !      dist_min = dist
+          !      idx_nearest = ii
+          !   end if
+          ! end do
+
+          dist = sqrt((lat_mask-lat_target)**2 + (lon_mask-lon_target)**2)
+          idx_nearest = minloc(dist, dim=1)
 
           if (mask(idx_nearest) /= 0) cycle
           
@@ -1984,6 +1988,7 @@ contains
        deallocate(mask)
        deallocate(lat_mask)
        deallocate(lon_mask)
+       deallocate(dist)
        
     else
        
