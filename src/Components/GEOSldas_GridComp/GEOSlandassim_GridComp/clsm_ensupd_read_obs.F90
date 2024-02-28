@@ -1657,7 +1657,6 @@ contains
     integer :: ll_lon_varid, ll_lat_varid, dlon_varid, dlat_varid
     
     character(300) :: mask_filename
-    character(300) :: mask_name
 
     logical :: file_exists
 
