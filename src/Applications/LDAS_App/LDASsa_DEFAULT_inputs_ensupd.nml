@@ -1154,42 +1154,38 @@ obs_param_nml(24)%adapt          = 0
 
 ! --------------------------------------------------------------------
 !
-!  25 = MODIS Terra snow cover area fraction (SCF)
-!
-! MOD10C1.*.061: MODIS Terra SCF, 0.05deg CMG, daytime (10:30am local) descending overpass, version V61 
-!
-! for rule-based snow cover analysis (no obs error/pert specs)
+!  25 = [empty]
 
-obs_param_nml(25)%descr          = 'MOD10C1'
-obs_param_nml(25)%orbit          = 2
-obs_param_nml(25)%pol            = 0
-obs_param_nml(25)%N_ang          = 0
-obs_param_nml(25)%freq           = 0.
-obs_param_nml(25)%FOV            = 0.
-obs_param_nml(25)%FOV_units      = 'deg'
+obs_param_nml(25)%descr          = 'NULL'
+obs_param_nml(25)%orbit          = -9999
+obs_param_nml(25)%pol            = -9999
+obs_param_nml(25)%N_ang          = -9999
+obs_param_nml(25)%freq           = -9999.
+obs_param_nml(25)%FOV            = -9999.
+obs_param_nml(25)%FOV_units      = 'NULL'
 obs_param_nml(25)%assim          = .false.
 obs_param_nml(25)%scale          = .false.	
 obs_param_nml(25)%getinnov       = .false.
-obs_param_nml(25)%RTM_ID         = 0
-obs_param_nml(25)%bias_Npar      = 0
-obs_param_nml(25)%bias_trel      = 864000
-obs_param_nml(25)%bias_tcut      = 432000
+obs_param_nml(25)%RTM_ID         = -9999
+obs_param_nml(25)%bias_Npar      = -9999
+obs_param_nml(25)%bias_trel      = -9999
+obs_param_nml(25)%bias_tcut      = -9999
 obs_param_nml(25)%nodata         = -9999.	
-obs_param_nml(25)%varname        = 'asnow'
-obs_param_nml(25)%units          = 'm2/m2'
-obs_param_nml(25)%path           = '/discover/nobackup/projects/S2SHMA/MODIS/MOD10C1_V61/'	
-obs_param_nml(25)%name           = 'MOD10C1.Ayyyyddd.061.hdf'
-obs_param_nml(25)%scalepath      = ''
-obs_param_nml(25)%scalename      = ''
-obs_param_nml(25)%flistpath      = ''
-obs_param_nml(25)%flistname      = ''
+obs_param_nml(25)%varname        = 'NULL'
+obs_param_nml(25)%units          = 'NULL'
+obs_param_nml(25)%path           = 'NULL'
+obs_param_nml(25)%name           = 'NULL'
+obs_param_nml(25)%scalepath      = 'NULL'
+obs_param_nml(25)%scalename      = 'NULL'
+obs_param_nml(25)%flistpath      = 'NULL'
+obs_param_nml(25)%flistname      = 'NULL'
 obs_param_nml(25)%errstd         = -9999.
 obs_param_nml(25)%std_normal_max = -9999.
 obs_param_nml(25)%zeromean       = .false.
 obs_param_nml(25)%coarsen_pert   = .false.
-obs_param_nml(25)%xcorr          = 0.
-obs_param_nml(25)%ycorr          = 0.
-obs_param_nml(25)%adapt          = 0
+obs_param_nml(25)%xcorr          = -9999.
+obs_param_nml(25)%ycorr          = -9999.
+obs_param_nml(25)%adapt          = -9999
 
 ! --------------------------------------------------------------------
 !
@@ -2209,6 +2205,46 @@ obs_param_nml(52)%coarsen_pert   = .false.
 obs_param_nml(52)%xcorr          = 0.
 obs_param_nml(52)%ycorr          = 0.
 obs_param_nml(52)%adapt          = 0
+
+! --------------------------------------------------------------------
+!
+!  53 = MODIS Terra snow cover area fraction (SCF)
+!
+! MOD10C1.*.061: MODIS Terra SCF, 0.05deg CMG, daytime (10:30am local) descending overpass, version V61 
+!
+! for rule-based snow cover analysis (no obs error/pert specs)
+
+obs_param_nml(53)%descr          = 'MOD10C1'
+obs_param_nml(53)%orbit          = 2
+obs_param_nml(53)%pol            = 0
+obs_param_nml(53)%N_ang          = 0
+obs_param_nml(53)%freq           = 0.
+obs_param_nml(53)%FOV            = 0.
+obs_param_nml(53)%FOV_units      = 'deg'
+obs_param_nml(53)%assim          = .false.
+obs_param_nml(53)%scale          = .false.	
+obs_param_nml(53)%getinnov       = .false.
+obs_param_nml(53)%RTM_ID         = 0
+obs_param_nml(53)%bias_Npar      = 0
+obs_param_nml(53)%bias_trel      = 864000
+obs_param_nml(53)%bias_tcut      = 432000
+obs_param_nml(53)%nodata         = -9999.	
+obs_param_nml(53)%varname        = 'asnow'
+obs_param_nml(53)%units          = 'm2/m2'
+obs_param_nml(53)%path           = '/discover/nobackup/projects/S2SHMA/MODIS/MOD10C1_V61/'	
+obs_param_nml(53)%name           = 'MOD10C1.Ayyyyddd.061.hdf'
+obs_param_nml(53)%scalepath      = ''
+obs_param_nml(53)%scalename      = ''
+obs_param_nml(53)%flistpath      = ''
+obs_param_nml(53)%flistname      = ''
+obs_param_nml(53)%errstd         = -9999.
+obs_param_nml(53)%std_normal_max = -9999.
+obs_param_nml(53)%zeromean       = .false.
+obs_param_nml(53)%coarsen_pert   = .false.
+obs_param_nml(53)%xcorr          = 0.
+obs_param_nml(53)%ycorr          = 0.
+obs_param_nml(53)%adapt          = 0
+
 
 ! --------------------------------------------------------------------
 
