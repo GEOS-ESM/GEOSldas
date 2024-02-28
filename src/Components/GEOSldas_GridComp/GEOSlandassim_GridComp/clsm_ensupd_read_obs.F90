@@ -1647,12 +1647,14 @@ contains
     !
     ! Variables for mask read
 
-    real, dimension(:), allocatable :: lat_mask, lon_mask, dist
-    real :: lat_target, lon_target, dist_min
+    real :: lat_target, lon_target, ll_lon, ll_lat, dlon, dlat
 
-    integer(kind=1), dimension(:), allocatable :: mask
-    integer :: ncid, varid_mask, ierr, varid_lat, varid_lon, gpi_dimid
-    integer :: N_mask, idx_nearest
+    integer(kind=1), dimension(:,:), allocatable :: mask
+    integer :: ncid, ierr, j_ind, i_ind
+    integer :: N_lon, N_lat
+    integer :: lon_dimid, lat_dimid
+    integer :: lon_varid, lat_varid, mask_varid
+    integer :: ll_lon_varid, ll_lat_varid, dlon_varid, dlat_varid
     
     character(300) :: mask_filename
     character(300) :: mask_name
@@ -1844,30 +1846,42 @@ contains
        ierr = nf90_open(mask_filename, nf90_nowrite, ncid)
 
        ! TODO: Check how to handle alternative mask names
+
        ! Get the variable ID
        mask_name = 'mask'              ! Case using "ASCAT_mask.nc"
        ! mask_name = 'subsurface_mask' ! Case using "subsurface_scattering_ASCAT_ERA5_Land.nc"
      
-       ierr = nf90_inq_varid(ncid, mask_name, varid_mask)
-       ierr = nf90_inq_varid(ncid, 'lat', varid_lat)
-       ierr = nf90_inq_varid(ncid, 'lon', varid_lon)
+       ierr = nf90_inq_varid(ncid, mask_name, mask_varid)
+       ierr = nf90_inq_varid(ncid, 'll_lon',  ll_lon_varid)
+       ierr = nf90_inq_varid(ncid, 'll_lat',  ll_lat_varid)
+       ierr = nf90_inq_varid(ncid, 'd_lon',   dlon_varid)
+       ierr = nf90_inq_varid(ncid, 'd_lat',   dlat_varid)
        
        ! Get the variable dimensions
-       ierr = nf90_inq_dimid(ncid, 'gpi', gpi_dimid)
+       ierr = nf90_inq_dimid(ncid, 'lon',    lon_dimid)
+       ierr = nf90_inq_dimid(ncid, 'lat',    lat_dimid)
        
        ! Get the dimension size
-       ierr = nf90_inquire_dimension(ncid, gpi_dimid, len = N_mask)
+       ierr = nf90_inquire_dimension(ncid, lon_dimid,    len = N_lon)
+       ierr = nf90_inquire_dimension(ncid, lat_dimid,    len = N_lat)
+
+       ! Get the mask ID
+       mask_name = 'mask'              ! Case using "ASCAT_mask.nc"
+       ! mask_name = 'subsurface_mask' ! Case using "subsurface_scattering_ASCAT_ERA5_Land.nc"
+       ierr = nf90_inq_varid(ncid, mask_name, mask_varid)
+
+       ! Read grid variables
+
+       ierr = nf90_get_var(ncid, ll_lon_varid, ll_lon)
+       ierr = nf90_get_var(ncid, ll_lat_varid, ll_lat)
+       ierr = nf90_get_var(ncid, dlon_varid,   dlon)
+       ierr = nf90_get_var(ncid, dlat_varid,   dlat)
      
-       ! Allocate memory for the variables
-       allocate(mask(N_mask))
-       allocate(lat_mask(N_mask))
-       allocate(lon_mask(N_mask))
-       allocate(dist(N_mask))
+       ! Allocate memory for the mask
+       allocate(mask(N_lat, N_lon))
      
-       ! Read the variables
-       ierr = nf90_get_var(ncid, varid_mask, mask)
-       ierr = nf90_get_var(ncid, varid_lat, lat_mask)
-       ierr = nf90_get_var(ncid, varid_lon, lon_mask)
+       ! Read the mask
+       ierr = nf90_get_var(ncid, mask_varid, mask)
        
        ! Close the netCDF mask file
        ierr = nf90_close(ncid)
@@ -1920,23 +1934,13 @@ contains
           ! skip if masked
           lat_target = tmp_data(kk, 13)
           lon_target = tmp_data(kk, 14)
-
-          dist_min = huge(dist_min)
-          idx_nearest = 0
           
-          ! find nearest mask point (probably slow)
-          ! do ii = 1,N_mask
-          !   dist = (lat_mask(ii)-lat_target)**2 + (lon_mask(ii)-lon_target)**2
-          !   if (dist < dist_min) then
-          !      dist_min = dist
-          !      idx_nearest = ii
-          !   end if
-          ! end do
+          ! Find indices for ASCAT mask for this observation lat/lon
 
-          dist = sqrt((lat_mask-lat_target)**2 + (lon_mask-lon_target)**2)
-          idx_nearest = minloc(dist, dim=1)
+          i_ind = ceiling((lon_target - ll_lon)/dlon)
+          j_ind = ceiling((lat_target - ll_lat)/dlat) 
 
-          if (mask(idx_nearest) /= 0) cycle
+          if (mask(j_ind, i_ind) /= 0) cycle
           
           N_tmp = N_tmp + 1  ! passed all QC
 
@@ -1986,9 +1990,6 @@ contains
        deallocate(tmp1_obs)
        deallocate(tmp_data)
        deallocate(mask)
-       deallocate(lat_mask)
-       deallocate(lon_mask)
-       deallocate(dist)
        
     else
        
