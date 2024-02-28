@@ -3207,7 +3207,7 @@ contains
 
     logical :: minimize_shift, use_prec_corr, use_Predictor, tmp_init
 
-    logical :: daily_met_files
+    logical :: daily_met_files, daily_precipcorr_files
     
     integer :: nv_id, ierr, icount(3), istart(3), lonid, latid
 
@@ -3696,9 +3696,9 @@ contains
           if ( (use_prec_corr) .and. (GEOSgcm_defs(GEOSgcm_var,1)(1:4)=='PREC') ) then
              
              call get_GEOS_corr_prec_filename(fname_full,file_exists,date_time_tmp,        &
-                  prec_path_tmp, met_tag_tmp, GEOSgcm_defs(GEOSgcm_var,:), precip_corr_file_ext )
+                  prec_path_tmp, met_tag_tmp, GEOSgcm_defs(GEOSgcm_var,:), precip_corr_file_ext, daily_precipcorr_files)
 
-             single_time_in_file = .true.  ! corr precip files are always hourly (incl. MERRA-2)
+             single_time_in_file = .not. daily_precipcorr_files  ! corr precip files are always hourly (incl. MERRA-2)
 
           else
              
@@ -5622,22 +5622,23 @@ contains
   ! ****************************************************************
 
   subroutine get_GEOS_corr_prec_filename(fname_full,file_exists, date_time, met_path, met_tag, &
-       GEOSgcm_defs, file_ext )
+       GEOSgcm_defs, file_ext, daily_files)
     
     implicit none
     character(*),                 intent(inout) :: fname_full
     logical,intent(out)                         :: file_exists 
+    logical,intent(out)                         :: daily_files 
     type(date_time_type),         intent(in)    :: date_time
     character(*),                 intent(in)    :: met_path
     character(*),                 intent(in)    :: met_tag
     character( 40), dimension(5), intent(in)    :: GEOSgcm_defs
     character(*),                 intent(in)    :: file_ext
-        
+
     ! local variables
 
-    character(100) :: fname
+    character(100) :: fname, fname_tmp
     character(200) :: fdir
-    character(300) :: fname_full_tmp1, fname_full_tmp2
+    character(300) :: fname_full_tmp1, fname_full_tmp2, fname_full_tmp3
     character(  4) :: YYYY,  HHMM
     character(  2) :: MM,    DD
 
@@ -5660,14 +5661,20 @@ contains
        !  (as of 7 May 2020, no V02 or higher was issued for GEOS FP "lfo" products 
        !   going back to Jun 2013)
 
-       fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+       fname     = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
             YYYY // MM // DD // '_' // trim(HHMM) // '.V01.' // trim(file_ext)
-       
+    
+       fname_tmp = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+            YYYY // MM // DD //                      '.V01.' // trim(file_ext)
+   
     else
        
-       fname = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+       fname     = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
             YYYY // MM // DD // '_' // trim(HHMM) // 'z.'    // trim(file_ext)
-       
+      
+       fname_tmp = trim(met_tag) // '.' // trim(GEOSgcm_defs(3)) // '_corr.' //         &
+            YYYY // MM // DD //                       '.'    // trim(file_ext)
+ 
     end if
 
     ! assemble dir name with "/Yyy" (year) dir but without "/Mmm" (month) dir
@@ -5678,7 +5685,7 @@ contains
     ! -----------------------------------------------------------------------
     
     file_exists = .false.                              ! initialize
-    
+    daily_files = .false.
 
     ! first try:  look for file in year/month dir
     !  (LDAS standard for corrected G5DAS precip)
@@ -5691,8 +5698,19 @@ contains
     
     fname_full_tmp1 = trim(fname_full)                 ! remember for error log below
     
+    ! second try: look for daily file in year/month dir 
+    fname_full = trim(fdir) // 'M' // MM // '/' // trim(fname_tmp)
 
-    ! second try: *without* "/Mmm" (month) dir 
+    inquire(file=fname_full, exist=file_exists)
+
+    if (file_exists) then
+        daily_files = .true.
+        return                                         ! done
+    endif                            
+
+    fname_full_tmp2 = trim(fname_full)                 ! remember for error log below
+
+    ! third try: *without* "/Mmm" (month) dir 
 
     ! THIS TRY IS PROBABLY OBSOLETE BUT COULD EASILY BE TWEAKED TO LOOK 
     ! IN year/month/day DIRECTORY (WHICH POSSIBLY APPLIES TO CORRECTED
@@ -5705,7 +5723,7 @@ contains
 
     if (file_exists) return                            ! done
     
-    fname_full_tmp2 = trim(fname_full)                 ! remember for error log below
+    fname_full_tmp3 = trim(fname_full)                 ! remember for error log below
 
 
     ! last try: for GEOS FP with generic file names, try product counter '.V02.' in year/month dir
@@ -5736,6 +5754,7 @@ contains
           print '(400A)',  trim(Iam) // ': Could not find any of the following files:'
           print '(400A)',  trim(fname_full_tmp1)
           print '(400A)',  trim(fname_full_tmp2)
+          print '(400A)',  trim(fname_full_tmp3)
           print '(400A)',  trim(fname_full)
        endif
     endif
