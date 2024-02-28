@@ -1827,9 +1827,7 @@ contains
        ! Read in ASCAT mask file
 
        !  TODO: Decide how to handle mask file name and path (e.g., from obs_param nml)
-       mask_filename = trim(this_obs_param%flistpath) // '/' // 'ASCAT_mask' // '.nc'
-       ! mask_filename = trim(this_obs_param%flistpath) // '/' // & 
-       !                     'subsurface_scattering_ASCAT_ERA5_Land' // '.nc'
+       mask_filename = trim(this_obs_param%flistpath) // '/' // 'ascat_subsurface_mask' // '.nc'
     
        if (logit) write (logunit,'(400A)') '  reading ', trim(mask_filename)
          
@@ -1845,17 +1843,12 @@ contains
        ! Openthe netCDF mask file
        ierr = nf90_open(mask_filename, nf90_nowrite, ncid)
 
-       ! TODO: Check how to handle alternative mask names
-
-       ! Get the variable ID
-       mask_name = 'mask'              ! Case using "ASCAT_mask.nc"
-       ! mask_name = 'subsurface_mask' ! Case using "subsurface_scattering_ASCAT_ERA5_Land.nc"
-     
-       ierr = nf90_inq_varid(ncid, mask_name, mask_varid)
-       ierr = nf90_inq_varid(ncid, 'll_lon',  ll_lon_varid)
-       ierr = nf90_inq_varid(ncid, 'll_lat',  ll_lat_varid)
-       ierr = nf90_inq_varid(ncid, 'd_lon',   dlon_varid)
-       ierr = nf90_inq_varid(ncid, 'd_lat',   dlat_varid)
+       ! Get the variable IDs
+       ierr = nf90_inq_varid(ncid, 'mask',   mask_varid)
+       ierr = nf90_inq_varid(ncid, 'll_lon', ll_lon_varid)
+       ierr = nf90_inq_varid(ncid, 'll_lat', ll_lat_varid)
+       ierr = nf90_inq_varid(ncid, 'd_lon',  dlon_varid)
+       ierr = nf90_inq_varid(ncid, 'd_lat',  dlat_varid)
        
        ! Get the variable dimensions
        ierr = nf90_inq_dimid(ncid, 'lon',    lon_dimid)
@@ -1865,13 +1858,7 @@ contains
        ierr = nf90_inquire_dimension(ncid, lon_dimid,    len = N_lon)
        ierr = nf90_inquire_dimension(ncid, lat_dimid,    len = N_lat)
 
-       ! Get the mask ID
-       mask_name = 'mask'              ! Case using "ASCAT_mask.nc"
-       ! mask_name = 'subsurface_mask' ! Case using "subsurface_scattering_ASCAT_ERA5_Land.nc"
-       ierr = nf90_inq_varid(ncid, mask_name, mask_varid)
-
        ! Read grid variables
-
        ierr = nf90_get_var(ncid, ll_lon_varid, ll_lon)
        ierr = nf90_get_var(ncid, ll_lat_varid, ll_lat)
        ierr = nf90_get_var(ncid, dlon_varid,   dlon)
@@ -1931,15 +1918,15 @@ contains
           ! skip if inundation and wetland fraction > 10%
           if(tmp_data(kk, 12) > 10.) cycle
 
-          ! skip if masked
+          ! observation lat/lon
           lat_target = tmp_data(kk, 13)
           lon_target = tmp_data(kk, 14)
           
           ! Find indices for ASCAT mask for this observation lat/lon
-
           i_ind = ceiling((lon_target - ll_lon)/dlon)
           j_ind = ceiling((lat_target - ll_lat)/dlat) 
 
+          ! skip masked
           if (mask(j_ind, i_ind) /= 0) cycle
           
           N_tmp = N_tmp + 1  ! passed all QC
