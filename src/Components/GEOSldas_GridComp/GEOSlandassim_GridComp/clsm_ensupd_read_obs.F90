@@ -1826,7 +1826,7 @@ contains
        !
        ! read mask file for ASCAT obs (netcdf format, regular lat/lon grid)
 
-       mask_filename = trim(this_obs_param%maskpath) // '/' // trim(this_obs_param%maskfile)
+       mask_filename = trim(this_obs_param%maskpath) // '/' // trim(this_obs_param%maskname)
     
        if (logit) write (logunit,'(400A)') '  reading mask for ASCAT obs from ', trim(mask_filename)
          
