@@ -741,6 +741,8 @@ contains
     !  character(40)                 :: units
     !  character(200)                :: path    
     !  character(80)                 :: name    
+    !  character(200)                :: maskpath    
+    !  character(80)                 :: maskname    
     !  character(200)                :: scalepath
     !  character(80)                 :: scalename
     !  character(200)                :: flistpath
@@ -779,7 +781,7 @@ contains
     iblock( 5) = 3  
     iblock( 6) = 4
     iblock( 7) = 1                  
-    iblock( 8) = 40+40+200+80+200+80+200+80      
+    iblock( 8) = 40+40+200+80+200+80+200+80+200+80     
     iblock( 9) = 2                  
     iblock(10) = 2                  
     iblock(11) = 2                  
