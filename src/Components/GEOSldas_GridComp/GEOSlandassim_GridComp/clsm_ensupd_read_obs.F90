@@ -1864,7 +1864,7 @@ contains
        ierr = nf90_get_var(ncid, dlat_varid,   mask_dlat)
      
        ! allocate memory for mask
-       allocate(mask_data(mask_N_lat, mask_N_lon))               ! note: lat-by-lon !!!
+       allocate(mask_data(mask_N_lon, mask_N_lat))               ! note: lon-by-lat
      
        ! read mask
        ierr = nf90_get_var(ncid, mask_varid, mask_data)
@@ -1922,7 +1922,7 @@ contains
           mask_lon_ind = max( min( ceiling((tmp_data(kk, 14) - mask_ll_lon)/mask_dlon), mask_N_lon ), 1)
 
           ! skip if masked
-          if (mask_data( mask_lat_ind, mask_lon_ind ) /= 0) cycle                     ! note: lat-by-lon !!!
+          if (mask_data( mask_lon_ind, mask_lat_ind ) /= 0) cycle                     ! note: lon-by-lat
           
           N_tmp = N_tmp + 1  ! passed all QC
 
