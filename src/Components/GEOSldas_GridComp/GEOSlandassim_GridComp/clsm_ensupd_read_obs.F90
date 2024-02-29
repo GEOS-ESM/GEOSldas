@@ -1826,8 +1826,7 @@ contains
        !
        ! read mask file for ASCAT obs (netcdf format, regular lat/lon grid)
 
-       !  TODO: Decide how to handle mask file name and path (e.g., from obs_param nml)
-       mask_filename = trim(this_obs_param%flistpath) // '/' // 'ascat_subsurface_mask' // '.nc'
+       mask_filename = trim(this_obs_param%maskpath) // '/' // trim(this_obs_param%maskfile)
     
        if (logit) write (logunit,'(400A)') '  reading mask for ASCAT obs from ', trim(mask_filename)
          
