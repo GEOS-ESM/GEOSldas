@@ -1578,9 +1578,11 @@ contains
     !
     ! Q. Liu,          Nov 2019 - based on read_obs_sm_ASCAT
     ! A. Fox, reichle, Sep 2023 - updated
+    ! A. Fox, reichle, Feb 2024 - added ASCAT obs mask
     !
     ! --------------------------------------------------------------------
-        
+    
+    use netcdf   
     implicit none
     
     ! inputs:
@@ -1645,6 +1647,23 @@ contains
     integer :: idate, iret, ireadmg, ireadsb
 
     character(8) :: subset
+
+    ! --------------------
+    !
+    ! variables for obs mask read
+
+    integer(kind=1), dimension(:,:), allocatable :: mask_data
+    
+    real           :: mask_ll_lon, mask_ll_lat, mask_dlon, mask_dlat
+    
+    integer        :: ncid, ierr 
+    integer        :: mask_N_lon, mask_N_lat, mask_lon_ind, mask_lat_ind
+    integer        :: lon_dimid, lat_dimid
+    integer        :: mask_varid, ll_lon_varid, ll_lat_varid, dlon_varid, dlat_varid
+    
+    character(300) :: mask_filename
+
+    logical        :: file_exists
 
     ! --------------------
 
@@ -1809,6 +1828,56 @@ contains
 
        ! ----------------------------------------------------------------
        !
+       ! read mask file for ASCAT obs (netcdf format, regular lat/lon grid)
+
+       mask_filename = trim(this_obs_param%maskpath) // '/' // trim(this_obs_param%maskname)
+    
+       if (logit) write (logunit,'(400A)') '  reading mask for ASCAT obs from ', trim(mask_filename)
+         
+       ! check if file exists
+         
+       inquire(file=mask_filename, exist=file_exists)
+        
+       if (.not. file_exists) then
+          err_msg = 'Mask file for ASCAT obs not found!'
+          call ldas_abort(LDAS_GENERIC_ERROR, Iam, err_msg)
+       end if
+
+       ! open netCDF mask file
+       ierr = nf90_open(mask_filename, nf90_nowrite, ncid)
+
+       ! get variable IDs
+       ierr = nf90_inq_varid(ncid, 'mask',   mask_varid)
+       ierr = nf90_inq_varid(ncid, 'll_lon', ll_lon_varid)
+       ierr = nf90_inq_varid(ncid, 'll_lat', ll_lat_varid)
+       ierr = nf90_inq_varid(ncid, 'd_lon',  dlon_varid)
+       ierr = nf90_inq_varid(ncid, 'd_lat',  dlat_varid)
+       
+       ! get variable dimension IDs
+       ierr = nf90_inq_dimid(ncid, 'lon',    lon_dimid)
+       ierr = nf90_inq_dimid(ncid, 'lat',    lat_dimid)
+       
+       ! get dimension size
+       ierr = nf90_inquire_dimension(ncid, lon_dimid, len=mask_N_lon)
+       ierr = nf90_inquire_dimension(ncid, lat_dimid, len=mask_N_lat)
+
+       ! read grid parameters
+       ierr = nf90_get_var(ncid, ll_lon_varid, mask_ll_lon)
+       ierr = nf90_get_var(ncid, ll_lat_varid, mask_ll_lat)
+       ierr = nf90_get_var(ncid, dlon_varid,   mask_dlon)
+       ierr = nf90_get_var(ncid, dlat_varid,   mask_dlat)
+     
+       ! allocate memory for mask
+       allocate(mask_data(mask_N_lon, mask_N_lat))               ! note: lon-by-lat
+     
+       ! read mask
+       ierr = nf90_get_var(ncid, mask_varid, mask_data)
+       
+       ! close netCDF mask file
+       ierr = nf90_close(ncid)
+
+       ! ----------------------------------------------------------------
+       !
        ! select obs within assimilation window and from desired orbit direction; apply basic QC based on obs info
        
        N_tmp = 0 
@@ -1851,6 +1920,13 @@ contains
           
           ! skip if inundation and wetland fraction > 10%
           if(tmp_data(kk, 12) > 10.) cycle
+          
+          ! find lat/lon indices of ASCAT mask for this observation lat/lon
+          mask_lat_ind = max( min( ceiling((tmp_data(kk, 13) - mask_ll_lat)/mask_dlat), mask_N_lat ), 1)
+          mask_lon_ind = max( min( ceiling((tmp_data(kk, 14) - mask_ll_lon)/mask_dlon), mask_N_lon ), 1)
+
+          ! skip if masked
+          if (mask_data( mask_lon_ind, mask_lat_ind ) /= 0) cycle                     ! note: lon-by-lat
           
           N_tmp = N_tmp + 1  ! passed all QC
 
@@ -1898,7 +1974,8 @@ contains
        deallocate(tmp1_lon)
        deallocate(tmp1_lat)
        deallocate(tmp1_obs)
-       deallocate(tmp_data) 
+       deallocate(tmp_data)
+       deallocate(mask_data)
        
     else
        
@@ -9150,7 +9227,7 @@ contains
     integer :: ncid, varid, ierr, ierr2
     integer :: pentad_dimid, lon_dimid, lat_dimid
     integer :: N_pentad, N_lon, N_lat
-    integer :: pentad_varid, lon_varid, lat_varid
+    integer :: pentad_varid
     integer :: o_mean_varid, o_std_varid, m_mean_varid, m_std_varid, m_min_varid, m_max_varid
     integer :: ll_lon_varid, ll_lat_varid, dlon_varid, dlat_varid
     integer, dimension(3) :: start, icount
