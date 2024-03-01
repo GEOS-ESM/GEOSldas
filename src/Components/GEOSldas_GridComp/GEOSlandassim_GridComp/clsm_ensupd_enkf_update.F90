@@ -16,7 +16,8 @@ module clsm_ensupd_enkf_update
        MAPL_TICE
 
   USE CATCH_CONSTANTS,                  ONLY :    &
-       N_gt           => CATCH_N_GT
+       N_gt           => CATCH_N_GT,              &
+       N_snow         => CATCH_N_SNOW              
 
   use catchment_model,                  ONLY:     &
        catch_calc_tsurf
@@ -110,6 +111,7 @@ module clsm_ensupd_enkf_update
        apply_adapt_R
 
   use LDAS_ensdrv_mpi,                  ONLY:     &
+       MPI_met_force_type,                        &
        MPI_cat_param_type,                        &
        MPI_cat_progn_type,                        &
        root_proc,                                 &
@@ -292,14 +294,18 @@ contains
     integer                            :: nTiles_ana, nTilesAna_vec(numprocs)
     integer, dimension(:), allocatable :: indTiles_l, indTiles_f, indTiles_ana
     type(varLenIntArr)                 :: indTilesAna_vec(numprocs)
+
     type(tile_coord_type), dimension(:), pointer    :: tile_coord_ana  ! input to cat_enkf_increment() is a pointer
+
+    type(met_force_type), dimension(:), allocatable :: met_force_f,         met_force_ana
     type(cat_param_type), dimension(:), allocatable :: cat_param_f,         cat_param_ana
+
     type(cat_progn_type), allocatable               :: cat_progn_f(:),      cat_progn_ana(:,:)
     type(cat_progn_type), allocatable               :: tmp_cat_progn_ana(:)
     type(cat_progn_type), allocatable               :: cat_progn_incr_f(:), cat_progn_incr_ana(:,:)
     type(cat_progn_type), allocatable               :: recvBuf(:)
-
-    ! Obs related
+    
+    ! obs related
     integer                                         :: nObs_ana
     integer                                         :: nObsAna_vec(numprocs)
     integer                                         :: N_obsf_assim, N_obsl_assim
@@ -320,8 +326,8 @@ contains
 
     character(12)      :: tmpstr12
 
-    character(len=*), parameter :: Iam = 'get_enkf_increments'
-    character(len=400) :: err_msg
+    character(len=*),   parameter :: Iam = 'get_enkf_increments'
+    character(len=400)            :: err_msg
 
     ! **********************************************************************
     !
@@ -394,7 +400,7 @@ contains
                tile_coord_f%pert_i_indg, tile_coord_f%pert_j_indg,               &
                pert_grid_f, maxval(N_tile_in_cell_ij_f), tile_num_in_cell_ij_f )
        else
-          allocate(N_tile_in_cell_ij_f(0,0)) !for debugging
+          allocate(N_tile_in_cell_ij_f(0,0))  ! for debugging
        end if
 
        ! *********************************************************************
@@ -427,7 +433,7 @@ contains
 
 
        ! --------------------------------------------------------------------
-
+       
        if (found_obs_f) then
 
           ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -510,7 +516,6 @@ contains
 
           if (allocated(obsbias_ok)) deallocate(obsbias_ok)
 
-
           ! IF NEEDED, INCLUDE WITHHOLDING SUBROUTINE HERE.
           ! SUCH A SUBROUTINE SHOULD CHANGE Observations(i)%assim TO FALSE
           ! IF THE OBSERVATION IS TO BE WITHHELD
@@ -520,7 +525,7 @@ contains
 
           ! count observations across all processors that are left after
           !  model-based QC (done within get_obs_pred())
-
+  
 #ifdef LDAS_MPI
 
           call MPI_AllReduce(                             &
@@ -605,7 +610,7 @@ contains
           ! them evenly among all procs, indTiles_ana. The corresponding
           ! numbers are nTiles_l, nTiles_f, nTiles_ana. Root needs
           ! nTilesAna_vec, indTilesAna_vec (list of nTiles_ana,
-          ! indTiles_ana on each proc) to distribute cat_param, cat_progn.
+          ! indTiles_ana on each proc) to distribute cat_param, cat_progn, etc.
           !
           ! IMPORTANT: Regardless of update_type, obs from *all* species are
           !            considered (ie, N_select_species=0).  This could result in
@@ -638,7 +643,7 @@ contains
 
           !-AnaLoadBal-Prereq-starts-here-
           ! Step 1a: identify obs w/ obs%assim==.true.
-          allocate(ind_obsl_assim(N_obsl), source=-99)
+          allocate(ind_obsl_assim(N_obsl), source=-99)   
           call get_ind_obs_assim(N_obsl, Observations_l%assim, N_obsl_assim, ind_obsl_assim)
           ! its easier to write ptr2indx than ind_obsl_assim(1:N_obsl_assim)
           ptr2indx => ind_obsl_assim(1:N_obsl_assim)
@@ -696,7 +701,7 @@ contains
           if (root_proc) then
             allocate(indTiles_f(nTiles_f), source=-99)
           else
-            allocate(indTiles_f(0)) ! for debugging mode
+            allocate(indTiles_f(0))  ! for debugging mode
           endif
   
           if (root_proc) then
@@ -734,7 +739,7 @@ contains
           if (allocated(indTiles_f)) deallocate(indTiles_f)
 
           ! Step 2d: indTiles_ana -> indTilesAna_vec (on root)
-          ! root needs indTiles_ana from each proc to distribute cat_param, cat_progn etc.
+          ! root needs indTiles_ana from each proc to distribute cat_param, cat_progn, etc.
           if (root_proc) then
              do iproc=1,numprocs
                 allocate(indTilesAna_vec(iproc)%ind(nTilesAna_vec(iproc)))
@@ -831,15 +836,44 @@ contains
           Obs_ana = Obs_f_assim(indObs_ana(1:nObs_ana))
           if (allocated(Obs_f_assim)) deallocate(Obs_f_assim)
 
-          ! step 4b: tile_coord_ana
+          ! Step 4b: tile_coord_ana
           allocate(tile_coord_ana(nTiles_ana))
           tile_coord_ana = tile_coord_f(indTiles_ana)
 
-          ! Step 4c: cat_param(N_catl) -> cat_param_f (on root) -> cat_param_ana
+          ! Step 4c: met_force(N_catl) -> met_force_f (on root) -> met_force_ana
+          if (root_proc) then
+             allocate(met_force_f(N_catf))
+          else
+             allocate(met_force_f(0))  ! for debugging mode
+          endif
+          call MPI_Gatherv(                                             &
+               met_force,   N_catl,                MPI_met_force_type,  &
+               met_force_f, N_catl_vec, low_ind-1, MPI_met_force_type,  &
+               0, mpicomm, mpierr )
+          allocate(met_force_ana(nTiles_ana))
+          if (root_proc) then
+             met_force_ana = met_force_f(indTilesAna_vec(1)%ind)
+             do dest=1,numprocs-1
+                sendtag = dest
+                sendct = nTilesAna_vec(dest+1)
+                call MPI_Send(met_force_f(indTilesAna_vec(dest+1)%ind), &
+                     sendct,MPI_met_force_type,                         &
+                     dest,sendtag,mpicomm,mpierr)
+             end do
+          else
+             ! source = 0
+             recvtag = myid
+             recvct = nTiles_ana
+             call MPI_Recv(met_force_ana,recvct,MPI_met_force_type, &
+                  0,recvtag,mpicomm,mpistatus,mpierr)
+          end if
+          if (allocated(met_force_f)) deallocate(met_force_f)
+
+          ! Step 4d: cat_param(N_catl) -> cat_param_f (on root) -> cat_param_ana
           if (root_proc) then
              allocate(cat_param_f(N_catf))
           else
-             allocate(cat_param_f(0)) !for debugging mode
+             allocate(cat_param_f(0))  ! for debugging mode
           endif
           call MPI_Gatherv(                                             &
                cat_param,   N_catl,                MPI_cat_param_type,  &
@@ -864,12 +898,12 @@ contains
           end if
           if (allocated(cat_param_f)) deallocate(cat_param_f)
 
-          ! Step 4d: cat_progn -> cat_progn_f (on root) -> cat_progn_ana
+          ! Step 4e: cat_progn -> cat_progn_f (on root) -> cat_progn_ana
           ! one ensemble at a time
           if (root_proc) then
              allocate(cat_progn_f(N_catf))
           else
-             allocate(cat_progn_f(0)) ! for debugging mode
+             allocate(cat_progn_f(0))  ! for debugging mode
           endif
 
           allocate(cat_progn_ana(nTiles_ana,N_ens))
@@ -916,12 +950,12 @@ contains
           if (allocated( tmp_cat_progn_ana))  deallocate(tmp_cat_progn_ana)
           if (allocated(cat_progn_f)) deallocate(cat_progn_f)
 
-          ! Step 4e: Obs_pred_l (obs%assim=.true.) -> Obs_pred_f_assim (on root) -> Obs_pred_ana
+          ! Step 4f: Obs_pred_l (obs%assim=.true.) -> Obs_pred_f_assim (on root) -> Obs_pred_ana
           ! one ensemble at a time
           if (root_proc) then
              allocate(Obs_pred_f_assim(N_obsf_assim))
           else
-             allocate(Obs_pred_f_assim(0)) ! for debugging mode
+             allocate(Obs_pred_f_assim(0))  ! for debugging mode
           endif
           allocate(Obs_pred_ana(nObs_ana,N_ens), source=0.)
           if (root_proc) then
@@ -978,6 +1012,7 @@ contains
           !       of Observations_l and Obs_pred_l that are "good"
           !       [allocation of these arrays in get_obs_pred() is larger
           !        than eventual size]
+          
           call get_halo_obs( N_ens, N_obsl,                                  &
                Observations_l(1:N_obsl), Obs_pred_l(1:N_obsl,1:N_ens),       &
                tile_coord_l, xcompact, ycompact,                             &
@@ -1042,6 +1077,7 @@ contains
                Obs_ana,                                   & ! size: nObs_ana
                Obs_pred_ana,                              & ! size: (nObs_ana,N_ens)
                Obs_pert_tmp,                              &
+               met_force_ana,                             &
                cat_param_ana,                             &
                xcompact, ycompact, fcsterr_inflation_fac, &
                cat_progn_ana, cat_progn_incr_ana)
@@ -1070,9 +1106,10 @@ contains
                Observations_lH(1:N_obslH),                              &
                Obs_pred_lH(1:N_obslH,1:N_ens),                          &
                Obs_pert_tmp,                                            &
+               met_force,                                               &
                cat_param,                                               &
                xcompact, ycompact, fcsterr_inflation_fac,               &
-               cat_progn, cat_progn_incr )
+               cat_progn, cat_progn_incr, met_force )
 #endif          
 
 #ifdef LDAS_MPI
@@ -1085,7 +1122,7 @@ contains
              allocate(cat_progn_incr_f(N_catf))
              allocate(recvBuf(maxval(nTilesAna_vec))) ! temp storage of incoming data
           else
-             allocate(cat_progn_incr_f(0)) ! for debugging
+             allocate(cat_progn_incr_f(0))  ! for debugging
           end if
           do iEns=1,N_ens
              ! cat_progn_incr_ana -> cat_progn_incr_f
@@ -1149,6 +1186,7 @@ contains
           if (allocated( indObs_ana))         deallocate(indObs_ana)
           if (allocated( cat_progn_ana))      deallocate(cat_progn_ana)
           if (allocated( cat_param_ana))      deallocate(cat_param_ana)
+          if (allocated( met_force_ana))      deallocate(met_force_ana)
           do iproc=1,numprocs
              if (allocated(indTilesAna_vec(iproc)%ind))   &
                   deallocate(indTilesAna_vec(iproc)%ind)
@@ -1258,7 +1296,7 @@ contains
 
     ! -----------------
 
-    integer :: n, n_e
+    integer :: n, n_e, ii
 
     logical :: cat_progn_has_changed, check_snow
 
@@ -1355,10 +1393,10 @@ contains
                   cat_progn(n,n_e)%tc2    + cat_progn_incr(n,n_e)%tc2
              cat_progn(n,n_e)%tc4 = &
                   cat_progn(n,n_e)%tc4    + cat_progn_incr(n,n_e)%tc4
-
+             
              cat_progn(n,n_e)%ght(1) = &
                   cat_progn(n,n_e)%ght(1) + cat_progn_incr(n,n_e)%ght(1)
-
+             
           end do
        end do
 
@@ -1366,10 +1404,33 @@ contains
 
        check_snow            = .false.  ! turn off for now to maintain 0-diff w/ SMAP Tb DA test case
 
+    case(11) select_update_type ! empirical MODIS SCF update
+       
+       do n=1,N_catd       ! for each tile
+          
+          do n_e=1,N_ens    ! for each ensemble member 
+             
+             do ii=1,N_snow   ! for each snow layer
+                
+                cat_progn(n,n_e)%wesn(ii) =                                         &
+                     cat_progn(n,n_e)%wesn(ii) + cat_progn_incr(n,n_e)%wesn(ii)
+                
+                cat_progn(n,n_e)%sndz(ii) =                                         &
+                     cat_progn(n,n_e)%sndz(ii) + cat_progn_incr(n,n_e)%sndz(ii)
+                
+                cat_progn(n,n_e)%htsn(ii) =                                         &
+                     cat_progn(n,n_e)%htsn(ii) + cat_progn_incr(n,n_e)%htsn(ii)
+                
+             end do
+          end do
+       end do
+       
+       cat_progn_has_changed = .true.
+
     case default
 
        call ldas_abort(LDAS_GENERIC_ERROR, Iam, 'unknown update_type')
-
+       
     end select select_update_type
 
     ! ------------------------------------------------------------------
