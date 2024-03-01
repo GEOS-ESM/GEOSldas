@@ -111,10 +111,10 @@ module enkf_types
                                                 ! 3 = ...
                                                 ! [add 3rd/4th Stokes, HH, HV, VH, VV]
 
-     integer                       :: N_ang     ! # angles in species
+     integer                       :: N_ang     ! # satellite viewing angles in species (radiance obs only)
 
      real, &
-          dimension(N_obs_ang_max) :: ang       ! vector of angles
+          dimension(N_obs_ang_max) :: ang       ! vector of satellite viewing angles
      
      real                          :: freq      ! frequency [Hz]
 

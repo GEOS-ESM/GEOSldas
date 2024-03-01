@@ -901,6 +901,8 @@ contains
     VERIFY_(status)
 
     if (internal%PERTURBATIONS == 0) then ! no perturbations
+       allocate(progn_pert_param(0))
+       allocate(force_pert_param(0))
        call MAPL_TimerOff(MAPL, "Initialize")
        call MAPL_TimerOff(MAPL, "TOTAL")
        RETURN_(ESMF_SUCCESS)
