@@ -6,22 +6,22 @@ def main():
     # the experiment directory is passed in from the command line
     exp_dir = sys.argv[1]
     # location to save outputs of new global best model runs
-    save_path = '/shared/pso_outputs/fake'
+    save_path = '/shared/pso_outputs/g1_ai_et_strm_camels_test2006'
     # should Fluxcom ET be used as a constraint in objective function?
-    et_constraint = False
+    et_constraint = True
     # should USGS WaterWatch runoff be used as a constraint in objective
     # function?
     streamflow_constraint = True
     # the location of the ET truth file for the PSO
     et_truth_fname = (
-        '/shared/pso/step_3_process_fluxcom/outputs/' +
-        'le_truth_fluxcom_rs_CRUNCEP_ensemble_watts_per_m2_2001-01-01_' +
-        '2015-12-31_selected_tiles.csv'
+        '/shared/pso/step_3_process_gleam/outputs/' +
+        'le_truth_gleam_38a_watts_per_m2_' +
+        '2006-01-01_2006-12-31_camels_tiles.csv'
     )
     # the location of the streamflow truth file for the PSO
     stream_truth_fname = (
         '/shared/pso/step_3.1.1_process_camels/outputs/' +
-        'camels_truth_1998-01-01_2012-12-31_mm_day.csv'
+        'camels_truth_yearly_2006-01-01_2006-12-31_mm_day.csv'
     )
     # location of the intersection info .pkl file that relates catchment tiles
     # to huc watershed
@@ -37,50 +37,36 @@ def main():
     start = datetime.date(2006,1,1)
     end = datetime.date(2006,12,31)
     # number of iterations with no change to global best before convergence
-    conv_thresh = 1
+    conv_thresh = 5
     # number of iterations at which to declare does not converge
-    max_iter = 1
+    max_iter = 10
     # how often do we submit a new job?
     restart_every = 1
     # how many particles are we running?
-    num_particles = 1
+    num_particles = 10
     # how many parameters for each particle?:
-    num_params = 10
+    num_params = 8
     # what are the names of the different paramaeters?
-        #parameter 1: aj in g1 EF for forests
-        #parameter 2: aj in g1 EF for croplands
-        #parameter 3: aj in g1 EF for grasslands
-        #parameter 4: aj in g1 EF for savannas
-        #parameter 5: aj in g1 EF for shrublands
-        #parameter 6: alpha in Ksat EF
-        #parameter 7: beta in Ksat EF
-        #parameter 8: constant_1 in Ksat EF
-        #parameter 9: constant_2 in Ksat EF
-        #parameter 10: sand_exp in Ksat EF
     parameter_names = [
-        'a1_forests',
-        'a1_croplands',
-        'a1_grasslands',
-        'a1_savannas',
-        'a1_shrublands',
-        'a0_forests',
-        'a0_croplands',
-        'a0_grasslands',
-        'a0_savannas',
-        'a0_shrublands'
+        'a0_needleleaf_trees', # 1
+        'a0_broadleaf_evergreen_trees', # 2
+        'a0_broadleaf_deciduous_trees', # 3
+        'a0_shrub', # 4
+        'a0_arctic_c3_grass', # 5
+        'a0_c3_grass', # 6
+        'a0_c4_grass', # 7
+        'a0_crop' # 8 
     ]
     # what are the starting ranges for the different paramters?
     param_range = [
-        [0,15], # parameter 1
-        [0,15], # parameter 2
-        [0,15], # parameter 3
-        [0,15], # parameter 4
-        [0,15], # parameter 5
-        [-.25,.25],   # parameter 6
-        [-.25,.25],   # parameter 7
-        [-.25,.25],   # parameter 8
-        [-.25,.25], # parameter 9
-        [-.25,.25] # parameter 10
+        [0,5], # parameter 1
+        [0,5], # parameter 2
+        [0,5], # parameter 3
+        [0,5], # parameter 4
+        [0,5], # parameter 5
+        [0,5], # 6
+        [0,5], # 7
+        [0,5] # 8
     ]
     # what are the objective function weights? This is multiplied by the
     # normalized objective output for [0]:et and [1]:streamflow. These two

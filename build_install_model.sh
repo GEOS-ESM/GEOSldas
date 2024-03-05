@@ -3,16 +3,16 @@
 
 # to be set by the user
 # what is the directory where the model information is stored
-model_dir_gen="/shared/models/GEOSldas_pso_g1_ksat/GEOSldas"
+model_dir_gen="/shared/models/GEOSldas_pso_g1_ksat_3/GEOSldas"
 # what is the directory where we should place the experiment
 exp_dir_gen="/lustre/catchment/exps"
 # what is the name of this experiment
-exp_name="GEOSldas_CN45_med_default_pft_g1_1996_2020_camels"
+exp_name="GEOSldas_CN45_pso_g1_ai_et_strm_camels_test2006"
 # where is the list of tiles to run?
 include_name="/shared/pso/step_1_choose_tiles/outputs/include"
 # how many particles are we running for the pso?
 # if want just a normal run, make this 1
-num_members=1
+num_members=10
 # where is the history.rc file?
 hist_rc_loc="${model_dir_gen}/src/Applications/LDAS_App/HISTORY.rc"
 

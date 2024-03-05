@@ -510,7 +510,7 @@ class pso:
         # make this a numpy array
         et_truth_np = np.array(et_truth)
         # get number of steps and pixels from ET truth dataset
-        dummy,model_num_pixels = np.shape(et_truth_np)
+        model_num_steps,model_num_pixels = np.shape(et_truth_np)
         # were also going to need the list of all of the pixels that we are
         # running
         tiles = pd.read_csv(all_pix_fname,header=None)
@@ -532,9 +532,9 @@ class pso:
         # get number of catchments and number of steps from catchment truth
         # dataset
         stream_num_steps,stream_num_hucs = np.shape(stream_truth_np)
-        model_num_steps = stream_num_steps
-        this_part_strm_huc = np.zeros((stream_num_steps,stream_num_hucs))
+        #model_num_steps = stream_num_steps
         # get model output and calculate rmse for each particle
+        print(num_particles)
         for part in range(num_particles):
             print(part)
             if et_constraint:
@@ -544,6 +544,7 @@ class pso:
                 this_part_stream_day = np.zeros(
                     (model_num_steps,model_num_pixels)
                 )
+                this_part_strm_huc = np.zeros((model_num_steps,stream_num_hucs))
             # set the base dir where the model output is stored
             base_dir = os.path.join(
                 exp_dir,'../',str(part),'output/SMAP_EASEv2_M36/cat/ens0000'
@@ -622,11 +623,18 @@ class pso:
                     (this_part_et > 0) &
                     (np.isnan(et_truth_np) == False)
                 )
+                avg_pred = np.average(this_part_et[usable_data_idx])
+                avg_obs = np.average(et_truth_np[usable_data_idx])
                 this_et_obj = np.sqrt(
                     (
                         (
-                            this_part_et[usable_data_idx] -
-                            et_truth_np[usable_data_idx]
+                            (
+                                this_part_et[usable_data_idx] -
+                                avg_pred
+                            ) - (
+                                et_truth_np[usable_data_idx] -
+                                avg_obs
+                            )
                         )**2
                     ).mean()
                 )
@@ -635,13 +643,37 @@ class pso:
                 avg_fluxcom_et  = np.mean(et_truth_np[usable_data_idx])
                 this_et_obj_norm = this_et_obj/avg_fluxcom_et
             if streamflow_constraint:
+                # need to convert to yearly
+                start_idx = 0
+                yearly_idx = 0
+                yearly_model_strm = np.zeros(
+                    (stream_num_steps,stream_num_hucs)
+                )
+                curr = copy.deepcopy(self.params['start'])
+                while curr < self.params['end']:
+                    next_year = curr + relativedelta(years=1)
+                    diff = next_year - curr
+                    diff_days = diff.days
+                    end_idx = start_idx + diff_days + 1
+                    this_year_vals = this_part_strm_huc[
+                        start_idx:end_idx,:
+                    ]
+                    this_year_vals_avg = np.mean(this_year_vals,axis=0)
+                    yearly_model_strm[yearly_idx,:] = this_year_vals_avg
+                    #print(this_year_vals)
+                    #print(this_year_vals_avg)
+                    #print(yearly_model_strm)
+                    curr += relativedelta(years=1)
+                    start_idx = copy.deepcopy(end_idx)
+                    yearly_idx += 1
+                # now calculate objective
                 usable_data_idx = np.where(
-                    np.isnan(this_part_strm_huc) == False
+                    np.isnan(stream_truth_np) == False
                 )
                 this_strm_obj = np.sqrt(
                     (
                         (
-                            this_part_strm_huc[usable_data_idx] -
+                            yearly_model_strm[usable_data_idx] -
                             stream_truth_np[usable_data_idx]
                         )**2
                     ).mean()
@@ -713,6 +745,18 @@ class pso:
                 et_obj_out_norm[part] = this_et_obj_norm
                 strm_obj_out[part] = this_strm_obj
                 strm_obj_out_norm[part] = this_strm_obj_norm
+                #print('obj_out')
+                #print(obj_out)
+                #print('obj_out_norm')
+                #print(obj_out_norm)
+                #print('et_obj_out')
+                #print(et_obj_out)
+                #print('et_obj_out_norm')
+                #print(et_obj_out_norm)
+                #print('strm_obj_out')
+                #print(strm_obj_out)
+                #print('strm_obj_out_norm')
+                #print(strm_obj_out_norm)
         # return all objective values
         out_vals = [
             obj_out,obj_out_norm,et_obj_out,et_obj_out_norm,
