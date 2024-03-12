@@ -15,7 +15,7 @@ program ascat_mask_maker
     real                            :: d_lon, d_lat, ll_lon, ll_lat
 
     ! Open the NetCDF file
-    ierr = nf90_open('/Users/amfox/Desktop/GEOSldas_diagnostics/test_data/clsm/subsurface_scattering_ASCAT_ERA5_Land.nc', nf90_nowrite, ncid)
+    ierr = nf90_open('/discover/nobackup/amfox/subsurface_scattering_ASCAT_ERA5_Land.nc', nf90_nowrite, ncid)
     if (ierr /= nf90_noerr) stop 'Error opening file'
 
     ! Get the dimension ID
