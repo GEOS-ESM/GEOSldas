@@ -109,7 +109,7 @@ COMMONLY USED values for `MET_PATH`:
 
 #### GEOS-IT forcing (including precip-corrected GEOS-IT forcing)
 ```
-  MET_PATH : /discover/nobackup/projects/gmao/[???????]
+  MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOSIT_land_forcing/
 ```
 
 #### Forcing from post-processed output of the GEOS S2S system (FCST, AODAS)
@@ -232,7 +232,7 @@ COMMONLY USED values for `MET_TAG`:
 
 #### GEOS FP-IT
 ```
-  MET_TAG  : GEOSIT????????
+  MET_TAG  : cross_d5294_GEOSIT
 ```
 
 #### With precip corrections:
