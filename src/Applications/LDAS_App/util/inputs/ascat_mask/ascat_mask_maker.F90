@@ -1,3 +1,14 @@
+! This program reads in a NetCDF file containing ASCAT soil moisture masks available from:
+! Lindorfer, R., Wagner, W., Hahn, S., Kim, H., Vreugdenhil, M., Gruber, A., Fischer, M., & Trnka, M. (2023). 
+! Global Scale Maps of Subsurface Scattering Signals Impacting ASCAT Soil Moisture Retrievals (1.0.0) [Data set]. 
+! TU Wien. https://doi.org/10.48436/9a2y9-e5z14
+
+! It provides the possibility to combine different masks (default case is combination of subsurface and wetland masks)
+! and interpolates onto a regular grid with a (hardwired) 0.1 degree lat/lon resolution and -90/-180 degree lower left 
+! corner used for quick indexing in the ASCAT observation reader QC routine.
+
+! Author: AM Fox, March, 2024
+
 program ascat_mask_maker
 
     use netcdf
