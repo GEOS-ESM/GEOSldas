@@ -103,7 +103,7 @@ program ascat_mask_maker
     end do
 
     ! Write out the mask to netcdf
-    ierr = nf90_create('ascat_combined_mask_p1_f90.nc', nf90_clobber, ncid)
+    ierr = nf90_create('ascat_combined_mask_p1.nc', nf90_clobber, ncid)
     if (ierr /= nf90_noerr) stop 'Error creating file'
 
     ! Define the dimensions
