@@ -2,11 +2,11 @@
 ! Lindorfer, R., Wagner, W., Hahn, S., Kim, H., Vreugdenhil, M., Gruber, A., Fischer, M., & Trnka, M. (2023). 
 ! Global Scale Maps of Subsurface Scattering Signals Impacting ASCAT Soil Moisture Retrievals (1.0.0) [Data set]. 
 ! TU Wien. https://doi.org/10.48436/9a2y9-e5z14
-
+!
 ! It provides the possibility to combine different masks (default case is combination of subsurface and wetland masks)
-! and interpolates onto a regular grid with a (hardwired) 0.1 degree lat/lon resolution and -90/-180 degree lower left 
+! and interpolates onto a regular grid with a (hardwired) 0.1 degree lat/lon spacing and -90/-180 degree lower left 
 ! corner used for quick indexing in the ASCAT observation reader QC routine.
-
+!
 ! Author: AM Fox, March, 2024
 
 program ascat_mask_maker
@@ -25,9 +25,33 @@ program ascat_mask_maker
     real, dimension(:), allocatable :: lon, lat, distances
     real                            :: d_lon, d_lat, ll_lon, ll_lat
 
+    character(400)                  :: fname_in
+
+    ! --------------------------------------------------------------------------------
+    !
+    ! hardwired variables
+
+    ! ASCAT soil moisture mask file from Lindorfer et al 2023 
+    
+    fname_in = '/discover/nobackup/amfox/subsurface_scattering_ASCAT_ERA5_Land.nc'    
+
+    ! Specification of output grid and missing value 
+    
+    d_lon  =    0.1
+    d_lat  =    0.1
+    ll_lon = -180.0
+    ll_lat =  -90.0
+    
+    missing_value = -128
+    
+    ! -------------------------------
+    
     ! Open the NetCDF file
-    ierr = nf90_open('/discover/nobackup/amfox/subsurface_scattering_ASCAT_ERA5_Land.nc', nf90_nowrite, ncid)
+    ierr = nf90_open(fname_in, nf90_nowrite, ncid)
     if (ierr /= nf90_noerr) stop 'Error opening file'
+    
+    ! Data in original mask file are on the 12.5 km fixed Earth grid used for ASCAT (WARP5 grid) and
+    !   stored in the NetCDF file as 1-dimensional arrays of length N_gpi (over land only).
 
     ! Get the dimension ID
     ierr = nf90_inq_dimid(ncid, 'gpi', dimid)
@@ -40,13 +64,13 @@ program ascat_mask_maker
     print*, 'N_gpi = ', N_gpi
 
     ! Allocate the arrays
-    allocate(asc_lon(N_gpi))
-    allocate(asc_lat(N_gpi))
-    allocate(cold_mask(N_gpi))
-    allocate(wet_mask(N_gpi))
-    allocate(veg_mask(N_gpi))
+    allocate(asc_lon(        N_gpi))
+    allocate(asc_lat(        N_gpi))
+    allocate(cold_mask(      N_gpi))
+    allocate(wet_mask(       N_gpi))
+    allocate(veg_mask(       N_gpi))
     allocate(subsurface_mask(N_gpi))
-    allocate(combined_mask(N_gpi))
+    allocate(combined_mask(  N_gpi))
 
     ! Get the variable IDs and read the variables
     ierr = nf90_inq_varid(ncid, 'lon', varid)
@@ -66,18 +90,14 @@ program ascat_mask_maker
     ierr = nf90_close(ncid)
     if (ierr /= nf90_noerr) stop 'Error closing file'
 
-    ! Combine the masks
+    ! Combine the masks (1-dim arrays)
     where (wet_mask == 1)
        combined_mask = 1
     elsewhere
        combined_mask = subsurface_mask
     end where
 
-    d_lon = 0.1
-    d_lat = 0.1
-    ll_lon = -180.0
-    ll_lat = -90.0
-    missing_value = -128
+    ! Re-map "combined_mask" from WARP5 input grid to regular lat/lon output grid (2-dim array)
 
     allocate(lon(int(360.0  / d_lon)))
     allocate(lat(int(180.0  / d_lat)))
@@ -91,9 +111,9 @@ program ascat_mask_maker
         print*, lon(i)
         do j = 1, size(lat)
             allocate(distances(size(asc_lon)))
-            distances = sqrt((asc_lon - lon(i))**2 + (asc_lat - lat(j))**2)
+            distances     = (asc_lon - lon(i))**2 + (asc_lat - lat(j))**2
             closest_index = minloc(distances, dim = 1)
-            if (distances(closest_index) > 0.14) then
+            if (distances(closest_index) > 0.14**2) then
                 mask_out(i, j) = missing_value
             else
                 mask_out(i, j) = combined_mask(closest_index)
@@ -124,8 +144,8 @@ program ascat_mask_maker
     ierr = nf90_put_att(ncid, varid, 'axis', 'X')
 
     ierr = nf90_def_var(ncid, 'mask', nf90_byte, dimids, varid)
-    ierr = nf90_put_att(ncid, varid, 'standard_name', 'subsurface_mask')
-    ierr = nf90_put_att(ncid, varid, 'long_name', 'Mask accounting for subsurface scattering')
+    ierr = nf90_put_att(ncid, varid, 'standard_name', 'combined_mask')
+    ierr = nf90_put_att(ncid, varid, 'long_name', 'Combined mask')
     ierr = nf90_put_att(ncid, varid, 'units', 'boolean')
     ierr = nf90_put_att(ncid, varid, '_FillValue', missing_value)
 

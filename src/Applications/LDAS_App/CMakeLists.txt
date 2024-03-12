@@ -16,7 +16,7 @@ ecbuild_add_executable (
  
 ecbuild_add_executable (
    TARGET ascat_mask_maker.x
-   SOURCES util/inputs/ascat_mask/ascat_mask_maker.F90
+   SOURCES util/inputs/ASCAT_sm_mask/ascat_mask_maker.F90
    LIBS MAPL
 )   
 
