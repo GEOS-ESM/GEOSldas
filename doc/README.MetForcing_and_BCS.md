@@ -339,7 +339,7 @@ For "land" tiles, the discretization (tile-space) is constructed in one of two
 	  0.5-degree ("c180") cube-sphere grid used by the atmospheric model in the 
 	  MERRA-2 reanalysis: `CF0180x6C_DE1440xPE0720`.
 
-  2. Directly on a regular grid, e.g., `SMAP_EASEv2_M09`.
+  2. Directly on a regular grid, e.g., `EASEv2_M09`.
 
 
 IMPORTANT: Beginning with GEOSldas release v18.0.0, bcs must be provided in a revised
