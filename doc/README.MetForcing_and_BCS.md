@@ -76,20 +76,25 @@ COMMONLY USED values for `MET_PATH`:
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/ 
 ```
 
-#### SMAP_Nature_v03
+#### SMAP Nature Run v03
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-#### SMAP_Nature_v04, SMAP_Nature_v04.1
+#### SMAP Nature Run v04, v04.1
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-#### SMAP_Nature_v05, v7.2, v8.1, v8.3;  SMAP L4_SM Version 4
+#### SMAP Nature Run v05, v7.2, v8.1, v8.3, v9.1, v10.0, v11.1;  SMAP L4_SM Version 4
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/  ! before 1/1/2015
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/   ! after  1/1/2015
+```
+
+#### SMAP L4_SM Version 5, 6, 7
+```
+  MET_PATH : /discover/nobackup/projects/gmao/smap/SMAP_L4/GEOS/FP/
 ```
 
 #### GEOS FP forcing with "seamless" file names, for use with MET_TAG=GEOS.fp.asm[__prec*] (__PREFERRED__)
@@ -100,6 +105,11 @@ COMMONLY USED values for `MET_PATH`:
 #### GEOS forcing with experiment-specific file names, incl. FP (__DEPRECATED__), FP-IT/RP-IT, and precip-corrected GEOS forcing
 ```
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
+```
+
+#### GEOS-IT forcing (including precip-corrected GEOS-IT forcing)
+```
+  MET_PATH : /discover/nobackup/projects/gmao/[???????]
 ```
 
 #### Forcing from post-processed output of the GEOS S2S system (FCST, AODAS)
@@ -220,6 +230,11 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GEOS.fp.asm   ! "seamless" FP files (published/generic file names, ~same result as cross_FP, PREFERRED)
 ```
 
+#### GEOS FP-IT
+```
+  MET_TAG  : GEOSIT????????
+```
+
 #### With precip corrections:
 
 #### Pre-beta SMAP L4_SM
@@ -227,25 +242,25 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : cross_FP__precCPCUG5FPv2
 ```
 
-#### SMAP_Nature_v03
+#### SMAP Nature Run v03
 ```
   MET_TAG  : cross_RPFPIT__precCPCUG5RPFPITv1                ! before 1/1/2014
   MET_TAG  : cross_FP__precCPCUG5FPv1		             ! after  1/1/2014
 ```
 
-#### SMAP_Nature_v04      
+#### SMAP Nature Run v04      
 ```
   MET_TAG  : cross_d591_RPFPIT__precCPCUG5RPFPITv2           ! before 1/1/2014
   MET_TAG  : cross_FP__precCPCUG5FPv2                        ! after  1/1/2014
 ```
 
-#### SMAP_Nature_v04.1      
+#### SMAP Nature Run v04.1      
 ```
   MET_TAG  : cross_d5124_RPFPIT__precCPCUG5RPFPITv2.1        ! before 1/1/2015
   MET_TAG  : cross_FP__precCPCUG5FPv2                        ! after  1/1/2015
 ```
 
-#### SMAP_Nature_v05, v7.2, v8.1, v8.3;  SMAP L4_SM Version 4
+#### SMAP Nature Run v05, v7.2, v8.1, v8.3;  SMAP L4_SM Version 4
 ```
   MET_TAG  : M2COR_cross__precCPCUGPCP22clim_MERRA2_BMTXS    ! before 1/1/2015
   MET_TAG  : cross_FP__precCPCUG5FPv3                        ! after  1/1/2015
@@ -257,11 +272,25 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : GEOS.fp.asm__precCPCUFLKG5FPv3                  ! (precip corr with first-look CPCU)
 ```
 
-#### SMAP L4_SM Version 6
+#### SMAP Nature Run v9.1; SMAP L4_SM Version 6
 ```
   MET_TAG  : GEOS.fp.asm__precCPCU_IMGFinal_IMGFclim_G5FP    ! (precip corr with IMERG-Final and late-look  CPCU) 
   MET_TAG  : GEOS.fp.asm__precCPCULLK_IMERGLateV06b_fp_v1    ! (precip corr with IMERG-Late  and late-look  CPCU)
   MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06b_fp_v1    ! (precip corr with IMERG-Late  and first-look CPCU)
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06c_fp_v1    ! (precip corr with IMERG-Late  and first-look CPCU)
+```
+
+#### SMAP Nature Run v10.0; SMAP L4_SM Version 7
+```
+  MET_TAG  : GEOS.fp.asm__precCPCU_IMGFinal_IMGFclim_G5FP    ! (precip corr with IMERG-Final and late-look  CPCU) 
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06b_fp_v1    ! (precip corr with IMERG-Late  and first-look CPCU)
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06c_fp_v1    ! (precip corr with IMERG-Late  and first-look CPCU)
+
+```
+
+#### SMAP Nature Run v11.1
+```
+  MET_TAG  : GEOS.fp.asm__precIMGv7BFnCPCUcorrv1
 ```
 
 #### Forcing from post-processed output of the GEOS S2S system 
@@ -313,10 +342,12 @@ For "land" tiles, the discretization (tile-space) is constructed in one of two
   2. Directly on a regular grid, e.g., `SMAP_EASEv2_M09`.
 
 
-Note: GEOSldas can be run with older bcs.  Note, however, that GEOSldas requires some bcs 
-      files (NDVI and vegdyn) that did not exist in earlier bcs versions.  Upon request,
-      older bcs directories can be patched up to work with GEOSldas (and still work with
-      LDASsa). 
+IMPORTANT: Beginning with GEOSldas release v18.0.0, bcs must be provided in a revised
+  directory layout and naming convention.  Such bcs are available at NCCS/Discover here:
+```
+  BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/fvInput/ExtData/esm/tiles/
+```
+
 
 
 COMMONLY USED boundary conditions (bcs):
@@ -327,7 +358,7 @@ COMMONLY USED boundary conditions (bcs):
   BCS_PATH : /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/SiB2_V2_bad_lon_onDL/DC/
 ```
 
-#### MERRA2
+#### Ganymed-4_0 (GM4): MERRA2
 ```
   BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Ganymed-4_0/Ganymed-4_0_MERRA-2/
 ```
@@ -349,17 +380,17 @@ COMMONLY USED boundary conditions (bcs):
   BCS_PATH : /discover/nobackup/projects/gmao/ssd/land/l_data/geos5/bcs/CLSM_params/mkCatchParam_SMAP_L4SM_v002/
 ```
 
-#### Icarus-NL ("New Land"), SMAP_Nature_v7.2
+#### Icarus-NL ("New Land"): SMAP Nature Run v7.2
 ```
   BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NL/Icarus-NL_[XXXX]/
 ```
 
 Notes:
-- _DON'T USE_ unless to replicate previous experiments. There is "missing" data in green*.data, nirdf*.dat, and visdf*.dat files.
+- _DO NOT USE_ unless to replicate previous experiments. There is "missing" data in green*.data, nirdf*.dat, and visdf*.dat files.
 - This path remains in place to permit recreating experiments that have used this path.
 - The sub-directory "Icarus-NL_MERRA-2/" contains the "new land" bcs.  The string "MERRA-2" in this sub-directory name refers to ocean bcs that are not relevant for GEOSldas.
 
-#### Icarus-NLv2, SMAP L4_SM Version 4
+#### Icarus-NLv2: SMAP L4_SM Version 4
 ```
   BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv2/Icarus-NLv2_[XXXX]/
 ```
@@ -368,7 +399,7 @@ Notes:
 - Icarus-NLv2 is a update to Icarus-NL bcs. A patch has been applied to files green*.data, nirdf*.dat, and visdf*.dat. 
 - DEFAULT for GEOSldas v17.8.0 
 	
-#### Icarus-NLv3, SMAP_Nature_v8.1
+#### Icarus-NLv3 (NL3): SMAP Nature Run v8.1, GEOS-FP 5.25, 5.27, 5.29, GEOS-IT
 ```
   BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/legacy_bcs/Icarus-NLv3/Icarus-NLv3_[XXXX]/
 ```
@@ -384,7 +415,7 @@ Notes:
 - DEFAULT for GEOSldas AFTER v17.8.0
 - Used in GEOS FP 5.25, 5.27, 5.29 
 
-#### Icarus-NLv4, SMAP_Nature_v8.3, SMAP L4_SM Version 5, SMAP_Nature_v9.1, SMAP L4_SM Version 6
+#### Icarus-NLv4 (NL4): SMAP Nature Run v8.3, v9.1, SMAP L4_SM Version 5, 6
 ```
   BCS_PATH : /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv4_EASE/
 ```
@@ -393,7 +424,27 @@ Notes:
 - Icarus-NLv4 is identical to Icarus-NLv3 except that NLv4 reinstates veg heights from JPL/Simard et al. 2011 Lidar data.
 - Generated with GEOSldas tag v17.9.0-beta.7 under SLES11 O/S.
 
-      
+
+#### Icarus-NLv5 (NL5): SMAP Nature Run v10.0, SMAP L4_SM Version 7
+```
+  BCS_PATH : /discover/nobackup/projects/gmao/smap/SMAP_L4/L4_SM/bcs/CLSM_params/Icarus-NLv5_EASE/
+```
+
+Notes: 
+- Icarus-NLv5 is identical to Icarus-NLv4 except for parameters associated with PEATCLSM.
+
+
+#### v11: SMAP Nature Run v11.1
+```
+  BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/fvInput/ExtData/esm/tiles/v11/
+```
+
+Notes: 
+- v11 is identical to Icarus-NLv5 (within roundoff) except for new MODIS-based snow albedo v2 parameters.
+
+
+
+
 
 
 
