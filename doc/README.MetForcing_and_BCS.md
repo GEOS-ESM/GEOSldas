@@ -146,7 +146,7 @@ COMMONLY USED values for `MET_TAG`:
    MET_TAG  : M2COR_400                                         ! stream 4 only
    ```
 
-- Option 1b: 
+ - Option 1b: 
    Use corrected precip forcing constructed in post-processing using MERRA-2 as background.  
    Background precip is typically from MERRA-2 "int" data, but corrected precip is stored
    in files that look like MERRA-2 "lfo" files.
@@ -155,9 +155,9 @@ COMMONLY USED values for `MET_TAG`:
    ```
    MET_TAG  : M2COR_cross__precCPCUGPCP22clim_MERRA2_BMTXS      ! all streams
    MET_TAG  : M2COR_100__precCPCUGPCP22clim_MERRA2_BMTXS        ! stream 1 only
-   MET_TAG  : M2COR_200__precCPCUGPCP22clim_MERRA2_BMTXS     	! stream 2 only
-   MET_TAG  : M2COR_300__precCPCUGPCP22clim_MERRA2_BMTXS     	! stream 3 only
-   MET_TAG  : M2COR_400__precCPCUGPCP22clim_MERRA2_BMTXS     	! stream 4 only
+   MET_TAG  : M2COR_200__precCPCUGPCP22clim_MERRA2_BMTXS        ! stream 2 only
+   MET_TAG  : M2COR_300__precCPCUGPCP22clim_MERRA2_BMTXS        ! stream 3 only
+   MET_TAG  : M2COR_400__precCPCUGPCP22clim_MERRA2_BMTXS        ! stream 4 only
    ```
    
    This particular version uses as background the MERRA-2 model ("int") precip, rescaled to 
@@ -184,18 +184,18 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : d591_rpit2_jun06                                   ! stream 2 only
   MET_TAG  : d591_rpit3_jan11                                   ! stream 3 only
   MET_TAG  : d591_fpit                                          ! stream 4 only
-```
+  ```
 
 #### RP-IT/FP-IT (d5124)
-```
+  ```
   MET_TAG  : cross_d5124_RPFPIT                                 ! all streams   - uses "late-look" through present
   MET_TAG  : d5124_rpit1_jan00                                  ! stream 1 only
   MET_TAG  : d5124_rpit2_jun04                                  ! stream 2 only
   MET_TAG  : d5124_rpit3_jan12                                  ! stream 3 only - updated through present
-```
+  ```
 
 #### GEOS FP
-```
+  ```
   MET_TAG  : GEOS.fp.asm   ! PREFERRED:  "seamless" FP files (published/generic file names, ~same result as cross_FP)
 
   MET_TAG  : cross_FP      ! DEPRECATED: stitch FP experiment names across years
@@ -209,12 +209,12 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : f525_fp       ! starting 30 Jan 2020
   MET_TAG  : f525_p5_fp    ! starting  7 Apr 2020
   ...
-```
+  ```
 
 #### GEOS-IT
-```
+  ```
   MET_TAG  : cross_d5294_GEOSIT
-```
+  ```
 
 #### Forcing from post-processed output of the GEOS S2S system 
 
@@ -241,10 +241,10 @@ COMMONLY USED values for `MET_TAG`:
    S2S forcing reader from total precipitation and air temperature.  Convective rainfall is 
    set to 0.  (As of now, only total rainfall is used by Catchment.)
 
-```
-  MET_TAG  : GEOSs2sFCST__[ensX]__[MMMDD]
-  MET_TAG  : GEOSs2sAODAS
-```
+   ```
+   MET_TAG  : GEOSs2sFCST__[ensX]__[MMMDD]
+   MET_TAG  : GEOSs2sAODAS
+   ```
 
 
 #### SMAP L4_SM
