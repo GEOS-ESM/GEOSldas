@@ -4,7 +4,7 @@ README.metforcing_and_bcs
 
 Description:
 ---------------
-Information about met forcing and boundary conditions for GEOSldas.
+Information about surface meteorological forcing and boundary conditions for GEOSldas.
 
 Author:	
 ---------------
@@ -73,7 +73,7 @@ COMMONLY USED values for `MET_PATH`:
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/ 
 ```
 
-Note: Used for SMAP Nature Run v05, v7.2, v8.1, v8.3, v9.1, v10.0, v11.1 (before 1/1/2015)
+Note: Used for SMAP Nature Run v05, v7.2, v8.1, v8.3, v9.1, v10.0, v11.1 (before 1/1/2015).
 
 #### GEOS FP forcing with "seamless" file names, for use with MET_TAG=GEOS.fp.asm[__prec*] (__PREFERRED__)
 ```
@@ -87,7 +87,7 @@ Note: Used for SMAP Nature Run v8.1, v8.3, v9.1, v10.0, v11.1 (after 1/1/2015); 
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/GEOS5_land_forcing/
 ```
 
-Note: Used for SMAP Nature Run v03, v04, v04.1, v05, v7.2 (after 1/1/2015); SMAP L4_SM Version 4
+Note: Used for SMAP Nature Run v03, v04, v04.1, v05, v7.2 (after 1/1/2015); SMAP L4_SM Version 4.
 
 #### GEOS-IT forcing (including precip-corrected GEOS-IT forcing)
 ```
@@ -96,7 +96,7 @@ Note: Used for SMAP Nature Run v03, v04, v04.1, v05, v7.2 (after 1/1/2015); SMAP
 
 #### Forcing from post-processed output of the GEOS S2S system (FCST, AODAS)
 
-```                                                                                                                         
+```
   MET_PATH : [check with GMAO S2S group]
 ```
 
@@ -147,7 +147,7 @@ COMMONLY USED values for `MET_TAG`:
    ```
 
  - Option 1b: 
-   Use corrected precip forcing constructed in post-processing using MERRA-2 as background.  
+   Use corrected precip forcing constructed in post-processing using MERRA-2 as background. 
    Background precip is typically from MERRA-2 "int" data, but corrected precip is stored
    in files that look like MERRA-2 "lfo" files.
 
@@ -257,16 +257,16 @@ COMMONLY USED values for `MET_TAG`:
 #### SMAP Nature Run v03
 ```
   MET_TAG  : cross_RPFPIT__precCPCUG5RPFPITv1                ! before 1/1/2014
-  MET_TAG  : cross_FP__precCPCUG5FPv1		                 ! after  1/1/2014
+  MET_TAG  : cross_FP__precCPCUG5FPv1                        ! after  1/1/2014
 ```
 
-#### SMAP Nature Run v04      
+#### SMAP Nature Run v04
 ```
   MET_TAG  : cross_d591_RPFPIT__precCPCUG5RPFPITv2           ! before 1/1/2014
   MET_TAG  : cross_FP__precCPCUG5FPv2                        ! after  1/1/2014
 ```
 
-#### SMAP Nature Run v04.1      
+#### SMAP Nature Run v04.1
 ```
   MET_TAG  : cross_d5124_RPFPIT__precCPCUG5RPFPITv2.1        ! before 1/1/2015
   MET_TAG  : cross_FP__precCPCUG5FPv2                        ! after  1/1/2015
@@ -306,7 +306,7 @@ COMMONLY USED values for `MET_TAG`:
 ```
 
 
-Boundary Conditions  
+Boundary Conditions
 ================================================================================
 
 Boundary conditions (bcs) are tile-space model parameters that are provided in a 
@@ -390,8 +390,8 @@ Notes:
 - Soil parameters for a small fraction (< 0.05%) of tiles changed to correct "Mali" bug.
 - Vegdyn.data now netcdf4; reverts to using Dorman/Sellers veg heights (abandons JPL/Simard et al. 2011 Lidar data). 
 - Some underlying ASCII data files are now grouped into a netcdf4 file. I.e., data in ar.new, bf.dat, ts.dat, etc are now in:
-    - clsm/catch_params.nc4   (for Catch)
-    - clsm/catchcn_params.nc4 (for CatchCN)
+    - clsm/catch_params.nc4
+    - clsm/catchcn_params.nc4  (additional parameters for CatchCN)
 
 - Generated with cvs tag Jason-3_0_LANDBCS
 
