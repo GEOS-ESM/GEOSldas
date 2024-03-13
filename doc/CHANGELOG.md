@@ -33,10 +33,10 @@ This README file contains the history of stable GEOSldas Releases in Git, follow
 Overview of Git Releases:
 ============================
 
-[v18.0.0-beta](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.0-beta) - 2024-03-13
+[v18.0.0-beta](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.0-beta) - 2024-03-14
 ------------------------------
 
-- Not 0-diff vs. v17.13.1 because of ([snow model fixes](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/813)).
+- Not 0-diff vs. v17.13.1 because of [snow model fixes](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/813).
 
 - Notes:
   - Release is designated "beta" because a tag (SMAP_NRv11.1) is used for GEOSgcm_GridComp in components.yaml (awaiting official GEOSgcm_GridComp release that includes [non-0-diff snow model fixes](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/813)).
@@ -46,7 +46,7 @@ Overview of Git Releases:
   - Added MODIS snow cover fraction assimilation ([PR #512](https://github.com/GEOS-ESM/GEOSldas/pull/512)).
   - Added ASCAT soil moisture assimilation ([PR #656](https://github.com/GEOS-ESM/GEOSldas/pull/656), [PR #703](https://github.com/GEOS-ESM/GEOSldas/pull/703), [PR #723](https://github.com/GEOS-ESM/GEOSldas/pull/723)).
     - New update_type=13 for ASCAT soil moisture and SMAP brightness temperature assimilation ([PR #703](https://github.com/GEOS-ESM/GEOSldas/pull/703)). 
-    - New update_type=13 replaces update_type=[1,2], which was disabled.
+    - New update_type=13 replaces update_type=[1,2], which has been disabled.
     - Requires ASCAT mask file ([PR #723](https://github.com/GEOS-ESM/GEOSldas/pull/723)).
   - Disabled CatchmentCNCLM45 model option (LSM_CHOICE=3) ([PR #707](https://github.com/GEOS-ESM/GEOSldas/pull/707), [GEOSgcm_GridComp PR #900](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/900)).
   - Added support for GEOS-IT surface met forcing  ([PR #688](https://github.com/GEOS-ESM/GEOSldas/pull/688)).
@@ -89,7 +89,7 @@ Overview of Git Releases:
   - Replace FLAP with fArgParse ([PR #669](https://github.com/GEOS-ESM/GEOSldas/pull/669)).
 
 - Documentation: 
-  - Minor updates and corrections. 
+  - Updates and corrections ([PR #728](https://github.com/GEOS-ESM/GEOSldas/pull/728)).
 
 - Bug fixes and other minor changes:
   - Removed requirement for mwRTM parameter input files ([PR #685](https://github.com/GEOS-ESM/GEOSldas/pull/685)).
@@ -100,7 +100,7 @@ Overview of Git Releases:
   - Some cleanup of unused variables ([PR #679](https://github.com/GEOS-ESM/GEOSldas/pull/679)).
   - Updated met forcing path when coupled with ADAS ([PR #682](https://github.com/GEOS-ESM/GEOSldas/pull/682)).
   - Added more export variable definitions to tile_bin2nc4.F90 ([PR #676](https://github.com/GEOS-ESM/GEOSldas/pull/676)).
-  - Fixed LONG_NAME for longwave variables ([PR #674](https://github.com/GEOS-ESM/GEOSldas/pull/674), [GEOSgcm_GridComp PR #764](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/764)).
+  - Fixed LONG_NAME for longwave radiation variables ([PR #674](https://github.com/GEOS-ESM/GEOSldas/pull/674), [GEOSgcm_GridComp PR #764](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/764)).
   - Fixed bug in matlab reader MAPL_ReadForcing_fullfile.m ([PR #665](https://github.com/GEOS-ESM/GEOSldas/pull/665)).
   - Renamed GEOSldas_GridComp/Shared to GEOSldas_GridComp/LDAS_Shared ([PR #714](https://github.com/GEOS-ESM/GEOSldas/pull/714)).
 
