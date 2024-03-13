@@ -15,13 +15,14 @@ program ascat_mask_maker
 
     implicit none
 
-    integer :: ncid, varid, dimid, ierr, len, N_gpi, dimids(2)
-    integer :: i, j, closest_index
+    integer                            :: ncid, varid, dimid, ierr, len, N_gpi, dimids(2)
+    integer                            :: i, j, closest_index
+    integer, dimension(:), allocatable :: cold_mask, wet_mask, veg_mask, subsurface_mask, combined_mask
 
     integer(kind=1), dimension(:,:), allocatable :: mask_out
     integer(kind=1)                              :: missing_value
 
-    real, dimension(:), allocatable :: asc_lon, asc_lat, cold_mask, wet_mask, veg_mask, subsurface_mask, combined_mask
+    real, dimension(:), allocatable :: asc_lon, asc_lat
     real, dimension(:), allocatable :: lon, lat, distances
     real                            :: d_lon, d_lat, ll_lon, ll_lat
 
