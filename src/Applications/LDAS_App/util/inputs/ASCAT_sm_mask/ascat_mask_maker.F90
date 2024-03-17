@@ -103,8 +103,8 @@ program ascat_mask_maker
     allocate(lon(int(360.0  / d_lon)))
     allocate(lat(int(180.0  / d_lat)))
 
-    lon = [(ll_lon + i * d_lon, i = 0, size(lon) - 1)]
-    lat = [(ll_lat + i * d_lat, i = 0, size(lat) - 1)]
+    lon = [((ll_lon + (d_lon / 2)) + i * d_lon, i = 0, size(lon) - 1)]
+    lat = [((ll_lat + (d_lat / 2)) + i * d_lat, i = 0, size(lat) - 1)]
 
     allocate(mask_out(size(lon), size(lat)))
 
