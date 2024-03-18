@@ -373,7 +373,7 @@ class LDASsetup:
         for key,val in _domain_dic.items() :
             if key in self.rqdExeInp :
                 _domain_dic[key]= self.rqdExeInp[key]
-        domain_def = tempfile.NamedTemporaryFile(delete=False)
+        domain_def = tempfile.NamedTemporaryFile(mode='w', delete=False)
         domain_def.write('&domain_inputs\n')
         for key,val in _domain_dic.items() :
             keyn=(key+"  = ").ljust(16)
@@ -383,6 +383,7 @@ class LDASsetup:
             else :
                domain_def.write(keyn+ valn +'\n')
         domain_def.write('/\n')
+        domain_def.close()
 
         # make sure bcs files exist
         if self.rqdExeInp['RESTART'].isdigit() :
@@ -752,7 +753,7 @@ class LDASsetup:
             head=[next(f2gfile) for x in range(2)]
             if(head[0].strip() != head[1].strip()) :
                 self.islocal= True
-        domain_def.close()
+        os.remove(domain_def.name)
 
         # update tile domain
         if self.islocal:
