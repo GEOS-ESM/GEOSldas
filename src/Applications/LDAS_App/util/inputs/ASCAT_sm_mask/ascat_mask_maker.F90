@@ -16,7 +16,7 @@ program ascat_mask_maker
     implicit none
 
     integer                            :: ncid, varid, dimid, ierr, len, N_gpi, dimids(2)
-    integer                            :: i, j, closest_index
+    integer                            :: i, j, closest_index, mask_mode
     integer, dimension(:), allocatable :: cold_mask, wet_mask, veg_mask, subsurface_mask, combined_mask
 
     integer(kind=1), dimension(:,:), allocatable :: mask_out
@@ -26,7 +26,7 @@ program ascat_mask_maker
     real, dimension(:), allocatable :: lon, lat, distances
     real                            :: d_lon, d_lat, ll_lon, ll_lat
 
-    character(400)                  :: fname_in
+    character(200)                  :: fname_in, mask_description, fname_out
 
     ! --------------------------------------------------------------------------------
     !
@@ -34,8 +34,16 @@ program ascat_mask_maker
 
     ! ASCAT soil moisture mask file from Lindorfer et al 2023 
     
-    fname_in = '/discover/nobackup/amfox/subsurface_scattering_ASCAT_ERA5_Land.nc'    
+    fname_in = '/discover/nobackup/amfox/subsurface_scattering_ASCAT_ERA5_Land.nc'
 
+    ! Specification of how to combine the masks
+    ! Mask_mode = 1 (default) combines subsurface and wetland masks
+    ! Mask_mode = 2 uses only the subsurface mask
+    ! Mask_mode = 3 uses only the wetland mask
+    ! Mask_mode = 4 combines subsurface, wetland and vegetation masks
+
+    mask_mode = 1
+    
     ! Specification of output grid and missing value 
     
     d_lon  =    0.1
@@ -44,6 +52,9 @@ program ascat_mask_maker
     ll_lat =  -90.0
     
     missing_value = -128
+
+    ! Specify the NetCDF file name for the output mask
+    fname_out = 'ascat_combined_mask_p1.nc'
     
     ! -------------------------------
     
@@ -92,18 +103,39 @@ program ascat_mask_maker
     if (ierr /= nf90_noerr) stop 'Error closing file'
 
     ! Combine the masks (1-dim arrays)
-    where (wet_mask == 1)
-       combined_mask = 1
-    elsewhere
-       combined_mask = subsurface_mask
-    end where
+    select case (mask_mode)
+    case (1)
+        ! Combine wet_mask and subsurface_mask
+        mask_description = 'Combined subsurface and wetland mask'
+        where (wet_mask == 1)
+            combined_mask = 1
+        elsewhere
+            combined_mask = subsurface_mask
+        end where
+    case (2)
+        ! Use only subsurface_mask
+        mask_description = 'Used only subsurface mask'
+        combined_mask = subsurface_mask
+    case (3)
+        ! Use only wet_mask
+        mask_description = 'Used only wetland mask'
+        combined_mask = wet_mask
+    case (4)
+        ! Combine subsurface_mask, wet_mask, and veg_mask
+        mask_description = 'Combined subsurface, wetland, and vegetation mask'
+        where (wet_mask == 1 .or. veg_mask == 1)
+            combined_mask = 1
+        elsewhere
+            combined_mask = subsurface_mask
+        end where
+    end select
 
     ! Re-map "combined_mask" from WARP5 input grid to regular lat/lon output grid (2-dim array)
 
     allocate(lon(int(360.0  / d_lon)))
     allocate(lat(int(180.0  / d_lat)))
 
-    lon = [((ll_lon + (d_lon / 2)) + i * d_lon, i = 0, size(lon) - 1)]
+    lon = [((ll_lon + (d_lon / 2)) + i * d_lon, i = 0, size(lon) - 1)] ! NB using grid cell centers for nearest neighbor search
     lat = [((ll_lat + (d_lat / 2)) + i * d_lat, i = 0, size(lat) - 1)]
 
     allocate(mask_out(size(lon), size(lat)))
@@ -124,23 +156,28 @@ program ascat_mask_maker
     end do
 
     ! Write out the mask to netcdf
-    ierr = nf90_create('ascat_combined_mask_p1.nc', nf90_clobber, ncid)
+    ierr = nf90_create(fname_out, nf90_clobber, ncid)
     if (ierr /= nf90_noerr) stop 'Error creating file'
 
     ! Define the dimensions
     ierr = nf90_def_dim(ncid, 'lon', size(lon), dimids(1))
     ierr = nf90_def_dim(ncid, 'lat', size(lat), dimids(2))
 
+    ! Define the global attributes
+    ierr = nf90_put_att(ncid, nf90_global, 'title', 'ASCAT combined mask')
+    ierr = nf90_put_att(ncid, nf90_global, 'source', 'Lindorfer et al 2023')
+    ierr = nf90_put_att(ncid, nf90_global, 'description', mask_description)
+
     ! Define the variables
     ierr = nf90_def_var(ncid, 'lat', nf90_real, dimids(2), varid)
     ierr = nf90_put_att(ncid, varid, 'standard_name', 'latitude')
-    ierr = nf90_put_att(ncid, varid, 'long_name', 'latitude')
+    ierr = nf90_put_att(ncid, varid, 'long_name', 'grid cell center latitude')
     ierr = nf90_put_att(ncid, varid, 'units', 'degrees_north')
     ierr = nf90_put_att(ncid, varid, 'axis', 'Y')
 
     ierr = nf90_def_var(ncid, 'lon', nf90_real, dimids(1), varid)
     ierr = nf90_put_att(ncid, varid, 'standard_name', 'longitude')
-    ierr = nf90_put_att(ncid, varid, 'long_name', 'longitude')
+    ierr = nf90_put_att(ncid, varid, 'long_name', 'grid cell center longitude')
     ierr = nf90_put_att(ncid, varid, 'units', 'degrees_east')
     ierr = nf90_put_att(ncid, varid, 'axis', 'X')
 
