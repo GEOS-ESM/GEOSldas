@@ -373,9 +373,6 @@ class LDASsetup:
         for key,val in _domain_dic.items() :
             if key in self.rqdExeInp :
                 _domain_dic[key]= self.rqdExeInp[key]
-        # This file is opened in the install/bin directory
-        # which might not be writable to all users. So
-        # we instead use a named temporary file
         domain_def = tempfile.NamedTemporaryFile(delete=False)
         domain_def.write('&domain_inputs\n')
         for key,val in _domain_dic.items() :
@@ -755,6 +752,7 @@ class LDASsetup:
             head=[next(f2gfile) for x in range(2)]
             if(head[0].strip() != head[1].strip()) :
                 self.islocal= True
+        domain_def.close()
 
         # update tile domain
         if self.islocal:
