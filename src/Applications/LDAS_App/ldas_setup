@@ -979,7 +979,7 @@ class LDASsetup:
                     print ("Creating the local irrigation restart file... \n")
                     cmd='./preprocess_ldas.x c_localirrrst '+ irrigationRstFile +' ' + irrigationLocal  
                     print ("cmd:   " + cmd)
-                    sp.call(cmd,shell=True)
+                    sp.call(shlex.split(cmd))
                 else :
                     shutil.copy(irrigationRstFile,irrigationLocal)
 
