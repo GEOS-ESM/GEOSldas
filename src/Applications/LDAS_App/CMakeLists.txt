@@ -13,7 +13,7 @@ ecbuild_add_executable (
    TARGET tile_bin2nc4.x 
    SOURCES tile_bin2nc4.F90
    LIBS MAPL)
-
+ 
 ecbuild_add_executable (
    TARGET mwrtm_bin2nc4.x
    SOURCES util/inputs/mwRTM_params/mwrtm_bin2nc4.F90
@@ -45,3 +45,5 @@ install(
    FILES ${rc_files} ${nml_files} lenkf.j.template
    DESTINATION etc
    )
+
+esma_add_subdirectories(util/inputs/ASCAT_sm_mask)   
