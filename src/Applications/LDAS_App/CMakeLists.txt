@@ -15,12 +15,6 @@ ecbuild_add_executable (
    LIBS MAPL)
  
 ecbuild_add_executable (
-   TARGET ascat_mask_maker.x
-   SOURCES util/inputs/ASCAT_sm_mask/ascat_mask_maker.F90
-   LIBS MAPL
-)   
-
-ecbuild_add_executable (
    TARGET mwrtm_bin2nc4.x
    SOURCES util/inputs/mwRTM_params/mwrtm_bin2nc4.F90
    LIBS GEOSlandassim_GridComp)
@@ -51,3 +45,5 @@ install(
    FILES ${rc_files} ${nml_files} lenkf.j.template
    DESTINATION etc
    )
+
+esma_add_subdirectories(util/inputs/ASCAT_sm_mask)   
