@@ -36,7 +36,7 @@ program ascat_mask_maker
 
     ! ASCAT soil moisture mask file from Lindorfer et al 2023 
     
-    fname_in = '/discover/nobackup/amfox/subsurface_scattering_ASCAT_ERA5_Land.nc'
+    fname_in = '/discover/nobackup/projects/gmao/smap/SMAP_Nature/ASCAT_EUMETSAT/Mask/subsurface_scattering_ASCAT_ERA5_Land.nc'
 
     ! Specification of how to combine the masks
     ! Mask_mode = 1 (default) combines subsurface and wetland masks
