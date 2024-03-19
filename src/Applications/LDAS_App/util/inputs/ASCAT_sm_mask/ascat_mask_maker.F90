@@ -1,9 +1,11 @@
-! This program reads in a NetCDF file containing ASCAT soil moisture masks available from:
+! This program produces a combined mask for use with the assimilation of ASCAT soil moisture retrievals in GEOSldas. 
+! The combined mask is based on component masks from:
+!
 ! Lindorfer, R., Wagner, W., Hahn, S., Kim, H., Vreugdenhil, M., Gruber, A., Fischer, M., & Trnka, M. (2023). 
 ! Global Scale Maps of Subsurface Scattering Signals Impacting ASCAT Soil Moisture Retrievals (1.0.0) [Data set]. 
 ! TU Wien. https://doi.org/10.48436/9a2y9-e5z14
 !
-! It provides the possibility to combine different masks (default case is combination of subsurface and wetland masks)
+! The program provides the possibility to combine different masks (default is combination of subsurface and wetland masks)
 ! and interpolates onto a regular grid with a (hardwired) 0.1 degree lat/lon spacing and -90/-180 degree lower left 
 ! corner used for quick indexing in the ASCAT observation reader QC routine.
 !
@@ -15,7 +17,7 @@ program ascat_mask_maker
 
     implicit none
 
-    integer                            :: ncid, varid, dimid, ierr, len, N_gpi, dimids(2)
+    integer                            :: ncid, varid, dimid, ierr, len, N_gpi, dimids(2), N_lon, N_lat
     integer                            :: i, j, closest_index, mask_mode
     integer, dimension(:), allocatable :: cold_mask, wet_mask, veg_mask, subsurface_mask, combined_mask
 
@@ -48,19 +50,20 @@ program ascat_mask_maker
     
     d_lon  =    0.1
     d_lat  =    0.1
-    ll_lon = -180.0
-    ll_lat =  -90.0
+    ll_lon = -180.0   ! longitude of boundary of lower-left grid cell (longitude of lower left corner of grid)
+    ll_lat =  -90.0   ! latitude  of boundary of lower-left grid cell (latitude  of lower left corner of grid)
     
     missing_value = -128
 
     ! Specify the NetCDF file name for the output mask
+
     fname_out = 'ascat_combined_mask_p1.nc'
     
     ! -------------------------------
     
-    ! Open the NetCDF file
+    ! Open the NetCDF input file
     ierr = nf90_open(fname_in, nf90_nowrite, ncid)
-    if (ierr /= nf90_noerr) stop 'Error opening file'
+    if (ierr /= nf90_noerr) stop 'Error opening file: ' // trim(fname_in)
     
     ! Data in original mask file are on the 12.5 km fixed Earth grid used for ASCAT (WARP5 grid) and
     !   stored in the NetCDF file as 1-dimensional arrays of length N_gpi (over land only).
@@ -83,6 +86,7 @@ program ascat_mask_maker
     allocate(veg_mask(       N_gpi))
     allocate(subsurface_mask(N_gpi))
     allocate(combined_mask(  N_gpi))
+    allocate(distances(      N_gpi))
 
     ! Get the variable IDs and read the variables
     ierr = nf90_inq_varid(ncid, 'lon', varid)
@@ -107,7 +111,7 @@ program ascat_mask_maker
     case (1)
         ! Combine wet_mask and subsurface_mask
         mask_description = 'Combined subsurface and wetland mask'
-        where (wet_mask == 1)
+        where (wet_mask /= 0)
             combined_mask = 1
         elsewhere
             combined_mask = subsurface_mask
@@ -123,7 +127,7 @@ program ascat_mask_maker
     case (4)
         ! Combine subsurface_mask, wet_mask, and veg_mask
         mask_description = 'Combined subsurface, wetland, and vegetation mask'
-        where (wet_mask == 1 .or. veg_mask == 1)
+        where (wet_mask /= 0 .or. veg_mask /= 0)
             combined_mask = 1
         elsewhere
             combined_mask = subsurface_mask
@@ -132,40 +136,41 @@ program ascat_mask_maker
 
     ! Re-map "combined_mask" from WARP5 input grid to regular lat/lon output grid (2-dim array)
 
-    allocate(lon(int(360.0  / d_lon)))
-    allocate(lat(int(180.0  / d_lat)))
+    N_lon = nint( 360.0 / d_lon ) 
+    N_lat = nint( 180.0 / d_lat ) 
 
-    lon = [((ll_lon + (d_lon / 2)) + i * d_lon, i = 0, size(lon) - 1)] ! NB using grid cell centers for nearest neighbor search
-    lat = [((ll_lat + (d_lat / 2)) + i * d_lat, i = 0, size(lat) - 1)]
+    allocate(lon(N_lon))
+    allocate(lat(N_lat))
 
-    allocate(mask_out(size(lon), size(lat)))
+    lon = [((ll_lon + (d_lon / 2)) + i * d_lon, i = 0, N_lon - 1)]  ! NB using grid cell centers for nearest neighbor search
+    lat = [((ll_lat + (d_lat / 2)) + i * d_lat, i = 0, N_lat - 1)]
 
-    do i = 1, size(lon)
+    allocate(mask_out( N_lon, N_lat))
+
+    do i = 1, N_lon
         print*, lon(i)
-        do j = 1, size(lat)
-            allocate(distances(size(asc_lon)))
+        do j = 1, N_lat
             distances     = (asc_lon - lon(i))**2 + (asc_lat - lat(j))**2
             closest_index = minloc(distances, dim = 1)
             if (distances(closest_index) > 0.14**2) then
-                mask_out(i, j) = missing_value
+                mask_out(i, j) = missing_value                      ! Note: ASCAT EUMETSAT reader masks everything .ne. 0
             else
                 mask_out(i, j) = combined_mask(closest_index)
             end if
-            deallocate(distances)
         end do
     end do
 
     ! Write out the mask to netcdf
     ierr = nf90_create(fname_out, nf90_clobber, ncid)
-    if (ierr /= nf90_noerr) stop 'Error creating file'
+    if (ierr /= nf90_noerr) stop 'Error creating file: ' // fname_out
 
     ! Define the dimensions
-    ierr = nf90_def_dim(ncid, 'lon', size(lon), dimids(1))
-    ierr = nf90_def_dim(ncid, 'lat', size(lat), dimids(2))
+    ierr = nf90_def_dim(ncid, 'lon', N_lon, dimids(1))
+    ierr = nf90_def_dim(ncid, 'lat', N_lat, dimids(2))
 
     ! Define the global attributes
     ierr = nf90_put_att(ncid, nf90_global, 'title', 'ASCAT combined mask')
-    ierr = nf90_put_att(ncid, nf90_global, 'source', 'Lindorfer et al 2023')
+    ierr = nf90_put_att(ncid, nf90_global, 'source', 'Lindorfer et al 2023 doi:10.48436/9a2y9-e5z14')
     ierr = nf90_put_att(ncid, nf90_global, 'description', mask_description)
 
     ! Define the variables
@@ -183,7 +188,7 @@ program ascat_mask_maker
 
     ierr = nf90_def_var(ncid, 'mask', nf90_byte, dimids, varid)
     ierr = nf90_put_att(ncid, varid, 'standard_name', 'combined_mask')
-    ierr = nf90_put_att(ncid, varid, 'long_name', 'Combined mask')
+    ierr = nf90_put_att(ncid, varid, 'long_name', 'combined mask')
     ierr = nf90_put_att(ncid, varid, 'units', 'boolean')
     ierr = nf90_put_att(ncid, varid, '_FillValue', missing_value)
 
