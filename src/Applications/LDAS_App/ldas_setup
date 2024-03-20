@@ -373,17 +373,17 @@ class LDASsetup:
         for key,val in _domain_dic.items() :
             if key in self.rqdExeInp :
                 _domain_dic[key]= self.rqdExeInp[key]
-        domain_def = tempfile.NamedTemporaryFile(mode='w', delete=False)
-        domain_def.write('&domain_inputs\n')
+        self.domain_def = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        self.domain_def.write('&domain_inputs\n')
         for key,val in _domain_dic.items() :
             keyn=(key+"  = ").ljust(16)
             valn = str(val)
             if '_FILE' in key:
-               domain_def.write(keyn+ "'"+valn+"'"+'\n')
+               self.domain_def.write(keyn+ "'"+valn+"'"+'\n')
             else :
-               domain_def.write(keyn+ valn +'\n')
-        domain_def.write('/\n')
-        domain_def.close()
+               self.domain_def.write(keyn+ valn +'\n')
+        self.domain_def.write('/\n')
+        self.domain_def.close()
 
         # make sure bcs files exist
         if self.rqdExeInp['RESTART'].isdigit() :
@@ -501,13 +501,12 @@ class LDASsetup:
         #     exefyl
         # ------
 
-        cwd = os.getcwd()
-        self.blddir = cwd.rsplit('/',1)[0]
+        self.bindir  = os.path.dirname(os.path.realpath(__file__))
+        self.blddir = self.bindir.rsplit('/',1)[0]
         exefyl = '/bin/GEOSldas.x'
         tmp_execfyl= self.blddir+exefyl
         assert os.path.isfile(tmp_execfyl),\
             'Executable [%s] does not exist!' % tmp_execfyl
-
         tmp_expid = self.rqdExeInp['EXP_ID']
         tmp_expdir = os.path.abspath(self.exphome + '/' + self.rqdExeInp['EXP_ID'])
         self.rundir = tmp_expdir + '/run'
@@ -708,7 +707,7 @@ class LDASsetup:
 
         print ('\nCorrect the tile file if it is an old EASE tile format... \n')
         EASEtile=self.bcsdir+'/MAPL_'+short_tile
-        cmd = './preprocess_ldas.x correctease  '+ tile + ' '+ EASEtile
+        cmd = self.bindir + '/preprocess_ldas.x correctease  '+ tile + ' '+ EASEtile
         if self.BUILT_ON_SLES15 :
           print ("Executables were built on SLES15 and must be run on SLES15:   " + cmd)
         else:
@@ -721,8 +720,6 @@ class LDASsetup:
             short_tile ='MAPL_'+short_tile
             tile=EASEtile
         # setup BC files
-        if os.path.isfile('f2g.txt'):
-            os.remove('f2g.txt')
 
         catchment_def = self.rqdExeInp['CATCH_DEF_FILE']
         exp_id = self.rqdExeInp['EXP_ID']
@@ -743,24 +740,25 @@ class LDASsetup:
            wemin_out = self.rqdExeInp['WEMIN_OUT']
 
 
-        cmd = './preprocess_ldas.x c_f2g ' + tile + ' ' + domain_def.name + ' '+ self.out_path + ' ' + catchment_def + ' ' + exp_id + ' ' + _y4m2d2h2m2 + ' '+ dzsf
+        tmp_f2g_file = tempfile.NamedTemporaryFile() 
+        cmd = self.bindir +'/preprocess_ldas.x c_f2g ' + tile + ' ' + self.domain_def.name + ' '+ self.out_path + ' ' + catchment_def + ' ' + exp_id + ' ' + _y4m2d2h2m2 + ' '+ dzsf + ' ' + tmp_f2g_file.name
 
-        print ('Creating f2g.txt....\n')
+        print ('Creating f2g file: '+ tmp_f2g_file.name +'....\n')
         print ("cmd:   " + cmd)
         sp.call(shlex.split(cmd))
         # check if it is local or global
-        with open('f2g.txt') as f2gfile :
+        with open(tmp_f2g_file.name) as f2gfile :
             head=[next(f2gfile) for x in range(2)]
             if(head[0].strip() != head[1].strip()) :
                 self.islocal= True
-        os.remove(domain_def.name)
+        os.remove(self.domain_def.name)
 
         # update tile domain
         if self.islocal:
             newlocalTile = tile+'.domain'
             print ("\nCreating local tile file :"+ newlocalTile)
             print ("\n by excluding land type MAPL_Land_ExcludeFromDomain=1100...\n")
-            cmd = './preprocess_ldas.x c_localtile ' + tile + ' ' + newlocalTile
+            cmd = self.bindir +'/preprocess_ldas.x c_localtile ' + tile + ' ' + newlocalTile + ' '+ tmp_f2g_file.name
             print ("cmd:   " + cmd)
             sp.call(shlex.split(cmd))
             short_tile=short_tile +'.domain'
@@ -789,7 +787,7 @@ class LDASsetup:
            print ("Creating the boundary files for the simulation domain...\n")
            bcs_tmp=[]
            for bcf in bcs :
-               cmd = './preprocess_ldas.x c_localbc ' + bcf + ' '+ bcf+'.domain'
+               cmd = self.bindir +'/preprocess_ldas.x c_localbc ' + bcf + ' '+ bcf+'.domain' + ' '+ tmp_f2g_file.name
                print ("cmd:   " + cmd)
                sp.call(shlex.split(cmd))
                bcs_tmp=bcs_tmp+[bcf+'.domain']
@@ -922,7 +920,7 @@ class LDASsetup:
                 catchLocal = self.rstdir+ensdir +'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.'+self.catch+'_internal_rst.'+y4m2d2_h2m2
                 if self.islocal :
                     print( "Creating local catchment restart file... \n")
-                    cmd='./preprocess_ldas.x c_localcatchrst '+ catchRstFile +' ' + catchLocal
+                    cmd=self.bindir +'/preprocess_ldas.x c_localcatchrst '+ catchRstFile +' ' + catchLocal + ' '+ tmp_f2g_file.name
                     print ("cmd:  "+cmd)
                     sp.call(shlex.split(cmd))
                 else :
@@ -940,7 +938,7 @@ class LDASsetup:
                 vegdynLocal = self.rstdir+ensdir +'/'+self.rqdExeInp['EXP_ID']+'.vegdyn_internal_rst'
                 if self.islocal :
                     print ("Creating the local veg restart file... \n")
-                    cmd='./preprocess_ldas.x c_localvegrst '+ vegdynRstFile +' ' + vegdynLocal
+                    cmd=self.bindir + '/preprocess_ldas.x c_localvegrst '+ vegdynRstFile +' ' + vegdynLocal + ' '+ tmp_f2g_file.name
                     print ("cmd:   " + cmd)
                     sp.call(shlex.split(cmd))
                 else :
@@ -975,7 +973,8 @@ class LDASsetup:
            mwRTMLocal = self.bcsdir+'/'+ y4m2+'/'+self.rqdExeInp['EXP_ID']+'.ldas_mwRTMparam.'+y4m2d2_h2m2+'z.nc4'
            if self.islocal :
               print ("Creating the local mwRTM restart file... \n")
-              cmd='./preprocess_ldas.x c_localmwrtmrst '+ mwRTMRstFile +' ' + mwRTMLocal
+              cmd= self.bindir +'/preprocess_ldas.x c_localmwrtmrst '+ mwRTMRstFile +' ' + mwRTMLocal + ' '+ tmp_f2g_file.name
+
               print ("cmd:   " + cmd)
               sp.call(shlex.split(cmd))
            else :
@@ -988,9 +987,7 @@ class LDASsetup:
         # update 'restart_path' to use relative path from outdir
         print ("Updating restart path...")
         self.rqdExeInp['RESTART_PATH'] = myRstDir
-        if os.path.isfile('f2g.txt'):
-            os.remove('f2g.txt')
-
+        os.remove(tmp_f2g_file.name)
         status = True
         return status
 
@@ -1048,7 +1045,7 @@ class LDASsetup:
             os.remove('optimized_distribution')
 
         print  ("Optimizing... decomposition of processes.... \n")
-        cmd = './preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model'])
+        cmd = self.bindir + '/preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model'])
         print ("cmd:   " + cmd)
         sp.call(shlex.split(cmd))
         optinxny=self._parseInputFile('optimized_distribution')
@@ -1092,7 +1089,7 @@ class LDASsetup:
                     if '-CF' in self.rqdExeInp['GRIDNAME'] :
                         GRID ='CUBE ' + self.rqdExeInp['GRIDNAME'] + ' ' +tmprcfile
                     _assim = '1' if self.assim else '0'
-                    cmd ='./process_hist.csh '+ str(self.rqdExeInp['LSM_CHOICE']) + ' ' + str(self.rqdExeInp['AEROSOL_DEPOSITION']) + \
+                    cmd =self.bindir +'/process_hist.csh '+ str(self.rqdExeInp['LSM_CHOICE']) + ' ' + str(self.rqdExeInp['AEROSOL_DEPOSITION']) + \
                           ' ' + GRID + ' ' + str(self.rqdExeInp['RUN_IRRIG']) + ' ' + _assim + ' '+ str(self.nens)
                     print(cmd)
                     #os.system(cmd)
