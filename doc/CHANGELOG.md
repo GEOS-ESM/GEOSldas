@@ -33,18 +33,17 @@ This README file contains the history of stable GEOSldas Releases in Git, follow
 Overview of Git Releases:
 ============================
 
-[v18.0.0-beta](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.0-beta) - 2024-03-14
+[v18.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.0) - 2024-03-21
 ------------------------------
 
-- Not 0-diff vs. v17.13.1 because of [snow model fixes](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/813).
+- 0-diff vs. v17.13.1 (except for MAPL bug fix ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)))
 
 - Notes:
-  - Release is designated "beta" because a tag (SMAP_NRv11.1) is used for GEOSgcm_GridComp in components.yaml (awaiting official GEOSgcm_GridComp release that includes [non-0-diff snow model fixes](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/813)).
-  - Release uses original GEOSldas repository structure.  Final release is expected to use revised GEOSldas repository structure.
+  - Release uses original GEOSldas repository structure.  Next release is expected to use a revised repository structure.
 
 - Science changes:
   - Added MODIS snow cover fraction assimilation ([PR #512](https://github.com/GEOS-ESM/GEOSldas/pull/512)).
-  - Added ASCAT soil moisture assimilation ([PR #656](https://github.com/GEOS-ESM/GEOSldas/pull/656), [PR #703](https://github.com/GEOS-ESM/GEOSldas/pull/703), [PR #723](https://github.com/GEOS-ESM/GEOSldas/pull/723)).
+  - Added ASCAT soil moisture assimilation ([PR #656](https://github.com/GEOS-ESM/GEOSldas/pull/656), [PR #703](https://github.com/GEOS-ESM/GEOSldas/pull/703), [PR #723](https://github.com/GEOS-ESM/GEOSldas/pull/723), [PR #729](https://github.com/GEOS-ESM/GEOSldas/pull/729)).
     - New update_type=13 for ASCAT soil moisture and SMAP brightness temperature assimilation ([PR #703](https://github.com/GEOS-ESM/GEOSldas/pull/703)). 
     - New update_type=13 replaces update_type=[1,2], which has been disabled.
     - Requires ASCAT mask file ([PR #723](https://github.com/GEOS-ESM/GEOSldas/pull/723)).
@@ -52,13 +51,10 @@ Overview of Git Releases:
   - Added support for GEOS-IT surface met forcing  ([PR #688](https://github.com/GEOS-ESM/GEOSldas/pull/688)).
   - Added CATCHMENT_SPINUP mode ([PR #647](https://github.com/GEOS-ESM/GEOSldas/pull/647), [GEOSgcm_GridComp PR #751](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/751)).
 
-- GEOSgcm_GridComp:
-  - Tag: SMAP_NRv11.1
+- GEOSgcm_GridComp v2.5.2:
   - Improved MODIS-based snow albedo (v2) in make_bcs package ([GEOSgcm_GridComp PR #687](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/687)).
   - Major source code cleanup:
-    - Stieglitz_snow:
-      - 0-diff ([GEOSgcm_GridComp PR #834](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/834)).
-      - Non-0-diff: revised snow compaction and cleanup ([GEOSgcm_GridComp PR #813](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/813)).
+    - Stieglitz snow model ([GEOSgcm_GridComp PR #834](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/834)).
     - make_bcs package ([GEOSgcm_GridComp PR #763](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/763), [GEOSgcm_GridComp PR #786](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/786), [GEOSgcm_GridComp PR #846](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/846)).
     - coeffsib ([GEOSgcm_GridComp PR #845](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/845)).
   - Fixed CDCR2 long_name ([GEOSgcm_GridComp PR #818](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/818)).
@@ -84,7 +80,8 @@ Overview of Git Releases:
   - Support for running GEOSldas at the NASA Advanced Supercomputing (NAS) facility ([PR #706](https://github.com/GEOS-ESM/GEOSldas/pull/706)).
   - ESMA_env v4.23.0, Baselibs v7.16.0 ([PR #681](https://github.com/GEOS-ESM/GEOSldas/pull/681)).
   - ESMA_cmake v3.41.0 ([PR #725](https://github.com/GEOS-ESM/GEOSldas/pull/725)).
-  - MAPL v2.44.0 ([PR #725](https://github.com/GEOS-ESM/GEOSldas/pull/725)).
+  - MAPL v2.44.1 ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)).
+    - Fixes bug that degrades simulation when writing (binary) instantaneous output with bit shaving.
   - CircleCI Orb v2 ([PR #694](https://github.com/GEOS-ESM/GEOSldas/pull/694)).
   - Replace FLAP with fArgParse ([PR #669](https://github.com/GEOS-ESM/GEOSldas/pull/669)).
 
