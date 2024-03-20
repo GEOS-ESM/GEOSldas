@@ -2042,12 +2042,13 @@ contains
   ! NY:     N_proc                1
   !         JMS.rc                IMS.rc
   
-  subroutine optimize_latlon(fname_tilefile, N_proc_string)
+  subroutine optimize_latlon(fname_tilefile, N_proc_string, optimized_file)
     
     implicit none
     
     character(*), intent(in) :: fname_tilefile  ! file name (with path) of tile file (*.til)
     character(*), intent(in) :: N_proc_string   ! *string* w/ no. of processors (or tasks), excl. OSERVER tasks
+    character(*), intent(in) :: optimized_file  
         
     ! local variables
     integer :: N_proc
@@ -2067,6 +2068,7 @@ contains
     integer :: IMGLOB, JMGLOB
     integer :: face(6),face_land(6)
     logical :: forward
+    character(len=:), allocatable :: IMS_file, JMS_File
 
     ! -----------------------------
     
@@ -2273,8 +2275,8 @@ contains
        enddo
        
        if( k /=6 ) stop ("one or more processes may accross the face")
-       
-       open(10,file="optimized_distribution",action='write')
+      
+       open(10,file=optimized_file,action='write')
        write(10,'(A)')    "GEOSldas.GRIDNAME:  " // trim(gridname)
        write(10,'(A)')    "GEOSldas.GRID_TYPE:  Cubed-Sphere"
        write(10,'(A)')    "GEOSldas.NF:  6"
@@ -2285,7 +2287,9 @@ contains
        write(10,'(A)')    "GEOSldas.JMS_FILE:    JMS.rc"
        close(10)
        
-       open(10,file="JMS.rc",action='write')
+       n = index(optimized_file, '/', back=.true.)
+       JMS_file = optimized_file(1:n)//"JMS.rc"
+       open(10,file=JMS_file ,action='write')
        write(10,'(I5,I5)') N_proc, maxval(face)
        do n=1,N_proc
           write(10,'(I8)') JMS(n)
@@ -2464,7 +2468,7 @@ contains
        enddo
        if( any(IMS <=1) ) stop ("Each processor must have at least 2 longitude stripes. Request fewer processors.")  
 
-       open(10,file="optimized_distribution",action='write')
+       open(10,file=optimized_file, action='write')
        write(10,'(A)')    "GEOSldas.GRID_TYPE:  LatLon"
        write(10,'(A)')    "GEOSldas.GRIDNAME:   "//trim(gridname)
        write(10,'(A)')    "GEOSldas.LM:         1"
@@ -2479,7 +2483,9 @@ contains
        write(10,'(A)')    "GEOSldas.IMS_FILE:   IMS.rc"
        close(10)
        
-       open(10,file="IMS.rc",action='write')
+       n = index(optimized_file, '/', back=.True.)
+       IMS_file = optimized_file(1:n)//"IMS.rc"
+       open(10,file=IMS_file,action='write')
        write(10,'(I5)') N_proc
        do n=1,N_proc
           write(10,'(I8)') IMS(n)

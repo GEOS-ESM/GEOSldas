@@ -740,7 +740,7 @@ class LDASsetup:
            wemin_out = self.rqdExeInp['WEMIN_OUT']
 
 
-        tmp_f2g_file = tempfile.NamedTemporaryFile() 
+        tmp_f2g_file = tempfile.NamedTemporaryFile(delete=False) 
         cmd = self.bindir +'/preprocess_ldas.x c_f2g ' + tile + ' ' + self.domain_def.name + ' '+ self.out_path + ' ' + catchment_def + ' ' + exp_id + ' ' + _y4m2d2h2m2 + ' '+ dzsf + ' ' + tmp_f2g_file.name
 
         print ('Creating f2g file: '+ tmp_f2g_file.name +'....\n')
@@ -751,7 +751,7 @@ class LDASsetup:
             head=[next(f2gfile) for x in range(2)]
             if(head[0].strip() != head[1].strip()) :
                 self.islocal= True
-        os.remove(self.domain_def.name)
+        #os.remove(self.domain_def.name)
 
         # update tile domain
         if self.islocal:
@@ -987,7 +987,8 @@ class LDASsetup:
         # update 'restart_path' to use relative path from outdir
         print ("Updating restart path...")
         self.rqdExeInp['RESTART_PATH'] = myRstDir
-        os.remove(tmp_f2g_file.name)
+        #if os.path.isfile(tmp_f2g_file.name):
+        #   os.remove(tmp_f2g_file.name)
         status = True
         return status
 
@@ -1041,25 +1042,28 @@ class LDASsetup:
             shutil.copy2(nmlfile, self.rundir+'/'+shortfile)
 
         # get optimzed NX and IMS
-        if os.path.isfile('optimized_distribution'):
-            os.remove('optimized_distribution')
-
+        optimized_distribution_file = tempfile.NamedTemporaryFile(delete=False)
+        tmp_path = os.path.dirname(optimized_distribution_file.name )
+        print("tmp_path:"+tmp_path)
         print  ("Optimizing... decomposition of processes.... \n")
-        cmd = self.bindir + '/preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model'])
+        cmd = self.bindir + '/preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model']) + ' ' + optimized_distribution_file.name
         print ("cmd:   " + cmd)
         sp.call(shlex.split(cmd))
-        optinxny=self._parseInputFile('optimized_distribution')
+        optinxny=self._parseInputFile(optimized_distribution_file.name)
         if (int(optinxny['NX']) == 1):
             if int(optinxny['NY']) != int(self.rqdRmInp['ntasks_model']):
                 self.rqdRmInp['ntasks_model']=optinxny['NY']
                 print ('adjust ntasks_model %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks_model']))
 
-        if os.path.isfile('IMS.rc') :
-            shutil.move('IMS.rc', self.rundir+'/')
-        if os.path.isfile('JMS.rc') :
-            shutil.move('JMS.rc', self.rundir+'/')
+        if os.path.isfile( tmp_path+'/IMS.rc') :
+            shutil.move(tmp_path+'/IMS.rc', self.rundir+'/')
+            print("move file: " + tmp_path+'/IMS.rc')
+        if os.path.isfile( tmp_path+'/JMS.rc') :
+            shutil.move(tmp_path+'/JMS.rc', self.rundir+'/')
+            print("move file: " + tmp_path+'/JMS.rc')
 
-        os.remove('optimized_distribution')
+
+        #os.remove(optimized_distribution_file.name)
 
         # DEFAULT rc files
         default_rc = glob.glob(etcdir+'/GEOSldas_*.rc')
