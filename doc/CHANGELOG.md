@@ -36,7 +36,7 @@ Overview of Git Releases:
 [v18.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.0) - 2024-03-21
 ------------------------------
 
-- 0-diff vs. v17.13.1 (except for MAPL bug fix ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)))
+- 0-diff vs. v17.13.1 except for MAPL bug fix ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)).
 
 - Notes:
   - Release uses original GEOSldas repository structure.  Next release is expected to use a revised repository structure.
@@ -46,7 +46,7 @@ Overview of Git Releases:
   - Added ASCAT soil moisture assimilation ([PR #656](https://github.com/GEOS-ESM/GEOSldas/pull/656), [PR #703](https://github.com/GEOS-ESM/GEOSldas/pull/703), [PR #723](https://github.com/GEOS-ESM/GEOSldas/pull/723), [PR #729](https://github.com/GEOS-ESM/GEOSldas/pull/729)).
     - New update_type=13 for ASCAT soil moisture and SMAP brightness temperature assimilation ([PR #703](https://github.com/GEOS-ESM/GEOSldas/pull/703)). 
     - New update_type=13 replaces update_type=[1,2], which has been disabled.
-    - Requires ASCAT mask file ([PR #723](https://github.com/GEOS-ESM/GEOSldas/pull/723)).
+    - Requires ASCAT mask file ([PR #723](https://github.com/GEOS-ESM/GEOSldas/pull/723), [PR #729](https://github.com/GEOS-ESM/GEOSldas/pull/729)).
   - Disabled CatchmentCNCLM45 model option (LSM_CHOICE=3) ([PR #707](https://github.com/GEOS-ESM/GEOSldas/pull/707), [GEOSgcm_GridComp PR #900](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/900)).
   - Added support for GEOS-IT surface met forcing  ([PR #688](https://github.com/GEOS-ESM/GEOSldas/pull/688)).
   - Added CATCHMENT_SPINUP mode ([PR #647](https://github.com/GEOS-ESM/GEOSldas/pull/647), [GEOSgcm_GridComp PR #751](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/751)).
@@ -78,10 +78,10 @@ Overview of Git Releases:
     - Added support for SLES15/Milan nodes ([PR #693](https://github.com/GEOS-ESM/GEOSldas/pull/693)).
     - Removed support for Haswell nodes ([PR #681](https://github.com/GEOS-ESM/GEOSldas/pull/681)).
   - Support for running GEOSldas at the NASA Advanced Supercomputing (NAS) facility ([PR #706](https://github.com/GEOS-ESM/GEOSldas/pull/706)).
+  - Allow setting up of experiments from other users' build ([PR #733](https://github.com/GEOS-ESM/GEOSldas/pull/733)).
   - ESMA_env v4.23.0, Baselibs v7.16.0 ([PR #681](https://github.com/GEOS-ESM/GEOSldas/pull/681)).
   - ESMA_cmake v3.41.0 ([PR #725](https://github.com/GEOS-ESM/GEOSldas/pull/725)).
   - MAPL v2.44.1 ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)).
-    - Fixes bug that degrades simulation when writing (binary) instantaneous output with bit shaving.
   - CircleCI Orb v2 ([PR #694](https://github.com/GEOS-ESM/GEOSldas/pull/694)).
   - Replace FLAP with fArgParse ([PR #669](https://github.com/GEOS-ESM/GEOSldas/pull/669)).
 
@@ -89,6 +89,7 @@ Overview of Git Releases:
   - Updates and corrections ([PR #728](https://github.com/GEOS-ESM/GEOSldas/pull/728)).
 
 - Bug fixes and other minor changes:
+  - Fixed bug that degraded simulation when writing (MAPL-binary) instantaneous output with bit shaving ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)).
   - Removed requirement for mwRTM parameter input files ([PR #685](https://github.com/GEOS-ESM/GEOSldas/pull/685)).
   - Support for reading corrected precipitation from aggregated daily netcdf files ([PR #718](https://github.com/GEOS-ESM/GEOSldas/pull/718)).
   - Updated generate_catchincr_hist.py and sample documents for coupled land-atmosphere data assimilation ([PR #698](https://github.com/GEOS-ESM/GEOSldas/pull/698)).
