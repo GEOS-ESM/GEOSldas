@@ -1697,15 +1697,9 @@ contains
   end subroutine createLocalBC
 
   ! ********************************************************************
-<<<<<<< HEAD
-
-  subroutine createLocalCatchRestart(orig_catch, new_catch)
-
-=======
 
   subroutine createLocalCatchRestart(f2g_file, orig_catch, new_catch)
 
->>>>>>> develop
     implicit none
     character(*),intent(in):: f2g_file
     character(*),intent(in):: orig_catch
@@ -1725,21 +1719,12 @@ contains
     character(len=:), pointer :: vname,dname
     integer ::n, N_catg,N_catf
     integer,dimension(:),allocatable :: f2g
-<<<<<<< HEAD
-
-    call readsize(N_catg,N_catf)
-    if(N_catg == N_catf) return
-    allocate(f2g(N_catf))
-    call readf2g(N_catf,f2g)
-
-=======
 
     call readsize(f2g_file, N_catg,N_catf)
     if(N_catg == N_catf) return
     allocate(f2g(N_catf))
     call readf2g(f2g_file, N_catf,f2g)
 
->>>>>>> develop
     allocate(tmp1(N_catg))
     allocate(tmp2(N_catg,subtile))
 
@@ -1843,15 +1828,9 @@ contains
   end subroutine createLocalCatchRestart
 
   ! ********************************************************************
-<<<<<<< HEAD
-
-  subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
-
-=======
 
   subroutine createLocalmwRTMRestart(f2g_file, orig_mwrtm, new_mwrtm)
 
->>>>>>> develop
     implicit none
     character(*),intent(in):: f2g_file
     character(*),intent(in):: orig_mwrtm
@@ -1868,21 +1847,12 @@ contains
     character(len=:), pointer :: vname
     integer :: N_catg,N_catf
     integer,dimension(:),allocatable :: f2g
-<<<<<<< HEAD
-
-    call readsize(N_catg,N_catf)
-    if(N_catg == N_catf) return
-    allocate(f2g(N_catf))
-    call readf2g(N_catf,f2g)
-
-=======
 
     call readsize(f2g_file, N_catg,N_catf)
     if(N_catg == N_catf) return
     allocate(f2g(N_catf))
     call readf2g(f2g_file, N_catf,f2g)
 
->>>>>>> develop
     allocate(tmp1(N_catg))
 
     ! nc4 in and out file will also be nc4
@@ -1912,15 +1882,9 @@ contains
   end subroutine createLocalmwRTMRestart
 
   ! ********************************************************************
-<<<<<<< HEAD
-
-  subroutine createLocalVegRestart(orig_veg, new_veg)
-
-=======
 
   subroutine createLocalVegRestart(f2g_file, orig_veg, new_veg)
 
->>>>>>> develop
     implicit none
     character(*),intent(in):: f2g_file
     character(*),intent(in):: orig_veg
@@ -1942,21 +1906,12 @@ contains
     type(StringVariableMapIterator) :: var_iter
     character(len=:), pointer :: vname
     integer :: rc
-<<<<<<< HEAD
-
-    call readsize(N_catg,N_catf)
-    if(N_catg == N_catf) return
-    allocate(f2g(N_catf))
-    call readf2g(N_catf,f2g)
-
-=======
 
     call readsize(f2g_file, N_catg,N_catf)
     if(N_catg == N_catf) return
     allocate(f2g(N_catf))
     call readf2g(f2g_file, N_catf,f2g)
 
->>>>>>> develop
     allocate(rity(N_catg))
     allocate(z2(N_catg))
     allocate(ascatz0(N_catg))
@@ -2085,25 +2040,15 @@ contains
   ! NX:     1                     N_proc
   ! NY:     N_proc                1
   !         JMS.rc                IMS.rc
-<<<<<<< HEAD
-
-  subroutine optimize_latlon(fname_tilefile, N_proc_string)
-
-=======
 
   subroutine optimize_latlon(fname_tilefile, N_proc_string, optimized_file)
 
->>>>>>> develop
     implicit none
 
     character(*), intent(in) :: fname_tilefile  ! file name (with path) of tile file (*.til)
     character(*), intent(in) :: N_proc_string   ! *string* w/ no. of processors (or tasks), excl. OSERVER tasks
-<<<<<<< HEAD
-
-=======
     character(*), intent(in) :: optimized_file
 
->>>>>>> develop
     ! local variables
     integer :: N_proc
     integer :: N_tile,N_lon,N_lat,N_grid
@@ -2329,13 +2274,8 @@ contains
        enddo
 
        if( k /=6 ) stop ("one or more processes may accross the face")
-<<<<<<< HEAD
-
-       open(10,file="optimized_distribution",action='write')
-=======
 
        open(10,file=optimized_file,action='write')
->>>>>>> develop
        write(10,'(A)')    "GEOSldas.GRIDNAME:  " // trim(gridname)
        write(10,'(A)')    "GEOSldas.GRID_TYPE:  Cubed-Sphere"
        write(10,'(A)')    "GEOSldas.NF:  6"
@@ -2345,15 +2285,10 @@ contains
        write(10,'(A)')    "NX:   1"
        write(10,'(A)')    "GEOSldas.JMS_FILE:    JMS.rc"
        close(10)
-<<<<<<< HEAD
-
-       open(10,file="JMS.rc",action='write')
-=======
 
        n = index(optimized_file, '/', back=.true.)
        JMS_file = optimized_file(1:n)//"JMS.rc"
        open(10,file=JMS_file ,action='write')
->>>>>>> develop
        write(10,'(I5,I5)') N_proc, maxval(face)
        do n=1,N_proc
           write(10,'(I8)') JMS(n)
@@ -2546,15 +2481,10 @@ contains
 
        write(10,'(A)')    "GEOSldas.IMS_FILE:   IMS.rc"
        close(10)
-<<<<<<< HEAD
-
-       open(10,file="IMS.rc",action='write')
-=======
 
        n = index(optimized_file, '/', back=.True.)
        IMS_file = optimized_file(1:n)//"IMS.rc"
        open(10,file=IMS_file,action='write')
->>>>>>> develop
        write(10,'(I5)') N_proc
        do n=1,N_proc
           write(10,'(I8)') IMS(n)
