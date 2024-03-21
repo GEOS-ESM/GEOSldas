@@ -33,7 +33,7 @@ This README file contains the history of stable GEOSldas Releases in Git, follow
 Overview of Git Releases:
 ============================
 
-[v18.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.0) - 2024-03-21
+[v18.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.0) - 2024-03-22
 ------------------------------
 
 - 0-diff vs. v17.13.1 except for MAPL bug fix ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)).
@@ -79,7 +79,7 @@ Overview of Git Releases:
     - Added support for SLES15/Milan nodes ([PR #693](https://github.com/GEOS-ESM/GEOSldas/pull/693)).
     - Removed support for Haswell nodes ([PR #681](https://github.com/GEOS-ESM/GEOSldas/pull/681)).
   - Support for running GEOSldas at the NASA Advanced Supercomputing (NAS) facility ([PR #706](https://github.com/GEOS-ESM/GEOSldas/pull/706)).
-  - Allow experiment setup from another user's build ([PR #733](https://github.com/GEOS-ESM/GEOSldas/pull/733)).
+  - Allow experiment setup from another user's build ([PR #733](https://github.com/GEOS-ESM/GEOSldas/pull/733), [PR #740](https://github.com/GEOS-ESM/GEOSldas/pull/740)).
   - ESMA_env v4.23.0, Baselibs v7.16.0 ([PR #681](https://github.com/GEOS-ESM/GEOSldas/pull/681)).
   - ESMA_cmake v3.41.0 ([PR #725](https://github.com/GEOS-ESM/GEOSldas/pull/725)).
   - MAPL v2.44.1 ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)).
