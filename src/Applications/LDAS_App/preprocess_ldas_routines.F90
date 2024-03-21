@@ -106,7 +106,7 @@ contains
 
   ! ********************************************************************
 
-  subroutine createf2g(orig_tile,domain_def,out_path,catch_def_file,exp_id,ymdhm, SURFLAY)
+  subroutine createf2g(orig_tile,domain_def,out_path,catch_def_file,exp_id,ymdhm, SURFLAY, f2g_file)
 
     implicit none
     character(*) :: orig_tile
@@ -116,6 +116,7 @@ contains
     character(*) :: exp_id
     character(*) :: ymdhm
     character(*) :: SURFLAY
+    character(*) :: f2g_file
 
     real :: minlon,maxlon,minlat,maxlat
     character(len=512):: exclude_file,include_file
@@ -211,7 +212,7 @@ contains
     else
        d2f = d2g
     endif
-    open(40,file='f2g.txt',form='formatted',action='write')
+    open(40,file=f2g_file,form='formatted',action='write')
     write(40,*)N_catf
     write(40,*)N_catd
     do n=1,N_catd
@@ -1494,17 +1495,18 @@ contains
 
   ! ********************************************************************
 
-  subroutine readsize(N_catg,N_catf)
+  subroutine readsize(f2g_file, N_catg,N_catf)
 
     implicit none
+    character(*), intent(in):: f2g_file
     integer,intent(out) :: N_catg
     integer,intent(out) :: N_catf
 
     logical :: file_exist
 
-    inquire(file=trim('f2g.txt'),exist=file_exist)
+    inquire(file=f2g_file,exist=file_exist)
     if(file_exist) then
-       open(40,file='f2g.txt',form='formatted',action='read',status='old')
+       open(40,file= f2g_file,form='formatted',action='read',status='old')
        read(40,*)N_catg
        read(40,*)N_catf
        close(40)
@@ -1515,9 +1517,10 @@ contains
 
   ! ********************************************************************
 
-  subroutine readf2g(N_catf,f2g)
+  subroutine readf2g(f2g_file, N_catf,f2g)
 
     implicit none
+    character(*), intent(in):: f2g_file
     integer,intent(in) :: N_catf
     integer,dimension(N_catf),intent(inout) :: f2g
 
@@ -1525,9 +1528,9 @@ contains
     logical :: file_exist
     integer :: local_size,n
 
-    inquire(file=trim('f2g.txt'),exist=file_exist)
+    inquire(file=f2g_file,exist=file_exist)
     if(file_exist) then
-       open(40,file='f2g.txt',form='formatted',action='read',status='old')
+       open(40,file= f2g_file,form='formatted',action='read',status='old')
        read(40,*)N_catg
        read(40,*)local_size
 
@@ -1551,9 +1554,10 @@ contains
 
   ! ********************************************************************
 
-  subroutine createLocalTilefile(orig_tile,new_tile)
+  subroutine createLocalTilefile(f2g_file, orig_tile,new_tile)
 
     implicit none
+    character(*), intent(in) :: f2g_file
     character(*), intent(in) :: orig_tile
     character(*), intent(in) :: new_tile
 
@@ -1596,13 +1600,13 @@ contains
     if( .not. file_exist) stop ("original tile file does not exist")
 
     ! Set default local tile file name
-    call readsize(N_catg,N_catf)
+    call readsize( f2g_file, N_catg,N_catf)
     if(N_catg == N_catf) then
        print*, "It is global domain..."
        return
     endif
     allocate(f2g(N_catf))
-    call readf2g(N_catf,f2g)
+    call readf2g(f2g_file, N_catf,f2g)
 
     open(40,file=trim(orig_tile),action="read")
     open(50,file=trim(new_tile),action="write")
@@ -1659,9 +1663,10 @@ contains
 
   ! ********************************************************************
 
-  subroutine createLocalBC(orig_BC, new_BC)
+  subroutine createLocalBC(f2g_file, orig_BC, new_BC)
 
     implicit none
+    character(*),intent(in) :: f2g_file
     character(*),intent(in) :: orig_BC
     character(*),intent(in) :: new_BC
 
@@ -1670,10 +1675,10 @@ contains
     integer :: istat, N_catg,N_catf
     integer,dimension(:),allocatable :: f2g
 
-    call readsize(N_catg,N_catf)
+    call readsize(f2g_file, N_catg,N_catf)
     if(N_catg==N_catf) return
     allocate(f2g(N_catf))
-    call readf2g(N_catf,f2g)
+    call readf2g(f2g_file, N_catf,f2g)
 
     allocate(tmpvec(N_catg))
     open(10,file=trim(orig_BC),form='unformatted',action='read',status='old',iostat=istat)
@@ -1693,9 +1698,10 @@ contains
 
   ! ********************************************************************
 
-  subroutine createLocalCatchRestart(orig_catch, new_catch)
+  subroutine createLocalCatchRestart(f2g_file, orig_catch, new_catch)
 
     implicit none
+    character(*),intent(in):: f2g_file
     character(*),intent(in):: orig_catch
     character(*),intent(in):: new_catch
     integer,parameter :: subtile=4
@@ -1714,10 +1720,10 @@ contains
     integer ::n, N_catg,N_catf
     integer,dimension(:),allocatable :: f2g
 
-    call readsize(N_catg,N_catf)
+    call readsize(f2g_file, N_catg,N_catf)
     if(N_catg == N_catf) return
     allocate(f2g(N_catf))
-    call readf2g(N_catf,f2g)
+    call readf2g(f2g_file, N_catf,f2g)
 
     allocate(tmp1(N_catg))
     allocate(tmp2(N_catg,subtile))
@@ -1823,9 +1829,10 @@ contains
 
   ! ********************************************************************
 
-  subroutine createLocalmwRTMRestart(orig_mwrtm, new_mwrtm)
+  subroutine createLocalmwRTMRestart(f2g_file, orig_mwrtm, new_mwrtm)
 
     implicit none
+    character(*),intent(in):: f2g_file
     character(*),intent(in):: orig_mwrtm
     character(*),intent(in):: new_mwrtm
     integer,parameter :: subtile=4
@@ -1841,10 +1848,10 @@ contains
     integer :: N_catg,N_catf
     integer,dimension(:),allocatable :: f2g
 
-    call readsize(N_catg,N_catf)
+    call readsize(f2g_file, N_catg,N_catf)
     if(N_catg == N_catf) return
     allocate(f2g(N_catf))
-    call readf2g(N_catf,f2g)
+    call readf2g(f2g_file, N_catf,f2g)
 
     allocate(tmp1(N_catg))
 
@@ -1876,9 +1883,10 @@ contains
 
   ! ********************************************************************
 
-  subroutine createLocalVegRestart(orig_veg, new_veg)
+  subroutine createLocalVegRestart(f2g_file, orig_veg, new_veg)
 
     implicit none
+    character(*),intent(in):: f2g_file
     character(*),intent(in):: orig_veg
     character(*),intent(in):: new_veg
     integer :: istat
@@ -1899,10 +1907,10 @@ contains
     character(len=:), pointer :: vname
     integer :: rc
 
-    call readsize(N_catg,N_catf)
+    call readsize(f2g_file, N_catg,N_catf)
     if(N_catg == N_catf) return
     allocate(f2g(N_catf))
-    call readf2g(N_catf,f2g)
+    call readf2g(f2g_file, N_catf,f2g)
 
     allocate(rity(N_catg))
     allocate(z2(N_catg))
@@ -2033,12 +2041,13 @@ contains
   ! NY:     N_proc                1
   !         JMS.rc                IMS.rc
 
-  subroutine optimize_latlon(fname_tilefile, N_proc_string)
+  subroutine optimize_latlon(fname_tilefile, N_proc_string, optimized_file)
 
     implicit none
 
     character(*), intent(in) :: fname_tilefile  ! file name (with path) of tile file (*.til)
     character(*), intent(in) :: N_proc_string   ! *string* w/ no. of processors (or tasks), excl. OSERVER tasks
+    character(*), intent(in) :: optimized_file
 
     ! local variables
     integer :: N_proc
@@ -2058,6 +2067,7 @@ contains
     integer :: IMGLOB, JMGLOB
     integer :: face(6),face_land(6)
     logical :: forward
+    character(len=:), allocatable :: IMS_file, JMS_File
 
     ! -----------------------------
 
@@ -2265,7 +2275,7 @@ contains
 
        if( k /=6 ) stop ("one or more processes may accross the face")
 
-       open(10,file="optimized_distribution",action='write')
+       open(10,file=optimized_file,action='write')
        write(10,'(A)')    "GEOSldas.GRIDNAME:  " // trim(gridname)
        write(10,'(A)')    "GEOSldas.GRID_TYPE:  Cubed-Sphere"
        write(10,'(A)')    "GEOSldas.NF:  6"
@@ -2276,7 +2286,9 @@ contains
        write(10,'(A)')    "GEOSldas.JMS_FILE:    JMS.rc"
        close(10)
 
-       open(10,file="JMS.rc",action='write')
+       n = index(optimized_file, '/', back=.true.)
+       JMS_file = optimized_file(1:n)//"JMS.rc"
+       open(10,file=JMS_file ,action='write')
        write(10,'(I5,I5)') N_proc, maxval(face)
        do n=1,N_proc
           write(10,'(I8)') JMS(n)
@@ -2455,7 +2467,7 @@ contains
        enddo
        if( any(IMS <=1) ) stop ("Each processor must have at least 2 longitude stripes. Request fewer processors.")
 
-       open(10,file="optimized_distribution",action='write')
+       open(10,file=optimized_file, action='write')
        write(10,'(A)')    "GEOSldas.GRID_TYPE:  LatLon"
        write(10,'(A)')    "GEOSldas.GRIDNAME:   "//trim(gridname)
        write(10,'(A)')    "GEOSldas.LM:         1"
@@ -2470,7 +2482,9 @@ contains
        write(10,'(A)')    "GEOSldas.IMS_FILE:   IMS.rc"
        close(10)
 
-       open(10,file="IMS.rc",action='write')
+       n = index(optimized_file, '/', back=.True.)
+       IMS_file = optimized_file(1:n)//"IMS.rc"
+       open(10,file=IMS_file,action='write')
        write(10,'(I5)') N_proc
        do n=1,N_proc
           write(10,'(I8)') IMS(n)
