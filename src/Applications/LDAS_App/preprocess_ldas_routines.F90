@@ -2042,13 +2042,14 @@ contains
   ! NY:     N_proc                1
   !         JMS.rc                IMS.rc
   
-  subroutine optimize_latlon(fname_tilefile, N_proc_string, optimized_file)
+  subroutine optimize_latlon(fname_tilefile, N_proc_string, optimized_file, run_dir)
     
     implicit none
     
     character(*), intent(in) :: fname_tilefile  ! file name (with path) of tile file (*.til)
     character(*), intent(in) :: N_proc_string   ! *string* w/ no. of processors (or tasks), excl. OSERVER tasks
     character(*), intent(in) :: optimized_file  
+    character(*), intent(in) :: run_dir  
         
     ! local variables
     integer :: N_proc
@@ -2287,8 +2288,7 @@ contains
        write(10,'(A)')    "GEOSldas.JMS_FILE:    JMS.rc"
        close(10)
        
-       n = index(optimized_file, '/', back=.true.)
-       JMS_file = optimized_file(1:n)//"JMS.rc"
+       JMS_file = trim(run_dir)//"/JMS.rc"
        open(10,file=JMS_file ,action='write')
        write(10,'(I5,I5)') N_proc, maxval(face)
        do n=1,N_proc
@@ -2483,8 +2483,7 @@ contains
        write(10,'(A)')    "GEOSldas.IMS_FILE:   IMS.rc"
        close(10)
        
-       n = index(optimized_file, '/', back=.True.)
-       IMS_file = optimized_file(1:n)//"IMS.rc"
+       IMS_file = trim(run_dir)//"/IMS.rc"
        open(10,file=IMS_file,action='write')
        write(10,'(I5)') N_proc
        do n=1,N_proc

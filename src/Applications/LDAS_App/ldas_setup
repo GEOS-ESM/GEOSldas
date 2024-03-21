@@ -1043,24 +1043,16 @@ class LDASsetup:
 
         # get optimzed NX and IMS
         optimized_distribution_file = tempfile.NamedTemporaryFile(delete=False)
-        tmp_path = os.path.dirname(optimized_distribution_file.name )
-        print("tmp_path:"+tmp_path)
         print  ("Optimizing... decomposition of processes.... \n")
-        cmd = self.bindir + '/preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model']) + ' ' + optimized_distribution_file.name
+        cmd = self.bindir + '/preprocess_ldas.x optimize '+ self.inpdir+'/tile.data '+ str(self.rqdRmInp['ntasks_model']) + ' ' + optimized_distribution_file.name + ' ' + self.rundir
         print ("cmd:   " + cmd)
+        print ("IMS.rc or JMS.rc would be generated on " + self.rundir)
         sp.call(shlex.split(cmd))
         optinxny=self._parseInputFile(optimized_distribution_file.name)
         if (int(optinxny['NX']) == 1):
             if int(optinxny['NY']) != int(self.rqdRmInp['ntasks_model']):
                 self.rqdRmInp['ntasks_model']=optinxny['NY']
                 print ('adjust ntasks_model %d for cubed-sphere grid' % int(self.rqdRmInp['ntasks_model']))
-
-        if os.path.isfile( tmp_path+'/IMS.rc') :
-            shutil.move(tmp_path+'/IMS.rc', self.rundir+'/')
-            print("move file: " + tmp_path+'/IMS.rc')
-        if os.path.isfile( tmp_path+'/JMS.rc') :
-            shutil.move(tmp_path+'/JMS.rc', self.rundir+'/')
-            print("move file: " + tmp_path+'/JMS.rc')
 
 
         #os.remove(optimized_distribution_file.name)

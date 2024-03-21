@@ -129,7 +129,7 @@ program main
   else if (trim(option) == "optimize") then
      
       
-     call optimize_latlon(arg1,arg2, arg3)
+     call optimize_latlon(arg1,arg2, arg3, arg4)
      
   else
      
