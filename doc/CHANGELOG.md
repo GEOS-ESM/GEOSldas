@@ -71,6 +71,7 @@ Overview of Git Releases:
   - GMAO_Shared v1.9.7 ([PR #725](https://github.com/GEOS-ESM/GEOSldas/pull/725)).
   - GEOS_Util v2.0.7 ([PR #725](https://github.com/GEOS-ESM/GEOSldas/pull/725)).
     - Sparse checkout of GEOS_Util ([PR #711](https://github.com/GEOS-ESM/GEOSldas/pull/711)).
+	- Improved remap_restarts package ([GEOS_Util PR #43](https://github.com/GEOS-ESM/GEOS_Util/pull/19), [GEOS_Util PR #43](https://github.com/GEOS-ESM/GEOS_Util/pull/43), [GEOS_Util PR #53](https://github.com/GEOS-ESM/GEOS_Util/pull/53)) 
   - Added NCEP_Shared v1.3.0 ([PR #656](https://github.com/GEOS-ESM/GEOSldas/pull/656)).
 
 - Infrastructure:
@@ -78,12 +79,14 @@ Overview of Git Releases:
     - Added support for SLES15/Milan nodes ([PR #693](https://github.com/GEOS-ESM/GEOSldas/pull/693)).
     - Removed support for Haswell nodes ([PR #681](https://github.com/GEOS-ESM/GEOSldas/pull/681)).
   - Support for running GEOSldas at the NASA Advanced Supercomputing (NAS) facility ([PR #706](https://github.com/GEOS-ESM/GEOSldas/pull/706)).
-  - Allow setting up of experiments from other users' build ([PR #733](https://github.com/GEOS-ESM/GEOSldas/pull/733)).
+  - Allow experiment setup from another user's build ([PR #733](https://github.com/GEOS-ESM/GEOSldas/pull/733)).
   - ESMA_env v4.23.0, Baselibs v7.16.0 ([PR #681](https://github.com/GEOS-ESM/GEOSldas/pull/681)).
   - ESMA_cmake v3.41.0 ([PR #725](https://github.com/GEOS-ESM/GEOSldas/pull/725)).
   - MAPL v2.44.1 ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)).
   - CircleCI Orb v2 ([PR #694](https://github.com/GEOS-ESM/GEOSldas/pull/694)).
-  - Replace FLAP with fArgParse ([PR #669](https://github.com/GEOS-ESM/GEOSldas/pull/669)).
+  - Replaced FLAP with fArgParse ([PR #669](https://github.com/GEOS-ESM/GEOSldas/pull/669)).
+  - Updated versions of GitHub Actions ([PR #739](https://github.com/GEOS-ESM/GEOSldas/pull/739)).
+
 
 - Documentation: 
   - Updates and corrections ([PR #728](https://github.com/GEOS-ESM/GEOSldas/pull/728)).

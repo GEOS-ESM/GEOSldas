@@ -73,14 +73,14 @@ COMMONLY USED values for `MET_PATH`:
   MET_PATH : /discover/nobackup/projects/gmao/merra/iau/merra_land/MERRA2_land_forcing/ 
 ```
 
-Note: Used for SMAP Nature Run v05, v7.2, v8.1, v8.3, v9.1, v10.0, v11.1 (before 1/1/2015).
+Note: Used for SMAP Nature Run v05, v7.2, v8.1, v8.3, v9.1, v10.0 (before 1/1/2015).
 
 #### GEOS FP forcing with "seamless" file names, for use with MET_TAG=GEOS.fp.asm[__prec*] (__PREFERRED__)
 ```
   MET_PATH : /discover/nobackup/projects/gmao/smap/SMAP_L4/GEOS/FP/
 ```
 
-Note: Used for SMAP Nature Run v8.1, v8.3, v9.1, v10.0, v11.1 (after 1/1/2015); SMAP L4_SM Version 5, 6, 7.
+Note: Used for SMAP Nature Run v8.1, v8.3, v9.1, v10.0 (after 1/1/2015); SMAP L4_SM Version 5, 6, 7.
 
 #### GEOS forcing with experiment-specific file names, incl. FP (__DEPRECATED__), FP-IT/RP-IT, and precip-corrected GEOS forcing
 ```
@@ -286,24 +286,24 @@ COMMONLY USED values for `MET_TAG`:
 
 #### SMAP Nature Run v9.1; SMAP L4_SM Version 6
 ```
-  MET_TAG  : GEOS.fp.asm__precCPCU_IMGFinal_IMGFclim_G5FP    ! (precip corr with IMERG-Final and late-look  CPCU) 
-  MET_TAG  : GEOS.fp.asm__precCPCULLK_IMERGLateV06b_fp_v1    ! (precip corr with IMERG-Late  and late-look  CPCU)
-  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06b_fp_v1    ! (precip corr with IMERG-Late  and first-look CPCU)
-  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06c_fp_v1    ! (precip corr with IMERG-Late  and first-look CPCU)
+  MET_TAG  : M2COR_cross__precSMAPv6_CGIM2                   ! before 01/01/2015
+  MET_TAG  : GEOS.fp.asm__precCPCU_IMGFinal_IMGFclim_G5FP    ! before 06/30/2021 (precip corr with IMERG-Final and late-look  CPCU) 
+  MET_TAG  : GEOS.fp.asm__precCPCULLK_IMERGLateV06b_fp_v1    ! before 10/27/2021 (precip corr with IMERG-Late  and late-look  CPCU)
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06b_fp_v1    ! before 05/09/2022 (precip corr with IMERG-Late  and first-look CPCU)
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06c_fp_v1    !                   (precip corr with IMERG-Late  and first-look CPCU)
 ```
 
-#### SMAP Nature Run v10.0; SMAP L4_SM Version 7
+#### SMAP Nature Run v10.0*; SMAP L4_SM Version 7
 ```
-  MET_TAG  : GEOS.fp.asm__precCPCU_IMGFinal_IMGFclim_G5FP    ! (precip corr with IMERG-Final and late-look  CPCU) 
-  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06b_fp_v1    ! (precip corr with IMERG-Late  and first-look CPCU)
-  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06c_fp_v1    ! (precip corr with IMERG-Late  and first-look CPCU)
+  MET_TAG  : M2COR_cross__precSMAPv6_CGIM2                   ! before 01/01/2015 
+  MET_TAG  : GEOS.fp.asm__precCPCU_IMGFinal_IMGFclim_G5FP    ! before 09/30/2021 (precip corr with IMERG-Final and late-look  CPCU) 
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06b_fp_v1    ! before 05/09/2022 (precip corr with IMERG-Late  and first-look CPCU)
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06c_fp_v1    ! before 07/02/2023 (precip corr with IMERG-Late  and first-look CPCU)
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06d_fp_v1    ! before 11/07/2023 (precip corr with IMERG-Late  and first-look CPCU)
+  MET_TAG  : GEOS.fp.asm__precCPCUFLK_IMERGLateV06e_fp_v1    !                   (precip corr with IMERG-Late  and first-look CPCU)
 
 ```
-
-#### SMAP Nature Run v11.1
-```
-  MET_TAG  : GEOS.fp.asm__precIMGv7BFnCPCUcorrv1
-```
+*Transitions dates are for L4_SM Version 7.  Transition dates for NRv10.0 may differ somewhat.
 
 
 Boundary Conditions
@@ -414,7 +414,7 @@ Notes:
 - Icarus-NLv5 is identical to Icarus-NLv4 except for parameters associated with PEATCLSM.
 
 
-#### v11: SMAP Nature Run v11.1
+#### v11
 ```
   BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/fvInput/ExtData/esm/tiles/v11/
 ```
