@@ -13,16 +13,15 @@ ecbuild_add_executable (
    TARGET tile_bin2nc4.x 
    SOURCES tile_bin2nc4.F90
    LIBS MAPL)
-
+ 
 ecbuild_add_executable (
    TARGET mwrtm_bin2nc4.x
    SOURCES util/inputs/mwRTM_params/mwrtm_bin2nc4.F90
    LIBS GEOSlandassim_GridComp)
    
 set (scripts
-   ldas_setup 
    process_hist.csh 
-   process_rst.py 
+   remap_config_ldas.py 
    ens_forcing/average_ensemble_forcing.py 
    ens_forcing/ensemble_forc.py 
    ens_forcing/regrid_forc.csh 
@@ -35,6 +34,10 @@ install (
    DESTINATION bin
    )
 
+set(file ldas_setup)
+configure_file(${file} ${file} @ONLY)
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${file} DESTINATION bin)
+
 file(GLOB rc_files  GEOSldas_*rc)
 file(GLOB nml_files LDASsa_DEFAULT*nml)
 
@@ -42,3 +45,5 @@ install(
    FILES ${rc_files} ${nml_files} lenkf.j.template
    DESTINATION etc
    )
+
+esma_add_subdirectories(util/inputs/ASCAT_sm_mask)   

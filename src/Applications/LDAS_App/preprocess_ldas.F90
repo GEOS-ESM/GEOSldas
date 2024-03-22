@@ -25,6 +25,7 @@ program main
   character(len=512) :: arg5
   character(len=512) :: arg6
   character(len=512) :: arg7
+  character(len=512) :: arg8
   
   character(len=512) :: orig_tile
   character(len=512) :: new_tile
@@ -42,6 +43,7 @@ program main
   character(len=512) :: new_veg
   character(len=512) :: orig_ease
   character(len=512) :: new_ease
+  character(len=512) :: f2g_file
   character(len=12 ) :: ymdhm
   character(len=12 ) :: SURFLAY
   
@@ -53,6 +55,7 @@ program main
   call get_command_argument(6,arg5)
   call get_command_argument(7,arg6)
   call get_command_argument(8,arg7)
+  call get_command_argument(9,arg8)
   
   if( trim(option) == "c_f2g") then
 
@@ -66,43 +69,48 @@ program main
      exp_id          = arg5
      ymdhm           = trim(adjustl(arg6))
      SURFLAY         = trim(adjustl(arg7))
+     f2g_file        = arg8
 
-     call createf2g(orig_tile,domain_def_file,trim(out_path),catch_def_file,trim(exp_id),ymdhm, SURFLAY)
+     call createf2g(orig_tile,domain_def_file,trim(out_path),catch_def_file,trim(exp_id),ymdhm, SURFLAY, f2g_file)
      
   else if (trim(option) == "c_localtile") then
      
      orig_tile  = arg1
      new_tile   = arg2
-
-     call createLocalTilefile(orig_tile,new_tile)
+     f2g_file   = arg3
+     call createLocalTilefile(f2g_file, orig_tile,new_tile)
      
   else if (trim(option) == "c_localbc" ) then
      
-     orig_BC = arg1
-     new_BC =  arg2
+     orig_BC  = arg1
+     new_BC   = arg2
+     f2g_file = arg3
 
-     call createLocalBC(orig_BC, new_BC)
+     call createLocalBC(f2g_file, orig_BC, new_BC)
      
   else if (trim(option) == "c_localvegrst") then
 
      orig_veg = arg1
      new_veg  = arg2
+     f2g_file = arg3
 
-     call  createLocalVegRestart(orig_veg, new_veg)      
+     call  createLocalVegRestart(f2g_file, orig_veg, new_veg)      
 
   else if (trim(option) == "c_localmwrtmrst") then
 
      orig_rtm = arg1
      new_rtm  = arg2
+     f2g_file = arg3
 
-     call  createLocalmwRTMRestart(orig_rtm, new_rtm)      
+     call  createLocalmwRTMRestart(f2g_file, orig_rtm, new_rtm)      
 
   else if (trim(option) == "c_localcatchrst") then
 
      orig_catch = arg1
      new_catch  = arg2
+     f2g_file   = arg3
 
-     call createLocalCatchRestart(orig_catch, new_catch)
+     call createLocalCatchRestart(f2g_file, orig_catch, new_catch)
 
   else if (trim(option)=="correctease") then
 
@@ -120,7 +128,8 @@ program main
      
   else if (trim(option) == "optimize") then
      
-     call optimize_latlon(arg1,arg2)
+      
+     call optimize_latlon(arg1,arg2, arg3, arg4)
      
   else
      

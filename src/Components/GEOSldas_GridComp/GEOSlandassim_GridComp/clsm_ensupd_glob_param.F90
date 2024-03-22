@@ -36,15 +36,19 @@ module clsm_ensupd_glob_param
   public :: FT_ANA_LOWERBOUND_ASNOW
   public :: FT_ANA_LOWERBOUND_TEFF
   public :: FT_ANA_UPPERBOUND_TEFF
+  public :: SCF_ANA_ALPHA     
+  public :: SCF_ANA_BETA      
+  public :: SCF_ANA_MAXINCRSWE
+  public :: SCF_ANA_MINFCSTSWE
 
   public :: echo_clsm_ensupd_glob_param
 
   ! -----------------------------------------------------------------------
   !
-  ! total number of all obs species defined in namelist file
+  ! total number of all obs species defined in "ensupd" namelist file
   ! (regardless of whether "assim" flag is true or false)
   
-  integer, parameter :: N_obs_species_nml = 48
+  integer, parameter :: N_obs_species_nml = 53
   
   ! ----------------------------------------------------------------------
   !
@@ -93,7 +97,7 @@ module clsm_ensupd_glob_param
  
   ! ----------------------------------------------------------------
   !
-  ! parameter for freeze/thaw (FT) analysis 
+  ! parameters for freeze/thaw (FT) analysis 
 
   real, parameter    :: FT_ANA_FT_THRESHOLD     =  0.5
   
@@ -102,6 +106,15 @@ module clsm_ensupd_glob_param
   real, parameter    :: FT_ANA_LOWERBOUND_TEFF  = -1.0 + MAPL_TICE  ! [Kelvin]
   real, parameter    :: FT_ANA_UPPERBOUND_TEFF  = +1.0 + MAPL_TICE  ! [Kelvin]
 
+  ! ----------------------------------------------------------------
+  !
+  ! parameters for snow cover area fraction (SCF) analysis (modified from Toure et al. 2018)
+  
+  real, parameter    :: SCF_ANA_ALPHA      = 0.60  ! [-] add snow    if asnow_fcst <  asnow_obs*SCF_ANA_alpha (w/ "bias" adjustment for obs)
+  real, parameter    :: SCF_ANA_BETA       = 0.55  ! [-] remove snow if asnow_fcst >= asnow_obs*SCF_ANA_alpha .AND. asnow_obs < SCF_ANA_beta
+  real, parameter    :: SCF_ANA_MAXINCRSWE = 5.0   ! [kg/m2] max total SWE increment
+  real, parameter    :: SCF_ANA_MINFCSTSWE = 0.01  ! [kg/m2] threshold below which the ratio of swe_ana/swe_fcst becomes unreasonable
+  
   ! ----------------------------------------------------------------
 
 contains

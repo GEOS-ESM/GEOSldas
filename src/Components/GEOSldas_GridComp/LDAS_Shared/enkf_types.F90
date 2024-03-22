@@ -21,6 +21,8 @@ module enkf_types
   !
   ! reichle, 8 Jun 2017: added "%flistpath" and "%flistname" to "obs_param_type"
   !
+  ! reichle,28 Feb 2024: added "%maskpath"  and "%maskname"  to "obs_param_type"
+  !
   ! -------------------------------------------------------------------
   
   implicit none
@@ -53,7 +55,7 @@ module enkf_types
   ! added OminusA information for adaptive filtering - reichle, 1 Feb 2007
   ! added "varname" field to "obs_param_type" - reichle 14 Jun 2011
   ! major revisions to "obs_type" fields - reichle 16 Jun 2011
-  ! added "units" field to "obs_param_tpye" - reichle 22 Nov 2011
+  ! added "units" field to "obs_param_type" - reichle 22 Nov 2011
 
   type :: obs_type
 
@@ -96,6 +98,11 @@ module enkf_types
      integer                       :: species   ! identifier for type of measurement
 
      integer                       :: orbit     ! type of (half-)orbit
+                                                !                     0 = n/a  [eg., in situ obs]
+                                                !                     1 = ascending
+                                                !                     2 = descending
+                                                !                     3 = ascending or descending
+                                                !                     4 = geostationary
 
      integer                       :: pol       ! polarization
                                                 ! 0 = n/a  [eg., multi-pol. retrieval]
@@ -104,10 +111,10 @@ module enkf_types
                                                 ! 3 = ...
                                                 ! [add 3rd/4th Stokes, HH, HV, VH, VV]
 
-     integer                       :: N_ang     ! # angles in species
+     integer                       :: N_ang     ! # satellite viewing angles in species (radiance obs only)
 
      real, &
-          dimension(N_obs_ang_max) :: ang       ! vector of angles
+          dimension(N_obs_ang_max) :: ang       ! vector of satellite viewing angles
      
      real                          :: freq      ! frequency [Hz]
 
@@ -133,6 +140,8 @@ module enkf_types
 
      character(200)                :: path      ! path to measurements file 
      character(80)                 :: name      ! name identifier for measurements 
+     character(200)                :: maskpath  ! path to obs mask file
+     character(80)                 :: maskname  ! filename for obs mask
      character(200)                :: scalepath ! path to file with scaling parameters
      character(80)                 :: scalename ! filename for scaling parameters
      character(200)                :: flistpath ! path to file with list of obs file names
@@ -196,6 +205,8 @@ contains
        write (unitnumber, '(42A)') "'" // trim(obs_param(i)%units)     // "'"
        write (unitnumber,'(202A)') "'" // trim(obs_param(i)%path)      // "'"    
        write (unitnumber, '(82A)') "'" // trim(obs_param(i)%name)      // "'"      
+       write (unitnumber,'(202A)') "'" // trim(obs_param(i)%maskpath)  // "'"    
+       write (unitnumber, '(82A)') "'" // trim(obs_param(i)%maskname)  // "'"      
        write (unitnumber,'(202A)') "'" // trim(obs_param(i)%scalepath) // "'" 
        write (unitnumber, '(82A)') "'" // trim(obs_param(i)%scalename) // "'" 
        write (unitnumber,'(202A)') "'" // trim(obs_param(i)%flistpath) // "'" 
