@@ -14,6 +14,7 @@ module GEOS_LdasGridCompMod
   use GEOS_LandPertGridCompMod, only: LandPertSetServices => SetServices
   use GEOS_EnsGridCompMod, only: EnsSetServices => SetServices
   use GEOS_LandAssimGridCompMod, only: LandAssimSetServices => SetServices
+  use GEOS_LandiceGridCompMod,   only : LandiceSetServices  => SetServices
 
   use EASE_conv, only: ease_inverse
   use LDAS_TileCoordType, only: tile_coord_type , T_TILECOORD_STATE, TILECOORD_WRAP
@@ -50,6 +51,7 @@ module GEOS_LdasGridCompMod
 
   ! All children
   integer,allocatable :: LAND(:)
+  integer,allocatable :: LANDICE(:)
   integer,allocatable :: LANDPERT(:)
   integer,allocatable :: METFORCE(:)
   integer             :: ENSAVG, LANDASSIM
@@ -172,6 +174,7 @@ contains
     endif
 
     allocate(LAND(NUM_ENSEMBLE),LANDPERT(NUM_ENSEMBLE))
+    allocate(LANDICE(NUM_ENSEMBLE))
 
     ! ens_id_with = 2 + number of digits = total number of chars in ensid_string ("_eXXXX")
     !
@@ -211,6 +214,10 @@ contains
 
        childname='LAND'//trim(ensid_string)
        LAND(i) = MAPL_AddChild(gc, name=childname, ss=LandSetServices, rc=status)
+       VERIFY_(status)
+
+       childname='LANDICE'//trim(ensid_string)
+       LANDICE(i) = MAPL_AddChild(gc, name=childname, ss=LandiceSetServices, rc=status)
        VERIFY_(status)
     enddo
 
@@ -254,6 +261,24 @@ contains
             rc = status                                                            &
             )
           VERIFY_(status)
+
+    ! -LANDPERT-feeds-LANDICE's-imports-
+       call MAPL_AddConnectivity(                                                  &
+            gc,                                                                    &
+            SRC_NAME = ['TApert         ', 'QApert         ', 'UUpert         ',   &
+                        'UWINDLMTILEpert', 'VWINDLMTILEpert', 'PCUpert        ',   &
+                        'PLSpert        ', 'SNOpert        ', 'DRPARpert      ',   &
+                        'DFPARpert      ', 'DRNIRpert      ', 'DFNIRpert      ',   &
+                        'DRUVRpert      ', 'DFUVRpert      ', 'LWDNSRFpert    '],  &
+            SRC_ID = LANDPERT(i),                                                  &
+            DST_NAME = ['TA         ', 'QA         ', 'UU         ', 'UWINDLMTILE',&
+                        'VWINDLMTILE', 'PCU        ', 'PLS        ', 'SNO        ',&
+                        'DRPAR      ', 'DFPAR      ', 'DRNIR      ', 'DFNIR      ',&
+                        'DRUVR      ', 'DFUVR      ', 'LWDNSRF    '],              &
+            DST_ID = LANDICE(i),                                                      &
+            rc = status                                                            &
+            )
+
     ! -METFORCE-feeds-LAND's-imports-
        call MAPL_AddConnectivity(                                                  &
             gc,                                                                    &
@@ -270,6 +295,24 @@ contains
             rc = status                                                            &
             )
        VERIFY_(status)
+
+    ! -METFORCE-feeds-LANDICE's-imports-
+       call MAPL_AddConnectivity(                                                  &
+            gc,                                                                    &
+            SRC_NAME = ['Psurf', 'RefH ',                                          &
+                        'DUDP ', 'DUSV ', 'DUWT ', 'DUSD ', 'BCDP ', 'BCSV ',      &
+                        'BCWT ', 'BCSD ', 'OCDP ', 'OCSV ', 'OCWT ', 'OCSD ',      &
+                        'SUDP ', 'SUSV ', 'SUWT ', 'SUSD ', 'SSDP ', 'SSSV ' ],    &
+            SRC_ID = METFORCE(k),                                                     &
+            DST_NAME = ['PS  ', 'DZ  ',                                            &
+                        'DUDP', 'DUSV', 'DUWT', 'DUSD', 'BCDP', 'BCSV',            &
+                        'BCWT', 'BCSD', 'OCDP', 'OCSV', 'OCWT', 'OCSD',            &
+                        'SUDP', 'SUSV', 'SUWT', 'SUSD', 'SSDP', 'SSSV' ],          &
+            DST_ID = LANDICE(i),                                                      &
+            rc = status                                                            &
+            )
+       VERIFY_(status)
+
     ! -LAND-feeds-LANDPERT's-imports-
        call MAPL_AddConnectivity(                                                                  &
             gc,                                                                                    &
@@ -367,6 +410,7 @@ contains
     ! MAPL variables
     type(MAPL_LocStream) :: surf_locstream
     type(MAPL_LocStream) :: land_locstream
+    type(MAPL_LocStream) :: landice_locstream
     type(MAPL_MetaComp), pointer :: MAPL=>null() ! GC's MAPL obj
     type(MAPL_MetaComp), pointer :: CHILD_MAPL=>null() ! Child's MAPL obj
 
@@ -564,11 +608,22 @@ contains
     call MAPL_LocStreamCreate(                                                  &
          land_locstream,                                                        &
          surf_locstream,                                                        &
-         name=gcnames(LAND(1)),                                                    &
+         name=gcnames(LAND(1)),                                                 &
          mask=[MAPL_LAND],                                                      &
          rc=status                                                              &
          )
     VERIFY_(status)
+
+    call MAPL_LocStreamCreate(                                                  &
+         landice_locstream,                                                     &
+         surf_locstream,                                                        &
+         name=gcnames(LANDICE(1)),                                              &
+         mask=[MAPL_LANDICE],                                                   &
+         rc=status                                                              &
+         )
+    VERIFY_(status)
+
+
     call MAPL_TimerOff(MAPL, "-LocStreamCreate")
     ! Convert LAND's LocStream to LDAS' tile_coord and save it in the GridComp
     ! -get-tile-information-from-land's-locstream-
@@ -723,12 +778,21 @@ contains
        VERIFY_(status)
        call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
        VERIFY_(status)
+
+       call MAPL_GetObjectFromGC(gcs(LANDICE(i)), CHILD_MAPL, rc=status)
+       VERIFY_(status)
+       call MAPL_Set(CHILD_MAPL, LocStream=landice_locstream, rc=status)
+       VERIFY_(status)
+
        call MAPL_GetObjectFromGC(gcs(LANDPERT(i)), CHILD_MAPL, rc=status)
        VERIFY_(status) ! CHILD = LANDPERT
        call MAPL_Set(CHILD_MAPL, LocStream=land_locstream, rc=status)
        VERIFY_(status)
+
        ! Add LAND's tile_coord to children's GridComps
        call ESMF_UserCompSetInternalState(gcs(LAND(i)), 'TILE_COORD', tcwrap, status)
+       VERIFY_(status)
+       call ESMF_UserCompSetInternalState(gcs(LANDICE(i)), 'TILE_COORD', tcwrap, status)
        VERIFY_(status)
        call ESMF_UserCompSetInternalState(gcs(LANDPERT(i)), 'TILE_COORD', tcwrap, status)
        VERIFY_(status)
@@ -926,6 +990,16 @@ contains
        call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=2, userRC=status)
        VERIFY_(status)
        call MAPL_TimerOff(MAPL, gcnames(igc))
+
+
+       igc = LANDICE(i)
+       call MAPL_TimerOn(MAPL, gcnames(igc))
+       call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=1, userRC=status)
+       VERIFY_(status)
+       call ESMF_GridCompRun(gcs(igc), importState=gim(igc), exportState=gex(igc), clock=clock, phase=2, userRC=status)
+       VERIFY_(status)
+       call MAPL_TimerOff(MAPL, gcnames(igc))
+
 
        ! ApplyPrognPert - moved: now before calculating ensemble average that is picked up by land analysis and HISTORY; reichle 28 May 2020 
        igc = LANDPERT(i)
