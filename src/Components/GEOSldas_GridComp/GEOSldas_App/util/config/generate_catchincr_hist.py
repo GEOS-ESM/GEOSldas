@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
-# This code works with the python version loaded by g5_modules associated with GEOSldas v17.13.1: 
-#    python/GEOSpyD/Min4.11.0_py3.9_AND_Min4.8.3_py2.7 
+# This code works with the python version loaded by g5_modules associated with GEOSldas v17.13.1:
+#    python/GEOSpyD/Min4.11.0_py3.9_AND_Min4.8.3_py2.7
 #
 # This script generates a sample HISTORY.rc file for GEOSldas to write Catchment
 #    model analysis increments in ensemble space, as needed in the weakly-coupled
@@ -25,19 +25,19 @@ heads = """
 #
 #  Sample GEOSldas HISTORY.rc file for LADAS (atm ensemble)
 #
-#  - This sample HISTORY.rc is for the GEOSldas instance that is weakly coupled with the 
+#  - This sample HISTORY.rc is for the GEOSldas instance that is weakly coupled with the
 #       atmospheric ensemble component of the Hybrid-4DEnVar ADAS (ADASens).
 #
-#  - The sample file was generated with the utility script 
-#       "GEOSldas/src/Applications/LDAS_App/util/config/generate_catchincr_hist.py".
+#  - The sample file was generated with the utility script
+#       "GEOSldas/src/Components/GEOSldas_GridComp/GEOSldas_App/util/config/generate_catchincr_hist.py".
 #
-#  - The sample file triggers output of the GEOSldas "catch_progn_incr" collection in 
+#  - The sample file triggers output of the GEOSldas "catch_progn_incr" collection in
 #       ensemble space, which is needed by ADASens.
 #
 #  - The IDs of the ensemble members and their total number in GEOSldas must match
 #       those of ADASens.
 #
-#  - The "catch_progn_incr" output is in tile space, which must be the same for  
+#  - The "catch_progn_incr" output is in tile space, which must be the same for
 #       GEOSldas and ADASens.
 #
 #
@@ -89,15 +89,15 @@ fields:     'TCFSAT_INCR'    , 'CATCHINCR_e'      ,
 
 # ------------------------------------------------------------------
 #
-# write file "HISTORY.rc" with nens "catch_progn_incrXXXX" collections, 
+# write file "HISTORY.rc" with nens "catch_progn_incrXXXX" collections,
 #   one for each ensemble member
 
 with open('HISTORY.rc', 'w') as f:
     f.write(heads)
     collection, body = hist_template.split('::\n')
-    collection = collection.strip('\n').strip("'")  
+    collection = collection.strip('\n').strip("'")
     for i in range(nens):
-       i = i +1 
+       i = i +1
        sfx = '%04d'%(i)
        ids = "'"+collection+sfx+"'"
        f.write(ids+'\n')
@@ -112,10 +112,10 @@ with open('HISTORY.rc', 'w') as f:
           if ":" in line :
              newline = collect+line
           if "CATCHINCR_e" in newline:
-             sfx = '%04d'%(i) 
+             sfx = '%04d'%(i)
              frep = 'CATCHINCR_e'+sfx
              newline = newline.replace('CATCHINCR_e',frep)
           f.write(newline+'\n')
-       f.write('::\n') 
+       f.write('::\n')
 
 # ====================== EOF =====================================
