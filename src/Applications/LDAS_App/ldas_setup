@@ -1392,7 +1392,8 @@ class LDASsetup:
                         if self.ladas_coupling > 0:
                            fout.write(line.replace('MY_ADAS_EXPDIR', self.rqdExeInp['ADAS_EXPDIR']))
                     else :
-                        fout.write(line.replace('MY_EXPDIR',self.exphome+'/$EXPID'))
+                        my_expdir = self.exphome + '/' + self.rqdExeInp['EXP_ID']
+                        fout.write(line.replace('MY_EXPDIR',my_expdir))
 
         sp.call(['chmod', '755', 'lenkf.j'])
 
