@@ -8,8 +8,8 @@
 #                     Batch Parameters for Run Job
 #######################################################################
 
-#SBATCH --output=../scratch/GEOSldas_log_txt
-#SBATCH --error=../scratch/GEOSldas_err_txt
+#SBATCH --output=MY_EXPDIR/scratch/GEOSldas_log_txt
+#SBATCH --error=MY_EXPDIR/scratch/GEOSldas_err_txt
 #SBATCH --account=MY_ACCOUNT
 #SBATCH --time=MY_WALLTIME
 #SBATCH --nodes=MY_NODES --ntasks-per-node=MY_NTASKS_PER_NODE
@@ -21,8 +21,8 @@
 #PBS -N MY_JOB
 #PBS -q MY_QOS
 #PBS -W group_list=MY_ACCOUNT
-#PBS -o ../scratch/GEOSldas_log_txt
-#PBS -e ../scratch/GEOSldas_err_txt
+#PBS -o MY_EXPDIR/scratch/GEOSldas_log_txt
+#PBS -e MY_EXPDIR/scratch/GEOSldas_err_txt
 #PBS -j oe     
 
 #######################################################################
