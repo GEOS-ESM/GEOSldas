@@ -6,7 +6,7 @@
 
 clear
 
-% add path to matlab functions in src/Applications/LDAS_App/util/shared/matlab/
+% add path to matlab functions in src/Components/GEOSldas_GridComp/GEOSldas_App/util/shared/matlab/
 addpath('../../shared/matlab/');
 
 %======
@@ -35,8 +35,8 @@ prefix_out = 'L4SM_OL7000_SMAPL1CR17000_zscore_stats_';
 
 dt_assim   = 3*60*60;    % [seconds] land analysis time step,
                          %             same as LANDASSIM_DT in GEOSldas)
-t0_assim   =       0;    % [seconds] land analysis "reference" time (offset from 0z), 
-                         %             same as LANDASSIM_T0 in GEOSldas (except for units),  
+t0_assim   =       0;    % [seconds] land analysis "reference" time (offset from 0z),
+                         %             same as LANDASSIM_T0 in GEOSldas (except for units),
                          %             typically 0 in offline runs and 1.5*60*60 in LADAS
 
 %======
@@ -66,7 +66,7 @@ if (orbit(1) == 2) int_Asc = 0; end %Desc
 hscale = 0.0;          % degrees lat/lon
 
 % Temporal sampling window(days), current hard coded and need to be divisive by 5 and be an odd number
-w_days    = 75;  
+w_days    = 75;
 
 Ndata_min = 20;
 
@@ -93,15 +93,15 @@ species =[];
 for oo=1:length(orbit)
     for pp=1:length(pol)
         for aa=1:length(inc_ang)
-                        
+
             add_species = obs_param(strcmp(var_name,{obs_param.varname}) & ...
                 orbit(oo) == [obs_param.orbit] & ...
                 inc_ang(aa) == [obs_param.ang] & ...
                 pol(pp) == [obs_param.pol] & ...
                 ~cellfun(@isempty, strfind({obs_param.descr},descr))).species;
-                                     
+
             species = union(species,add_species);
-            
+
         end
     end
 end
@@ -110,65 +110,65 @@ species
 % ------------------
 
 for n=1:length(exp_run)
-    
+
     if (exist('convert_grid','var'))
-        
+
         if exist('time_of_day_in_hours','var')
-            
-            
+
+
             for j=1:length(time_of_day_in_hours)
-                
+
                 for k=1:length(run_months)
-                    
+
                     get_model_and_obs_clim_stats( var_name,               ...
                         run_months{k}, exp_path, exp_run{n}, domain,     ...
                         start_year, end_year, ...
                         dt_assim, t0_assim, species, obs_param, ...
                         hscale, inc_ang, int_Asc, w_days, Ndata_min, prefix_out,...
                         convert_grid, time_of_day_in_hours(j)  );
-                    
+
                 end
-                
+
             end
-            
+
         else
-            
+
             get_model_and_obs_clim_stats( var_name,                              ...
                 run_months, exp_path, exp_run{n}, domain, start_year, end_year, ...
                 dt_assim, t0_assim, species, obs_param, ...
                 hscale, inc_ang, int_Asc, w_days, Ndata_min, prefix_out,...
                 convert_grid );
-            
+
         end
     else
-        
+
         if exist('time_of_day_in_hours','var')
-            
-            
+
+
             for j=1:length(time_of_day_in_hours)
-                
+
                 for k=1:length(run_months)
-                    
+
                     get_model_and_obs_clim_stats( var_name,               ...
                         run_months{k}, exp_path, exp_run{n}, domain,     ...
                         start_year, end_year, ...
                         dt_assim, t0_assim, species, obs_param, ...
                         hscale, inc_ang, int_Asc, w_days, Ndata_min, prefix_out,...
                         time_of_day_in_hours(j)  );
-                    
+
                 end
-                
+
             end
-            
+
         else
-            
+
             get_model_and_obs_clim_stats( var_name,                              ...
                 run_months, exp_path, exp_run{n}, domain, start_year, end_year, ...
                 dt_assim, t0_assim, species, obs_param, ...
                 hscale, inc_ang, int_Asc, w_days, Ndata_min, prefix_out);
-            
+
         end
-        
+
     end
 end
 
