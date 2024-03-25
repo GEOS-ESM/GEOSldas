@@ -1,33 +1,33 @@
 % ---------------------------------------------------------------------------
-% This script is to generate the mwRTM_param.nc4 file for the GEOSldas mwRTM. 
-% All constant mwRTM parameters are in this file. They come from 3 different 
+% This script is to generate the mwRTM_param.nc4 file for the GEOSldas mwRTM.
+% All constant mwRTM parameters are in this file. They come from 3 different
 % sources: cat_param, vegcls lookup table and preprocessed L2DCA daily mat files.
-% Therefore, need to run Preprocess_L2DCA_mwRTM_into_dailymat.m before running 
-% this script. 
+% Therefore, need to run Preprocess_L2DCA_mwRTM_into_dailymat.m before running
+% this script.
 
 % qliu + rreichle, 29 Jul 2022
 
 % ----------------------------------------------------------------------------
 
-clear 
+clear
 
-% add path to matlab functions in src/Applications/LDAS_App/util/shared/matlab/
+% add path to matlab functions in src/Components/GEOSldas_GridComp/GEOSldas_App/util/shared/matlab/
 addpath('../../shared/matlab/');
 
-% option to fill small gaps based on neighboring grids, 1 is recommended.  
-fill_small_gaps = 1; 
+% option to fill small gaps based on neighboring grids, 1 is recommended.
+fill_small_gaps = 1;
 
 % fill value in output file
 fillValue = single(1.e15);
 
 % resolution of output parameters: only works with "M09" or "M36".
-EASEv2_grid = 'M09'; 
+EASEv2_grid = 'M09';
 
 % older version mwRTM_param.nc4 file for parameter names and attributes
-fname_in = ['/home/qliu/smap/SMAP_Nature/bcs/RTM_params/RTMParam_SMAP_L4SM_v004/SMAP_EASEv2_',EASEv2_grid,'/mwRTM_param.nc4']; 
+fname_in = ['/home/qliu/smap/SMAP_Nature/bcs/RTM_params/RTMParam_SMAP_L4SM_v004/SMAP_EASEv2_',EASEv2_grid,'/mwRTM_param.nc4'];
 
 % target mwRTM_param file name
-fname_out = ['/home/qliu/smap/SMAP_Nature/bcs/RTM_params/RTMParam_L2_omega_H_tmp/SMAP_EASEv2_',EASEv2_grid,'/mwRTM_param_L2_omega_H_fillValue_bhbvlewt.nc4']; 
+fname_out = ['/home/qliu/smap/SMAP_Nature/bcs/RTM_params/RTMParam_L2_omega_H_tmp/SMAP_EASEv2_',EASEv2_grid,'/mwRTM_param_L2_omega_H_fillValue_bhbvlewt.nc4'];
 
 % get inputs for fill_gaps_in_tiledata() below
 if fill_small_gaps
@@ -41,18 +41,18 @@ if fill_small_gaps
     else
         error('invalid resolution, use ''M09'' or ''M36'' only')
     end
-    
+
     tmpstr  = num2str(N_cells);
 
     fname_out = strrep(fname_out,'.nc4','_',tmpstr,'gx',tmpstr,'gfilled.nc4');
 end
 
-% Do not overwrite if file exists 
+% Do not overwrite if file exists
 if exist(fname_out,'file')
-    
+
    disp(['file exist ',fname_out])
    return
-   
+
 end
 
 % GEOSldas experiment for tilecoord and cat_params
@@ -104,7 +104,7 @@ end
 L2_param = get_L2_RTM_constants_tile_data(tc,L2_file_tag,...
                                     L2_version,L2_start_time, L2_end_time);
 omega = L2_param.Albedo;
-hparam = L2_param.Roughness; 
+hparam = L2_param.Roughness;
 clear  L2_param
 
 % cat_param based parameters
@@ -137,39 +137,39 @@ Dim_id = netcdf.defDim(fout_id,'tile',tc.N_tile);
 nvar_in_file = length(finfo.Variables);
 
 for i=1: nvar_in_file
-    
+
     data_name = finfo.Variables(i).Name;
     data_type = finfo.Variables(i).Datatype;
-    
+
     data_type = 'float';
-    
+
     data_size = finfo.Variables(i).Size;
-    
+
     varid(i) = netcdf.defVar(fout_id, data_name, data_type, Dim_id );
-    
+
     netcdf.defVarFill(fout_id, varid(i), false, fillValue);
-    
+
     n_attr = length(finfo.Variables(i).Attributes);
-    
+
     for iv = 1:n_attr
         att_name  = finfo.Variables(i).Attributes(iv).Name;
         att_value = finfo.Variables(i).Attributes(iv).Value;
-        
+
         netcdf.putAtt(fout_id, varid(i), att_name, att_value);
     end
-    
+
     netcdf.endDef(fout_id);
-    
+
     startVAR = repmat([0], 1, length(data_size));
     countVAR = data_size;
-    
+
     % get parameter values from their respective sources
     % Total of 18 mwRTM parameters:
     % 8 from cat_param: SOILCLS, SOIL, CLAY, POROS, WANGWT, WANTWP, RGHWMIN,  RGHWMAX
     % 4 from vegcls lookup table  : VEGCLS, RGHNRH, RGHNRV,POLMIX
     % 3 from L2RTM: RGHHMIN, RGHHMAX, OMEGA
     % 3 are set to fillValue: BH,BV, OMEGA
- 
+
     if strcmp(data_name,'MWRTM_OMEGA')
         if fill_small_gaps
             omega_filled = fill_gaps_in_tiledata(tc, tg, transpose(omega), N_cells, iscube );
@@ -187,7 +187,7 @@ for i=1: nvar_in_file
     elseif strcmp(data_name,'MWRTM_SOILCLS')
         data  = mwRTMparam.soilcls;
     elseif strcmp(data_name,'MWRTM_SAND')
-        data  = mwRTMparam.sand;    
+        data  = mwRTMparam.sand;
     elseif strcmp(data_name,'MWRTM_CLAY')
         data  = mwRTMparam.clay;
     elseif strcmp(data_name,'MWRTM_POROS')
@@ -217,7 +217,7 @@ for i=1: nvar_in_file
             data = tmp_rtm.vegcls;
         elseif strcmp(data_name,'MWRTM_RGHPOLMIX')
             data = tmp_rtm.rgh_polmix;
-        end     
+        end
     end
 
     % earlier fillValue was -9999. replace with new fillValue (1.e15)
@@ -226,9 +226,9 @@ for i=1: nvar_in_file
     data(isnan(data)) = fillValue;
 
     netcdf.putVar(fout_id, varid(i), startVAR, countVAR, data); clear data
-    
+
     netcdf.reDef(fout_id);
-    
+
 end
 
 netcdf.endDef(fout_id);

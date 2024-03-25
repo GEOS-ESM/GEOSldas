@@ -1,6 +1,6 @@
 esma_set_this ()
 
-esma_add_subdirectory(GEOSgcm_GridComp )
+esma_add_subdirectory(GEOSgcm_GridComp)
 
 set (alldirs
   GEOSmetforce_GridComp
@@ -15,3 +15,5 @@ esma_add_library(${this}
   SUBDIRS LDAS_Shared
   DEPENDENCIES GEOSland_GridComp makebcs MAPL
   INCLUDES ${INC_ESMF})
+
+esma_add_subdirectory(GEOSldas_App)
