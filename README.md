@@ -2,7 +2,7 @@
 
 This document explains how to build, set up, and run the GEOS land modeling and data assimilation system (`GEOSldas`) on the most common systems used by GMAO.  Additional steps are needed on other systems.
 
-## Restructuring of GEOSldas repository
+## Note: GEOSldas Repository Structure Revised (March 2024)
 
 On 26 March 2024, GEOSldas was restructured and split into two repositories.  Specifically, the GEOSldas source code was moved from the GEOSldas fixture into a new repository, the [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp), which is now imported into the fixture as an external repository.  Note that the [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp) includes the "Applications" directory [`./GEOSldas_App`](https://github.com/GEOS-ESM/GEOSldas_GridComp/tree/develop/GEOSldas_App).
 
