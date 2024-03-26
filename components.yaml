@@ -39,8 +39,13 @@ MAPL:
   remote: ../MAPL.git
   tag: v2.44.1
 
+GEOSldas_GridComp:
+  local: ./src/Components/@GEOSldas_GridComp
+  remote: ../GEOSldas_GridComp.git
+  tag: v1.0.0
+
 GEOSgcm_GridComp:
-  local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
+  local: ./src/Components/@GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
   tag: v2.5.2
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
