@@ -1,32 +1,32 @@
 # GEOSldas Configuration Files
 
-This document describes the files involved in the specification and pre-processing of the GEOSldas configuration parameters. 
+This document describes the files involved in the specification and pre-processing of the GEOSldas configuration parameters.
 
 Note that the values of the configuration parameters that are used during the execution of `GEOSldas.x` are written into the GEOSldas log file (`./output/*/rc_out/Y*/M*/*.ldas_log.*.txt`).
 
 ---
 ### `"exeinp"` and `"batinp"` files
 
-Inputs to `ldas_setup` that contain user-defined configuration information.  
+Inputs to `ldas_setup` that contain user-defined configuration information.
 
-Use `ldas_setup` to create sample files that contain descriptions of  the configuration parameters.  
+Use `ldas_setup` to create sample files that contain descriptions of  the configuration parameters.
 
 For details, see [README.md](https://github.com/GEOS-ESM/GEOSldas/blob/main/README.md).
 
 
 ---
 ### `LDASsa_SPECIAL_inputs_*.nml`
- 
-Optional Fortran namelist (nml) files that contain additional user-defined configuration information for ensemble perturbations and data assimilation.  
 
-The path to these nml files is specified in the `"exeinp"` file. 
+Optional Fortran namelist (nml) files that contain additional user-defined configuration information for ensemble perturbations and data assimilation.
 
-During `ldas_setup`, **default** configuration files (`LDASsa_DEFAULT_inputs_*.nml`) are created in the experiment `./run` directory.  These files contain a complete set of the available configuration parameters with descriptions.  The default configuration is a single-member land model simulation without perturbations and without data assimilation. The "DEFAULT" nml files must be present in the experiment `./run` directory and should not be edited.  
+The path to these nml files is specified in the `"exeinp"` file.
+
+During `ldas_setup`, **default** configuration files (`LDASsa_DEFAULT_inputs_*.nml`) are created in the experiment `./run` directory.  These files contain a complete set of the available configuration parameters with descriptions.  The default configuration is a single-member land model simulation without perturbations and without data assimilation. The "DEFAULT" nml files must be present in the experiment `./run` directory and should not be edited.
 
 To run GEOSldas with ensemble perturbations and data assimilation, users must create "SPECIAL" nml files (`LDASsa_SPECIAL_inputs_*.nml`) that contain the desired settings of the parameters.  Only the nml parameters that are different from those in the "DEFAULT" files need to be included in the "SPECIAL" nml files.
 
 Parameters are grouped into three separate nml files:
-* `ensprop` : Perturbations applied during the land model ensemble propagation step. 
+* `ensprop` : Perturbations applied during the land model ensemble propagation step.
 * `ensupd`  : Assimilated observations and parameters of the ensemble-based analysis.
 * `catbias` : Dynamic bias estimation (defunct).
 
@@ -50,11 +50,11 @@ If an experiment did not complete successfully (e.g., because of a system downti
 
 Contains parameters needed to run the main GEOSldas executable (`GEOSldas.x`), including information on land model configuration, version, grid, time steps, processor layout.
 
-Created in the experiment `./run` directory during `ldas_setup`.  Merges information from the `"exeinp"` and `"batinp"` files and the resource parameter template files for GEOSldas, i.e., [GEOSldas_LDAS.rc](https://github.com/GEOS-ESM/GEOSldas/blob/main/src/Applications/LDAS_App/GEOSldas_LDAS.rc) and  [GEOS_SurfaceGridComp.rc](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/main/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/GEOS_SurfaceGridComp.rc) (from the linked GEOSgcm_GridComp repository).
+Created in the experiment `./run` directory during `ldas_setup`.  Merges information from the `"exeinp"` and `"batinp"` files and the resource parameter template files for GEOSldas, i.e., [GEOSldas_LDAS.rc](https://github.com/GEOS-ESM/GEOSldas/blob/main/src/Components/GEOSldas_GridComp/GEOSldas_App/GEOSldas_LDAS.rc) and  [GEOS_SurfaceGridComp.rc](https://github.com/GEOS-ESM/GEOSgcm_GridComp/blob/main/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Shared/GEOS_SurfaceGridComp.rc) (from the linked GEOSgcm_GridComp repository).
 
 **Users are generally discouraged from editing** `LDAS.rc`.  For example, editing `MET_PATH` does not change the associated directory link.  Instead, users should run `ldas_setup` to create `LDAS.rc`.
 
-`LDAS.rc` can be useful as a compact overview of the experiment configuration. 
+`LDAS.rc` can be useful as a compact overview of the experiment configuration.
 
 ---
 ### `lenkf.j`
