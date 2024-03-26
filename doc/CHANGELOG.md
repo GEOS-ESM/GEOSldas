@@ -38,7 +38,7 @@ Overview of Git Releases:
 [v18.0.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.1) - 2024-03-27
 ------------------------------
 
-- 0-diff vs. v18.0.0
+- 0-diff vs. v18.0.0.
 - Essentially identical to v18.0.0 except for revised repository structure after split into two repositories: [GEOSldas](https://github.com/GEOS-ESM/GEOSldas) and [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp) ([PR #748](https://github.com/GEOS-ESM/GEOSldas/pull/748), [PR #750](https://github.com/GEOS-ESM/GEOSldas/pull/750)).
 
 - Minor changes:
