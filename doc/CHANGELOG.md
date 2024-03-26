@@ -33,6 +33,19 @@ This README file contains the history of stable GEOSldas Releases in Git, follow
 Overview of Git Releases:
 ============================
 
+[v18.0.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.1) - 2024-03-26
+------------------------------
+
+- 0-diff vs. v18.0.0
+
+- Notes:
+  - Essentially identical to v18.0.0 but in revised GEOSldas + [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp) repository structure ([PR #748](https://github.com/GEOS-ESM/GEOSldas/pull/748), [PR #750](https://github.com/GEOS-ESM/GEOSldas/pull/750)).
+
+- Minor changes:
+  - Support for running "sbatch [FULL_PATH/]lenkf.j" from any directory ([PR #745](https://github.com/GEOS-ESM/GEOSldas/pull/745)).
+
+
+------------------------------
 [v18.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.0) - 2024-03-22
 ------------------------------
 
