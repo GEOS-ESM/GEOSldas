@@ -27,19 +27,19 @@ this period, LDASsa and GEOSldas development continued in parallel.
 
 In 2019, GEOS LDAS version control transferred from CVS to Git.
 
+In March 2024, GEOSldas was split into two repositories, the GEOSldas fixture and the GEOSldas_GridComp.
+
 This README file contains the history of stable GEOSldas Releases in Git, followed by older, CVS LDASsa tags and GEOSldas versions and change logs.
 
 
 Overview of Git Releases:
 ============================
 
-[v18.0.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.1) - 2024-03-26
+[v18.0.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.1) - 2024-03-27
 ------------------------------
 
 - 0-diff vs. v18.0.0
-
-- Notes:
-  - Essentially identical to v18.0.0 but in revised GEOSldas + [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp) repository structure ([PR #748](https://github.com/GEOS-ESM/GEOSldas/pull/748), [PR #750](https://github.com/GEOS-ESM/GEOSldas/pull/750)).
+- Essentially identical to v18.0.0 except for revised repository structure after split into two repositories: [GEOSldas](https://github.com/GEOS-ESM/GEOSldas) and [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp) ([PR #748](https://github.com/GEOS-ESM/GEOSldas/pull/748), [PR #750](https://github.com/GEOS-ESM/GEOSldas/pull/750)).
 
 - Minor changes:
   - Support for running "sbatch [FULL_PATH/]lenkf.j" from any directory ([PR #745](https://github.com/GEOS-ESM/GEOSldas/pull/745)).

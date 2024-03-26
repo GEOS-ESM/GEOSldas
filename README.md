@@ -4,7 +4,9 @@ This document explains how to build, set up, and run the GEOS land modeling and 
 
 ## Restructuring of GEOSldas repository
 
-On 26 March 2024, the GEOSldas repository was restructured and split into two repositories.  The GEOSldas source code was moved from the present repository, the GEOSldas fixture, into a new repository, the [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp).  The present repository now imports the [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp) as an external repository.  Note that in the [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp), the "Applications" directory `src/Applications/LDAS_App` moved to `src/Components/GEOSldas_GridComp/GEOSldas_App`.
+On 26 March 2024, the GEOSldas repository was restructured and split into two repositories.  The GEOSldas source code was moved from the GEOSldas fixture into a new repository, the [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp), which is now imported into the fixture as an external repository.  
+
+Note that the [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp) includes the "Applications" directory [`./GEOSldas_App`](https://github.com/GEOS-ESM/GEOSldas_GridComp/tree/develop/GEOSldas_App).
 
 
 ## How to Build GEOSldas
