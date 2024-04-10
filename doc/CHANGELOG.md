@@ -35,6 +35,17 @@ This README file contains the history of stable GEOSldas Releases in Git, follow
 Overview of Git Releases:
 ============================
 
+
+[v18.0.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.2) - 2024-04-10
+------------------------------
+
+- 0-diff vs. GEOSldas v18.0.1.
+
+- Bug fix:
+  - In ldas_setup, fixed submission of job for remapping of restarts ([GEOSldas_GridComp PR #17](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/17)).
+
+
+------------------------------
 [v18.0.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.1) - 2024-03-27
 ------------------------------
 
