@@ -1,6 +1,6 @@
 /GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp
 /GEOSagcm_GridComp/GEOSphysics_GridComp/CMakeLists.txt
-/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSlandice_GridComp
+!/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSlake_GridComp
 !/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOSsaltwater_GridComp
 !/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/GEOS_SurfaceGridComp.F90
 
