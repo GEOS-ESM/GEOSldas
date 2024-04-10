@@ -42,7 +42,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  tag: v1.0.0
+  tag: v1.0.1
 
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSldas_GridComp/@GEOSgcm_GridComp
