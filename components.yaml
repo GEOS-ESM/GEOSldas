@@ -49,8 +49,8 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
-  develop: develop
+  branch: feature/stefanocasirati/irrigation-splitrepofix
+  develop: feature/stefanocasirati/irrigation-splitrepofix
 
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSldas_GridComp/@GEOSgcm_GridComp
