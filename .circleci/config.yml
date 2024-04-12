@@ -21,4 +21,6 @@ workflows:
           #baselibs_version: *baselibs_version
           repo: GEOSldas
           mepodevelop: false
+          # This is needed due to the LDAS BRIDGE workflow
+          checkout_if_exists: false
           persist_workspace: false # Needs to be true to run fv3/gcm experiment, costs extra
