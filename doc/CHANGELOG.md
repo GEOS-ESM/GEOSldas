@@ -36,7 +36,7 @@ Overview of GEOSldas Git Releases:
 ============================
 
 
-[v18.0.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.3) - 2024-04-11
+[v18.0.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.3) - 2024-04-12
 ------------------------------
 
 - 0-diff vs. GEOSldas v18.0.2.
@@ -45,6 +45,9 @@ Overview of GEOSldas Git Releases:
 
 - Bug fix:
   - Fixed state increment array referencing in update_type=13 ([GEOSldas_GridComp PR #26](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/26)).
+
+- Infrastructure:
+  - Fixed CI for LDAS workflow ([PR #768](https://github.com/GEOS-ESM/GEOSldas/pull/768), [GEOSldas_GridComp PR #34](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/34)).
 
 - Other minor changes:
   - Moved external `@GEOSgcm_GridComp` repository to `GEOSldas/src/Components/` for consistency with directory structure of GEOSgcm and GEOSadas ([GEOSldas_GridComp PR #27](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/27), [GEOSldas_GridComp PR #30](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/30)).
