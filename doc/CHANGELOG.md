@@ -32,14 +32,34 @@ In March 2024, GEOSldas was split into two repositories, the GEOSldas fixture an
 This README file contains the history of stable GEOSldas Releases in Git, followed by older, CVS LDASsa tags and GEOSldas versions and change logs.
 
 
-Overview of Git Releases:
+Overview of GEOSldas Git Releases:
 ============================
 
 
+[v18.0.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.3) - 2024-04-12
+------------------------------
+
+- 0-diff vs. GEOSldas v18.0.2.
+
+- Uses GEOSldas_GridComp v1.0.2.
+
+- Bug fix:
+  - Fixed state increment array referencing in update_type=13 ([GEOSldas_GridComp PR #26](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/26)).
+
+- Infrastructure:
+  - Fixed CI for LDAS workflow ([PR #768](https://github.com/GEOS-ESM/GEOSldas/pull/768), [GEOSldas_GridComp PR #34](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/34)).
+
+- Other minor changes:
+  - Moved external `@GEOSgcm_GridComp` repository to `GEOSldas/src/Components/` for consistency with directory structure of GEOSgcm and GEOSadas ([GEOSldas_GridComp PR #27](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/27), [GEOSldas_GridComp PR #30](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/30)).
+  - Changed lenkf.j.template to python string ([GEOSldas_GridComp PR #16](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/16)).
+
+------------------------------
 [v18.0.2](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.2) - 2024-04-10
 ------------------------------
 
 - 0-diff vs. GEOSldas v18.0.1.
+
+- Uses GEOSldas_GridComp v1.0.1.
 
 - Bug fix:
   - In ldas_setup, fixed submission of job for remapping of restarts ([GEOSldas_GridComp PR #17](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/17)).
@@ -50,7 +70,12 @@ Overview of Git Releases:
 ------------------------------
 
 - 0-diff vs. v18.0.0.
+
+- Uses GEOSldas_GridComp v1.0.0.
+
 - Essentially identical to v18.0.0 except for revised repository structure after split into two repositories: [GEOSldas](https://github.com/GEOS-ESM/GEOSldas) and [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp) ([PR #748](https://github.com/GEOS-ESM/GEOSldas/pull/748), [PR #750](https://github.com/GEOS-ESM/GEOSldas/pull/750)).
+
+
 
 - Minor changes:
   - Support for running "sbatch [FULL_PATH/]lenkf.j" from any directory ([PR #745](https://github.com/GEOS-ESM/GEOSldas/pull/745)).
