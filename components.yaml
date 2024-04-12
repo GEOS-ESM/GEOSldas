@@ -45,7 +45,7 @@ GEOSldas_GridComp:
   tag: v1.0.2
 
 GEOSgcm_GridComp:
-  local: ./src/Components/@GEOSldas_GridComp/@GEOSgcm_GridComp
+  local: ./src/Components/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
   tag: v2.5.2
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
