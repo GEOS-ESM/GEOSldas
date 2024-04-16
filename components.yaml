@@ -1,6 +1,6 @@
 GEOSldas:
   fixture: true
-  develop: develop
+  develop: feature/stefanocasirati/irrigation-splitrepofix
 
 env:
   local: ./@env
