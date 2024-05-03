@@ -49,7 +49,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: feature/wjiang/rm_restart_options
   develop: develop
 
 GEOSgcm_GridComp:
