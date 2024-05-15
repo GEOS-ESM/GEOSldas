@@ -2,9 +2,14 @@
 
 This document explains how to build, set up, and run the GEOS land modeling and data assimilation system (`GEOSldas`) on the most common systems used by GMAO.  Additional steps are needed on other systems.
 
+## Note: GEOSldas Repository Structure Revised (March 2024)
+
+On 26 March 2024, GEOSldas was restructured and split into two repositories.  Specifically, the GEOSldas source code was moved from the GEOSldas fixture into a new repository, the [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp), which is now imported into the fixture as an external repository.  Note that the [GEOSldas_GridComp](https://github.com/GEOS-ESM/GEOSldas_GridComp) includes the "Applications" directory [`./GEOSldas_App`](https://github.com/GEOS-ESM/GEOSldas_GridComp/tree/develop/GEOSldas_App).
+
+
 ## How to Build GEOSldas
 
-### Step 1: Load the Build Modules  
+### Step 1: Load the Build Modules
 
 Load the `GEOSenv` module provided by the GMAO Software Infrastructure team.  It contains the latest `git`, `CMake`, and `mepo` modules and must be loaded in any interactive window that is used to check out and build the model.
 
@@ -13,22 +18,24 @@ module use -a (path)
 module load GEOSenv
 ```
 
-where `(path)` depends on the computer and operating system: 
+where `(path)` depends on the computing system; at NCCS, `(path)` also depends on the operating system (SLES12 on Skylake and Cascade Lake nodes; SLES15 on Milan nodes, as of Jan. 2024):
 
 | System        | Path                                              |
 | ------------- |---------------------------------------------------|
-| NCCS          | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
+| NCCS Discover | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
+|               | `/discover/swdev/gmao_SIteam/modulefiles-SLES15`  |
 | NAS           | `/nobackup/gmao_SIteam/modulefiles`               |
 | GMAO desktops | `/ford1/share/gmao_SIteam/modulefiles`            |
 
+Step 1 can be coded into the user's shell configuration file (e.g., `.bashrc` or `.cshrc`). See the [GEOSgcm Wiki](https://github.com/GEOS-ESM/GEOSgcm/wiki/) for sample shell configuration files.
 
 ### Step 2: Obtain the Model
 
-For development work, clone the _entire_ repository and use the `develop` branch as your starting point (equivalent to the `UNSTABLE` tag in the old CVS repository):
+For development work, clone the _entire_ repository and use the `develop` branch as your starting point:
 ```
 git clone -b develop git@github.com:GEOS-ESM/GEOSldas.git
 ```
-For science runs, you can also obtain a specific tag or branch _only_ (as opposed to the _entire_ repository), e.g.: 
+For science runs, you can also obtain a specific tag or branch _only_ (as opposed to the _entire_ repository), e.g.:
 ```
 git clone -b v17.9.1 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 ```
@@ -36,28 +43,35 @@ git clone -b v17.9.1 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 
 ### Step 3: Build the Model
 
-To build the model in a single step, do the following:
+To build the model in a single step, do the following from a head node:
 ```
 cd ./GEOSldas
 parallel_build.csh
-``` 
-from a head node. Doing so will check out all the external repositories of the model (albeit only on the first run, [see subsection on mepo below](#mepo)!) and build the model. When done, the resulting model build will be found in `build/` and the installation will be found in `install/`, with setup scripts like `ldas_setup` in `install/bin`. 
+```
+This checks out all the external repositories of the model (albeit only on the first run, [see subsection on mepo below](#mepo)!) and then builds and installs the model. 
 
-To obtain a build that is suitable for debugging, use `parallel_build.csh -debug`, which will build in `build-Debug/` and install in `install-Debug/`.  There is also an option for aggressive  optimization.  For details, see [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
+At **NCCS**, the default is to build GEOSldas on SLES12 (Skylake or Cascade Lake nodes); to build GEOSldas on SLES15 (Milan nodes), use `parallel_build.csh -mil`.
 
-See below for how to build the model in multiple steps.
+The resulting model build is found in `build[-SLESxx]/`, and the installation is found in `install[-SLESxx]/`, with setup scripts like `ldas_setup` in `install[-SLESxx]/bin`.
+
+To obtain a build that is suitable for debugging, use `parallel_build.csh -debug`, which builds in `build-Debug[-SLESxx]/` and installs in `install-Debug[-SLESxx]/`.  There is also an option for aggressive  optimization.  For details, see the [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
+
+Instructions for building the model in multiple steps are provided below.
 
 ---
 
 ## How to Set Up (Configure) and Run GEOSldas
 
-a) Set up the job as follows:
+
+a) At **NCCS**, GEOSldas must be built, configured, and run on the same operating system. To run GEOSldas on Milan nodes (SLES15), start with `ssh discover-mil`.
+
+b) Set up the job as follows:
 
 ```
-cd (build_path)/GEOSldas/install/bin
+cd (build_path)/GEOSldas/install[-SLESxx]/bin
 source g5_modules                        [for bash or zsh: source g5_modules.[z]sh]
 ./ldas_setup setup [-v]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
-```  
+```
 
 where
 
@@ -70,19 +84,19 @@ where
 
 The three arguments for `ldas_setup` are positional and must be ordered as indicated above.
 
-The latter two files contain essential information about the experiment setup. 
+The latter two files contain essential information about the experiment setup.
 Sample files can be generated as follows:
-```        
+```
 ldas_setup sample --exeinp > YOUR_exeinp.txt
 ldas_setup sample --batinp > YOUR_batinp.txt
 ```
 
-Edit these sample files following the examples and comments within the sample files.  
+Edit these sample files following the examples and comments within the sample files.
 
 The ldas_setup script creates a run directory and other directories at:
 `[exp_path]/[exp_name]`
 
-Configuration input files will be created at:
+Configuration input files are created at:
 `[exp_path]/[exp_name]/run`
 
 For more options and documentation, use any of the following:
@@ -92,16 +106,19 @@ ldas_setup sample -h
 ldas_setup setup  -h
 ```
 
-b) Configure the experiment output by editing the ```./run/HISTORY.rc``` file as needed.
+c) Configure the experiment output by editing the ```./run/HISTORY.rc``` file as needed.
 
-c) Run the job:
+d) Run the job:
 ```
 cd [exp_path]/[exp_name]/run/
 sbatch lenkf.j
 ```
 
-For more information, see the files in `./doc/`.
-Moreover, descriptions of the configuration (resource) parameters are included in the sample "exeinp" and "batinp" files that can be generated using `ldas_setup`.
+At **NCCS**, the appropriate SLURM directive `#SBATCH --constraint=[xxx]` is automatically added into `lenkf.j` depending on the operating system.
+
+For more information, see the files in `./doc/`. Moreover, descriptions of the configuration (resource) parameters are included in the sample "exeinp" and "batinp" files that can be generated using `ldas_setup`.
+
+
 
 -----------------------------------------------------------------------------------
 
@@ -138,7 +155,6 @@ We currently do not allow in-source builds of GEOSldas. So we must make a direct
 ```
 mkdir build
 ```
-The advantages of this is that you can build both a Debug and Release version with the same clone if desired.
 
 #### Run CMake
 CMake generates the Makefiles needed to build the model.
@@ -146,7 +162,7 @@ CMake generates the Makefiles needed to build the model.
 cd build
 cmake .. -DBASEDIR=$BASEDIR/Linux -DCMAKE_Fortran_COMPILER=ifort -DCMAKE_INSTALL_PREFIX=../install
 ```
-This will install to a directory parallel to your `build` directory. If you prefer to install elsewhere change the path in:
+This installs into a directory parallel to your `build` directory. If you prefer to install elsewhere change the path in:
 ```
 -DCMAKE_INSTALL_PREFIX=<path>
 ```
@@ -156,7 +172,7 @@ and CMake will install there.
 ```
 make -j6 install
 ```
-If you are at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.  
+If you are at NCCS, you **should** run `make -j6 install` on an interactive _compute_ node.
 
 
 ## Contributing
