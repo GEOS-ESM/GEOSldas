@@ -49,7 +49,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: feature/jkolassa_cnclm51
   develop: develop
 
 GEOSgcm_GridComp:
