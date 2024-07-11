@@ -14,11 +14,11 @@
 #                                                          #
 ############################################################
 
-EXP_ID: 0
+EXP_ID: 29
 EXP_DOMAIN:SMAP_EASEv2_M36
 NUM_LDAS_ENSEMBLE: 1
-BEG_DATE: 19960101 000000
-END_DATE: 20210101 000000
+BEG_DATE: 19920101 000000
+END_DATE: 20150101 000000
 
 ############################################################
 #                                                          #
@@ -164,7 +164,7 @@ LSM_CHOICE: 3
 #      (May leave blank.)
 #
 # EXCLUDE_FILE: '' 
- INCLUDE_FILE: /shared/models/GEOSldas_pso_g1_ksat/GEOSldas/src/Applications/LDAS_App/include
+ INCLUDE_FILE: /shared/models/GEOSldas_pso_g1_ksat_2/GEOSldas/src/Applications/LDAS_App/include
 
 
 # ---- Surface meteorological forcing: Horizonal interpolation 
@@ -259,7 +259,7 @@ LDAS_logit: YES
 #      User-defined path and filename of output (HISTORY) specification file.
 #      If empty, ldas_setup will generate a default HISTORY.rc file.
 #
-HISTRC_FILE: /shared/models/GEOSldas_pso_g1_ksat/GEOSldas/src/Applications/LDAS_App/HISTORY.rc
+HISTRC_FILE: /shared/models/GEOSldas_pso_g1_ksat_2/GEOSldas/src/Applications/LDAS_App/HISTORY.rc
 
 # ---- Concatenate sub-daily nc4 files into daily nc4 files and write monthly-mean output?
 #

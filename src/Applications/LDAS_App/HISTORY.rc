@@ -10,10 +10,10 @@
 # Must edit 'EXPID' manually if HISTORY file is re-used without going
 #  through "ldas_setup".
 #
-EXPID:  0
+EXPID:  29
 
 COLLECTIONS:
-            'tavg24_1d_lfs_Nt'
+#            'tavg24_1d_lfs_Nt'
             'tavg24_1d_lnd_Nt'
 #                'inst1_1d_lnr_Nt'
 #                'catch_progn_incr'

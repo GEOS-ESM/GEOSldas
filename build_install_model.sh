@@ -3,16 +3,16 @@
 
 # to be set by the user
 # what is the directory where the model information is stored
-model_dir_gen="/shared/models/GEOSldas_pso_g1_ksat/GEOSldas"
+model_dir_gen="/shared/models/GEOSldas_pso_g1_ksat_2/GEOSldas"
 # what is the directory where we should place the experiment
 exp_dir_gen="/lustre/catchment/exps"
 # what is the name of this experiment
-exp_name="GEOSldas_CN45_med_default_pft_g1_1996_2020_camels"
+exp_name="GEOSldas_CN45_pso_g1_a0_a1_et_strm_camels_spin19921994_test19952014_mae"
 # where is the list of tiles to run?
-include_name="/shared/pso/step_1_choose_tiles/outputs/include"
+include_name="/shared/pso/step_1x_choose_tiles_large/outputs/include"
 # how many particles are we running for the pso?
 # if want just a normal run, make this 1
-num_members=1
+num_members=30
 # where is the history.rc file?
 hist_rc_loc="${model_dir_gen}/src/Applications/LDAS_App/HISTORY.rc"
 
@@ -70,8 +70,9 @@ do
   echo "$c" > "${exp_dir}/${c}/run/ens_num.txt"
   # add the correct partition to lenkf.j
   sed -i '18 i #SBATCH --partition=catch-m6a4xl-demand' "${exp_dir}/${c}/run/lenkf.j"
+  sed -i '18 i #SBATCH --mail-type=END' "${exp_dir}/${c}/run/lenkf.j"
+  sed -i '18 i #SBATCH --mail-user=trobinet@stanford.edu' "${exp_dir}/${c}/run/lenkf.j"
   touch "${exp_dir}/${c}/scratch/GEOSldas_log_txt"
 done
-#tail -f "${exp_dir}/0/scratch/GEOSldas_log_txt"
-# NOTE: have to sbatch everything manually on AWS; doesn't work from compute
-# node
+# copy start_runs.sh to make starting runs with a lot of particles easier
+cp "${model_dir_gen}/start_runs.sh" $exp_dir

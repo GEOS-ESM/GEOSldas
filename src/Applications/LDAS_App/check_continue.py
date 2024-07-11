@@ -67,7 +67,7 @@ def main(check_code,exp_dir,num_mems):
 if __name__ == '__main__':
      check_code = int(sys.argv[1])
      exp_dir  = sys.argv[2]
-     num_mems = 1
+     num_mems = 30
      #print(check_code)
      #print(exp_dir)
      main(check_code,exp_dir,num_mems)

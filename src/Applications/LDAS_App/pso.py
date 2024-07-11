@@ -11,6 +11,7 @@ import shutil
 from dateutil.relativedelta import relativedelta
 import matplotlib.pyplot as plt
 import pickle as pkl
+from scipy.stats import qmc
 
 class pso:
     def __init__(self,params):
@@ -38,7 +39,7 @@ class pso:
         exp_dir = self.params['exp_dir']
         num_particles = self.params['num_particles']
         num_params = self.params['num_params']
-        param_range = self.params['param_range']
+        param_range = np.array(self.params['param_range'])
         load_previous_pso = self.params['load_previous_pso']
         save_path = self.params['save_path']
         # check to see if a position_vals.csv file exists
@@ -50,22 +51,19 @@ class pso:
             # if we're not going to load from a previous PSO experiment, let's
             # initialize everything
             if load_previous_pso == False:
-                # let's initialize particles as randome within the range
-                # and let's intialize velocity as a random number not to exceed
-                # 1/10
-                # of the range of the particle
-                positions = np.zeros((num_particles,num_params))
-                velocities = np.zeros((num_particles,num_params))
-                # let's do this for each particle
-                for p in range(num_particles):
-                    # let's do this for each parameter in this particle
-                    for r,ran in enumerate(param_range):
-                        positions[p,r] = random.uniform(ran[0],ran[1])
-                        full_range = ran[1] - ran[0]
-                        acceptable_range = full_range/10
-                        velocities[p,r] = random.uniform(
-                            -acceptable_range,acceptable_range
-                        )
+                # let's initialize positions with latin hypercube
+                # also initialize velocities with latin hypercube, but over a
+                # much much smaller range
+                sampler = qmc.LatinHypercube(d=num_params)
+                sample = sampler.random(n=num_particles)
+                l_bounds_pos = param_range[:,0]
+                u_bounds_pos = param_range[:,1]
+                l_bounds_vel = l_bounds_pos/20
+                u_bounds_vel = u_bounds_pos/20
+                positions = qmc.scale(sample,l_bounds_pos,u_bounds_pos)
+                positions = np.array(positions)
+                velocities = qmc.scale(sample,l_bounds_vel,u_bounds_vel)
+                velocities = np.array(velocities)
                 # we need local best positions, which at this point are each
                 # individual's best positions
                 local_best_positions = positions
@@ -345,15 +343,15 @@ class pso:
         # determine value to return to lenkf.j
         if (is_converged == 1):
             convergence = 0
-        elif (is_converged == 0 and (num_iterations <= max_iterations)
+        elif (is_converged == 0 and (num_iterations < max_iterations)
               and (num_without_restart < restart_every)):
             convergence = 1
-        elif (is_converged == 0 and (num_iterations <= max_iterations)
+        elif (is_converged == 0 and (num_iterations < max_iterations)
               and (num_without_restart >= restart_every)):
             convergence = 2
             iteration_track['num_without_restart'] = 0
             iteration_track.to_csv(exp_dir+'/run/iteration_track.csv')
-        elif (is_converged == 0 and (num_iterations > max_iterations)):
+        elif (is_converged == 0 and (num_iterations >= max_iterations)):
             convergence = 3
         # add the information that we are interested in to all_info for
         # safekeeping
@@ -510,7 +508,7 @@ class pso:
         # make this a numpy array
         et_truth_np = np.array(et_truth)
         # get number of steps and pixels from ET truth dataset
-        dummy,model_num_pixels = np.shape(et_truth_np)
+        model_num_steps,model_num_pixels = np.shape(et_truth_np)
         # were also going to need the list of all of the pixels that we are
         # running
         tiles = pd.read_csv(all_pix_fname,header=None)
@@ -519,7 +517,6 @@ class pso:
         # make a nice np array
         tiles = tiles.T
         all_tiles = tiles[0]
-
         # get the truth information
         stream_truth = pd.read_csv(stream_truth_fname)
         # set the index and isolate only times that we want
@@ -532,8 +529,6 @@ class pso:
         # get number of catchments and number of steps from catchment truth
         # dataset
         stream_num_steps,stream_num_hucs = np.shape(stream_truth_np)
-        model_num_steps = stream_num_steps
-        this_part_strm_huc = np.zeros((stream_num_steps,stream_num_hucs))
         # get model output and calculate rmse for each particle
         for part in range(num_particles):
             print(part)
@@ -544,6 +539,7 @@ class pso:
                 this_part_stream_day = np.zeros(
                     (model_num_steps,model_num_pixels)
                 )
+                this_part_strm_huc = np.zeros((model_num_steps,stream_num_hucs))
             # set the base dir where the model output is stored
             base_dir = os.path.join(
                 exp_dir,'../',str(part),'output/SMAP_EASEv2_M36/cat/ens0000'
@@ -585,7 +581,7 @@ class pso:
                         intersection_info = pkl.load(f)
                 curr += datetime.timedelta(days=1)
             if streamflow_constraint:
-                # now let's average the model streamflow to monthly resolution
+                # get our streamflow data at the right resolution
                 # first let's get the watersheds that we're working with here
                 watersheds_str = list(intersection_info.keys())
                 # get the list of watersheds as integers
@@ -618,38 +614,80 @@ class pso:
                     )
                     this_part_strm_huc[:,w] = this_wat_strm_avg
             if et_constraint:
-                usable_data_idx = np.where(
-                    (this_part_et > 0) &
-                    (np.isnan(et_truth_np) == False)
-                )
-                this_et_obj = np.sqrt(
-                    (
-                        (
-                            this_part_et[usable_data_idx] -
-                            et_truth_np[usable_data_idx]
-                        )**2
-                    ).mean()
-                )
-                # now we need to normalize this by average et in fluxcom
-                # dataset
-                avg_fluxcom_et  = np.mean(et_truth_np[usable_data_idx])
-                this_et_obj_norm = this_et_obj/avg_fluxcom_et
+                # loop over each pixel
+                # calculate the ubrmse
+                # normalize that by the average observation and keep track
+                # set the final ubrmse to be the average of all normalized
+                et_mae_norm = np.zeros(model_num_pixels)
+                for s in range(model_num_pixels):
+                    this_pred_et = this_part_et[:,s]
+                    this_truth_et = et_truth_np[:,s]
+                    neg_idx = np.where(this_pred_et < 0)
+                    this_pred_et[neg_idx] = 0
+                    usable_data_idx = np.where(
+                        np.isnan(this_truth_et) == False
+                    )
+                    if np.shape(usable_data_idx)[1] == 0:
+                        this_mae_et_norm = np.nan
+                    else:
+                        this_pred_et = this_pred_et[usable_data_idx]
+                        this_truth_et = this_truth_et[usable_data_idx]
+                        this_avg_truth = np.mean(this_truth_et)
+                        this_mae_et = np.abs(
+                            this_pred_et - this_truth_et
+                        )
+                        this_mae_et = np.mean(this_mae_et)
+                        this_mae_et_norm = this_mae_et/this_avg_truth
+                    et_mae_norm[s] = this_mae_et_norm
+                this_et_obj = np.nanmean(et_mae_norm)
+                this_et_obj_norm = this_et_obj
             if streamflow_constraint:
-                usable_data_idx = np.where(
-                    np.isnan(this_part_strm_huc) == False
+                # need to convert to yearly
+                start_idx = 0
+                yearly_idx = 0
+                yearly_model_strm = np.zeros(
+                    (stream_num_steps,stream_num_hucs)
                 )
-                this_strm_obj = np.sqrt(
-                    (
-                        (
-                            this_part_strm_huc[usable_data_idx] -
-                            stream_truth_np[usable_data_idx]
-                        )**2
-                    ).mean()
-                )
-                # and now we need to normalize by average streamflow for
-                # waterwatch
-                avg_waterwatch_strm = np.mean(stream_truth_np[usable_data_idx])
-                this_strm_obj_norm = this_strm_obj/avg_waterwatch_strm
+                curr = copy.deepcopy(self.params['start'])
+                while curr < self.params['end']:
+                    next_year = curr + relativedelta(years=1)
+                    diff = next_year - curr
+                    diff_days = diff.days
+                    end_idx = start_idx + diff_days + 1
+                    this_year_vals = this_part_strm_huc[
+                        start_idx:end_idx,:
+                    ]
+                    this_year_vals_avg = np.mean(this_year_vals,axis=0)
+                    yearly_model_strm[yearly_idx,:] = this_year_vals_avg
+                    curr += relativedelta(years=1)
+                    start_idx = copy.deepcopy(end_idx)
+                    yearly_idx += 1
+                # now calculate objective
+                # loop over each watershed
+                # calculate the rmse
+                # normalize by the average observation at the watershed
+                strm_mae_norm = np.zeros(stream_num_hucs)
+                #strm_rmse_norm = np.zeros(stream_num_hucs)
+                # set the final rmse to be the average of all the normalized
+                for s in range(stream_num_hucs):
+                    this_pred_strm = yearly_model_strm[:,s]
+                    this_truth_strm = stream_truth_np[:,s]
+                    usable_data_idx = np.where(
+                        np.isnan(this_truth_strm) == False
+                    )
+                    this_pred_strm = this_pred_strm[usable_data_idx]
+                    this_truth_strm = this_truth_strm[usable_data_idx]
+                    this_avg_truth = np.mean(this_truth_strm)
+                    this_strm_mae = np.mean(
+                        np.abs(
+                            this_pred_strm -
+                            this_truth_strm
+                        )
+                    )
+                    this_strm_mae_norm = this_strm_mae/this_avg_truth
+                    strm_mae_norm[s] = this_strm_mae_norm
+                this_strm_obj = np.nanmean(strm_mae_norm)
+                this_strm_obj_norm = this_strm_obj
             # now let's calculate the final objective value for this particle
             # based off of what we are using as constraints.
             # if only using ET or only use streamflow as constraints, then the
@@ -669,37 +707,6 @@ class pso:
                 strm_obj_out[part] = this_strm_obj
                 strm_obj_out_norm[part] = this_strm_obj_norm
             if et_constraint and streamflow_constraint:
-                # get where we will save or load the normalize values from
-                #et_norm_fname = os.path.join(
-                #    exp_dir,'../','et_norm.csv'
-                #)
-                #stream_norm_fname = os.path.join(
-                #    exp_dir,'../','stream_norm.csv'
-                #)
-                #if (num_iterations - spinup_iterations) == 1 and part == 0:
-                #    # get the values we will use to normalize
-                #    et_norm = this_et_obj
-                #    stream_norm = this_strm_obj
-                #    # save these so they can be loaded by future particles and
-                #    # iterations
-                #    # for et norm
-                #    with open(et_norm_fname,'w') as f:
-                #        f.write('{}'.format(et_norm))
-                #    # for streamflow norm
-                #    with open(stream_norm_fname,'w') as f:
-                #        f.write('{}'.format(stream_norm))
-                #else:
-                #    # load up the normalized values
-                #    with open(et_norm_fname,'r') as f:
-                #        et_norm = f.read()
-                #    et_norm = float(et_norm)
-                #    with open(stream_norm_fname,'r') as f:
-                #        stream_norm = f.read()
-                #    stream_norm = float(stream_norm)
-                ## normalize with these values
-                #et_obj_norm = this_et_obj/et_norm
-                #stream_obj_norm = this_strm_obj/stream_norm
-                # add them together so that we get the final obj
                 et_weight = self.params['obj_weights'][0]
                 strm_weight = self.params['obj_weights'][1]
                 this_tot_obj = this_et_obj + this_strm_obj
@@ -713,6 +720,9 @@ class pso:
                 et_obj_out_norm[part] = this_et_obj_norm
                 strm_obj_out[part] = this_strm_obj
                 strm_obj_out_norm[part] = this_strm_obj_norm
+            print(et_obj_out)
+            print(strm_obj_out)
+            print(obj_out)
         # return all objective values
         out_vals = [
             obj_out,obj_out_norm,et_obj_out,et_obj_out_norm,

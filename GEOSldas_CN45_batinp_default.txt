@@ -7,7 +7,7 @@
 #
 #rm_name                 : SLURM
 account                 : s2641
-walltime                : 12:00:00
+walltime                : 24:00:00
 ntasks_model            : 8
 ntasks-per-node         : 8
 
