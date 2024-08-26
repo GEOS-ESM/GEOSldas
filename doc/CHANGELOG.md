@@ -85,7 +85,7 @@ Overview of GEOSldas Git Releases:
 [v18.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.0) - 2024-03-22
 ------------------------------
 
-- 0-diff vs. v17.13.1 except for MAPL bug fix ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)).
+- 0-diff vs. v17.13.1 except for MAPL bug fix ([PR #734](https://github.com/GEOS-ESM/GEOSldas/pull/734)). Simulations with data assimilation are **not** 0-diff between SLES12 vs. SLES15 on NCCS/Discover ([PR #693](https://github.com/GEOS-ESM/GEOSldas/pull/693)).
 
 - Notes:
   - Release uses original GEOSldas repository structure.  Next release is expected to use a revised repository structure.
