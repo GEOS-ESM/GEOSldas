@@ -36,22 +36,14 @@ GMAO_Shared:
 GEOS_Util:
   local: ./src/Shared/@GMAO_Shared/@GEOS_Util
   remote: ../GEOS_Util.git
-<<<<<<< HEAD
   branch: release/MAPL-v3
-=======
-  tag: v2.1.2
->>>>>>> develop
   sparse: ./config/GEOS_Util.sparse
   develop: main
 
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-<<<<<<< HEAD
   branch: release/MAPL-v3
-=======
-  tag: v2.47.1
->>>>>>> develop
   develop: develop
 
 GEOSldas_GridComp:
