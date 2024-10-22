@@ -45,11 +45,7 @@ GEOS_Util:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-<<<<<<< HEAD
   branch: release/MAPL-v3
-=======
-  tag: v2.50.1
->>>>>>> develop
   develop: develop
 
 GEOSldas_GridComp:
