@@ -51,7 +51,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: feature/mathomp4/add-impi-support-ldas
+  branch: develop
   develop: develop
 
 GEOSgcm_GridComp:
