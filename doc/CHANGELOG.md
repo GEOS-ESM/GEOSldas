@@ -41,7 +41,7 @@ Overview of GEOSldas Git Releases:
 
 - 0-diff vs. GEOSldas v18.0.3 except for data assimilation in cube-sphere tile space ([PR #41](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/41)).
 
-- Uses GEOSldas_GridComp v1.0.3.
+- Uses GEOSldas_GridComp v1.1.0.
 
 - Minor changes:
   - More optimal distribution of tiles on processors for cubed-sphere tile space ([PR #41](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/41)).
