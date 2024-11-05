@@ -5,19 +5,19 @@ GEOSldas:
 env:
   local: ./@env
   remote: ../ESMA_env.git
-  tag: v4.29.0
+  tag: v4.29.1
   develop: main
 
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  tag: v3.48.0
+  tag: v3.52.0
   develop: develop
 
 ecbuild:
   local: ./@cmake/@ecbuild
   remote: ../ecbuild.git
-  tag: geos/v1.3.0
+  tag: geos/v1.4.0
 
 NCEP_Shared:
   local: ./src/Shared/@NCEP_Shared
@@ -29,21 +29,23 @@ NCEP_Shared:
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
-  tag: v1.9.8
+  tag: v1.9.9
   sparse: ./config/GMAO_Shared.sparse
   develop: main
 
 GEOS_Util:
   local: ./src/Shared/@GMAO_Shared/@GEOS_Util
   remote: ../GEOS_Util.git
-  tag: v2.1.2
+  tag: v2.1.3
   sparse: ./config/GEOS_Util.sparse
   develop: main
 
+# When updating the MAPL version, also update the MAPL version in the
+# CMakeLists.txt file for non-Baselibs builds
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.47.1
+  tag: v2.50.1
   develop: develop
 
 GEOSldas_GridComp:
