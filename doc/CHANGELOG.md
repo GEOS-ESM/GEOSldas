@@ -36,6 +36,54 @@ Overview of GEOSldas Git Releases:
 ============================
 
 
+[v18.1.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.1.0) - 2024-11-05
+------------------------------
+
+- 0-diff vs. GEOSldas v18.0.3 except for data assimilation in cube-sphere tile space ([PR #41](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/41)).
+
+- Uses GEOSldas_GridComp v1.1.0.
+
+- Minor changes:
+  - More optimal distribution of tiles on processors for cubed-sphere tile space ([PR #41](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/41)).
+
+- GEOSgcm_GridComp v2.6.3:
+  - Changed exports and LONG_NAMES for land water and energy balances ([GEOSgcm_GridComp PR #957](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/957)).
+  - Added land constants as HISTORY export variables ([GEOSgcm_GridComp PR #970](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/970)).
+  - Removed filling of WET1 (a.k.a. GWETTOP) with 1s over non-land ([GEOSgcm_GridComp PR #974](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/974)).
+  - Fixed conversion of minimal CAPAC to RUNOFF (catchment.F90) ([GEOSgcm_GridComp PR #991](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/991)).
+  - Removed double-counting of snow heat correction term (StieglitzSnow.F90) ([GEOSgcm_GridComp PR #946](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/946)).
+  - Fixed bug in optional input arg "conserve_ice10_tzero" (StieglitzSnow.F90) ([GEOSgcm_GridComp PR #1025](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1025)).
+  - Additional cleanup of Stieglitz snow code ([GEOSgcm_GridComp PR #813](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/813)).  
+  - Improved routing outlets to ocean in make_bcs package ([GEOSgcm_GridComp PR #827](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/827)).
+  - Fixed bad HWSDv1.21 data in Argentina "peatland" in make_bcs package ([GEOSgcm_GridComp PR #944](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/944)).
+  - Enabled EASE M01 option in make_bcs package ([GEOSgcm_GridComp PR #914](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/914)).
+  - Added c1120 resolution in make_bcs package ([GEOSgcm_GridComp PR #961](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/961)).
+
+- Utilities:
+  - GMAO_Shared v1.9.9 ([PR #781](https://github.com/GEOS-ESM/GEOSldas/pull/781)).
+  - GEOS_Util v2.1.3 ([PR #783](https://github.com/GEOS-ESM/GEOSldas/pull/783)).
+    - GEOS-IT and c1120 options for remap_restarts package ([GEOS_Util PR #94](https://github.com/GEOS-ESM/GEOS_Util/pull/94), [GEOS_Util PR #96](https://github.com/GEOS-ESM/GEOS_Util/pull/96))
+
+- Infrastructure:
+  - ESMA_env v4.29.1, Baselibs v8.7.0 ([PR #781](https://github.com/GEOS-ESM/GEOSldas/pull/781)).
+    - Update to Intel MPI 2021.13.
+  - ESMA_cmake v3.52.0 ([PR #781](https://github.com/GEOS-ESM/GEOSldas/pull/781)).
+  - MAPL v2.50.1 ([PR #781](https://github.com/GEOS-ESM/GEOSldas/pull/781)).
+  - ecbuild v1.4.0 ([PR #781](https://github.com/GEOS-ESM/GEOSldas/pull/781)).
+
+- Bug fixes:
+  - Do not increment CO2_YEAR when it is a no-data-value. For Catchment simulations, exclude CatchCN-specific resource variables from LDAS.rc ([PR #51](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/51)).
+  - Bug fix and improved efficiency in matlab script for generation of mwRTM_param ([PR #46](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/46)).
+  - Changed EXPDIR to absolute path for POSTPROC_HIST>0 option to work ([PR #42](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/42)).
+  - Support HISTORY output of ASNOW alone from ENSAVG Gridcomp ([PR #49](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/49)).
+
+- Documentation: 
+  - Updates and corrections ([PR #776](https://github.com/GEOS-ESM/GEOSldas/pull/776)).
+
+- Removed:
+  - Removed restart options F and G ([PR #40](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/40)).
+
+
 [v18.0.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.3) - 2024-04-12
 ------------------------------
 
