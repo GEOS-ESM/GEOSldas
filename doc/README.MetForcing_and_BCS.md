@@ -414,13 +414,13 @@ Notes:
 - Icarus-NLv5 is identical to Icarus-NLv4 except for parameters associated with PEATCLSM.
 
 
-#### v11
+#### v12: SMAP Nature Run v11.3, SMAP L4_SM Version 8
 ```
-  BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/fvInput/ExtData/esm/tiles/v11/
+  BCS_PATH : /discover/nobackup/projects/gmao/bcs_shared/fvInput/ExtData/esm/tiles/v12/
 ```
 
 Notes: 
-- v11 is identical to Icarus-NLv5 (within roundoff) except for new MODIS-based snow albedo v2 parameters.
+- v12 is identical to Icarus-NLv5 (within roundoff) except for new MODIS-based snow albedo (v2) parameters and the Argentina peatland fix.
 
 
 
