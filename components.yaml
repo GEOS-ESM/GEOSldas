@@ -51,7 +51,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: feature/amfox/basic_SM_SNOW
   develop: develop
 
 GEOSgcm_GridComp:
