@@ -49,6 +49,6 @@ MAPL:
 GEOSgcm_GridComp:
   local: ./src/Components/GEOSldas_GridComp/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: feature/jkolassa_cn_rcuns_scaled
+  branch: feature/jkolassa_cn_rcuns
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
