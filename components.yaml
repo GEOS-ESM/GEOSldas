@@ -51,7 +51,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: feature/amfox/obs_availability_dates
   develop: develop
 
 GEOSgcm_GridComp:
