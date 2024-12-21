@@ -44,7 +44,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  tag: v1.1.0
+  tag: LS_OLv8
 
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
