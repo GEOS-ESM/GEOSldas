@@ -51,7 +51,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: feature/rreichle/update_exports_to_M21C_filespecs
   develop: develop
 
 GEOSgcm_GridComp:
