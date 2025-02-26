@@ -41,8 +41,7 @@ if (! -d ${ESMADIR}/@env) then
       echo " Please run from a head node"
       exit 1
    else
-      echo "Running mepo initialization"
-      mepo init
+      echo "Running mepo clone"
       mepo clone
    endif
 endif
