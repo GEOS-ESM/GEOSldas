@@ -45,13 +45,13 @@ git clone -b v17.9.1 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 To build the model in a single step, do the following from a head node:
 ```
 cd ./GEOSldas
-./parallel_build.csh -mil
+./parallel_build.csh
 ```
 This checks out all the external repositories of the model (albeit only on the first run, [see subsection on mepo below](#mepo)!) and then builds and installs the model. 
 
 The resulting model build is found in `build-SLES15/`, and the installation is found in `install-SLES15/`, with setup scripts like `ldas_setup` in `install-SLES15/bin`.
 
-To obtain a build that is suitable for debugging, use `./parallel_build.csh -debug -mil`, which builds in `build-Debug-SLES15/` and installs in `install-Debug-SLES15/`.  There is also an option for aggressive  optimization.  For details, see the [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
+To obtain a build that is suitable for debugging, use `./parallel_build.csh -debug`, which builds in `build-Debug/` and installs in `install-Debug/`.  There is also an option for aggressive  optimization.  For details, see the [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
 
 Instructions for building the model in multiple steps are provided below.
 
@@ -60,9 +60,7 @@ Instructions for building the model in multiple steps are provided below.
 ## How to Set Up (Configure) and Run GEOSldas
 
 
-a) To run GEOSldas on Milan nodes (SLES15), start with `ssh discover-mil`.
-
-b) Set up the job as follows:
+Set up the job as follows:
 
 ```
 cd (build_path)/GEOSldas/install-SLES15/bin
