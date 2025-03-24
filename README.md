@@ -53,7 +53,7 @@ cd ./GEOSldas
 ```
 This checks out all the external repositories of the model (albeit only on the first run, [see subsection on mepo below](#mepo)!) and then builds and installs the model. 
 
-The resulting model build is found in `build-Release/`, and the installation is found in `install-Release/`, with setup scripts like `ldas_setup` in `install-Release/bin/`.
+The resulting model build is found in `build/`, and the installation is found in `install/`, with setup scripts like `ldas_setup` in `install/bin/`.
 
 To obtain a build that is suitable for debugging, use `./parallel_build.csh -debug`, which builds in `build-Debug/` and installs in `install-Debug/`.  There is also an option for aggressive  optimization.  For details, see the [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
 
@@ -67,7 +67,7 @@ Instructions for building the model in multiple steps are provided below.
 Set up the job as follows:
 
 ```
-cd (build_path)/GEOSldas/install-Release/bin
+cd (build_path)/GEOSldas/install/bin
 source g5_modules                                              [for bash or zsh: source g5_modules.[z]sh]
 ./ldas_setup setup [-v]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
 ```
