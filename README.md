@@ -67,7 +67,7 @@ Instructions for building the model in multiple steps are provided below.
 Set up the job as follows:
 
 ```
-cd (build_path)/GEOSldas/install-SLES15/bin
+cd (build_path)/GEOSldas/install-Release/bin
 source g5_modules                                              [for bash or zsh: source g5_modules.[z]sh]
 ./ldas_setup setup [-v]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
 ```
