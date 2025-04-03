@@ -18,12 +18,11 @@ module use -a (path)
 module load GEOSenv
 ```
 
-where `(path)` depends on the computing system; at NCCS, `(path)` also depends on the operating system (SLES12 on Skylake and Cascade Lake nodes; SLES15 on Milan nodes, as of Jan. 2024):
+where `(path)` depends on the computing system:
 
 | System        | Path                                              |
 | ------------- |---------------------------------------------------|
-| NCCS Discover | `/discover/swdev/gmao_SIteam/modulefiles-SLES12`  |
-|               | `/discover/swdev/gmao_SIteam/modulefiles-SLES15`  |
+| NCCS Discover | `/discover/swdev/gmao_SIteam/modulefiles-SLES15`  |
 | NAS           | `/nobackup/gmao_SIteam/modulefiles`               |
 | GMAO desktops | `/ford1/share/gmao_SIteam/modulefiles`            |
 
@@ -39,22 +38,24 @@ For science runs, you can also obtain a specific tag or branch _only_ (as oppose
 ```
 git clone -b v17.9.1 --single-branch git@github.com:GEOS-ESM/GEOSldas.git
 ```
-
+Helpful tip: You can speed up this step by applying the following, one-time `mepo` configuration change:
+```
+mepo config set clone.partial blobless
+```
+With this configuration change, the size of the initial clone will be reduced, and additional blobs are fetched later when needed.
 
 ### Step 3: Build the Model
 
 To build the model in a single step, do the following from a head node:
 ```
 cd ./GEOSldas
-parallel_build.csh
+./parallel_build.csh
 ```
 This checks out all the external repositories of the model (albeit only on the first run, [see subsection on mepo below](#mepo)!) and then builds and installs the model. 
 
-At **NCCS**, the default is to build GEOSldas on SLES12 (Skylake or Cascade Lake nodes); to build GEOSldas on SLES15 (Milan nodes), use `parallel_build.csh -mil`.
+The resulting model build is found in `build/`, and the installation is found in `install/`, with setup scripts like `ldas_setup` in `install/bin/`.
 
-The resulting model build is found in `build[-SLESxx]/`, and the installation is found in `install[-SLESxx]/`, with setup scripts like `ldas_setup` in `install[-SLESxx]/bin`.
-
-To obtain a build that is suitable for debugging, use `parallel_build.csh -debug`, which builds in `build-Debug[-SLESxx]/` and installs in `install-Debug[-SLESxx]/`.  There is also an option for aggressive  optimization.  For details, see the [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
+To obtain a build that is suitable for debugging, use `./parallel_build.csh -debug`, which builds in `build-Debug/` and installs in `install-Debug/`.  There is also an option for aggressive  optimization.  For details, see the [GEOSldas Wiki](https://github.com/GEOS-ESM/GEOSldas/wiki).
 
 Instructions for building the model in multiple steps are provided below.
 
@@ -63,13 +64,11 @@ Instructions for building the model in multiple steps are provided below.
 ## How to Set Up (Configure) and Run GEOSldas
 
 
-a) At **NCCS**, GEOSldas must be built, configured, and run on the same operating system. To run GEOSldas on Milan nodes (SLES15), start with `ssh discover-mil`.
-
-b) Set up the job as follows:
+Set up the job as follows:
 
 ```
-cd (build_path)/GEOSldas/install[-SLESxx]/bin
-source g5_modules                        [for bash or zsh: source g5_modules.[z]sh]
+cd (build_path)/GEOSldas/install/bin
+source g5_modules                                              [for bash or zsh: source g5_modules.[z]sh]
 ./ldas_setup setup [-v]  (exp_path)  ("exe"_input_filename)  ("bat"_input_filename)
 ```
 
