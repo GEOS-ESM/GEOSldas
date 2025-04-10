@@ -10,70 +10,85 @@ on:
       - "ChangeLog-PreJason.txt"
       - "parallel_build.csh"
       - ".github/CODEOWNERS"
+      - ".github/PULL_REQUEST_TEMPLATE.md"
+      - ".editorconfig"
       - ".codebuild/**"
       - ".circleci/**"
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 jobs:
-  build_ldas:
-    name: Build GEOSldas
-    if: "!contains(github.event.pull_request.labels.*.name, '0 diff trivial')"
-    runs-on: ubuntu-24.04
+  build_test_ldas_gnu:
+    name: gfortran / ${{ matrix.cmake-build-type }} / ${{ matrix.cmake-generator }}
+    runs-on: ubuntu-latest
     container:
-      image: gmao/ubuntu24-geos-env:v7.32.0-intelmpi_2021.13-ifort_2021.13
-      # Per https://github.com/actions/virtual-environments/issues/1445#issuecomment-713861495
-      # It seems like we might not need secrets on GitHub Actions which is good for forked
-      # pull requests
-      #credentials:
-        #username: ${{ secrets.DOCKERHUB_USERNAME }}
-        #password: ${{ secrets.DOCKERHUB_TOKEN }}
-
+      image: gmao/ubuntu24-geos-env-mkl:v7.32.0-openmpi_5.0.5-gcc_14.2.0
+    strategy:
+      fail-fast: false
+      matrix:
+        cmake-build-type: [Debug, Release]
+        cmake-generator: [Unix Makefiles]
     env:
       OMPI_ALLOW_RUN_AS_ROOT: 1
       OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
       OMPI_MCA_btl_vader_single_copy_mechanism: none
-
     steps:
-      # https://github.com/orgs/community/discussions/25678#discussioncomment-5242449
-      - name: Delete huge unnecessary tools folder
-        run: rm -rf /opt/hostedtoolcache
-
-      - name: Checkout LDAS
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           filter: blob:none
 
-      - name: Set all directories as git safe
-        run: |
-          git config --global --add safe.directory '*'
+      - name: Build and Test GEOSldas
+        uses: ./.github/actions/ci-build
+        with:
+          cmake-build-type: ${{ matrix.cmake-build-type }}
+          cmake-generator: ${{ matrix.cmake-generator }}
+          fortran-compiler: gfortran
+          extra-cmake-args: -DMPIEXEC_PREFLAGS='--oversubscribe'
 
-      - name: Versions etc.
-        run: |
-          ifort --version
-          mpirun --version
-          echo $BASEDIR
+  build_test_geosldas_ifort:
+    name: ifort / ${{ matrix.cmake-build-type }} / ${{ matrix.cmake-generator }}
+    runs-on: ubuntu-latest
+    container:
+      image: gmao/ubuntu24-geos-env:v7.32.0-intelmpi_2021.13-ifort_2021.13
+    strategy:
+      fail-fast: false
+      matrix:
+        cmake-build-type: [Debug, Release]
+        cmake-generator: [Unix Makefiles]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
 
-      - name: Mepo clone external repos
-        run: |
-          mepo clone --partial blobless
-          mepo status
+      - name: Build and Test GEOSldas
+        uses: ./.github/actions/ci-build
+        with:
+          cmake-build-type: ${{ matrix.cmake-build-type }}
+          cmake-generator: ${{ matrix.cmake-generator }}
+          fortran-compiler: ifort
 
-      - name: Update other branches
-        if:
-          "!contains('refs/heads/main,refs/heads/develop', github.ref)"
-        run: |
-          mepo checkout-if-exists ${GITHUB_HEAD_REF}
-          mepo status
+  build_test_geosldas_ifx:
+    name: ifx / ${{ matrix.cmake-build-type }} / ${{ matrix.cmake-generator }}
+    runs-on: ubuntu-latest
+    container:
+      image: gmao/ubuntu24-geos-env:v7.32.0-intelmpi_2021.14-ifx_2025.0
+    strategy:
+      fail-fast: false
+      matrix:
+        cmake-build-type: [Debug, Release]
+        cmake-generator: [Unix Makefiles]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
 
-      - name: CMake
-        run: |
-          cmake -B build -S . --install-prefix=${pwd}/install -DCMAKE_Fortran_COMPILER=ifort -DCMAKE_BUILD_TYPE=Debug -DMPIEXEC_PREFLAGS='--oversubscribe' -DUSE_F2PY=OFF
-
-      - name: Build
-        run: |
-          cmake --build build -j 4
-          cmake --install build
+      - name: Build and Test GEOSldas
+        uses: ./.github/actions/ci-build
+        with:
+          cmake-build-type: ${{ matrix.cmake-build-type }}
+          cmake-generator: ${{ matrix.cmake-generator }}
+          fortran-compiler: ifx
