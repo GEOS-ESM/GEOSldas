@@ -51,12 +51,11 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
-  develop: develop
+  tag: v2.0.0
 
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: develop
+  tag: v2.7.2
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
-  develop: develop
+
