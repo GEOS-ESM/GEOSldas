@@ -29,7 +29,7 @@ NCEP_Shared:
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
-  tag: v1.9.9
+  tag: v2.0.0
   sparse: ./config/GMAO_Shared.sparse
   develop: main
 
@@ -40,12 +40,18 @@ GEOS_Util:
   sparse: ./config/GEOS_Util.sparse
   develop: main
 
+GMAO_perllib:
+  local: ./src/Shared/@GMAO_Shared/@GMAO_perllib
+  remote: ../GMAO_perllib.git
+  tag: v1.0.0
+  develop: main
+
 # When updating the MAPL version, also update the MAPL version in the
 # CMakeLists.txt file for non-Baselibs builds
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.54.2
+  tag: v2.55.0
   develop: develop
 
 GEOSldas_GridComp:
