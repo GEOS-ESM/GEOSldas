@@ -36,7 +36,7 @@ GMAO_Shared:
 GEOS_Util:
   local: ./src/Shared/@GMAO_Shared/@GEOS_Util
   remote: ../GEOS_Util.git
-  branch: feature/wjiang/filename
+  tag: v2.1.8
   sparse: ./config/GEOS_Util.sparse
   develop: main
 
@@ -63,6 +63,6 @@ GEOSldas_GridComp:
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: feature/wjiang/fix_remap
+  branch: develop
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
