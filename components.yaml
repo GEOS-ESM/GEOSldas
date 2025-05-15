@@ -36,7 +36,7 @@ GMAO_Shared:
 GEOS_Util:
   local: ./src/Shared/@GMAO_Shared/@GEOS_Util
   remote: ../GEOS_Util.git
-  tag: v2.1.6
+  tag: v2.1.8
   sparse: ./config/GEOS_Util.sparse
   develop: main
 
@@ -57,7 +57,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: feature/wjiang/add_landice
   develop: develop
 
 GEOSgcm_GridComp:
