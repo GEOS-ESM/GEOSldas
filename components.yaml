@@ -63,6 +63,6 @@ GEOSldas_GridComp:
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: develop
+  branch: feature/rreichle/surfturb_numerical_derivatives
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
