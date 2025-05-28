@@ -36,6 +36,40 @@ Overview of GEOSldas Git Releases:
 ============================
 
 
+[v20.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v20.0.0) - 2025-05-28
+------------------------------
+
+- 0-diff vs. GEOSldas v19.0.0.
+
+- Uses GEOSldas_GridComp v3.0.0.
+
+- Science changes:
+  - Added functionality to simulate landice tiles ([PR #18](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/18)).
+  - Added model-based QC of (MODIS) snow cover area fraction observations using layer-1 soil temperature ([PR #96](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/96)).
+
+- Minor changes:
+  - Added default settings and command line args for coupled land-atm DAS ([PR #94](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/94)).
+  - Added functionality to read nc4-formatted tile file ([PR #18](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/18)).
+
+- GEOSgcm_GridComp v2.7.4:
+  - Use nc4-formatted tile file when remapping ([GEOSgcm_GridComp PR #1087](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1087), [GEOSgcm_GridComp PR #1094](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1094)).
+  - Adjust tile file for coupled atm-ocean model ([GEOSgcm_GridComp PR #1075](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1075)).
+
+- Utilities:
+  - GMAO_Shared v2.1.1 ([PR #809](https://github.com/GEOS-ESM/GEOSldas/pull/809), [PR #812](https://github.com/GEOS-ESM/GEOSldas/pull/812)).
+  - GMAO_perllib v1.1.0 ([PR #809](https://github.com/GEOS-ESM/GEOSldas/pull/809), [PR #812](https://github.com/GEOS-ESM/GEOSldas/pull/812)).
+  - GEOS_Util v2.1.8 ([PR #705](https://github.com/GEOS-ESM/GEOSldas/pull/705)).
+  - NCEP_Shared v1.4.0 ([PR #812](https://github.com/GEOS-ESM/GEOSldas/pull/812)).
+
+- Infrastructure:
+  - ESMA_env v4.38.0, Baselibs v7.33.0 ([PR #812](https://github.com/GEOS-ESM/GEOSldas/pull/812)).
+  - ESMA_cmake v3.62.1 ([PR #812](https://github.com/GEOS-ESM/GEOSldas/pull/812)).
+    - Added BUILD_INFO.rc file.
+    - Updated parallel build and CI workflows.
+  - MAPL v2.56.0 ([PR #809](https://github.com/GEOS-ESM/GEOSldas/pull/809), [PR #812](https://github.com/GEOS-ESM/GEOSldas/pull/812)).
+
+
+
 [v19.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v19.0.0) - 2025-04-15
 ------------------------------
 
