@@ -1,15 +1,18 @@
 GEOSldas:
   fixture: true
+  develop: develop
 
 env:
   local: ./@env
   remote: ../ESMA_env.git
   tag: v4.38.0
+  develop: main
 
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
   tag: v3.62.1
+  develop: develop
 
 ecbuild:
   local: ./@cmake/@ecbuild
@@ -21,23 +24,27 @@ NCEP_Shared:
   remote: ../NCEP_Shared.git
   tag: v1.4.0
   sparse: ./config/NCEP_Shared.sparse
+  develop: main
 
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
   tag: v2.1.1
   sparse: ./config/GMAO_Shared.sparse
+  develop: main
 
 GEOS_Util:
   local: ./src/Shared/@GMAO_Shared/@GEOS_Util
   remote: ../GEOS_Util.git
   tag: v2.1.8
   sparse: ./config/GEOS_Util.sparse
+  develop: main
 
 GMAO_perllib:
   local: ./src/Shared/@GMAO_Shared/@GMAO_perllib
   remote: ../GMAO_perllib.git
   tag: v1.1.0
+  develop: main
 
 # When updating the MAPL version, also update the MAPL version in the
 # CMakeLists.txt file for non-Baselibs builds
@@ -45,15 +52,17 @@ MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
   tag: v2.56.0
+  develop: develop
 
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  tag: v3.0.0
+  branch: develop
+  develop: develop
 
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  tag: v2.7.4
+  branch: develop
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
-
+  develop: develop
