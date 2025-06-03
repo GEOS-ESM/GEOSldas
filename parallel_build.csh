@@ -34,16 +34,18 @@ set origargv = "$argv"
 # end                         #
 ###############################
 
-if (! -d ${ESMADIR}/@env) then
+if (-d ${ESMADIR}/@env || -d ${ESMADIR}/env@ || -d ${ESMADIR}/env) then
+   mepo status
+else
    if ($?PBS_JOBID || $?SLURM_JOBID) then
       echo " mepo clone must be run!"
       echo " This requires internet access but you are on a compute node"
       echo " Please run from a head node"
       exit 1
    else
-      echo "Running mepo initialization"
-      mepo init
-      mepo clone
+      echo "Running mepo clone"
+      mepo clone --partial blobless
+      mepo status
    endif
 endif
 
