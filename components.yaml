@@ -57,7 +57,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: feature/wjiang/ease_grid
+  branch: develop
   develop: develop
 
 GEOSgcm_GridComp:
