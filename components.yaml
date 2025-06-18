@@ -63,6 +63,6 @@ GEOSldas_GridComp:
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: feature/wjiang/ease_grid
+  branch: develop
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
