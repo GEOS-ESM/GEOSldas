@@ -36,6 +36,41 @@ Overview of GEOSldas Git Releases:
 ============================
 
 
+[v20.1.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v20.1.0) - 2025-07-01
+------------------------------
+
+- 0-diff vs. GEOSldas v20.0.0.
+
+- Uses GEOSldas_GridComp v3.1.0.
+
+- New features:
+  - Python package for post-processing ObsFcstAna output into data assimilation diagnostics ([PR #87](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/87), [PR #111](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/111)). 
+  - Support for 2d output from EASE tile space and 2d output on EASE grid: 
+    - Switched EASE grid handling to new MAPL EASE Grid Factory ([PR #115](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/115)).
+    - Revised pre-processing of HISTORY template ([PR #118](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/118)).
+  - Support for tile space of stretched cube-sphere grids ([PR #109](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/109)).
+
+- Minor changes:
+  - Revised experiment setup for coupled land-atm DAS ([PR #102](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/102)).
+  - Updated defaults in LDASsa_DEFAULT_inputs_*.nml files ([PR #104](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/104)).
+  - Specify only "ntasks_model" in SLURM resource request ([PR #106](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/106)).
+  - Added optional SLURM "constraint" ([PR #112](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/112)).
+
+- GEOSgcm_GridComp v2.7.5:
+  - Optional numerical derivatives for Monin-Obukhov exchange coefficients over land in offline mode ([GEOSgcm_GridComp PR #999](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/999)).
+  - Fixed treatment of freezing rain in Catchment[CN] ([GEOSgcm_GridComp PR #1111](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1111)).
+  - Use MAPL EASE Grid Factory ([GEOSgcm_GridComp PR #1112](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1112)).
+ 
+- Bug fixes:
+  - UDUNITS error ([PR #101](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/101), [PR #123](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/123)).
+
+- Utilities:
+  - GEOS_Util v2.1.9 ([PR #822](https://github.com/GEOS-ESM/GEOSldas/pull/822)).
+
+- Infrastructure:
+  - MAPL v2.57.0: EASE Grid Factory ([PR #819](https://github.com/GEOS-ESM/GEOSldas/pull/819), [PR #821](https://github.com/GEOS-ESM/GEOSldas/pull/821)).
+
+------------------------------
 [v20.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v20.0.0) - 2025-05-28
 ------------------------------
 
@@ -68,8 +103,7 @@ Overview of GEOSldas Git Releases:
     - Updated parallel build and CI workflows.
   - MAPL v2.56.0 ([PR #809](https://github.com/GEOS-ESM/GEOSldas/pull/809), [PR #812](https://github.com/GEOS-ESM/GEOSldas/pull/812)).
 
-
-
+------------------------------
 [v19.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v19.0.0) - 2025-04-15
 ------------------------------
 
@@ -107,7 +141,7 @@ Overview of GEOSldas Git Releases:
 - Removed:
   - Removed support for SLES12 operating system at NCCS ([GEOSldas_GridComp PR #83](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/83)).
 
-
+------------------------------
 [v18.1.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.1.0) - 2024-11-05
 ------------------------------
 
@@ -155,7 +189,7 @@ Overview of GEOSldas Git Releases:
 - Removed:
   - Removed restart options F and G ([GEOSldas_GridComp PR #40](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/40)).
 
-
+------------------------------
 [v18.0.3](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.0.3) - 2024-04-12
 ------------------------------
 
