@@ -289,12 +289,12 @@ COMMONLY USED values for `MET_TAG`:
   MET_TAG  : cross_d5294_GEOSIT
   ```
 
-#### Forcing from post-processed output of the GEOS S2S system 
+#### Forcing from post-processed output of the GEOS S2S-2 system 
 
- - Forcing derived through post-processing of daily average output from the GEOS S2S system,
+ - Forcing derived through post-processing of daily average output from the GEOS S2S-2 system,
    including S2S hindcasts/forecasts ("FCST") and the "AODAS" used for S2S initialization. 
 
-   S2S output is from the geosgcm_vis2d and geosgcm_surf Collections for FCST and from the 
+   S2S-2 output is from the geosgcm_vis2d and geosgcm_surf Collections for FCST and from the 
    geosgcm_rad and geosgcm_surf Collections for AODAS (see GMAO Office Note No. 16).
 
    For FCST, post-processing includes a monthly bias correction to the MERRA-2 climatology.
@@ -307,7 +307,7 @@ COMMONLY USED values for `MET_TAG`:
    separated by double underscores.
    
    As of 14 Jun 2021:
-   - Preparation of S2S forcing data ignores the 3-hour offset between S2S daily averages 
+   - Preparation of S2S-2 forcing data ignores the 3-hour offset between S2S daily averages 
    (21z-21z) and the MERRA-2 daily averages (0z-0z) used for the temporal disaggregration.
    - The processing of the S2S output incorrectly partitioned total precipitation into snowfall 
    and convective precipitation.  Therefore, rainfall and snowfall are determined in the 
@@ -319,6 +319,9 @@ COMMONLY USED values for `MET_TAG`:
    MET_TAG  : GEOSs2sAODAS
    ```
 
+#### Forcing from post-processed output of the GEOS S2S-3 system
+
+- NEED TO ADD DOCUMENTATION 
 
 #### SMAP L4_SM
 
