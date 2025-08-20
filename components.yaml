@@ -57,7 +57,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: testing-8.17-AEC-baselibs
   develop: develop
 
 GEOSgcm_GridComp:
