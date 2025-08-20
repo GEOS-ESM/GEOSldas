@@ -57,7 +57,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: testing-8.17-AEC-baselibs
+  branch: feature/update-hdf5-io
   develop: develop
 
 GEOSgcm_GridComp:
