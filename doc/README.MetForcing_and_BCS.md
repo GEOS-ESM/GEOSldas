@@ -321,24 +321,30 @@ COMMONLY USED values for `MET_TAG`:
 
 #### Forcing from post-processed output of the GEOS S2S-3 system
 
--  Forcing derived through post-processing of 3-hourly and monthly average output from the 
+ - Forcing derived through post-processing of 3-hourly and monthly average output from the 
    GEOS S2S-3 system, including S2S hindcasts/forecasts ("FCST") and the "AODAS" used for 
    S2S initialization.
 
    S2S-3 output is from the sfc_tavg_3hr__glo_L720x361_sfc and rad_tavg_1mo_glo_L720x361_slv 
-   Collections for both FCST and AODAS. 
+   Collections for both FCST and AODAS. For surface pressure and lowest-model-level air
+   temperature and humidity, the forcing reader estimates the values at the synoptic and 
+   off-synoptic times (0z, 3z, ...) by taking the mean of the 3-hourly time average data from 
+   the adjacent 3-hour intervals. This minimizes the phase shift but exacerbates the reduction 
+   in the diurnal amplitude.
 
    Because S2S-3 does NOT output 3-hourly surface downward shortwave radiation (SWGDN) and 
-   absorbed longwave radiation (LWGAB), these 2 variables are created in post-processing 
-   using 3-hourly land surface net radiation (SWLAND and LWLAND), snow cover fraction (ASNOW), 
-   surface skin temperature (TS), as well as land surface albedo and emissivity.
+   absorbed longwave radiation (LWGAB), these 2 variables are estimated from 3-hourly land surface 
+   net radiation (SWLAND and LWLAND), snow cover fraction (ASNOW), surface skin temperature (TS), 
+   as well as land surface albedo and emissivity.
 
-   A 1-year offline simulation using the same BCS and resolution as in S2S-3 was carried out 
-   to produce the 3-hourly surface albedo over snow-free areas. Albedo over snow-covered areas 
-   and emissivity are estimated using the same parameterization schemes in S2S-3.   
+   A 1-year offline simulation using the same boundary conditions and resolution as in S2S-3 was 
+   carried out to produce the (climatological) 3-hourly surface albedo over snow-free areas. 
+   Albedo over snow-covered areas and emissivity are estimated using the model's parameterizations 
+   to the extent possible (e.g., snow mass impact on albedo is considered but snow density is 
+   assumed to always be that of fresh snow because snow density is not in the S2S-3 output).
   
    For FCST, MET_TAG must specify S2S ensemble member ('ensX', where X can be either 1 or 2 digits, 
-   e.g. 'ens1','ens2','ens10', 'ens11'), and date of forecast initialization in format of 
+   e.g., 'ens1','ens2','ens10', 'ens11'), and date of forecast initialization in format of 
    'YYYYMMDD' (e.g., '20160101'), separated by double underscores.
 
    ```
