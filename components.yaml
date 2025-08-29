@@ -36,7 +36,7 @@ GMAO_Shared:
 GEOS_Util:
   local: ./src/Shared/@GMAO_Shared/@GEOS_Util
   remote: ../GEOS_Util.git
-  branch: main
+  tag: v2.1.10
   sparse: ./config/GEOS_Util.sparse
   develop: main
 
