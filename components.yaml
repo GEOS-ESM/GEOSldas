@@ -51,13 +51,14 @@ GMAO_perllib:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.59.1
+  #tag: v2.59.1
+  branch: feature/wjiang/Tile_nc4
   develop: develop
 
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: feature/wjiang/Tile_nc4 
   develop: develop
 
 GEOSgcm_GridComp:
