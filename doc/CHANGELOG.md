@@ -45,24 +45,32 @@ Overview of GEOSldas Git Releases:
 - Uses GEOSldas_GridComp v3.2.0.
 
 - New features:
-  - Support for 1d output from EASE tile space and 2d output on EASE grid: 
-    - 
-    - 
+  - Changed default format of tile-space HISTORY output to nc4 ([GEOSldas_GridComp PR #144](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/144)).
+  - Added reader for surface meteorological forcing from S2S-3 ([GEOSldas_GridComp PR #138](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/138)).
 
 - Minor changes:
-  - 
+  - Cleaned up ldas_setup; split out ldas.py and setup_utils.py; restored ntasks-per-node option ([GEOSldas_GridComp PR #107](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/107)).
+  - Enable remapping of landice restarts from ldas_setup ([GEOSldas_GridComp PR #146](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/146)).
+  - Added matlab reader for binary mwRTM vegopacity file ([GEOSldas_GridComp PR #142](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/142)).
+  - Commented out static QC mask in CYGNSS obs reader ([GEOSldas_GridComp PR #151](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/151)).
+  - Update `GEOSlandassim_GridComp/io_hdf5.F90` to allow for use with HDF5 1.14 ([GEOSldas_GridComp PR #139](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/139)).
 
-- GEOSgcm_GridComp v2.7.5:
+- GEOSgcm_GridComp v2.8.0:
   - Added "make_topo" scripts to "make_bcs" for generation of topography files used by AGCM ([GEOSgcm_GridComp PR #1054](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1054)).
   - Updated introductory comments in GEOS_SurfaceGridComp.rc ([GEOSgcm_GridComp PR #1133](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1133)).
 
 - Bug fixes:
-  - 
+  - Fixed bug in ASCAT EUMET soil moisture obs reader; bumped max_obs limit ([GEOSldas_GridComp PR #148](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/148), [GEOSldas_GridComp PR #151](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/151)).
+  - Provide default "zoom" value for remap_restarts yaml file ([GEOSldas_GridComp PR #137](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/137)).
+  - Fixed Restart=1 when the domain is not global ([GEOSldas_GridComp PR #107](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/107)).
 
 - Utilities:
-  - GEOS_Util v2.1.9 ([PR #822](https://github.com/GEOS-ESM/GEOSldas/pull/822)).
-
+  - GMAO_Shared v2.1.4 ([PR #836](https://github.com/GEOS-ESM/GEOSldas/pull/836)).
+  - GEOS_Util v2.1.10 ([PR #836](https://github.com/GEOS-ESM/GEOSldas/pull/836)).
+  
 - Infrastructure:
+  - ESMA_cmake v3.64.0 ([PR #836](https://github.com/GEOS-ESM/GEOSldas/pull/836)).
+  - ESMA_env v5.13.0, Baselibs v8.18.0 ([PR #836](https://github.com/GEOS-ESM/GEOSldas/pull/836)).
   - MAPL v2.63.1 ([PR #842](https://github.com/GEOS-ESM/GEOSldas/pull/842), [PR #839](https://github.com/GEOS-ESM/GEOSldas/pull/839)).
 
 ------------------------------
@@ -74,17 +82,17 @@ Overview of GEOSldas Git Releases:
 - Uses GEOSldas_GridComp v3.1.0.
 
 - New features:
-  - Python package for post-processing ObsFcstAna output into data assimilation diagnostics ([PR #87](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/87), [PR #111](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/111)). 
+  - Python package for post-processing ObsFcstAna output into data assimilation diagnostics ([GEOSldas_GridComp PR #87](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/87), [GEOSldas_GridComp PR #111](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/111)). 
   - Support for 2d output from EASE tile space and 2d output on EASE grid: 
-    - Switched EASE grid handling to new MAPL EASE Grid Factory ([PR #115](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/115)).
-    - Revised pre-processing of HISTORY template ([PR #118](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/118)).
-  - Support for tile space of stretched cube-sphere grids ([PR #109](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/109)).
+    - Switched EASE grid handling to new MAPL EASE Grid Factory ([GEOSldas_GridComp PR #115](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/115)).
+    - Revised pre-processing of HISTORY template ([GEOSldas_GridComp PR #118](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/118)).
+  - Support for tile space of stretched cube-sphere grids ([GEOSldas_GridComp PR #109](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/109)).
 
 - Minor changes:
-  - Revised experiment setup for coupled land-atm DAS ([PR #102](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/102)).
-  - Updated defaults in LDASsa_DEFAULT_inputs_*.nml files ([PR #104](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/104)).
-  - Specify only "ntasks_model" in SLURM resource request ([PR #106](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/106)).
-  - Added optional SLURM "constraint" ([PR #112](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/112)).
+  - Revised experiment setup for coupled land-atm DAS ([GEOSldas_GridComp PR #102](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/102)).
+  - Updated defaults in LDASsa_DEFAULT_inputs_*.nml files ([GEOSldas_GridComp PR #104](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/104)).
+  - Specify only "ntasks_model" in SLURM resource request ([GEOSldas_GridComp PR #106](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/106)).
+  - Added optional SLURM "constraint" ([GEOSldas_GridComp PR #112](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/112)).
 
 - GEOSgcm_GridComp v2.7.5:
   - Optional numerical derivatives for Monin-Obukhov exchange coefficients over land in offline mode ([GEOSgcm_GridComp PR #999](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/999)).
@@ -92,7 +100,7 @@ Overview of GEOSldas Git Releases:
   - Use MAPL EASE Grid Factory ([GEOSgcm_GridComp PR #1112](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1112)).
  
 - Bug fixes:
-  - UDUNITS error ([PR #101](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/101), [PR #123](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/123)).
+  - UDUNITS error ([GEOSldas_GridComp PR #101](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/101), [GEOSldas_GridComp PR #123](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/123)).
 
 - Utilities:
   - GEOS_Util v2.1.9 ([PR #822](https://github.com/GEOS-ESM/GEOSldas/pull/822)).
@@ -109,12 +117,12 @@ Overview of GEOSldas Git Releases:
 - Uses GEOSldas_GridComp v3.0.0.
 
 - Science changes:
-  - Added functionality to simulate landice tiles ([PR #18](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/18)).
-  - Added model-based QC of (MODIS) snow cover area fraction observations using layer-1 soil temperature ([PR #96](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/96)).
+  - Added functionality to simulate landice tiles ([GEOSldas_GridComp PR #18](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/18)).
+  - Added model-based QC of (MODIS) snow cover area fraction observations using layer-1 soil temperature ([GEOSldas_GridComp PR #96](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/96)).
 
 - Minor changes:
-  - Added default settings and command line args for coupled land-atm DAS ([PR #94](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/94)).
-  - Added functionality to read nc4-formatted tile file ([PR #18](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/18)).
+  - Added default settings and command line args for coupled land-atm DAS ([GEOSldas_GridComp PR #94](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/94)).
+  - Added functionality to read nc4-formatted tile file ([GEOSldas_GridComp PR #18](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/18)).
 
 - GEOSgcm_GridComp v2.7.4:
   - Use nc4-formatted tile file when remapping ([GEOSgcm_GridComp PR #1087](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1087), [GEOSgcm_GridComp PR #1094](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1094)).
