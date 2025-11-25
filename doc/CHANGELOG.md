@@ -36,6 +36,36 @@ Overview of GEOSldas Git Releases:
 ============================
 
 
+
+[v20.2.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v20.2.0) - 2025-11-26
+------------------------------
+
+- 0-diff vs. GEOSldas v20.1.0.
+
+- Uses GEOSldas_GridComp v3.2.0.
+
+- New features:
+  - Support for 1d output from EASE tile space and 2d output on EASE grid: 
+    - 
+    - 
+
+- Minor changes:
+  - 
+
+- GEOSgcm_GridComp v2.7.5:
+  - Added "make_topo" scripts to "make_bcs" for generation of topography files used by AGCM ([GEOSgcm_GridComp PR #1054](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1054)).
+  - Updated introductory comments in GEOS_SurfaceGridComp.rc ([GEOSgcm_GridComp PR #1133](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1133)).
+
+- Bug fixes:
+  - 
+
+- Utilities:
+  - GEOS_Util v2.1.9 ([PR #822](https://github.com/GEOS-ESM/GEOSldas/pull/822)).
+
+- Infrastructure:
+  - MAPL v2.63.1 ([PR #842](https://github.com/GEOS-ESM/GEOSldas/pull/842), [PR #839](https://github.com/GEOS-ESM/GEOSldas/pull/839)).
+
+------------------------------
 [v20.1.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v20.1.0) - 2025-07-01
 ------------------------------
 
