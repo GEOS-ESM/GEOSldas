@@ -40,7 +40,9 @@ Overview of GEOSldas Git Releases:
 [v20.2.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v20.2.0) - 2025-11-26
 ------------------------------
 
-- 0-diff vs. GEOSldas v20.1.0.
+- 0-diff vs. GEOSldas v20.1.0 except:
+  - Not 0-diff for lat/lon fields in "1d" nc4 output owing to roundoff differences between files directly generated with MAPL [new default] and files generated with tile_bin2nc4 [discontinued].
+  - Not 0-diff for ASCAT and CYGNSS data assimilation.
 
 - Uses GEOSldas_GridComp v3.2.0.
 
@@ -71,7 +73,7 @@ Overview of GEOSldas Git Releases:
 - Infrastructure:
   - ESMA_cmake v3.64.0 ([PR #836](https://github.com/GEOS-ESM/GEOSldas/pull/836)).
   - ESMA_env v5.13.0, Baselibs v8.18.0 ([PR #836](https://github.com/GEOS-ESM/GEOSldas/pull/836)).
-  - MAPL v2.63.1 ([PR #842](https://github.com/GEOS-ESM/GEOSldas/pull/842), [PR #839](https://github.com/GEOS-ESM/GEOSldas/pull/839)).
+  - MAPL v2.63.1 ([PR #836](https://github.com/GEOS-ESM/GEOSldas/pull/836), [PR #839](https://github.com/GEOS-ESM/GEOSldas/pull/839), [PR #842](https://github.com/GEOS-ESM/GEOSldas/pull/842)).
 
 ------------------------------
 [v20.1.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v20.1.0) - 2025-07-01
