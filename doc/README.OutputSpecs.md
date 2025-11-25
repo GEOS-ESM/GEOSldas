@@ -66,16 +66,16 @@ Gridded ("2d") output can be on a grid other than the "native" grid that is asso
 ```
 In addition, the line "VERSION: 1" must be present in the header of `HISTORY.rc`.
 
-MAPL HISTORY can generally write gridded ("2d") output in binary or netcdf-4 (nc4) format _**except**_ for GEOSldas simulations in EASE-grid tile space (see below).  Output in tile space ("1d") must always be written in binary format.
-
 
 **Special considerations for GEOSldas**
 
-1. Gridded ("2d") output _**cannot**_ be written for simulations in any EASE-grid tile space.  But since each EASE-grid cell contains at most one tile, it is straightforward to convert tile-space ("1d") output into gridded output (2d arrays) on the fly using the `i_indg` and `j_indg` data in the `./rc_out/*tilecoord*` file.  See Matlab readers and scripts in `./src/Components/GEOSldas_GridComp/GEOSldas_App/util`.
+1. Since the introduction of mixed land+landice simulations, the tile space can differ across gridded components.  For example, METFORCE fields are in the full land+landice tile space, whereas CATCH fields are in the land tilespace.  Therefore, in mixed land+landice simulations, METFORCE fields and CATCH fields can no longer appear in the same "1d" HISTORY collection (which was previously the case in the "1d_lfs" collection). 
 
-2. When running in EASE-grid tile space, the main GEOSldas executable (`GEOSldas.x`) first writes tile-space ("1d") output in binary format using MAPL HISTORY.  If nc4 output is requested in `HISTORY.rc`, the binary output from `GEOSldas.x` is then automatically converted into nc4 format in post-processing as part of the `lenkf.j` job script using the `tile_bin2nc4.F90` utility.
+2. Beginning with MAPL v2.63.1, simulations on the EASE grid tile space can write "2d" gridded output on the native EASE grid as well as interpolated to lat/lon and cube-sphere grids.
 
-3. GEOSldas can bundle sub-daily nc4 output into daily nc4 files and write monthly-average output through the `POSTPROC_HIST` configuration option.
+3. Beginning with MAPL v2.63.1, simulations can write "1d" tile-space output directly in nc4 format.  The "tile_bin2nc4" utility was discontinued.
+
+4. GEOSldas can bundle sub-daily nc4 output into daily nc4 files and write monthly-average output through the `POSTPROC_HIST` configuration option.
 
 
 **Enhanced file compression and bit shaving**
