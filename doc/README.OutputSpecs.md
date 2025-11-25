@@ -71,9 +71,9 @@ In addition, the line "VERSION: 1" must be present in the header of `HISTORY.rc`
 
 1. Since the introduction of mixed land+landice simulations, the tile space can differ across gridded components.  For example, METFORCE fields are in the full land+landice tile space, whereas CATCH fields are in the land tilespace.  Therefore, in mixed land+landice simulations, METFORCE fields and CATCH fields can no longer appear in the same "1d" HISTORY collection (which was previously the case in the "1d_lfs" collection). 
 
-2. Beginning with MAPL v2.63.0, simulations on the EASE grid tile space can write "2d" gridded output on the native EASE grid as well as interpolated to lat/lon and cube-sphere grids.
+2. Beginning with MAPL v2.63.1, simulations on the EASE grid tile space can write "2d" gridded output on the native EASE grid as well as interpolated to lat/lon and cube-sphere grids.
 
-3. Beginning with MAPL v2.63.0, simulations can write "1d" tile-space output directly in nc4 format.  The "tile_bin2nc4" utility was discontinued.
+3. Beginning with MAPL v2.63.1, simulations can write "1d" tile-space output directly in nc4 format.  The "tile_bin2nc4" utility was discontinued.
 
 4. GEOSldas can bundle sub-daily nc4 output into daily nc4 files and write monthly-average output through the `POSTPROC_HIST` configuration option.
 
