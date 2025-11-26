@@ -4,12 +4,12 @@ GEOSldas:
 env:
   local: ./@env
   remote: ../ESMA_env.git
-  tag: v4.38.0
+  tag: v5.13.0
 
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  tag: v3.62.1
+  tag: v3.64.0
 
 ecbuild:
   local: ./@cmake/@ecbuild
@@ -25,13 +25,13 @@ NCEP_Shared:
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
-  tag: v2.1.1
+  tag: v2.1.4
   sparse: ./config/GMAO_Shared.sparse
 
 GEOS_Util:
   local: ./src/Shared/@GMAO_Shared/@GEOS_Util
   remote: ../GEOS_Util.git
-  tag: v2.1.9
+  tag: v2.1.10
   sparse: ./config/GEOS_Util.sparse
 
 GMAO_perllib:
@@ -44,16 +44,16 @@ GMAO_perllib:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.57.0
+  tag: v2.63.1
 
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  tag: v3.1.0
+  tag: v3.2.0
 
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  tag: v2.7.5
+  tag: v2.8.0
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
 
