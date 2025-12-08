@@ -69,7 +69,7 @@ In addition, the line "VERSION: 1" must be present in the header of `HISTORY.rc`
 
 **Special considerations for GEOSldas**
 
-1. Since the introduction of mixed land+landice simulations, the tile space can differ across gridded components.  For example, METFORCE fields are in the full land+landice tile space, whereas CATCH fields are in the land tilespace.  Therefore, in mixed land+landice simulations, METFORCE fields and CATCH fields can no longer appear in the same "1d" HISTORY collection (which was previously the case in the "1d_lfs" collection). 
+1. Since the introduction of mixed land+landice simulations, the tile space can differ across gridded components.  For example, METFORCE fields are in the full land+landice tile space, whereas CATCH fields are in the land tilespace.  Therefore, in mixed land+landice simulations, METFORCE fields and CATCH fields can no longer appear in the same HISTORY Collection (which was previously the case in the "lfs" Collection, for both "1d" and "2d" output). 
 
 2. Beginning with MAPL v2.63.1, simulations on the EASE grid tile space can write "2d" gridded output on the native EASE grid as well as interpolated to lat/lon and cube-sphere grids.
 
