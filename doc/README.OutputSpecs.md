@@ -19,18 +19,18 @@ Output of the latter two sets of files can be turned on/off in the `[NML_INPUT_P
 
 As part of `ldas_setup`, a sample `HISTORY.rc` configuration file is created in the experiment's `./run` directory.  Users specify the desired output by editing `HISTORY.rc`.
 
-`HISTORY.rc` defines a number of output file "Collections", each of which contains one or more output variables.  Output can be in the native tile space ("1d") or gridded ("2d"), _**except**_ when the simulation is in the EASE grid tile space (see below).
+`HISTORY.rc` defines a number of output file "Collections", each of which contains one or more output variables.  Output can be in the native tile space ("1d") or gridded ("2d").
 
 All variables contained in a given Collection are written:
 * on the same ("2d") grid (if gridded),
 * at the same frequency, and
 * with either time-average ("tavg") or instantaneous ("inst") sampling mode.
 
-In the following example, two Collections are written.  The `tavg3_2d_lnd_Nx` Collection contains time-average ("tavg"), 3-hourly ("3"), gridded ("2d") data, and the `inst1_1d_lfs_Nt` Collection contains snapshot/instantaneous ("inst"), 1-hourly, tile-space ("1d") data.
+In the following example, two Collections are written.  The `tavg3_2d_lnd_Nx` Collection contains time-average ("tavg"), 3-hourly ("3"), gridded ("2d") land ("lnd") data, and the `inst1_1d_glc_Nt` Collection contains snapshot/instantaneous ("inst"), 1-hourly, tile-space ("1d") glacier ("glc") data.
 ```
 COLLECTIONS:
             'tavg3_2d_lnd_Nx'
-            'inst1_1d_lfs_Nt'
+            'inst1_1d_glc_Nt'
            ::
 ```
 
