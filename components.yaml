@@ -5,19 +5,19 @@ GEOSldas:
 env:
   local: ./@env
   remote: ../ESMA_env.git
-  tag: v5.16.0
+  tag: v5.13.0
   develop: main
 
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  tag: v4.29.0
+  tag: v3.64.0
   develop: develop
 
 ecbuild:
   local: ./@cmake/@ecbuild
   remote: ../ecbuild.git
-  tag: geos/v3.11.0
+  tag: geos/v1.4.0
 
 NCEP_Shared:
   local: ./src/Shared/@NCEP_Shared
