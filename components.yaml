@@ -51,7 +51,7 @@ GMAO_perllib:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.63.1
+  branch: feature/wjiang/local_is_locstream
   develop: develop
 
 GEOSldas_GridComp:
