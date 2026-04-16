@@ -8,7 +8,7 @@ Restart/checkpoint files are also written through MAPL (although not through HIS
 
 Notable exceptions from the MAPL-generated output include:
 * log files [ASCII],
-* observation-space "ObsFcstAna" data assimilation diagnostics [BINARY], and
+* observation-space "ObsFcstAna" data assimilation diagnostics [BINARY or NETCDF-4], and
 * SMAP L4_SM-specific "aup" data assimilation diagnostics files (available _**only**_ for simulations in EASEv2_M09 tile space) [BINARY].
 
 Output of the latter two sets of files can be turned on/off in the `[NML_INPUT_PATH]/LDASsa_SPECIAL_inputs_ensupd.nml` configuration file, and Matlab readers are available in the
