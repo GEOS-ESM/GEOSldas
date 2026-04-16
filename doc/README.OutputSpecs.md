@@ -19,10 +19,10 @@ Output of the latter two sets of files can be turned on/off in the `[NML_INPUT_P
 
 As part of `ldas_setup`, a sample `HISTORY.rc` configuration file is created in the experiment's `./run` directory.  Users specify the desired output by editing `HISTORY.rc`.
 
-`HISTORY.rc` defines a number of output file "Collections", each of which contains one or more output variables.  Output can be in the native tile space ("1d") or gridded ("2d").
+`HISTORY.rc` defines a number of output file "Collections", each of which contains one or more output variables.  For most "Collections", output can be in the native model tile space ("1d") or gridded ("2d").  Output from the river routing module is only available in the "1d" space of the Pfafstetter hydrological catchments. 
 
 All variables contained in a given Collection are written:
-* on the same ("2d") grid (if gridded),
+* on the same ("2d") grid (if gridded) or in the same "1d" space (model tiles or Pfafstetter catchments),
 * at the same frequency, and
 * with either time-average ("tavg") or instantaneous ("inst") sampling mode.
 
@@ -46,7 +46,7 @@ For example, to write 3-hourly, time-average output of the "WCSF" and "WCRZ" var
                               ::
 ```
 
-To be available for output through MAPL HISTORY, a variable ("field") must be defined as an `ExportSpec` in a `GEOS_*GridComp.F90` file.  The list of variables ("fields") in the definition of each Collection consists of three columns:
+To be available for output through MAPL HISTORY, a variable ("field") must be defined as an `ExportSpec` or `InternalSpec` in a `GEOS_*GridComp.F90` file.  The list of variables ("fields") in the definition of each Collection consists of three columns:
 - (column 1) variable name in `GEOS_[GCNAME]GridComp.F90` file,
 - (column 2) GridComp name [GCNAME], and
 - (column 3) user-specified variable name that appears in nc4 output (optional).
