@@ -131,23 +131,25 @@ src/Components/@GEOSldas_GridComp/LDAS_Shared/LDAS_ensdrv_mpi.F90
 - [x] Add a `CYGNSS_L1_DDM3X5_CROP_SCALAR` namelist species distinct from existing CYGNSS L3 soil moisture.
 - [x] Allow `obs_param_nml(:)%varname = 'cygl1scal'` in `read_ens_upd_inputs()`.
 - [x] Fill `fcstvarname = 'cygl1scal'` and `fcstunits = 'dB'`.
-- [ ] Add a `cygnss_preprocessed_obs.F90` module-level cache for the coefficient product.
+- [x] Add a `cygnss_preprocessed_obs.F90` module-level cache for the coefficient product.
 - [x] Read NetCDF product type `cygnss_tile_coefficient_preprocessor_netcdf` in the observation reader.
 - [x] Validate schema version `0.3` or fail clearly in the observation reader.
 - [x] Abort if the coefficient product grid tag inferred from filename/metadata does not match `tile_grid_d%gridtype`.
-- [ ] Convert zero-based support `tile_index0` to one-based full-domain tile numbers in the coefficient cache.
+- [x] Convert zero-based support `tile_index0` to one-based full-domain tile numbers during support lookup.
 - [x] Convert zero-based `sp_nearest_tile_index0` to one-based owner tile numbers.
 - [x] Enforce one observation per owner tile for the first implementation.
 - [x] Drop duplicate owner-tile observations deterministically by smallest `sp_nearest_tile_distance_km`.
 - [x] Log read/kept/dropped observation counts.
-- [ ] Add a public LR reflectivity helper in `mwRTM_routines.F90`.
-- [ ] Match the Python simulator first: SFMC clipped to MWRTM porosity, Mironov dielectric, LR Fresnel reflectivity, no roughness.
+- [x] Add a public LR reflectivity helper in `mwRTM_routines.F90`.
+- [x] Match the Python simulator first: SFMC clipped to MWRTM porosity, Mironov dielectric, LR Fresnel reflectivity, no roughness.
 - [x] Request `sfmc_l` and `sfmc_lH` for `varname='cygl1scal'` in `get_obs_pred()`.
-- [ ] Make support-tile lookup exact within the local-plus-halo tile arrays.
-- [ ] Evaluate `Hx_linear = sum_t C_t * R_t`.
-- [ ] Convert `Hx_db = 10 * log10(Hx_linear)` and store in `Obs_pred_l`.
-- [ ] Abort loudly or set nodata with a clear diagnostic if support tiles are missing from the halo during development.
-- [ ] Build and install.
+- [x] Request MWRTM `clay` and `poros` in the local-plus-halo tile arrays for `varname='cygl1scal'`.
+- [x] Make support-tile lookup exact within the local-plus-halo tile arrays.
+- [x] Evaluate `Hx_linear = sum_t C_t * R_t`.
+- [x] Convert `Hx_db = 10 * log10(Hx_linear)` and store in `Obs_pred_l`.
+- [x] Abort loudly or set nodata with a clear diagnostic if support tiles are missing from the halo during development.
+- [x] Build `GEOSlandassim_GridComp`.
+- [ ] Install.
 - [ ] Compare GEOSldas forecast/analysis `H(x)` against the Python simulator on the selected-50 product.
 
 ## Support Tile Lookup Note
@@ -156,20 +158,14 @@ The current `get_obs_pred()` path usually finds tiles by ellipse/FOV search and
 stores local-plus-halo tile positions in `ind_tmp(:)`. The preprocessed CYGNSS
 operator is different: its support tiles are explicit.
 
-The likely clean approach is to maintain a full-domain tile-number vector for
-the local-plus-halo arrays, for example:
+The first implementation uses `tile_coord_lH(:)%f_num` as the full-domain tile
+number and scans it for each coefficient support tile. This is simple and exact
+for the selected-50 proof of concept. If this becomes expensive in larger runs,
+replace the scan with a cached tile-number-to-`lH` index map.
 
-```fortran
-integer, allocatable :: tilenum_lH(:)
-```
-
-The first `N_catl` entries should map local tiles through `l2f` or equivalent
-full-domain numbering; halo entries should be populated when remote
-`tile_coord_lH` entries are appended. The CYGNSS evaluator can then map each
-support tile number to a local-plus-halo index before reading `sfmc_lH`,
-`mwRTM_param`, and other tile fields.
-
-This is probably the first implementation risk to burn down.
+`mwRTM_param` itself remains local-only. For CYGNSS, `get_obs_pred()` bundles
+the small static fields needed at support tiles, currently `clay` and `poros`,
+through the existing local-plus-halo communication helper alongside `sfmc_lH`.
 
 ## Reflectivity Helper Note
 
@@ -181,11 +177,11 @@ tau-omega brightness-temperature model. Initial validation should prioritize
 parity with the Python simulator over existing roughness or vegetation
 conventions.
 
-Conceptual API:
+Implemented API:
 
 ```fortran
 call mwRTM_get_lr_reflectivity( &
-     N_tile, freq, inc_angle, mwRTM_param, sfmc, reflectivity )
+     freq, inc_angle, clay, poros, sfmc, reflectivity )
 ```
 
 ## Initial Namelist Sketch
@@ -242,5 +238,10 @@ obs_param_nml(?)%adapt          = 0
 - Bumped `N_obs_species_nml` from 55 to 56.
 - Added a CYGNSS L1 scalar observation reader that validates product type/schema, reads `observed_y_db`, assigns one observation per owner tile, filters to the assimilation window, and logs duplicate/drop counts.
 - Added a model-grid guard so an M36 coefficient product cannot be read into a non-M36 tile grid.
-- Added a `get_obs_pred()` `cygl1scal` resource request for `sfmc_l`/`sfmc_lH`; the actual coefficient-weighted forward operator is still the next implementation step.
+- Added a `get_obs_pred()` `cygl1scal` resource request for `sfmc_l`/`sfmc_lH`.
 - Verified `GEOSlandassim_GridComp` builds in `build-develop-20260520`.
+- Added `cygnss_preprocessed_obs.F90` to cache the coefficient product and evaluate exact support-tile sums.
+- Added an MWRTM LR reflectivity helper using clipped SFMC, Mironov dielectric, and the Python operator LR Fresnel formula.
+- Extended the observation halo communication helper to carry MWRTM `clay` and `poros` for CYGNSS support tiles.
+- Hooked `cygl1scal` observations into `get_obs_pred()` so `Obs_pred_l` receives coefficient-weighted `H(x)` in dB.
+- Re-verified `GEOSlandassim_GridComp` builds in `build-develop-20260520`; install and Discover-side runtime validation remain open.
