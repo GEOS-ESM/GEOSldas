@@ -8,7 +8,7 @@ Restart/checkpoint files are also written through MAPL (although not through HIS
 
 Notable exceptions from the MAPL-generated output include:
 * log files [ASCII],
-* observation-space "ObsFcstAna" data assimilation diagnostics [BINARY], and
+* observation-space "ObsFcstAna" data assimilation diagnostics [BINARY or NETCDF-4], and
 * SMAP L4_SM-specific "aup" data assimilation diagnostics files (available _**only**_ for simulations in EASEv2_M09 tile space) [BINARY].
 
 Output of the latter two sets of files can be turned on/off in the `[NML_INPUT_PATH]/LDASsa_SPECIAL_inputs_ensupd.nml` configuration file, and Matlab readers are available in the
@@ -19,18 +19,18 @@ Output of the latter two sets of files can be turned on/off in the `[NML_INPUT_P
 
 As part of `ldas_setup`, a sample `HISTORY.rc` configuration file is created in the experiment's `./run` directory.  Users specify the desired output by editing `HISTORY.rc`.
 
-`HISTORY.rc` defines a number of output file "Collections", each of which contains one or more output variables.  Output can be in the native tile space ("1d") or gridded ("2d"), _**except**_ when the simulation is in the EASE grid tile space (see below).
+`HISTORY.rc` defines a number of output file "Collections", each of which contains one or more output variables.  For most "Collections", output can be in the native model tile space ("1d") or gridded ("2d").  Output from the river routing module is only available in the "1d" space of the Pfafstetter hydrological catchments. 
 
 All variables contained in a given Collection are written:
-* on the same ("2d") grid (if gridded),
+* on the same ("2d") grid (if gridded) or in the same "1d" space (model tiles or Pfafstetter catchments),
 * at the same frequency, and
 * with either time-average ("tavg") or instantaneous ("inst") sampling mode.
 
-In the following example, two Collections are written.  The `tavg3_2d_lnd_Nx` Collection contains time-average ("tavg"), 3-hourly ("3"), gridded ("2d") data, and the `inst1_1d_lfs_Nt` Collection contains snapshot/instantaneous ("inst"), 1-hourly, tile-space ("1d") data.
+In the following example, two Collections are written.  The `tavg3_2d_lnd_Nx` Collection contains time-average ("tavg"), 3-hourly ("3"), gridded ("2d") land ("lnd") data, and the `inst1_1d_glc_Nt` Collection contains snapshot/instantaneous ("inst"), 1-hourly, tile-space ("1d") glacier ("glc") data.
 ```
 COLLECTIONS:
             'tavg3_2d_lnd_Nx'
-            'inst1_1d_lfs_Nt'
+            'inst1_1d_glc_Nt'
            ::
 ```
 
@@ -46,7 +46,7 @@ For example, to write 3-hourly, time-average output of the "WCSF" and "WCRZ" var
                               ::
 ```
 
-To be available for output through MAPL HISTORY, a variable ("field") must be defined as an `ExportSpec` in a `GEOS_*GridComp.F90` file.  The list of variables ("fields") in the definition of each Collection consists of three columns:
+To be available for output through MAPL HISTORY, a variable ("field") must be defined as an `ExportSpec` or `InternalSpec` in a `GEOS_*GridComp.F90` file.  The list of variables ("fields") in the definition of each Collection consists of three columns:
 - (column 1) variable name in `GEOS_[GCNAME]GridComp.F90` file,
 - (column 2) GridComp name [GCNAME], and
 - (column 3) user-specified variable name that appears in nc4 output (optional).
@@ -69,7 +69,7 @@ In addition, the line "VERSION: 1" must be present in the header of `HISTORY.rc`
 
 **Special considerations for GEOSldas**
 
-1. Since the introduction of mixed land+landice simulations, the tile space can differ across gridded components.  For example, METFORCE fields are in the full land+landice tile space, whereas CATCH fields are in the land tilespace.  Therefore, in mixed land+landice simulations, METFORCE fields and CATCH fields can no longer appear in the same "1d" HISTORY collection (which was previously the case in the "1d_lfs" collection). 
+1. Since the introduction of mixed land+landice simulations, the tile space can differ across gridded components.  For example, METFORCE fields are in the full land+landice tile space, whereas CATCH fields are in the land tilespace.  Therefore, in mixed land+landice simulations, METFORCE fields and CATCH fields can no longer appear in the same HISTORY Collection (which was previously the case in the "lfs" Collection, for both "1d" and "2d" output). 
 
 2. Beginning with MAPL v2.63.1, simulations on the EASE grid tile space can write "2d" gridded output on the native EASE grid as well as interpolated to lat/lon and cube-sphere grids.
 
