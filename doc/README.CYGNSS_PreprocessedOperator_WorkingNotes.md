@@ -233,6 +233,31 @@ state vector is:
 Temperature states `tc1`, `tc2`, `tc4`, and `ght(1)` are added only when Tb
 observations are also selected in the same local update.
 
+### Temporary Localization Choice
+
+For the first CYGNSS assimilation smoke test, `obs_param_nml(56)%xcorr` and
+`%ycorr` were set to `1.25 deg`. For 3d update types, GEOSldas requires the
+compact-support radius to be at least twice the error correlation scale:
+
+```fortran
+xcompact >= 2 * xcorr
+ycompact >= 2 * ycorr
+```
+
+Therefore this setup requires:
+
+```fortran
+xcompact = 2.50
+ycompact = 2.50
+```
+
+This is a temporary engineering choice to get a first assimilation smoke test
+through the consistency checks. It has science implications: it broadens the
+local update neighborhood, mixes more observations into each local EnKF update,
+and can smooth or spread increments over a larger area. Before any science
+experiment, revisit the CYGNSS L1 scalar observation error correlation scale,
+the effective FOV assumption, and the compact-support radius together.
+
 ## Runtime Behavior Learned
 
 CYGNSS L1 scalar observations inherit the generic model-based satellite SFMC
@@ -366,6 +391,8 @@ obs_param_nml(?)%adapt          = 0
 - Should missing support tiles abort in all development builds, or only when a debug flag is enabled?
 - Where should the CYGNSS preprocessed cache lifecycle live so it is read once per relevant file/time and remains synchronized with `Observations_l` after sorting and compaction?
 - How should production runs handle multiple CYGNSS observations per owner tile once we move past the selected-50 proof of concept?
+- What CYGNSS L1 scalar `xcorr/ycorr`, `FOV`, and `xcompact/ycompact` are
+  scientifically defensible for production assimilation?
 
 ## Next Steps Toward Assimilation
 
@@ -398,6 +425,8 @@ Before using assimilation for science, confirm:
   checked before trusting increments.
 - Multi-file daily selection has been tested on Discover before moving from
   innovation-only diagnostics to assimilation.
+- The initial `xcompact=ycompact=2.50` choice is only a smoke-test setting tied
+  to `obs_param_nml(56)%xcorr=ycorr=1.25`; revisit before science use.
 
 ## Work Log
 
@@ -423,6 +452,9 @@ Before using assimilation for science, confirm:
 - Validated a two-day innovation-only run using 50 observations per day. The
   midnight cycle read both daily files and `ObsFcstAna` contained valid CYGNSS
   forecast/analysis equivalents.
+- Noted that the first assimilation smoke test needs `xcompact=ycompact=2.50`
+  for consistency with temporary CYGNSS `xcorr=ycorr=1.25`, and that this
+  localization choice must be revisited.
 
 ### 2026-05-20
 
