@@ -151,6 +151,8 @@ src/Components/@GEOSldas_GridComp/LDAS_Shared/LDAS_ensdrv_mpi.F90
 - [x] Evaluate `Hx_linear = sum_t C_t * R_t`.
 - [x] Convert `Hx_db = 10 * log10(Hx_linear)` and store in `Obs_pred_l`.
 - [x] Abort loudly or set nodata with a clear diagnostic if support tiles are missing from the halo during development.
+- [x] Include `cygl1scal` in update type 12 and 13 soil-moisture observation selection.
+- [x] Document that CYGNSS-only update type 12/13 uses the non-Tb soil-moisture state vector.
 - [x] Build `GEOSlandassim_GridComp`.
 - [ ] Install.
 - [ ] Compare GEOSldas forecast/analysis `H(x)` against the Python simulator on the selected-50 product.
@@ -207,6 +209,30 @@ are concatenated and `tile_start` is offset into the combined support array.
 This keeps `Observations_l` and `H(x)` synchronized for windows crossing
 midnight.
 
+## Assimilation Update Type
+
+CYGNSS L1 scalar observations use `varname='cygl1scal'`. They have their own
+observation operator, but the increments should use the soil-moisture update
+state vector.
+
+The implementation includes `cygl1scal` in the soil-moisture observation
+selection for both update type 12 and update type 13:
+
+- `update_type=12`: joint 3d soil moisture/Tskin/ght(1) analysis plus 1d snow
+  analysis. This is the right path for the current all-sensors setup because it
+  already includes the snow-analysis branch.
+- `update_type=13`: 3d soil moisture/Tskin/ght(1) analysis without the snow
+  branch.
+
+For CYGNSS-only soil-moisture updates, no Tb observations are present, so the
+state vector is:
+
+- mineral tiles: `srfexc`, `rzexc`
+- PEATCLSM tiles: `srfexc`, `rzexc`, `catdef`
+
+Temperature states `tc1`, `tc2`, `tc4`, and `ght(1)` are added only when Tb
+observations are also selected in the same local update.
+
 ## Runtime Behavior Learned
 
 CYGNSS L1 scalar observations inherit the generic model-based satellite SFMC
@@ -230,6 +256,38 @@ operator, mostly SFMC/QC rejection plus one clay/porosity support issue. If this
 comes up again, first check the log for read/kept counts, then check
 `ldas_ObsFcstAna`; do not assume observations vanished in MPI output or tile
 mapping.
+
+The 2019-11-01/2019-11-02 two-day innovation-only test validated daily file
+selection. Species 56 was configured with `ASSIM=F`, `GETINNOV=T`, and the
+daily name template:
+
+```text
+cygnss_l1_ddm3x5_crop_scalar_m36_yyyymmdd_cyg02.nc4
+```
+
+At the cycle crossing midnight, the reader loaded both adjacent daily files:
+
+```text
+Reading .../CYGNSS_L1/Y2019/M11/cygnss_l1_ddm3x5_crop_scalar_m36_20191101_cyg02.nc4
+Reading .../CYGNSS_L1/Y2019/M11/cygnss_l1_ddm3x5_crop_scalar_m36_20191102_cyg02.nc4
+CYGNSS preprocessed obs daily files read: 2
+CYGNSS preprocessed obs read: 100
+```
+
+CYGNSS rows with valid forecast and analysis `H(x)` appeared in `ObsFcstAna` at:
+
+```text
+20191101_0900z   2
+20191101_1200z  10
+20191101_1500z  11
+20191102_0900z   6
+20191102_1200z  10
+20191102_1500z   9
+```
+
+This run still had `obsparam_assim=0` for all species and
+`GEOSldas_update_type=12`, so it validates innovation diagnostics and daily file
+handling, not CYGNSS assimilation increments.
 
 The recurring Discover test workflow is:
 
@@ -308,7 +366,6 @@ obs_param_nml(?)%adapt          = 0
 - Should missing support tiles abort in all development builds, or only when a debug flag is enabled?
 - Where should the CYGNSS preprocessed cache lifecycle live so it is read once per relevant file/time and remains synchronized with `Observations_l` after sorting and compaction?
 - How should production runs handle multiple CYGNSS observations per owner tile once we move past the selected-50 proof of concept?
-- Which `update_type` path should include CYGNSS once `assim=.true.` is enabled?
 
 ## Next Steps Toward Assimilation
 
@@ -323,10 +380,12 @@ obs_param_nml(56)%assim    = .true.
 obs_param_nml(56)%getinnov = .true.
 ```
 
-Before using that for science, confirm:
+For the all-sensors experiment, use `update_type=12` so the existing snow branch
+is preserved while CYGNSS enters the soil-moisture branch. Use `update_type=13`
+only for a soil-moisture/Tb-only experiment without the 1d snow analysis.
 
-- `update_type` is a soil-moisture update type appropriate for a CYGNSS dB
-  scalar with an SFMC-sensitive forward operator.
+Before using assimilation for science, confirm:
+
 - `obs_param_nml(56)%errstd` is defensible. The initial value of `3.0 dB` is a
   placeholder.
 - `obs_param_nml(56)%xcorr` and `%ycorr` are at least the effective FOV radius
@@ -353,6 +412,17 @@ Before using that for science, confirm:
   used by the reader.
 - Verified `GEOSlandassim_GridComp` builds in `build-develop-20260520` after
   the daily-file changes.
+- Optimized the coefficient-product cache so warm-cache calls do not reopen
+  NetCDF files.
+- Added `cygl1scal` to update type 13, then to update type 12 for the
+  all-sensors setup.
+- Clarified the update type 12 and 13 comments: CYGNSS-only updates use the
+  soil-moisture state vector (`srfexc`, `rzexc`, plus `catdef` on PEATCLSM
+  tiles), while temperature states are added only when Tb observations are
+  selected.
+- Validated a two-day innovation-only run using 50 observations per day. The
+  midnight cycle read both daily files and `ObsFcstAna` contained valid CYGNSS
+  forecast/analysis equivalents.
 
 ### 2026-05-20
 
