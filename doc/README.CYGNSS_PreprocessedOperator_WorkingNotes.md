@@ -140,6 +140,9 @@ src/Components/@GEOSldas_GridComp/LDAS_Shared/LDAS_ensdrv_mpi.F90
 - [x] Enforce one observation per owner tile for the first implementation.
 - [x] Drop duplicate owner-tile observations deterministically by smallest `sp_nearest_tile_distance_km`.
 - [x] Log read/kept/dropped observation counts.
+- [x] Resolve daily CYGNSS L1 scalar products from `path/Yyyyy/Mmm/name-with-yyyymmdd`.
+- [x] Read every daily product touched by the current assimilation window.
+- [x] Load the matching daily coefficient-product set in the forward-operator cache.
 - [x] Add a public LR reflectivity helper in `mwRTM_routines.F90`.
 - [x] Match the Python simulator first: SFMC clipped to MWRTM porosity, Mironov dielectric, LR Fresnel reflectivity, no roughness.
 - [x] Request `sfmc_l` and `sfmc_lH` for `varname='cygl1scal'` in `get_obs_pred()`.
@@ -166,6 +169,88 @@ replace the scan with a cached tile-number-to-`lH` index map.
 `mwRTM_param` itself remains local-only. For CYGNSS, `get_obs_pred()` bundles
 the small static fields needed at support tiles, currently `clay` and `poros`,
 through the existing local-plus-halo communication helper alongside `sfmc_lH`.
+
+## Daily Product Layout
+
+CYGNSS L1 scalar products now follow a CYGNSS-L3-like daily directory layout.
+The namelist path is the collection root, not the exact day directory:
+
+```fortran
+obs_param_nml(56)%path = '/discover/nobackup/projects/land_da/cygl1_operator_test/CYGNSS_L1'
+obs_param_nml(56)%name = 'cygnss_l1_ddm3x5_crop_scalar_m36_yyyymmdd_cyg02.nc4'
+```
+
+For a 2019-11-01 run this resolves to:
+
+```text
+/discover/nobackup/projects/land_da/cygl1_operator_test/CYGNSS_L1/Y2019/M11/cygnss_l1_ddm3x5_crop_scalar_m36_20191101_cyg02.nc4
+```
+
+Only the explicit `yyyymmdd` token is replaced. Do not use a generic `dd`
+token here because the filename itself contains `ddm3x5`.
+
+The reader scans every daily file touched by the EnKF assimilation window:
+
+```text
+(date_time - dtstep_assim/2, date_time + dtstep_assim/2]
+```
+
+This means a window centered near midnight can read both adjacent daily files.
+Each observation still carries its own timestamp, and the existing half-open
+time-window check decides whether it belongs in the current cycle. Duplicate
+owner tiles across files are handled the same way as duplicates within one file:
+keep the observation with the smallest `sp_nearest_tile_distance_km`.
+
+The forward-operator coefficient cache uses the same date-window file list as
+the reader. When multiple daily products are loaded, their ragged support arrays
+are concatenated and `tile_start` is offset into the combined support array.
+This keeps `Observations_l` and `H(x)` synchronized for windows crossing
+midnight.
+
+## Runtime Behavior Learned
+
+CYGNSS L1 scalar observations inherit the generic model-based satellite SFMC
+QC through `qc_model_based_for_sat_sfmc()`. This is expected behavior, not a
+reader loss, when the number of CYGNSS observations in `ldas_ObsFcstAna` is
+smaller than the number of observations read from the preprocessed product.
+
+The QC can set `Obs_pred` to nodata when the model state is unsuitable for a
+soil-moisture-like update, including precipitation, snow, frozen/cold surface
+conditions, or missing model/static inputs needed by the forward operator.
+For the 2019-11-01 selected CYGNSS test, Discover diagnostics showed:
+
+```text
+09z: total=4  valid=1  nodata=3
+12z: total=15 valid=6  nodata=9
+15z: total=10 valid=7  nodata=3
+```
+
+The 12z `15 -> 6` behavior was explained by model-QC nodata in the forecast
+operator, mostly SFMC/QC rejection plus one clay/porosity support issue. If this
+comes up again, first check the log for read/kept counts, then check
+`ldas_ObsFcstAna`; do not assume observations vanished in MPI output or tile
+mapping.
+
+The recurring Discover test workflow is:
+
+```bash
+cd /discover/nobackup/projects/land_da/GEOSldas_develop/GEOSldas/src/Components/@GEOSldas_GridComp
+git pull --ff-only
+
+cd /discover/nobackup/projects/land_da/GEOSldas_develop/GEOSldas/build
+make -j6 install
+
+cd ../install/bin
+rm -rf /discover/nobackup/projects/land_da/all_sensors/LS_DAv8_M36_as_20191101_cygl1
+
+./ldas_setup setup \
+  /discover/nobackup/projects/land_da/all_sensors/ \
+  /discover/nobackup/projects/land_da/all_sensors/LS_DAv8_M36_all_sensors_20191101_cygl1.txt \
+  /discover/nobackup/projects/land_da/all_sensors/bat_inp_debug.txt
+
+cd /discover/nobackup/projects/land_da/all_sensors/LS_DAv8_M36_as_20191101_cygl1/run
+sbatch lenkf.j
+```
 
 ## Reflectivity Helper Note
 
@@ -225,7 +310,49 @@ obs_param_nml(?)%adapt          = 0
 - How should production runs handle multiple CYGNSS observations per owner tile once we move past the selected-50 proof of concept?
 - Which `update_type` path should include CYGNSS once `assim=.true.` is enabled?
 
+## Next Steps Toward Assimilation
+
+To run CYGNSS in innovation-only mode, set the special namelist species 56 path
+and file name, keep `assim = .false.`, and set `getinnov = .true.` with
+`out_ObsFcstAna = 2` or `3`.
+
+To actually assimilate CYGNSS, the first namelist switch is:
+
+```fortran
+obs_param_nml(56)%assim    = .true.
+obs_param_nml(56)%getinnov = .true.
+```
+
+Before using that for science, confirm:
+
+- `update_type` is a soil-moisture update type appropriate for a CYGNSS dB
+  scalar with an SFMC-sensitive forward operator.
+- `obs_param_nml(56)%errstd` is defensible. The initial value of `3.0 dB` is a
+  placeholder.
+- `obs_param_nml(56)%xcorr` and `%ycorr` are at least the effective FOV radius
+  checks expected by `read_ens_upd_inputs()`. For `FOV = 100 km`, the old
+  `0.25 deg` setting is too small.
+- `bias_Npar`, `scale`, and `zeromean` are a deliberate choice. The first
+  assimilation test should probably remain unscaled and unbiased unless a
+  calibration strategy is ready.
+- The test run still writes `ObsFcstAna` so forecast and analysis `H(x)` can be
+  checked before trusting increments.
+- Multi-file daily selection has been tested on Discover before moving from
+  innovation-only diagnostics to assimilation.
+
 ## Work Log
+
+### 2026-05-21
+
+- Validated the selected-50 2019-11-01 innovation-only run well enough to move on.
+- Decided to use a daily CYGNSS-L3-style product layout:
+  `CYGNSS_L1/Yyyyy/Mmm/cygnss_l1_ddm3x5_crop_scalar_m36_yyyymmdd_cyg02.nc4`.
+- Added date-window file selection for CYGNSS L1 scalar reads so cycles near
+  midnight can use both adjacent daily files.
+- Updated the coefficient-product cache to load the same date-window file set
+  used by the reader.
+- Verified `GEOSlandassim_GridComp` builds in `build-develop-20260520` after
+  the daily-file changes.
 
 ### 2026-05-20
 
