@@ -125,16 +125,16 @@ Applied per observation in order:
 2. `obs_j2000` outside assimilation window → reject
 3. `surface_flag` bit 0 set → reject (open water)
 4. `processing_flag` bits 0–1 set → reject (model or backscatter not usable)
-5. `snow_cover_probability >= 50%` → reject
-6. `frozen_soil_probability >= 50%` → reject
-7. `wetland_fraction >= 10%` → reject
+5. `wetland_fraction >= 10%` → reject
 8. `topographic_complexity >= 10%` → reject
 9. `subsurface_scattering_probability >= 10%` → reject
 
+Snow and frozen soil are **not** screened here — `qc_model_based_for_sat_sfmc`
+handles those using model state (SWE, surface temperature).
+
 Thresholds as parameters:
 ```fortran
-real, parameter :: thr_snow=50., thr_frozen=50., thr_wetland=10.
-real, parameter :: thr_topo=10., thr_subsfc=10.
+real, parameter :: thr_wetland=10., thr_topo=10., thr_subsfc=10.
 ```
 
 ### Memory approach
