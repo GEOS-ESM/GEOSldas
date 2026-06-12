@@ -12,6 +12,12 @@ if ("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
            issue cmake command in separate build directory.")
 endif ("${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
 
+# Export compile database by default so editor tooling can find flags/includes.
+if (NOT DEFINED CMAKE_EXPORT_COMPILE_COMMANDS)
+  set (CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL
+    "Export compile commands for tooling")
+endif ()
+
 # Set the default build type to release
 if (NOT CMAKE_BUILD_TYPE)
   message (STATUS "Setting build type to 'Release' as none was specified.")
