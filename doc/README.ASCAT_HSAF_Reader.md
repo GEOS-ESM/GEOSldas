@@ -63,7 +63,7 @@ Three species added (indices 56, 57, 58 in `LDASsa_DEFAULT_inputs_ensupd.nml`):
 | 57 | `ASCAT_HSAF_METB_SM` | Metop-B | 2013-06-01 – present |
 | 58 | `ASCAT_HSAF_METC_SM` | Metop-C | 2019-04-01 – present |
 
-All use `varname = 'sfds'` (degree of saturation), `units = '%'`, `FOV = 12.5 km`.
+All use `varname = 'sfds'` (degree of saturation), `units = '%'`, `FOV = 25. km` (theoretical spatial resolution per Hahn et al. 2026, Table 1; 12.5 km is grid *sampling* only).
 The reader dispatches on species name to select which satellite's files to open and
 to enforce the satellite operating-period date filter.
 
