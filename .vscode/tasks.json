@@ -1,0 +1,76 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "GEOSldas: Configure Release (compile db)",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-lc",
+        "export PATH=\"/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH\"; source scripts/dev_env.sh; cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_Fortran_COMPILER=$FC -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMPI_Fortran_LIBRARY_VERSION_STRING=$GEOSLDAS_MPI_VERSION_STRING"
+      ]
+    },
+    {
+      "label": "GEOSldas: Release install (build)",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-lc",
+        "export PATH=\"/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH\"; source scripts/dev_env.sh; [ -f build/Makefile ] || { echo 'Missing build/Makefile. Configure first.'; exit 1; }; gmake -C build -j6 install"
+      ],
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "GEOSldas: Debug install (build-Debug)",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-lc",
+        "export PATH=\"/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH\"; source scripts/dev_env.sh; [ -f build-Debug/Makefile ] || { echo 'Missing build-Debug/Makefile. Configure first.'; exit 1; }; gmake -C build-Debug -j6 install"
+      ],
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "group": "build"
+    },
+    {
+      "label": "GEOSldas: Format current file",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-lc",
+        "export PATH=\"/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH\"; source scripts/dev_env.sh; /Users/amfox/.local/bin/fprettify \"$file\""
+      ]
+    },
+    {
+      "label": "GEOSldas: Syntax check current file",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-lc",
+        "export PATH=\"/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH\"; source scripts/dev_env.sh; INC=''; [ -d build/include ] && INC=\"$INC -Ibuild/include\"; [ -d build-Debug/include ] && INC=\"$INC -Ibuild-Debug/include\"; $FC -fsyntax-only -ffree-line-length-none -ffixed-line-length-none $INC \"$file\""
+      ],
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "GEOSldas: Smoke target (preprocess_ldas.x)",
+      "type": "shell",
+      "command": "zsh",
+      "args": [
+        "-lc",
+        "export PATH=\"/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH\"; source scripts/dev_env.sh; [ -f build/Makefile ] || { echo 'Missing build/Makefile. Configure first.'; exit 1; }; gmake -C build -j4 preprocess_ldas.x"
+      ],
+      "problemMatcher": [
+        "$gcc"
+      ]
+    }
+  ]
+}

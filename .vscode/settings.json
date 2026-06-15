@@ -1,0 +1,25 @@
+{
+  "cmake.configureOnOpen": false,
+  "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+  "fortran.fortls.path": "/Users/amfox/opt/anaconda3/bin/fortls",
+  "fortran.fortls.configure": "${workspaceFolder}/.fortlsrc",
+  "fortran.linter.compiler": "gfortran",
+  "fortran.linter.compilerPath": "/opt/homebrew/bin/gfortran",
+  "fortran.linter.includePaths": [
+    "${workspaceFolder}/build/include/**",
+    "${workspaceFolder}/build-Debug/include/**",
+    "${workspaceFolder}/src/Components/@GEOSldas_GridComp/**"
+  ],
+  "fortran.formatting.formatter": "fprettify",
+  "fortran.formatting.path": "/Users/amfox/.local/bin/fprettify",
+  "files.associations": {
+    "*.F90": "FortranFreeForm",
+    "*.f90": "FortranFreeForm",
+    "*.F": "FortranFixedForm",
+    "*.f": "FortranFixedForm"
+  },
+  "githubPullRequests.ignoredPullRequestBranches": [
+    "develop"
+  ]
+}

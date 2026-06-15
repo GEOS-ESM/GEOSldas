@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "fortran-lang.linter-gfortran",
+    "ms-vscode.cmake-tools",
+    "ms-vscode.cpptools",
+    "twxs.cmake"
+  ]
+}

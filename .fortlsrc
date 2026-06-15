@@ -1,0 +1,29 @@
+{
+  "disable_autoupdate": true,
+  "nthreads": 6,
+  "incremental_sync": true,
+  "source_dirs": [
+    "src/Components/@GEOSldas_GridComp"
+  ],
+  "excl_paths": [
+    ".git",
+    ".mepo",
+    "@cmake",
+    "cmake",
+    "cmake@",
+    "@env",
+    "env",
+    "env@",
+    "build",
+    "build-*",
+    "install",
+    "install-*",
+    "build-Debug",
+    "build-Release",
+    "build-Aggressive",
+    "install-Debug",
+    "install-Release",
+    "install-Aggressive",
+    "src/Components/@GEOSgcm_GridComp/GEOSagcm_GridComp/GEOSphysics_GridComp/GEOSsurface_GridComp/Utils/Raster/makebcs/mod_process_hres_data.F90"
+  ]
+}
