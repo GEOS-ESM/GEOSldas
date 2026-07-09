@@ -36,11 +36,15 @@ jobs:
       cmake-build-type: ${{ matrix.build-type }}
       run-mepo-develop: false
 
-  spack_build:
-    uses: GEOS-ESM/CI-workflows/.github/workflows/spack_gcc_build.yml@project/geosgcm
-    secrets:
-      BUILDCACHE_USERNAME: ${{ secrets.BUILDCACHE_USERNAME }}
-      BUILDCACHE_TOKEN: ${{ secrets.BUILDCACHE_TOKEN }}
-    with:
-      load-fms: true
-      run-mepo-develop: false
+  # We cannot currently test with spack because spack does not build the
+  # HDF4 Fortran interface, which is required for the GEOSldas.
+  #######################################################################################
+  # spack_build:                                                                        #
+  #   uses: GEOS-ESM/CI-workflows/.github/workflows/spack_gcc_build.yml@project/geosgcm #
+  #   secrets:                                                                          #
+  #     BUILDCACHE_USERNAME: ${{ secrets.BUILDCACHE_USERNAME }}                         #
+  #     BUILDCACHE_TOKEN: ${{ secrets.BUILDCACHE_TOKEN }}                               #
+  #   with:                                                                             #
+  #     load-fms: true                                                                  #
+  #     run-mepo-develop: false                                                         #
+  #######################################################################################
