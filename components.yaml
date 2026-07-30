@@ -57,8 +57,14 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: feature/wjiang/sphere_pert_test 
+  branch: feature/wjiang/sphere_pert 
   develop: develop
+
+smerfs:
+  local: ./src/Components/@GEOSldas_GridComp/GEOSlandpert_GridComp/@smerfs
+  remote: ../smerfs.git
+  branch: feature/fortran_interface 
+  develop: feature/fortran_interface
 
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
