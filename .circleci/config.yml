@@ -1,11 +1,11 @@
 version: 2.1
 
 # Anchors in case we need to override the defaults from the orb
-#baselibs_version: &baselibs_version v8.27.0
-#bcs_version: &bcs_version v11.6.0
+#baselibs_version: &baselibs_version v8.32.0
+#bcs_version: &bcs_version v12.0.0
 
 orbs:
-  ci: geos-esm/circleci-tools@4
+  ci: geos-esm/circleci-tools@5
 
 workflows:
   build-test:
@@ -17,10 +17,12 @@ workflows:
             - docker-hub-creds
           matrix:
             parameters:
-              compiler: [ifort, gfortran]
+              # We cannot currently test with ifx because HDF4 Fortran interface
+              # cannot be compiled with ifx.  The HDF4 Fortran interface is required
+              # for the GEOSldas
+              #compiler: [gfortran, ifort, ifx]
+              compiler: [gfortran, ifort]
           #baselibs_version: *baselibs_version
           repo: GEOSldas
           mepodevelop: false
-          # This is needed due to the LDAS BRIDGE workflow
-          checkout_if_exists: false
           persist_workspace: false # Needs to be true to run fv3/gcm experiment, costs extra
