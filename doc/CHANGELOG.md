@@ -36,6 +36,17 @@ Overview of GEOSldas Git Releases:
 ============================
 
 
+[v18.2.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.2.0) - 2026-08-25
+------------------------------
+
+- 0-diff vs. GEOSldas v18.1.0 except when ingesting SMAP L1C_TB ([PR #191](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/191)).
+
+- Uses GEOSldas_GridComp v1.2.0.
+
+- Minor changes:
+  - Add QC of SMAP L1C_TB using max Tb_error ([PR #191](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/191)).
+
+
 [v18.1.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.1.0) - 2024-11-05
 ------------------------------
 
