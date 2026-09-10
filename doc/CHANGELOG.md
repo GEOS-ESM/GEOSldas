@@ -40,8 +40,9 @@ Overview of GEOSldas Git Releases:
 
 - Generally not 0-diff vs. GEOSldas v20.2.0 because of the following changes:
   - Revised QC of Tb, sfds, sfmc observations ([GEOSldas_GridComp PRs #186](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/186), [#190](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/190)).
-  - For landice with Louis surface turbulence, use extra derivatives of exchange coefficients ([GEOSgcm_GridComp PR #1470](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1470)).
   - Bug fix in Louis surface turbulence scheme ([PR #866](https://github.com/GEOS-ESM/GEOSldas/pull/866), [GMAO_Shared PR #454](https://github.com/GEOS-ESM/GMAO_Shared/pull/454)). 
+  - For landice with Louis surface turbulence, added use of extra derivatives of exchange coefficients ([GEOSgcm_GridComp PR #1470](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1470)).
+ 
  
 - Uses GEOSldas_GridComp v4.0.0.
 - Uses GEOSgcm_GridComp v3.0.2 (incl. change to "GCM v12" code base: [GEOSgcm_GridComp PR #1436](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1436)).
@@ -51,7 +52,7 @@ Overview of GEOSldas Git Releases:
   - Support for lake tiles (single ensemble member only) ([PR #862](https://github.com/GEOS-ESM/GEOSldas/pull/862); [GEOSldas_GridComp PR #181](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/181); [GEOSgcm_GridComp PRs #1214](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1214), [#1470](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1470)).
   - Support for running ISSM (Ice-sheet and Sea-level System Model; single ensemble member only) ([PR #863](https://github.com/GEOS-ESM/GEOSldas/pull/863); [GEOSldas_GridComp PRs #161](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/161), [#176](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/176); [GEOSgcm_GridComp PRs #1203](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1203), [#1476](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1476), [#1510](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1510)). 
   - Assimilation of surface soil moisture observations from H-SAF ASCAT H121 CDR v8 and H139 ICDR netcdf products (MetOp-A/B/C) ([GEOSldas_GridComp PR #186](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/186)).
-  - New "v14" boundary conditions with peatlands based Greifswald Global Peat Map 2.0 ([GEOSgcm_GridComp PR #1196](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1196)).
+  - New "v14" boundary conditions with peatland distribution based on Greifswald Global Peat Map 2.0 ([GEOSgcm_GridComp PR #1196](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1196)).
 
 - Minor changes:
   - Added peatland QC for observations of "sfds" and "sfmc" ([GEOSldas_GridComp PR #186](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/186)).
