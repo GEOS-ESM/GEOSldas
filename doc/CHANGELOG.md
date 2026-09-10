@@ -35,8 +35,62 @@ This README file contains the history of stable GEOSldas Releases in Git, follow
 Overview of GEOSldas Git Releases:
 ============================
 
+[v21.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v21.0.0) - 2026-09-10
+------------------------------
+
+- Generally not 0-diff vs. GEOSldas v20.2.0:
+  - Revised QC of Tb, sfds, sfmc observations.
+  - ??????GEOSgcm_GridComp???????
+ 
+- Uses GEOSldas_GridComp v4.0.0.
+
+- New features:
+  - Support for river routing, incl. ensemble simulations ([GEOSldas_GridComp PR #145](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/145), [GEOSldas_GridComp PR #174](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/174), [GEOSldas_GridComp PR #176](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/176)).
+  - Support for lake tiles (single ensemble member only) ([PR #862](https://github.com/GEOS-ESM/GEOSldas/pull/862), [GEOSldas_GridComp PR #181](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/181)).
+  - Support for running ISSM (Ice-sheet and Sea-level System Model; single ensemble member only) ([PR #863](https://github.com/GEOS-ESM/GEOSldas/pull/863), [GEOSldas_GridComp PR #161](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/161), [GEOSldas_GridComp PR #176](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/176)). 
+  - Assimilation of surface soil moisture observations from H-SAF ASCAT H121 CDR v8 and H139 ICDR netcdf products (MetOp-A/B/C) ([GEOSldas_GridComp PR #186](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/186)).
+
+- Minor changes:
+  - Added peatland QC for observations of "sfds" and "sfmc" ([GEOSldas_GridComp PR #186](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/186)).
+  - Added QC of SMAP L1C_TB using max value for Tb_error ([GEOSldas_GridComp PR #190](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/190)).
+  - Revised and cleaned up RESTART options ([GEOSldas_GridComp PR #160](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/160), [GEOSldas_GridComp PR #166](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/166)):
+    - Clarified scope and constraints of RESTART=1 and RESTART=2.
+    - Added RESTART=3 (formerly RESTART=G, which had been removed).
+    - Cleaned up RESTART=M.
+  - Renamed './cat' output directory to './diag'; created link from './cat' to './diag' for backward compatibility ([GEOSldas_GridComp PR #198](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/198)).
+  - Updated Landice ("glc") HISTORY Collection to match that of M21C, plus key ISSM outputs ([GEOSldas_GridComp PR #181](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/181)).
+  - Removed 2d "lfs" collection from HISTORY.rc template ([GEOSldas_GridComp PR #156](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/156)).
+  - Added optional NetCDF4 output of ObsFcstAna; changed namelist variable "out_ObsFcstAna" from logical to integer ([GEOSldas_GridComp PR #163](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/163), [GEOSldas_GridComp PR #185](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/185)).
+  - Added Matlab and python readers for binary Tb scaling parameters files ([GEOSldas_GridComp PR #179](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/179), [GEOSldas_GridComp PR #191](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/191)).
+  - Added python reader for binary catparam files ([GEOSldas_GridComp PR #191](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/191)).
+  - Added SMOS Tb preprocessing scripts ([GEOSldas_GridComp PR #189](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/189)).
+  - Replaced legacy HDF4 Fortran interface with a C bridge and `ISO_C_BINDING` module ([GEOSldas_GridComp PR #194](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/194), [GEOSldas_GridComp PR #201](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/201)).
+  - Updated CI ([GEOSldas_GridComp PR #181](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/181)).
+
+- Bug fixes:
+  - Fixed python version of `read_obs_param()` ([GEOSldas_GridComp PR #185](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/185)).
+  - Fixed crashes in debug mode ([GEOSldas_GridComp PR #173](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/173)).
+  - Fixed string matching for EASE tile file to accommodate new "EASE*-Pfafstetter" tile file for runoff routing purposes ([GEOSldas_GridComp PR #160](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/160)).
+  - Fixed GEOSlandpert build when MKL is unavailable by enabling MKL-specific code paths only when MKL is detected ([GEOSldas_GridComp PR #162](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/162)).
+  - Fixed NAG Fortran compiler issues ([GEOSldas_GridComp PR #170](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/170)).
+  - Fixed missing deallocate and nullify statements ([GEOSldas_GridComp PR #180](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/180)).
+  
+- Utilities:
+  - GMAO_Shared v3.0.2 ([PR #855](https://github.com/GEOS-ESM/GEOSldas/pull/855), [PR #864](https://github.com/GEOS-ESM/GEOSldas/pull/864), [PR #866](https://github.com/GEOS-ESM/GEOSldas/pull/866)).
+  - GEOS_Util v3.0.0 ([PR #855](https://github.com/GEOS-ESM/GEOSldas/pull/855), [PR #864](https://github.com/GEOS-ESM/GEOSldas/pull/864)).
+  - NCEP_Shared v1.5.0 ([PR #864](https://github.com/GEOS-ESM/GEOSldas/pull/864)).
+
+- Infrastructure:
+  - ecbuild v3.13.1 ([PR #864](https://github.com/GEOS-ESM/GEOSldas/pull/864)).
+  - ESMA_cmake v4.41.0 ([PR #855](https://github.com/GEOS-ESM/GEOSldas/pull/855), [PR #864](https://github.com/GEOS-ESM/GEOSldas/pull/864)).
+  - ESMA_env v5.25.0, Baselibs v8.32.0 ([PR #855](https://github.com/GEOS-ESM/GEOSldas/pull/855), [PR #863](https://github.com/GEOS-ESM/GEOSldas/pull/863)).
+  - MAPL v2.70.0 ([PR #855](https://github.com/GEOS-ESM/GEOSldas/pull/855), [PR #857](https://github.com/GEOS-ESM/GEOSldas/pull/857), [PR #860](https://github.com/GEOS-ESM/GEOSldas/pull/860), [PR #861](https://github.com/GEOS-ESM/GEOSldas/pull/861), [PR #864](https://github.com/GEOS-ESM/GEOSldas/pull/864)).
+
+- Documentation:
+  - Updated README.md ([PR #850](https://github.com/GEOS-ESM/GEOSldas/pull/850)) 
 
 
+------------------------------
 [v20.2.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v20.2.0) - 2025-11-26
 ------------------------------
 
