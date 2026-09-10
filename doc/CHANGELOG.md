@@ -183,7 +183,7 @@ Overview of GEOSldas Git Releases:
 
 
 ------------------------------
-HOTFIX: [v18.2.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.2.0) - 2026-08-26
+HOTFIX: [v18.2.1](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.2.1) - 2026-08-26
 ------------------------------
 
 - 0-diff vs. v18.1.0 except when ingesting SMAP L1C_TB.
