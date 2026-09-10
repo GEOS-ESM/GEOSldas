@@ -181,6 +181,18 @@ Overview of GEOSldas Git Releases:
 - Removed:
   - Removed support for SLES12 operating system at NCCS ([GEOSldas_GridComp PR #83](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/83)).
 
+
+------------------------------
+HOTFIX: [v18.2.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.2.0) - 2026-08-26
+------------------------------
+
+- 0-diff vs. v18.1.0 except when ingesting SMAP L1C_TB.
+
+- Used for generation of SMAP L4_SM Version 8 product, beginning with Science Version ID Vv8012.
+
+- New features:
+  - Add QC of SMAP L1C_TB using max Tb_error ([GEOSldas_GridComp PR #193](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/193)).
+
 ------------------------------
 [v18.1.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v18.1.0) - 2024-11-05
 ------------------------------
