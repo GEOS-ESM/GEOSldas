@@ -17,11 +17,7 @@ workflows:
             - docker-hub-creds
           matrix:
             parameters:
-              # We cannot currently test with ifx because HDF4 Fortran interface
-              # cannot be compiled with ifx.  The HDF4 Fortran interface is required
-              # for the GEOSldas
-              #compiler: [gfortran, ifort, ifx]
-              compiler: [gfortran, ifort]
+              compiler: [gfortran, ifort, ifx]
           #baselibs_version: *baselibs_version
           repo: GEOSldas
           mepodevelop: false
