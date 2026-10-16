@@ -11,25 +11,25 @@ env:
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  tag: v3.75.0
+  tag: v4.41.0
   develop: develop
 
 ecbuild:
   local: ./@cmake/@ecbuild
   remote: ../ecbuild.git
-  tag: geos/v1.4.0
+  tag: geos/v3.13.1
 
 NCEP_Shared:
   local: ./src/Shared/@NCEP_Shared
   remote: ../NCEP_Shared.git
-  tag: v1.4.0
+  tag: v1.5.0
   sparse: ./config/NCEP_Shared.sparse
   develop: main
 
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
-  tag: v2.1.6
+  tag: v3.0.2
   sparse: ./config/GMAO_Shared.sparse
   develop: main
 
