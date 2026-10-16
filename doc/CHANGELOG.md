@@ -35,6 +35,40 @@ This README file contains the history of stable GEOSldas Releases in Git, follow
 Overview of GEOSldas Git Releases:
 ============================
 
+[v21.1.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v21.1.0) - 2026-10-16
+------------------------------
+
+- Generally not 0-diff vs. v4.0.0 for assimilation of HSAF ASCAT obs or when using assimilation update_types not currently included in nightly LDAS regression tests ([GEOSldas_GridComp PRs #210](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/210), [#213](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/213), [#214](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/214)). 
+
+- Uses GEOSldas_GridComp v4.1.0.
+- Uses GEOSgcm_GridComp v3.1.0.
+
+- Minor changes:
+
+  - Added minimum-distance (25 km) thinning of H-SAF ASCAT soil moisture obs ([GEOSldas_GridComp PR #213](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/213)).
+  - Removed obsolete check on SMOS/SMAP obs locations when running on EASEv2 tiles ([GEOSldas_GridComp PR #219](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/219)).
+
+- Bug fixes:
+
+  - GEOSgcm_GridComp v3.1.0:
+    - Fixed ISSM initialization ([GEOSgcm_GridComp PR #1523](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1523)).
+    - Fixed ISSM no-data values ([GEOSgcm_GridComp PR #1526](https://github.com/GEOS-ESM/GEOSgcm_GridComp/pull/1526)).
+  - Refined ldas_setup restart handling for multiple restart options and surface components ([GEOSldas_GridComp PR #208](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/208)).
+  - Fixed array bounds for EnKF update types 12 and 13 ([GEOSldas_GridComp PR #214](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/214)).
+  - Fixed initialization of temperature increment in freeze/thaw analysis  ([GEOSldas_GridComp PR #214](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/214)).
+  - Fixed surface temperature observation selection for EnKF update types 3, 4, 5 and 7  ([GEOSldas_GridComp PR #214](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/214)).
+  - Made observation perturbation grid-cell lookup independent of the EnKF analysis layout ([GEOSldas_GridComp PR #210](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/210)).
+  - Fixed update type 12 incorrectly skipping valid soil-moisture analyses when snow-cover observations are not assimilated  ([GEOSldas_GridComp PR #211](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/211)).
+  - Fixed bug in handling of freeze-thaw observation predictions ([GEOSldas_GridComp PR #217](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/217)).
+
+- Utilities:
+  - GEOS_Util v3.0.3 ([PR #874](https://github.com/GEOS-ESM/GEOSldas/pull/874), [GEOS_Util PR #268](https://github.com/GEOS-ESM/GEOS_Util/pull/268)).
+
+- Documentation:
+  - Added comment to clarify the selection of the tile file ( nc4 or txt) ([GEOSldas_GridComp PR #205](https://github.com/GEOS-ESM/GEOSldas_GridComp/pull/205)).
+
+
+------------------------------
 [v21.0.0](https://github.com/GEOS-ESM/GEOSldas/releases/tag/v21.0.0) - 2026-09-10
 ------------------------------
 
