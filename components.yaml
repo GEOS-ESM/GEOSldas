@@ -5,19 +5,19 @@ GEOSldas:
 env:
   local: ./@env
   remote: ../ESMA_env.git
-  tag: v5.25.0
+  tag: v5.26.0
   develop: main
 
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  tag: v4.41.0
+  tag: v4.51.0
   develop: develop
 
 ecbuild:
   local: ./@cmake/@ecbuild
   remote: ../ecbuild.git
-  tag: geos/v3.13.1
+  tag: geos/v3.15.2
 
 NCEP_Shared:
   local: ./src/Shared/@NCEP_Shared
@@ -51,7 +51,7 @@ GMAO_perllib:
 MAPL:
   local: ./src/Shared/@MAPL
   remote: ../MAPL.git
-  tag: v2.70.0
+  tag: v2.71.0
   develop: release/v2
 
 GEOSldas_GridComp:
