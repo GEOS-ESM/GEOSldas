@@ -57,8 +57,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
-  develop: develop
+  branch: feature/wjiang/sphere_pert
 
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
