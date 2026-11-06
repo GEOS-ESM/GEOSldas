@@ -11,7 +11,8 @@ env:
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  tag: v4.41.0
+  branch: feature/wjiang/macos_nag
+  #tag: v4.41.0
   develop: develop
 
 ecbuild:
@@ -29,7 +30,8 @@ NCEP_Shared:
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
-  tag: v3.0.2
+  branch: feature/mathomp4/nag-fixes 
+  #tag: v3.0.2
   sparse: ./config/GMAO_Shared.sparse
   develop: main
 
@@ -57,12 +59,12 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: feature/wjiang/macos_nag
   develop: develop
 
 GEOSgcm_GridComp:
   local: ./src/Components/@GEOSgcm_GridComp
   remote: ../GEOSgcm_GridComp.git
-  branch: develop
+  branch: feature/wjiang/macos_nag
   sparse: ./config/GEOSgcm_GridComp_ldas.sparse
   develop: develop
