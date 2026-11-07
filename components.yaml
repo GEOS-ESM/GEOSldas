@@ -50,7 +50,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: feature/rreichle/remove_NCEP_Shared
   develop: develop
 
 GEOSgcm_GridComp:
