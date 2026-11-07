@@ -59,7 +59,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: feature/wjiang/macos_nag
+  branch: develop
   develop: develop
 
 GEOSgcm_GridComp:
