@@ -30,7 +30,8 @@ NCEP_Shared:
 GMAO_Shared:
   local: ./src/Shared/@GMAO_Shared
   remote: ../GMAO_Shared.git
-  branch: feature/mathomp4/nag-fixes 
+  #branch: feature/mathomp4/nag-fixes
+  branch: main
   #tag: v3.0.2
   sparse: ./config/GMAO_Shared.sparse
   develop: main
