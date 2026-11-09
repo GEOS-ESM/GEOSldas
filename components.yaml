@@ -11,8 +11,8 @@ env:
 cmake:
   local: ./@cmake
   remote: ../ESMA_cmake.git
-  branch: feature/wjiang/macos_nag
-  #tag: v4.41.0
+  #branch: feature/wjiang/macos_nag
+  tag: v4.41.0
   develop: develop
 
 ecbuild:
