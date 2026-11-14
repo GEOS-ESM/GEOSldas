@@ -57,7 +57,7 @@ MAPL:
 GEOSldas_GridComp:
   local: ./src/Components/@GEOSldas_GridComp
   remote: ../GEOSldas_GridComp.git
-  branch: develop
+  branch: bugfix/amfox/tile-coord-land-only
   develop: develop
 
 GEOSgcm_GridComp:
